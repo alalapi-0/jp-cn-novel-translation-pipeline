@@ -1,0 +1,30 @@
+round_id: translation_pipeline_governance_round
+round_name: Translation Pipeline Governance & Roadmap Round
+status: completed
+type: planning_governance
+real_api_called: false
+full_translation_executed: false
+existing_translation_outputs_modified: false
+created_or_updated_docs:
+  - docs/reports/translation_project_scan_report.md
+  - docs/translation_project_positioning.md
+  - docs/translation_pipeline_design.md
+  - docs/terminology_system_design.md
+  - docs/embedding_memory_design.md
+  - docs/openrouter_api_test_plan.md
+  - docs/roadmap_translation_pipeline.md
+  - docs/index.md
+  - prompts/openclaw_translation_governance.md
+  - prompts/cursor_translation_pipeline_round.md
+  - prompts/codex_translation_pipeline_round.md
+next_rounds:
+  - T0_project_status_sync
+  - T1_terminology_structuring
+  - T2_draft_translation_script
+  - T3_polish_script
+  - T4_term_consistency_check
+  - T5_embedding_memory
+  - T6_retrieval_augmented_polish
+  - T7_review_feedback
+  - T8_cn_to_jp_expansion
+  - T9_openclaw_cursor_codex_collaboration

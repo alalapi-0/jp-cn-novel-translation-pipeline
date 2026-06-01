@@ -1,0 +1,69 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local IDE/tooling state
+.idea/
+.cursor/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+logs/*.log
+logs/**/*.log
+
+# Original source files
+input_jp/*
+!input_jp/README.md
+!input_jp/.gitkeep
+
+input_cn/*
+!input_cn/README.md
+!input_cn/.gitkeep
+
+# Translation outputs
+output_cn/translated/*
+output_cn/bilingual/*
+output_cn/review/*
+!output_cn/translated/.gitkeep
+!output_cn/bilingual/.gitkeep
+!output_cn/review/.gitkeep
+!output_cn/README.md
+
+# Local project-specific notes/reports may contain story details.
+notes/*.md
+!notes/README.md
+docs/reports/*.md
+!docs/reports/README.md
+
+output_jp/translated/*
+output_jp/bilingual/*
+output_jp/review/*
+!output_jp/README.md
+!output_jp/translated/.gitkeep
+!output_jp/bilingual/.gitkeep
+!output_jp/review/.gitkeep
+
+# Workspace generated data
+workspace/embeddings/*
+workspace/vector_store/*
+workspace/model_runs/*
+workspace/checkpoints/*
+!workspace/embeddings/.gitkeep
+!workspace/vector_store/.gitkeep
+!workspace/model_runs/.gitkeep
+!workspace/checkpoints/.gitkeep
+
+# Temporary files
+tmp/
+temp/
+.cache/

@@ -1,0 +1,9 @@
+models:
+  draft_translation: deepseek/deepseek-v4-flash
+  polish: google/gemini-3.5-flash
+  reasoning_review: google/gemini-3.5-pro
+  embedding: google/gemini-embedding-2
+runtime:
+  output_dir: output_cn/experiments
+  dry_run: true
+  overwrite_existing: false
