@@ -1,0 +1,135 @@
+protocol:
+  name: agent_readable_repo_protocol
+  version: "0.3.0"
+  status: draft
+  purpose: "Provide a portable governance standard for AI-agent-readable repositories."
+  portability: portable_to_other_repositories
+  last_updated: "2026-05-30"
+  maintained_by:
+    - user
+    - repo_governance_agent
+
+scope:
+  applies_to:
+    - ai_novel_pipeline_repo
+    - general_ai_project_repo
+    - agent_repo
+    - prompt_library_repo
+    - multi_agent_workflow_repo
+  compatible_repo_types:
+    - python_cli_project
+    - ai_workflow_project
+    - documentation_heavy_project
+    - prompt_and_skill_repository
+    - future_web_ui_project
+    - mixed_code_and_content_repository
+  current_reference_repo: novel-continuation-agent
+  non_goals:
+    - "This standard does not replace project-specific business logic."
+    - "This standard does not store secrets or runtime credentials."
+    - "This standard does not require RAG, embeddings, a database, or a Web UI."
+    - "This standard does not require deleting historical Markdown documents."
+    - "This standard does not define provider-specific model API implementations."
+
+authority:
+  priority_order:
+    - governance/repo_protocol_standard.yaml
+    - project.yaml
+    - governance/round_state.yaml
+    - governance/agent_policy.yaml
+    - governance/file_role_map.yaml
+    - AGENTS.md
+    - README.md
+  authority_levels:
+    cross_repo_standard: governance/repo_protocol_standard.yaml
+    project_identity: project.yaml
+    current_round_state: governance/round_state.yaml
+    current_repo_agent_permissions: governance/agent_policy.yaml
+    current_repo_file_roles: governance/file_role_map.yaml
+    agent_entry_instructions: AGENTS.md
+    human_entry_instructions: README.md
+  conflict_resolution: "Use repo_protocol_standard.yaml as the general rule. Use project.yaml for project-specific overrides. If current repository facts conflict with the portable standard, record the override in project.yaml or a report instead of silently changing the standard."
+  project_override_policy:
+    allowed: true
+    location: project.yaml
+    rule: "Overrides must name the affected standard field, reason, owner, and review trigger."
+
+naming_conventions:
+  directories:
+    governance: "Machine-readable governance and policy files. This is the first structured layer for Agents and scripts."
+    docs: "Human-readable documentation, guides, architecture notes, reports and archive material."
+    docs_reports: "Audit reports, migration reports, round reports and validation summaries."
+    docs_archive: "Historical, deprecated or superseded documents that must not be treated as current authority."
+    prompts: "Reusable prompts for Codex, Cursor, Claude Code or other Agents."
+    scripts: "Validation and utility script layer."
+    config: "Runtime configuration without secrets."
+    round_state: "Project-specific machine-readable state. Portable repos may use governance/round_state.yaml instead."
+  files:
+    agents_md: AGENTS.md
+    readme_md: README.md
+    project_yaml: project.yaml
+    protocol_standard: governance/repo_protocol_standard.yaml
+    agent_policy: governance/agent_policy.yaml
+    file_role_map: governance/file_role_map.yaml
+    round_state: governance/round_state.yaml
+    model_policy: governance/model_policy.yaml
+    data_policy: governance/data_policy.yaml
+    novel_pipeline_contract: governance/novel_pipeline_contract.yaml
+    repo_contract_schema: governance/repo_contract.schema.json
+    repo_inventory: governance/repo_inventory.generated.json
+
+required_root_files:
+  - path: AGENTS.md
+    role: agent_entry_instructions
+    required: true
+    portable: true
+    update_policy: "Update when Agent reading order, forbidden actions, sync requirements or validation commands change."
+  - path: README.md
+    role: human_entry_document
+    required: true
+    portable: true
+    update_policy: "Update when user-facing setup, structure, workflow or governance overview changes."
+  - path: project.yaml
+    role: current_project_identity_card
+    required: true
+    portable: true
+    update_policy: "Update when project identity, owner, stage, round, entry points or standard reference changes."
+
+required_directories:
+  - path: governance/
+    role: machine_readable_governance_layer
+    required: true
+    portable: true
+    update_policy: "Update with any required YAML/JSON governance files and generated inventory."
+  - path: docs/
+    role: human_readable_documentation_layer
+    required: true
+    portable: true
+    update_policy: "Keep navigation, guides, and reports current."
+  - path: docs/reports/
+    role: governance_and_round_report_layer
+    required: true
+    portable: true
+    update_policy: "Add audit, migration, validation and round reports here."
+  - path: prompts/
+    role: reusable_prompt_layer
+    required: true
+    portable: true
+    update_policy: "Keep prompt templates and Agent handoff prompts discoverable."
+  - path: scripts/
+    role: validation_and_utility_script_layer
+    required: true
+    portable: true
+    update_policy: "Scripts should run from repo root and avoid heavy dependencies."
+  - path: config/
+    role: runtime_config
+    required: false
+    portable: true
+    update_policy: "Configuration files without secrets."
+  - path: round_state/
+    role: project_state
+    required: false
+    portable: true
+    update_policy: "Machine-readable round state."
+
+...

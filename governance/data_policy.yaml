@@ -1,0 +1,46 @@
+generated_text_policy:
+  default: index_version_manifest_when_important
+  lifecycle_reference: docs/quality_review_workflow.md
+
+novel_asset_policy:
+  source_jp: input_jp/
+  source_cn: input_cn/
+  output_cn: output_cn/
+  output_jp: output_jp/
+  notes: notes/
+  rule: novel_assets_not_in_governance_directory
+
+review_history_policy:
+  link_to: chapter_scene_version_reviewer
+
+database_policy:
+  mvp: local_json_markdown_sqlite
+  vector_db: deferred_until_round_48_planning
+
+privacy_policy:
+  do_not_commit:
+    - real_copyright_source_text
+    - real_translations_unless_user_requests
+    - user_private_content
+    - credentials
+
+git_commit_policy:
+  allowed_in_git:
+    - governance_docs
+    - schemas_and_examples
+    - approved_indexes_and_manifests
+  never_in_git:
+    - .env
+    - full_novel_source
+    - full_novel_translation_outputs
+
+workspace_policy:
+  embeddings: workspace/embeddings/
+  vector_store: workspace/vector_store/
+  model_runs: workspace/model_runs/
+  checkpoints: workspace/checkpoints/
+  all_gitignored_by_default: true
+
+backup_policy:
+  reproducible_outputs_preferred: true
+  secrets_backup_outside_git: true

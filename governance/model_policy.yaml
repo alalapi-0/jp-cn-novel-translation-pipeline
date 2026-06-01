@@ -1,0 +1,46 @@
+rag_policy:
+  default: use_grep_and_structured_files_first
+  allowed_when: large_corpus_retrieval_or_explicit_user_request
+
+embedding_policy:
+  default: no_embeddings_in_governance_round
+  allowed_when: schema_metadata_cost_guard_ready
+
+grep_policy:
+  default: preferred_for_repo_understanding
+
+context_budget:
+  default: read_entry_files_then_targeted_search
+
+providers:
+  fake_provider:
+    required_before: real_provider_integration
+  dry_run_provider:
+    required_before: controlled_real_run
+  real_providers:
+    - deepseek_class
+    - openai_class
+    - openrouter_class
+    - grok_class
+  embedding_providers:
+    local: deferred
+    cloud: deferred
+
+api_key_policy:
+  source: environment_variables_only
+  never_commit: true
+
+cost_guard:
+  REAL_API_TESTS_ENABLED: false
+  MAX_TEST_COST_USD: 0
+  require_budget_before_real_batch: true
+
+governance_round_rules:
+  - no_real_api_calls
+  - no_embedding_generation
+  - no_vector_index_build
+
+translation_execution_round_rules:
+  - require_cost_guard
+  - require_checkpoint
+  - require_fake_provider_baseline_passed

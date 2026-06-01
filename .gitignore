@@ -67,3 +67,6 @@ workspace/checkpoints/*
 tmp/
 temp/
 .cache/
+
+# Playwright / browser automation artifacts
+artifacts/

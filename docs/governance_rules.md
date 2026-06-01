@@ -4,11 +4,17 @@
 
 每轮 Agent 必须先读取：
 
+- `governance/repo_protocol_standard.yaml`
+- `project.yaml`
+- `AGENTS.md`
 - `README.md`
 - `docs/project_vision.md`
 - `docs/architecture_overview.md`
 - `docs/roadmap_rounds_00_40.md`
+- `docs/roadmap_rounds_41_50_tooling_and_workbench.md`（工具链轮次适用）
 - `docs/governance_rules.md`
+- `docs/repo_protocol_alignment.md`
+- `docs/agent_operating_manual.md`
 - `docs/current_repository_audit.md`
 
 如果这些文件不存在，先创建或补齐。
@@ -25,6 +31,8 @@
    - `review`
    - `frontend`
    - `api_integration`
+   - `tooling`
+   - `protocol_alignment`
 3. 本轮目标。
 4. 本轮不做事项。
 5. 修改范围。
@@ -46,13 +54,36 @@
 
 ## 提交规则
 
-每轮结束应：
+当**用户或当前轮 Prompt 明确要求**提交时，每轮结束应：
 
 ```bash
 git status
 git add .
 git commit -m "docs: describe change"
-git push
 ```
 
+`git push` 需用户明确授权（对齐通用协议 `approval_required`）。commit 前必须确认 diff 中无 `.env`、API Key、未授权原文/译文。
+
 如果当前目录不是 Git 仓库，不得强行初始化 Git，应在报告中记录原因。如果 push 失败，记录原因，不反复尝试。
+
+## 工具链规则
+
+1. 治理轮不默认安装大型工具（Playwright、向量库、重型 MCP 等）。
+2. 实现轮可以安装必要依赖，但必须写入文档说明原因。
+3. 前端轮必须逐步引入 Playwright（Round 44 起搭框架，Round 46 起浏览器验证）。
+4. MCP 接入必须先写安装和验证计划（见 `docs/mcp_playwright_setup_plan.md`）。
+5. MCP 不可替代 Git 审查。
+6. MCP 不可读取并输出敏感信息。
+7. 真实 API 轮必须启用 dry-run 和 cost guard。
+8. 向量库轮必须先有 metadata 和过滤设计（Round 48）。
+9. Review Workbench 不能只看代码；Round 46 起必须浏览器验证。
+10. 每个工具都必须有 fallback 或硬阻塞判断（见 `docs/agent_tooling_strategy.md`）。
+
+## 通用协议规则
+
+1. 每轮必须检查是否存在 `governance/repo_protocol_standard.yaml`。
+2. 如果存在，必须读取并遵守；项目差异通过 `project.yaml` overrides 记录。
+3. 如果协议与仓库规则冲突，必须记录于 `docs/repo_protocol_alignment.md`，不得静默覆盖。
+4. 不得擅自修改协议本体；升级须备份并写迁移报告。
+5. 协议对齐报告有变更时必须更新 `docs/repo_protocol_alignment.md`。
+6. 后续 `scripts/agent_gate.py` 与 `scripts/check_protocol_standard.py` 应纳入协议检查（Round 41–42）。

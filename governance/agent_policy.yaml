@@ -1,0 +1,49 @@
+mode: conservative_structured_repo_governance
+
+allowed_actions:
+  - read_governance_entry_files
+  - grep_glob_targeted_search
+  - create_update_governance_yaml
+  - create_lightweight_validation_scripts
+  - update_readme_and_docs_navigation
+  - archive_with_migration_report
+  - implement_in_active_business_round_only
+
+restricted_actions:
+  - large_directory_moves
+  - business_refactors_during_governance_rounds
+  - external_api_calls
+  - dependency_additions_without_documentation
+  - database_schema_changes
+
+forbidden_actions:
+  - read_or_print_env_secrets
+  - commit_api_keys_or_credentials
+  - start_real_translation_in_governance_round
+  - generate_embeddings_in_governance_round
+  - delete_historical_documents_without_report
+
+network_policy:
+  default: no_network_unless_required
+
+commit_policy:
+  default: commit_only_when_user_or_round_prompt_requests
+  verify_before_commit:
+    - no_env_tracked
+    - no_secrets_in_diff
+    - no_real_source_text_in_diff
+    - no_real_translation_in_diff_unless_user_requested
+
+push_policy:
+  requires_user_approval: true
+
+translation_pipeline_rules:
+  - do_not_mix_jp_to_cn_and_cn_to_jp_logic
+  - do_not_call_real_api_in_governance_round
+  - use_fake_provider_before_real_provider
+  - real_batch_translation_only_in_translation_execution_round
+
+automation_gate:
+  entry: scripts/agent_gate.py
+  report: docs/reports/agent_gate_report.md
+  status: planned_round_41

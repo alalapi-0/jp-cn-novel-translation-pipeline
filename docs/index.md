@@ -5,13 +5,26 @@
 ## 必读治理入口
 
 - `README.md`
+- `AGENTS.md`
+- `project.yaml`
+- `governance/repo_protocol_standard.yaml`
 - `docs/current_repository_audit.md`
+- `docs/governance_round_02_audit.md`
+- `docs/repo_protocol_alignment.md`
 - `docs/project_vision.md`
 - `docs/architecture_overview.md`
 - `docs/shared_core_design.md`
 - `docs/governance_rules.md`
+- `docs/agent_operating_manual.md`
 - `docs/roadmap_rounds_00_40.md`
+- `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
 - `docs/migration_notes.md`
+
+## 工具链与协议文档
+
+- `docs/agent_tooling_strategy.md`
+- `docs/mcp_playwright_setup_plan.md`
+- `docs/agent_gate_and_protocol_check.md`
 
 ## 核心设计文档
 
@@ -45,6 +58,11 @@
 - `prompts/review_round_template.md`
 - `prompts/frontend_round_template.md`
 - `prompts/api_integration_round_template.md`
+- `prompts/tooling_round_template.md`
+- `prompts/protocol_alignment_round_template.md`
+- `prompts/mcp_setup_round_template.md`
+- `prompts/playwright_frontend_review_round_template.md`
+- `prompts/agent_gate_round_template.md`
 
 ## 前 12 轮 Prompt 草案
 
@@ -60,6 +78,19 @@
 - `prompts/round_10_character_candidate_extraction.md`
 - `prompts/round_11_world_bible_candidate_extraction.md`
 - `prompts/round_12_provider_adapter_design.md`
+
+## Round 41–50 工具链 Prompt 草案
+
+- `prompts/round_41_agent_gate_mvp.md`
+- `prompts/round_42_repo_protocol_checker.md`
+- `prompts/round_43_tooling_environment_audit.md`
+- `prompts/round_44_playwright_smoke_test_setup.md`
+- `prompts/round_45_playwright_mcp_integration.md`
+- `prompts/round_46_frontend_review_workbench_visual_verification.md`
+- `prompts/round_47_api_dry_run_cost_guard.md`
+- `prompts/round_48_vector_db_inspection_tools.md`
+- `prompts/round_49_translation_quality_auto_review_workbench.md`
+- `prompts/round_50_e2e_agent_assisted_trial.md`
 
 ## 其他资源
 

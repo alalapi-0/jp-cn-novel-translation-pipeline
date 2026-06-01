@@ -98,9 +98,49 @@ Embedding 用于检索相似段落、术语上下文、角色台词、世界观�
 
 每轮 Agent 应先读取：
 
+- `governance/repo_protocol_standard.yaml`
+- `project.yaml`
+- `AGENTS.md`
 - `README.md`
 - `docs/project_vision.md`
 - `docs/architecture_overview.md`
 - `docs/roadmap_rounds_00_40.md`
+- `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
 - `docs/governance_rules.md`
+- `docs/repo_protocol_alignment.md`
+- `docs/agent_operating_manual.md`
 - `docs/current_repository_audit.md`
+
+## Agent 工具链与推进方式
+
+本项目是**中日文互译生产流水线**，不是单纯翻译脚本。后续 Agent 按 Round 推进，类型包括治理、实现、翻译执行、审核、前端、API 接入与工具链轮。工作方式见 `docs/agent_operating_manual.md` 与 `docs/agent_tooling_strategy.md`；每轮开始/结束 checklist 与硬软阻塞定义亦在该手册中。
+
+Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
+
+## 通用协议对齐
+
+仓库采用可移植治理标准 `governance/repo_protocol_standard.yaml`（v0.3.0）。对齐情况、冲突与迁移计划见 `docs/repo_protocol_alignment.md`。项目差异写入 `project.yaml` 与 `governance/novel_pipeline_contract.yaml`，不擅自改写协议正文。
+
+## MCP / Playwright 路线
+
+MCP 与 Playwright 是**增强工具**，不是当前强制依赖。安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。前端 Round 36–40 完成后，Round 44–46 引入 Playwright 与浏览器 Workbench 验证。
+
+## 后续推进轮如何工作
+
+1. 读取 `AGENTS.md` 与当前 Round Prompt。
+2. 执行 `git status`，确认安全边界。
+3. 只做当前 Round 范围内任务，不越级。
+4. 更新 `governance/round_state.yaml` 与本地报告。
+5. 用户或 Prompt 要求时再 commit；push 需用户授权。
+
+## 当前不能做的事情
+
+- 不启动真实长篇翻译（除非进入授权后的翻译执行轮）
+- 不调用真实翻译 API（治理轮与未授权实现轮）
+- 不生成 embedding、不建真实向量库（Round 48 之前）
+- 不安装 Playwright/MCP（Round 44 之前，除非用户明确要求）
+- 不提交 `.env`、真实原文、真实译文
+
+## 下一轮建议
+
+建议进入 **Round 41：Agent Gate MVP**（实现 `scripts/agent_gate.py`），或 **Round 42：Repo Protocol Checker**（实现协议合规检查脚本）。详见 `docs/roadmap_rounds_41_50_tooling_and_workbench.md`。

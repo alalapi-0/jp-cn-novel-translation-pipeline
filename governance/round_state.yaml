@@ -1,0 +1,47 @@
+round_id: governance_round_02
+round_name: "Governance Round 02: Tooling, MCP, and Protocol Alignment"
+round_number_human: "Governance Round 02"
+status: completed
+type: governance
+real_api_called: false
+full_translation_executed: false
+embedding_generated: false
+vector_db_created: false
+
+protocol_standard_sync_required: true
+protocol_version: "0.3.0"
+
+completed_tasks:
+  - "Audited repository and wrote docs/governance_round_02_audit.md"
+  - "Synced full repo_protocol_standard.yaml from novel-continuation-agent"
+  - "Created docs/repo_protocol_alignment.md"
+  - "Created governance skeleton YAML files and AGENTS.md / project.yaml"
+  - "Created agent tooling, MCP/Playwright, operating manual, agent gate docs"
+  - "Created docs/roadmap_rounds_41_50_tooling_and_workbench.md"
+  - "Updated governance_rules, README, docs/index"
+  - "Added tooling prompt templates and Round 41-50 prompt drafts"
+
+next_recommended_round:
+  id: round_41
+  title: "Agent Gate MVP"
+  alternative:
+    id: round_42
+    title: "Repo Protocol Checker"
+
+blockers:
+  hard: []
+  soft:
+    - "scripts/agent_gate.py not yet implemented"
+    - "scripts/check_protocol_standard.py not yet implemented"
+    - "Playwright and MCP not installed"
+    - "Frontend workbench not implemented"
+
+legacy_round_state:
+  path: round_state/translation_pipeline_governance_round.yaml
+  note: "Historical first governance round; do not delete without migration report"
+
+acceptance_criteria:
+  - "Full protocol file present at 905 lines"
+  - "Alignment report documents conflicts and overrides"
+  - "Tooling strategy and Round 41-50 roadmap exist"
+  - "No real translation or API calls in this round"

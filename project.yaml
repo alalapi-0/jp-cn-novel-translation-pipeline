@@ -1,0 +1,63 @@
+project:
+  name: light_novel
+  type: ai_novel_translation_pipeline
+  summary: "中日文小说互译生产流水线治理与实现仓库"
+  long_term_goal: "支持 JP_TO_CN 与 CN_TO_JP 双向翻译、术语/角色/世界观一致性、批量初翻、润色、审核与前端工作台"
+  owner: user
+  primary_language: zh-CN
+  output_language: bilingual_zh_ja
+  stage: governance_and_architecture
+  current_round_human: "Governance Round 02"
+  current_round_machine: governance_round_02
+
+repository:
+  entry_points:
+    human: README.md
+    agent: AGENTS.md
+    docs_navigation: docs/index.md
+  authoritative_files:
+    - governance/repo_protocol_standard.yaml
+    - project.yaml
+    - governance/round_state.yaml
+    - docs/roadmap_rounds_00_40.md
+    - docs/roadmap_rounds_41_50_tooling_and_workbench.md
+
+translation_pipeline:
+  directions:
+    - JP_TO_CN
+    - CN_TO_JP
+  shared_core: shared/
+  direction_modules:
+    jp_to_cn: directions/jp_to_cn/
+    cn_to_jp: directions/cn_to_jp/
+
+protocol_standard:
+  path: governance/repo_protocol_standard.yaml
+  version: "0.3.0"
+  source_repo: novel-continuation-agent
+  synced_at: "2026-06-01"
+  truncated_backup: docs/archive/governance/repo_protocol_standard_truncated_backup.yaml
+
+protocol_standard_sync_required: true
+
+project_overrides:
+  - field: round_protocol.current_round_source
+    standard_expectation: governance/round_state.yaml
+    override_value: "Also keep legacy round_state/translation_pipeline_governance_round.yaml for historical traceability"
+    reason: "First governance round created round_state/ before full protocol adoption"
+    owner: user
+    review_trigger: "When legacy file is fully migrated or archived"
+
+  - field: project_specific_extensions.current_reference_project.default_workflow
+    standard_expectation: chinese_first_generation_and_review
+    override_value: japanese_chinese_bidirectional_translation_pipeline
+    reason: "This repo is a translation pipeline, not a Chinese generation pipeline"
+    owner: user
+    review_trigger: "When novel_pipeline_contract.yaml is updated"
+
+  - field: agent_policy_standard.commit_policy
+    standard_expectation: "Do not commit unless the user asks"
+    override_value: "Commit when user or round prompt explicitly requests; always verify no secrets"
+    reason: "Governance round prompts may require scoped commits"
+    owner: user
+    review_trigger: "When agent_gate commit checks are implemented"

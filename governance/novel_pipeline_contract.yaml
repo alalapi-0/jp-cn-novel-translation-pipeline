@@ -1,0 +1,81 @@
+contract_name: light_novel_bidirectional_translation_pipeline
+version: "0.1.0"
+portable: false
+
+project_type: ai_novel_translation_pipeline
+operating_languages:
+  ui: zh-CN
+  source_targets:
+    - ja
+    - zh-CN
+
+directions:
+  JP_TO_CN:
+    input_dir: input_jp/
+    output_dir: output_cn/
+    rules_dir: directions/jp_to_cn/
+  CN_TO_JP:
+    input_dir: input_cn/
+    output_dir: output_jp/
+    rules_dir: directions/cn_to_jp/
+
+shared_core:
+  path: shared/
+  modules:
+    - source_scanner
+    - chapter_parser
+    - text_cleaning
+    - terminology
+    - character_profiles
+    - world_bible
+    - translation_memory
+    - context_pack
+    - provider_adapter
+    - embedding_adapter
+    - vector_store_adapter
+
+pipeline_stages:
+  - ingest_and_manifest
+  - parse_and_segment
+  - terminology_extraction
+  - character_extraction
+  - world_bible_extraction
+  - context_pack_build
+  - draft_translation
+  - refinement
+  - quality_review
+  - export_and_workbench_review
+
+artifact_types:
+  - source_manifest
+  - chapter_segments
+  - terminology_candidates
+  - terminology_locked
+  - character_profiles
+  - world_bible_entries
+  - translation_draft
+  - translation_refined
+  - bilingual_alignment
+  - review_issues
+  - polish_diff
+
+quality_gates:
+  - terminology_consistency
+  - character_voice_consistency
+  - world_bible_conflict_check
+  - paragraph_alignment
+  - no_unauthorized_source_promotion
+
+review_workbench:
+  plan_doc: docs/frontend_workbench_plan.md
+  interface_language: zh-CN
+  browser_verification_required_from_round: 46
+
+forbidden_in_governance_round:
+  - real_batch_translation
+  - real_api_calls
+  - embedding_generation
+  - vector_db_population
+
+fake_provider_required_until: api_integration_round
+real_batch_allowed_in: translation_execution_round_with_cost_guard
