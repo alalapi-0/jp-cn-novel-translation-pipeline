@@ -125,6 +125,52 @@ Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
 
 MCP 与 Playwright 是**增强工具**，不是当前强制依赖。安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。前端 Round 36–40 完成后，Round 44–46 引入 Playwright 与浏览器 Workbench 验证。
 
+## 参考仓库方法吸收
+
+本项目只借鉴 AiNiee、GalTransl、TranslateBooksWithLLMs、epub-translator-oomol、SakuraLLM、LiteraryTranslation、LunaTranslator、BallonsTranslator、epub-translator-slyh 等参考仓库的工程方法，不直接复制参考仓库代码。
+
+参考方法吸收文档见 `docs/reference_repo_methodology_integration.md`、`docs/current_project_method_stack.md` 与 `docs/reference_inspired_pipeline_design.md`。这些文档用于把成熟工程套路转化为当前项目自己的 stable ID、JSONL 中间态、Prompt 契约、Validator、Provider Adapter、Exporter 和 Review Workbench 路线。
+
+## 当前项目采用的核心工程套路
+
+当前项目采用 `parser -> JSONL intermediate -> context pack -> prompt builder -> provider adapter -> response extractor -> validator -> status update -> exporter` 的主链路。共享能力落在 shared core，`JP_TO_CN` 与 `CN_TO_JP` 方向规则保持分离。
+
+## 稳定 ID 与 JSONL 中间态
+
+后续实现应以 `paragraph_id` 和 `segment_id` 作为段落与分段的稳定标识。原文目录保持只读，翻译、校验、重试、人工审核和润色状态进入 JSONL 中间态，最终阅读文件由 exporter 生成。
+
+## 动态术语、角色与世界观注入
+
+翻译时只注入当前 batch 命中的 glossary、character profile 与 world bible 条目，不全量塞表。`approved` 与 `locked` 资产优先，`candidate` 只作参考，`spoiler-sensitive` 世界观设定不得提前注入。
+
+## Prompt 分层与版本化
+
+Prompt 应拆分为 system base、direction rules、style profile、glossary block、character block、world bible block、context block、source block、output contract 和 validation reminder。每次模型调用都必须记录 `prompt_version`。
+
+## ResponseExtractor 与 Validator
+
+模型输出必须先经过 ResponseExtractor 解析为结构化结果，再由 Validator 检查 segment 覆盖、locked 术语、占位符、语言残留、长度比例、段落对齐和 Prompt 契约。
+
+## 为什么校验失败不能写入译文
+
+`validation_failed`、`failed` 和解析失败结果只能保存 raw output、validation errors、review issues 和 retry 状态，不能写入成功译文或 final。这样可以避免模型坏输出污染中间态与最终导出。
+
+## Checkpoint、LLM Cache、Translation Memory 的区别
+
+Checkpoint 解决“任务中断后从哪里继续”；LLM Response Cache 解决“相同请求是否避免重复调用 API”；Translation Memory 解决“已确认历史译法如何复用”。三者不得混用。
+
+## Provider Adapter 与多模型路线
+
+所有模型调用都必须经过 provider adapter / registry。MVP 先使用 fake provider 与 dry-run provider，真实 OpenAI-compatible、DeepSeek、Grok、OpenRouter、Anthropic、Gemini 等接入必须有用户授权、预算保护、model run metadata 和敏感信息脱敏。
+
+## Exporter-only 输出原则
+
+Exporter 是唯一负责生成最终阅读文件的模块。Exporter 不调用模型，不修改原文，不导出 `validation_failed` 到 final，并保留 `paragraph_id` 以支持审核回链。
+
+## 后续 RM-01 到 RM-40 路线
+
+参考仓库方法吸收后的 40 轮推进路线见 `docs/roadmap_rounds_reference_method_01_40.md`。RM 轮次只表示 Reference Method Absorption，不取代既有 Round 00–50 路线。
+
 ## 后续推进轮如何工作
 
 1. 读取 `AGENTS.md` 与当前 Round Prompt。

@@ -1,6 +1,6 @@
-round_id: governance_round_02
-round_name: "Governance Round 02: Tooling, MCP, and Protocol Alignment"
-round_number_human: "Governance Round 02"
+round_id: reference_method_absorption_governance
+round_name: "Reference Method Absorption Governance"
+round_number_human: "Reference Method Absorption Governance"
 status: completed
 type: governance
 real_api_called: false
@@ -12,6 +12,12 @@ protocol_standard_sync_required: true
 protocol_version: "0.3.0"
 
 completed_tasks:
+  - "Audited repository for reference method absorption"
+  - "Created docs/reference_method_governance_audit.md"
+  - "Created reference methodology, method stack, pipeline, stable ID, JSONL, context, dynamic injection, prompt contract, extractor/validator, cache/checkpoint/TM, provider, exporter and taxonomy docs"
+  - "Updated README, docs index, protocol alignment, core architecture, shared core, workflow and governance docs"
+  - "Created docs/roadmap_rounds_reference_method_01_40.md"
+  - "Created RM-01 to RM-10 prompt drafts"
   - "Audited repository and wrote docs/governance_round_02_audit.md"
   - "Synced full repo_protocol_standard.yaml from novel-continuation-agent"
   - "Created docs/repo_protocol_alignment.md"
@@ -22,11 +28,11 @@ completed_tasks:
   - "Added tooling prompt templates and Round 41-50 prompt drafts"
 
 next_recommended_round:
-  id: round_41
-  title: "Agent Gate MVP"
+  id: rm_02
+  title: "Core Data Flow Design"
   alternative:
-    id: round_42
-    title: "Repo Protocol Checker"
+    id: rm_03
+    title: "Stable ID Rules"
 
 blockers:
   hard: []
@@ -35,12 +41,18 @@ blockers:
     - "scripts/check_protocol_standard.py not yet implemented"
     - "Playwright and MCP not installed"
     - "Frontend workbench not implemented"
+    - "Reference method route is documentation-only; implementation begins in RM-02/RM-03/RM-04/RM-05"
 
 legacy_round_state:
   path: round_state/translation_pipeline_governance_round.yaml
   note: "Historical first governance round; do not delete without migration report"
 
 acceptance_criteria:
+  - "Reference method methodology docs exist"
+  - "Stable ID and JSONL design exists"
+  - "Extractor and Validator design exists"
+  - "RM-01 to RM-40 roadmap exists"
+  - "RM-01 to RM-10 prompt drafts exist"
   - "Full protocol file present at 905 lines"
   - "Alignment report documents conflicts and overrides"
   - "Tooling strategy and Round 41-50 roadmap exist"

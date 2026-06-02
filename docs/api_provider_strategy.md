@@ -4,6 +4,8 @@
 
 ## Provider 类型
 
+- `fake_provider`
+- `dry_run_provider`
 - `embedding_provider`
 - `terminology_provider`
 - `translation_provider`
@@ -64,5 +66,16 @@ notes:
 - `estimated_tokens`
 - `actual_usage`
 - `error_type`
+- `prompt_version`
+- `request_hash`
+- `raw_output_ref`
 
 不得记录完整 API Key、敏感请求头或真实正文长片段。
+
+## Provider Registry 原则
+
+所有 provider 必须通过 registry 和 adapter 被调用。业务流水线只依赖统一 `ModelAdapter.generate(messages, options) -> ModelResult`，不直接依赖具体 SDK。
+
+`fake_provider` 与 `dry_run_provider` 是真实 API 之前的必经阶段。真实 OpenAI-compatible、DeepSeek、Grok、OpenRouter、Anthropic、Gemini 等 provider 只能在 API integration 或 translation execution 轮中启用，并必须具备用户授权、预算上限、timeout、retry、rate limit、敏感 header redaction 和 model run metadata。
+
+Provider 返回的 raw output 不能直接写入译文；必须经过 ResponseExtractor 与 Validator。

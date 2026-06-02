@@ -4,6 +4,8 @@
 
 项目需要同时支持 `JP_TO_CN` 和 `CN_TO_JP`，但不能复制两套相同基础设施。共享核心负责跨方向通用能力，方向模块只负责语言特定规则、Prompt 和审核标准。
 
+参考仓库方法吸收后，shared core 还承担稳定 ID、JSONL 中间态、动态注入、PromptBuilder、ResponseExtractor、Validator、Provider Registry、Checkpoint、Translation Memory、ReviewIssue 和 Exporter 的统一边界。方向模块只提供语言方向规则、文体目标、敬称策略和方向 Prompt 片段，不重复实现 shared core。
+
 ## 共享核心模块
 
 未来共享核心可以规划为：
@@ -23,7 +25,10 @@ shared/
 ├── embedding/
 ├── vector_store/
 ├── context_retriever/
+├── prompt_builder/
 ├── model_provider/
+├── response_extractor/
+├── validator/
 ├── quality_review/
 ├── exporter/
 └── project_state/
@@ -168,6 +173,26 @@ shared/
 - 方向适配：不适配语言，只传递任务类型和 metadata。
 - 后续实现轮次：Round 12、Round 21。
 - 依赖关系：ProjectState、budget guard。
+
+### response_extractor
+
+- 职责：把 provider raw output 解析为结构化结果，支持 JSON 契约和编号 fallback。
+- 输入：ModelResult.raw_output、expected segment ids、output contract。
+- 输出：ParseResult、raw output ref、parse errors。
+- 语言无关：是。
+- 方向适配：不直接适配，只传递 `language_direction` metadata。
+- 后续实现轮次：RM-14。
+- 依赖关系：prompt_builder、model_provider、validator。
+
+### validator
+
+- 职责：检查 non_empty、segment_id 覆盖、locked terms、placeholder、语言残留、长度比例、段落对齐和 Prompt 契约。
+- 输入：ParseResult、ContextPack、glossary、character profiles、world bible。
+- 输出：ValidationResult、ReviewIssue。
+- 语言无关：部分。
+- 方向适配：源/目标语言残留、敬语和文体检查读取 direction rules。
+- 后续实现轮次：RM-15。
+- 依赖关系：response_extractor、quality_review、project_state。
 
 ### quality_review
 

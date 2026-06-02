@@ -51,6 +51,10 @@
 8. 不得写死模型供应商。
 9. 不得在治理轮中启动真实翻译。
 10. 不得在没有用户授权的情况下公开发布译文。
+11. 不得直接复制参考仓库代码；只能迁移工程方法、架构方法和质量控制方法。
+12. 不得把校验失败的模型输出写入 `translated` 或 `final`。
+13. 不得绕过 provider adapter 直接在业务流程调用模型。
+14. 不得让 exporter 调用模型或修改原文。
 
 ## 提交规则
 
@@ -87,3 +91,11 @@ git commit -m "docs: describe change"
 4. 不得擅自修改协议本体；升级须备份并写迁移报告。
 5. 协议对齐报告有变更时必须更新 `docs/repo_protocol_alignment.md`。
 6. 后续 `scripts/agent_gate.py` 与 `scripts/check_protocol_standard.py` 应纳入协议检查（Round 41–42）。
+
+## 参考方法吸收规则
+
+1. RM 轮次表示 Reference Method Absorption，不覆盖既有 Round 00–50。
+2. stable ID、JSONL 中间态、Prompt Version、ResponseExtractor、Validator、Provider Adapter 和 Exporter-only 是后续实现轮默认约束。
+3. `JP_TO_CN` 与 `CN_TO_JP` 必须保持方向分离，共享逻辑进入 shared core。
+4. Checkpoint、LLM Response Cache、Translation Memory 必须分开设计和实现。
+5. Web Review Workbench、EPUB、OCR、漫画处理、多 provider routing、真实 embedding 属于后续扩展，不得提前塞入 MVP 主线。

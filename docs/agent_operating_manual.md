@@ -19,6 +19,8 @@
 | 安装工具 | 否（轻量脚本除外） |
 | 真实原文 | 否 |
 
+参考方法吸收治理轮属于 Governance Agent 范围。允许把外部参考仓库分析转化为本项目自己的方法论、路线图、Prompt 草案和质量契约，但不得复制参考仓库代码、启动真实翻译、调用真实 API、生成 embedding 或实现复杂前端。
+
 ### Implementation Agent
 
 | 项 | 说明 |
@@ -140,6 +142,15 @@
 8. 确认没有提交真实译文（除非用户明确要求）
 9. commit（用户或 Prompt 要求时）
 10. push（远程可用且用户授权时）
+
+参考方法吸收后的实现轮还必须确认：
+
+1. 是否保持 `paragraph_id` / `segment_id` 可追踪。
+2. 是否使用 JSONL 或等价中间态，而非直接改原文。
+3. 是否记录 `prompt_version`、provider 和 model run metadata。
+4. 是否经过 ResponseExtractor 与 Validator。
+5. 是否保证校验失败不进入 final。
+6. 是否通过 exporter 生成最终阅读文件。
 
 ---
 

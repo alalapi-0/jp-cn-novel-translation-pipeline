@@ -77,6 +77,58 @@ Round 02 已新增或更新：
 3. **协议检查**：Round 42 起运行 `scripts/check_protocol_standard.py`，输出合规报告。
 4. **不得修改** `governance/repo_protocol_standard.yaml` 正文，除非同步 portable 标准本身；项目差异只写 `project.yaml` overrides。
 
+## 参考仓库方法迁移与通用协议的关系
+
+本轮参考仓库方法迁移属于项目级业务方法治理，不属于通用协议正文变更。AiNiee、GalTransl、TranslateBooksWithLLMs、epub-translator-oomol、SakuraLLM、LiteraryTranslation、LunaTranslator、BallonsTranslator、epub-translator-slyh 的经验只转化为当前项目的文档、方法栈、数据契约、路线图和后续 Prompt，不复制参考仓库代码，也不改变 `governance/repo_protocol_standard.yaml` 的权威层级。
+
+## 本轮方法迁移必须遵守的协议要求
+
+1. 权威顺序仍为 `governance/repo_protocol_standard.yaml` > `project.yaml` > `governance/round_state.yaml` > policy YAML > `AGENTS.md` > `README.md`。
+2. 真实 API、真实翻译、embedding、向量库和复杂前端实现不得在治理轮执行。
+3. `.env`、真实原文、真实译文、敏感日志和用户隐私不得提交。
+4. 项目特有差异写入 `project.yaml`、`governance/novel_pipeline_contract.yaml` 或本对齐文档。
+5. 参考方法新增文档必须进入 `docs/` 和 `docs/index.md`，后续 Prompt 进入 `prompts/`。
+
+## 当前仓库与协议一致的部分
+
+当前仓库已经具备 `governance/`、`docs/`、`docs/archive/`、`prompts/`、`scripts/`、`src/`、`tests/` 等协议推荐结构。`input_jp/`、`input_cn/`、`output_cn/`、`output_jp/` 和 `workspace/` 已由 `.gitignore` 与 `governance/file_role_map.yaml` 标记为需保护或中间产物目录。
+
+本轮引入的 stable ID、JSONL 中间态、Prompt Version、ModelRun、Checkpoint、Provider Adapter 和 Exporter 原则与协议的“可机读、可审计、可回退、避免 secrets”目标一致。
+
+## 当前仓库与协议可能冲突的部分
+
+1. 用户本轮要求完成后 commit 并 push；协议要求 commit 需用户或轮次 Prompt 明确要求，push 需用户明确授权。本轮 Prompt 已明确要求 commit/push，但 push 若权限或网络失败，只记录原因，不反复尝试。
+2. RM 路线新增一套编号，可能与既有 Round 00-50 混淆。因此 RM 文件必须明确 `RM` 只表示 Reference Method Absorption，不取代原路线。
+3. 参考方法可能诱导提前实现真实 API、EPUB、Workbench、OCR 或多 provider routing；本轮只写文档，不执行这些功能。
+
+## 本轮允许调整的范围
+
+- 新增参考方法文档。
+- 更新 README、docs 导航、治理规则、操作手册和核心设计文档。
+- 新增 RM-01 到 RM-40 路线图。
+- 新增 RM-01 到 RM-10 Prompt 草案。
+- 更新 `governance/round_state.yaml` 记录本轮状态。
+
+## 本轮禁止破坏的内容
+
+- 不修改 `governance/repo_protocol_standard.yaml` 正文。
+- 不读取或提交 `.env`。
+- 不修改真实原文或真实译文。
+- 不启动真实翻译、真实 API、embedding 或向量库。
+- 不删除历史文档、legacy round state 或 archive 文件。
+- 不把 `JP_TO_CN` 与 `CN_TO_JP` 混成不可分辨的一套规则。
+
+## 后续 Agent 必须遵守的协议检查项
+
+1. 先读取 `AGENTS.md`、协议、项目身份、治理规则和当前轮 Prompt。
+2. 运行或手动对照 `docs/agent_gate_and_protocol_check.md`。
+3. 确认 `.env` 未被跟踪。
+4. 确认真实原文和真实译文未进入 Git diff。
+5. 确认 RM 轮次与 Round 00-50 不混用。
+6. 确认校验失败不写入 final。
+7. 确认 provider 只能通过 adapter/registry 调用。
+8. 确认 exporter 是最终阅读文件唯一生成入口。
+
 ## 不应立即强制执行的部分
 
 - 完整 `skills/registry.json`、`agents/contracts/` 体系（本仓库尚未进入 Agent 运行时轮）

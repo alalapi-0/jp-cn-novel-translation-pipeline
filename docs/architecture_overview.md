@@ -4,6 +4,15 @@
 
 项目采用分层架构。共享能力放在 shared core，语言方向差异放在 direction layer，模型调用通过 provider adapter 抽象，真实翻译执行必须经过项目配置、预算保护和人工可复查记录。
 
+参考仓库方法吸收后，架构还必须遵守以下补充原则：
+
+1. 原文只读，所有翻译、校验、重试、润色和审核状态写入 JSONL 中间态。
+2. `paragraph_id` 与 `segment_id` 是跨 parser、context、Prompt、Validator、ReviewIssue、TranslationMemory 和 Exporter 的稳定定位键。
+3. Prompt 必须分层和版本化，`prompt_version` 写入 JSONL、ModelRun、cache、TM 和 review report。
+4. 模型输出必须先经过 ResponseExtractor 与 Validator，校验失败不得进入 translated / final。
+5. Checkpoint、LLM Response Cache、Translation Memory 分别解决断点、重复请求和译法复用，不得混用。
+6. Exporter 是最终阅读文件唯一生成入口，不调用模型，不修改原文。
+
 ## User Interface Layer
 
 ### 职责

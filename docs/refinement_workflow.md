@@ -5,6 +5,8 @@
 ## 润色输入
 
 ```yaml
+paragraph_id:
+segment_id:
 source_text:
 initial_translation:
 approved_glossary:
@@ -26,6 +28,8 @@ voice_adjustments:
 world_bible_consistency_notes:
 risk_notes:
 requires_human_review:
+prompt_version:
+validation_errors:
 ```
 
 ## 润色原则
@@ -56,3 +60,6 @@ requires_human_review:
 - 术语变更必须记录。
 - 角色语气调整必须记录。
 - 疑似过度润色必须进入 review issue。
+- 润色模型输出必须经过 ResponseExtractor 与 Validator。
+- 润色失败或校验失败不得写入 `refined_translation` 作为成功结果。
+- `prompt_version`、provider、model run 和 glossary / character / style 版本必须可追溯。

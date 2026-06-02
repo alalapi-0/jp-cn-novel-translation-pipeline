@@ -50,6 +50,13 @@
 | `api_provider_strategy_exists` | api_provider_strategy |
 | `tooling_strategy_exists` | agent_tooling_strategy |
 | `mcp_plan_exists` | mcp_playwright_setup_plan |
+| `reference_method_docs_exist` | 参考方法总纲、方法栈、核心流水线设计 |
+| `stable_id_jsonl_doc_exists` | stable ID 与 JSONL 设计 |
+| `extractor_validator_doc_exists` | ResponseExtractor / Validator 设计 |
+| `provider_adapter_doc_exists` | Provider Adapter / Registry 设计 |
+| `exporter_principle_doc_exists` | exporter-only 输出原则 |
+| `rm_roadmap_exists` | RM-01 到 RM-40 路线图 |
+| `rm_prompts_exist` | RM-01 到 RM-10 Prompt 草案 |
 
 **Protocol Checker（Round 42）：** `scripts/check_protocol_standard.py` — 读取协议与 project.yaml，输出机器可读合规报告。
 
@@ -93,6 +100,8 @@
 ```
 
 Round 02 仅规划，不实现完整脚本。
+
+参考方法吸收治理轮仅更新检查项规划，不实现 `scripts/agent_gate.py`。后续 Round 41 或 RM 工具链轮再把这些检查项转成确定性脚本。
 
 ---
 

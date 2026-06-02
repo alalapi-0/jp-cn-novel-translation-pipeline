@@ -8,15 +8,20 @@
 → 章节解析
 → 文本清洗
 → 段落切分
+→ 分配 paragraph_id / segment_id
+→ 写入 JSONL 中间态
 → 术语候选抽取
 → 人物候选抽取
 → 世界观候选抽取
 → 建立项目知识资产
 → embedding 入库
 → 构建章节 context pack
-→ 调用初翻模型
-→ 生成章节译文
-→ 生成双语对照
+→ PromptBuilder 构建分层 Prompt
+→ Provider Adapter 调用 fake / dry-run / 受控真实模型
+→ ResponseExtractor 解析输出
+→ Validator 校验输出
+→ 更新 JSONL status
+→ Exporter 生成双语对照
 → 更新术语库
 → 更新人物表
 → 更新世界观设定
@@ -74,3 +79,6 @@ known_risks:
 - 批量初翻必须支持最大章节数、最大 token、预算限制和断点续跑。
 - 不覆盖已完成译文。
 - 不把真实原文和译文提交到公开仓库。
+- 校验失败只写 raw output、validation_errors、review_issues 和 retry 状态，不写成功译文。
+- `locked` 与 `human_reviewed` 片段默认跳过自动覆盖。
+- 最终阅读文件只能由 exporter 从 JSONL 中间态生成。

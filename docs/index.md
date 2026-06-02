@@ -28,6 +28,19 @@
 
 ## 核心设计文档
 
+- `docs/reference_method_governance_audit.md`
+- `docs/reference_repo_methodology_integration.md`
+- `docs/current_project_method_stack.md`
+- `docs/reference_inspired_pipeline_design.md`
+- `docs/stable_id_and_jsonl_design.md`
+- `docs/chunking_context_strategy_reference_inspired.md`
+- `docs/dynamic_injection_design.md`
+- `docs/prompt_contract_reference_inspired.md`
+- `docs/extractor_validator_reference_inspired.md`
+- `docs/cache_checkpoint_translation_memory_design.md`
+- `docs/provider_adapter_reference_inspired.md`
+- `docs/exporter_reference_inspired_design.md`
+- `docs/translation_quality_taxonomy_reference_inspired.md`
 - `docs/terminology_system_design.md`
 - `docs/character_profile_system.md`
 - `docs/world_bible_system.md`
@@ -40,6 +53,12 @@
 - `docs/refinement_workflow.md`
 - `docs/quality_review_workflow.md`
 - `docs/frontend_workbench_plan.md`
+
+## 参考方法吸收路线
+
+- `docs/roadmap_rounds_reference_method_01_40.md`
+
+RM 轮次表示 Reference Method Absorption，用于落地参考仓库方法，不替代 Round 00–50 总体路线。
 
 ## 历史与早期文档
 
@@ -91,6 +110,19 @@
 - `prompts/round_48_vector_db_inspection_tools.md`
 - `prompts/round_49_translation_quality_auto_review_workbench.md`
 - `prompts/round_50_e2e_agent_assisted_trial.md`
+
+## RM-01 到 RM-10 Prompt 草案
+
+- `prompts/rm_01_reference_method_overview.md`
+- `prompts/rm_02_core_data_flow.md`
+- `prompts/rm_03_stable_id_rules.md`
+- `prompts/rm_04_jsonl_schema.md`
+- `prompts/rm_05_parser_mvp.md`
+- `prompts/rm_06_semantic_chunker.md`
+- `prompts/rm_07_context_pack.md`
+- `prompts/rm_08_dynamic_glossary.md`
+- `prompts/rm_09_character_injection.md`
+- `prompts/rm_10_world_bible_injection.md`
 
 ## 其他资源
 

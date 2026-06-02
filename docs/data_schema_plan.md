@@ -104,6 +104,32 @@ Round 06。
 
 Round 07。
 
+## Paragraph
+
+### 用途
+
+描述章节内稳定段落，是 JSONL 中间态、审核定位和 exporter 回链的基础单位。
+
+### 核心字段
+
+`paragraph_id`、`project_id`、`language_direction`、`source_file_id`、`chapter_id`、`paragraph_index`、`source_text`、`source_text_hash`、`text_type`、`speaker`、`created_at`、`updated_at`。
+
+### 关系
+
+包含一个或多个 Segment，关联 ReviewIssue、TranslationMemoryEntry、Exporter 输出。
+
+### 是否进入向量库
+
+可选。MVP 以 Segment 或 Paragraph 的清洗文本进入检索。
+
+### 是否需要版本管理
+
+需要 `source_text_hash` 与重解析报告。
+
+### 后续实现轮次
+
+RM-03、RM-04、RM-05。
+
 ## Segment
 
 ### 用途
@@ -112,7 +138,7 @@ Round 07。
 
 ### 核心字段
 
-`segment_id`、`project_id`、`chapter_id`、`segment_index`、`source_text_ref`、`speaker_character_id`、`text_type`、`start_offset`、`end_offset`、`status`。
+`segment_id`、`paragraph_id`、`project_id`、`language_direction`、`chapter_id`、`segment_index`、`source_text_ref`、`source_text_hash`、`speaker_character_id`、`text_type`、`start_offset`、`end_offset`、`status`、`prompt_version`、`provider_id`、`model_id`、`model_run_id`、`validation_errors`、`review_issues`、`locked`、`human_reviewed`。
 
 ### 关系
 
@@ -129,6 +155,32 @@ Round 07。
 ### 后续实现轮次
 
 Round 08。
+
+## JSONLIntermediateRecord
+
+### 用途
+
+作为 parser、translation、validation、review、refinement 和 exporter 之间的可读中间态。
+
+### 核心字段
+
+见 `docs/stable_id_and_jsonl_design.md`。必须包含 `paragraph_id`、`segment_id`、`status`、`translation_draft`、`refined_translation`、`prompt_version`、知识资产版本、provider/model metadata、validation_errors 与 review_issues。
+
+### 关系
+
+连接 Segment、ModelRun、ReviewIssue、TranslationMemoryEntry 和 ExportedDocument。
+
+### 是否进入向量库
+
+否。可从其中抽取 source/target 文本生成 EmbeddingRecord。
+
+### 是否需要版本管理
+
+需要。schema 变化必须有迁移计划。
+
+### 后续实现轮次
+
+RM-04。
 
 ## ParagraphAlignment
 

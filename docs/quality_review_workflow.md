@@ -29,6 +29,8 @@
 23. 版权声明或出处信息缺失。
 24. 格式问题。
 
+参考方法吸收后，审核 issue 应优先使用 `docs/translation_quality_taxonomy_reference_inspired.md` 中的稳定标签，例如 `MISTRANSLATION`、`OMISSION`、`INCONSISTENT_TERM`、`LOCKED_TERM_VIOLATION`、`PLACEHOLDER_LOST`、`PROMPT_CONTRACT_VIOLATION` 等。
+
 ## Review Issue Schema
 
 ```yaml
@@ -36,6 +38,7 @@ issue_id:
 project_id:
 language_direction:
 chapter_id:
+paragraph_id:
 segment_id:
 issue_type:
 severity:
@@ -71,3 +74,5 @@ resolved_at:
 - 所有 issue 必须可定位到 chapter 和 segment。
 - 涉及 locked 术语时不得自动修改。
 - 对伏笔、暧昧表达和角色语气保持保守。
+- high 及以上 issue 默认阻止 final 导出，除非人工明确确认。
+- Validator 与 checker 生成的 issue 必须写回 JSONL 或 review issue 数据，不散落在不可解析日志中。
