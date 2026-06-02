@@ -1,25 +1,26 @@
-round_id: round_46_frontend_review_workbench_visual_verification
-round_name: "Frontend review workbench visual verification"
-round_number_human: "46"
+round_id: round_47_api_dry_run_cost_guard
+round_name: "API dry-run and cost guard hardening"
+round_number_human: "47"
 status: completed
-type: frontend
+type: api_integration
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "frontend @5174 + MCP cursor-ide-browser snapshot index/review"
-  - "tests/ui/smoke.spec.ts extended (7 pass, 3 documented skip)"
-  - "artifacts/round_46/index.png + review.png (not staged)"
-  - "docs/reports/round_46_visual_verification_report.md"
-  - "npm run test:ui, check:mcp, agent_gate WARNING, check:tooling, pytest 9 passed"
+  - "src/providers: fake_provider, dry_run_provider, cost_guard, controlled_run, registry"
+  - "tests/test_fake_provider.py, test_dry_run_provider.py, test_cost_guard.py, test_controlled_run.py"
+  - ".env.example cost guard + controlled run vars"
+  - "docs/api_provider_strategy.md Round 50 prerequisites"
+  - "scripts/run_tooling_checks.sh runs full tests/ via .venv/bin/pytest"
+  - "agent_gate, check:tooling, pytest all pass"
 
 next_recommended_round:
-  id: round_47
-  title: "API dry-run and cost guard hardening"
+  id: round_48
+  title: "Vector DB inspection tools"
 
 blockers:
   hard: []
   soft:
     - "pytest not on system Python; use .venv/bin/pytest for unit tests"
-    - "Glossary/Character/Polish diff pages not in static MVP; documented skip until Round 39+ routes"
-    - "workspace @playwright/mcp not tool-smoked; cursor-ide-browser verified instead"
+    - "real provider adapters deferred to translation execution rounds"
+    - "docs/reports/*.md gitignored; Round 47 details in docs/api_provider_strategy.md"

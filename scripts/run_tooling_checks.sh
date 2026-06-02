@@ -16,4 +16,8 @@ run_py() {
 run_py scripts/agent_gate.py
 run_py scripts/check_protocol_standard.py
 run_py scripts/scan_repo_inventory.py
-pytest tests/test_agent_gate.py tests/test_check_protocol_standard.py tests/test_scan_repo_inventory.py -q
+PYTEST="${PYTEST:-pytest}"
+if [ -x .venv/bin/pytest ]; then
+  PYTEST=".venv/bin/pytest"
+fi
+$PYTEST tests/ -q
