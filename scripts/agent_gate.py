@@ -311,6 +311,12 @@ VECTOR_INSPECT_SCRIPT = REPO_ROOT / "scripts" / "vector_db_inspect.py"
 VECTOR_SCHEMA = REPO_ROOT / "data" / "schemas" / "vector_index_metadata.schema.json"
 DEFAULT_VECTOR_INDEX = REPO_ROOT / "workspace" / "vector_store" / "index.json"
 
+QUALITY_REVIEW_SCRIPT = REPO_ROOT / "scripts" / "run_quality_review.py"
+REVIEW_ISSUE_SCHEMA = REPO_ROOT / "data" / "schemas" / "review_issue.schema.json"
+REVIEW_EXAMPLE_REPORT = REPO_ROOT / "data" / "examples" / "review_issue_report.example.json"
+FRONTEND_ISSUES_PAGE = REPO_ROOT / "frontend" / "issues.html"
+REVIEW_SEGMENTS_FIXTURE = REPO_ROOT / "data" / "examples" / "review_segments.fixture.json"
+
 
 def check_vector_store_tooling() -> list[CheckResult]:
     """Optional vector index checks — missing index is soft fallback (WARN), not BLOCKED."""
@@ -410,6 +416,74 @@ def check_vector_store_tooling() -> list[CheckResult]:
     return results
 
 
+def check_quality_review_tooling() -> list[CheckResult]:
+    """Round 49 quality review scaffold — missing pieces are soft WARN."""
+    results: list[CheckResult] = []
+    required = (
+        ("quality_review_script_exists", QUALITY_REVIEW_SCRIPT),
+        ("review_issue_schema_exists", REVIEW_ISSUE_SCHEMA),
+        ("review_issue_example_exists", REVIEW_EXAMPLE_REPORT),
+        ("frontend_issues_page_exists", FRONTEND_ISSUES_PAGE),
+    )
+    for cid, path in required:
+        if path.is_file():
+            results.append(CheckResult(cid, Severity.PASS, f"found: {_rel_path(path)}"))
+        else:
+            results.append(
+                CheckResult(cid, Severity.WARN, f"missing Round 49 artifact: {_rel_path(path)}")
+            )
+
+    if not QUALITY_REVIEW_SCRIPT.is_file():
+        return results
+
+    try:
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(QUALITY_REVIEW_SCRIPT),
+                "--segments",
+                str(REVIEW_SEGMENTS_FIXTURE),
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 2:
+            results.append(
+                CheckResult(
+                    "quality_review_runner",
+                    Severity.WARN,
+                    f"review runner blocked: {proc.stderr.strip() or proc.stdout.strip()}",
+                )
+            )
+        elif proc.returncode == 1:
+            results.append(
+                CheckResult(
+                    "quality_review_runner",
+                    Severity.WARN,
+                    "review runner returned no issues on default fixture",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "quality_review_runner",
+                    Severity.PASS,
+                    "deterministic review runner OK on synthetic fixture",
+                )
+            )
+    except Exception as exc:  # noqa: BLE001
+        results.append(
+            CheckResult(
+                "quality_review_runner",
+                Severity.WARN,
+                f"quality review runner skipped: {exc}",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -454,6 +528,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.append(check_gitignore_safe())
     results.append(check_frontend_mvp_exists())
     results.extend(check_vector_store_tooling())
+    results.extend(check_quality_review_tooling())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

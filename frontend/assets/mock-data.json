@@ -12,16 +12,23 @@
     {
       "id": "seg-001",
       "chapter": 1,
-      "source": "（示例原文段落 A — 占位，非真实版权文本）",
-      "draft": "（示例初译 A — mock）",
+      "source": "（合成原文 A：角色取出魔力結晶 — 占位）",
+      "draft": "（合成译文 A：使用了魔法结晶 — fixture）",
       "status": "pending"
     },
     {
       "id": "seg-002",
       "chapter": 1,
-      "source": "（示例原文段落 B — 占位）",
-      "draft": "（示例初译 B — mock）",
+      "source": "（合成原文 B：异世界天空 — 占位）",
+      "draft": "异界。",
       "status": "pending"
+    },
+    {
+      "id": "seg-003",
+      "chapter": 1,
+      "source": "（合成原文 C：人工已编辑 — 占位）",
+      "draft": "（人工终稿 C — human_edited 保护）",
+      "status": "human_reviewed"
     }
   ]
 }

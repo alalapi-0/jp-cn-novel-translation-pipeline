@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://light-novel.local/schemas/review_issue.schema.json",
+  "title": "ReviewIssueReport",
+  "description": "Machine-generated quality review issues for Workbench. Cross-ref: docs/quality_review_workflow.md, docs/translation_quality_taxonomy_reference_inspired.md.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "language_direction",
+    "review_status",
+    "generated_at",
+    "generated_by",
+    "issues",
+    "summary"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "project_id": { "type": "string" },
+    "language_direction": {
+      "type": "string",
+      "enum": ["JP_TO_CN", "CN_TO_JP", "jp_to_cn", "cn_to_jp"]
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "machine_translated",
+        "review_needed",
+        "term_conflict",
+        "voice_conflict",
+        "world_conflict",
+        "style_issue",
+        "refined",
+        "human_reviewed",
+        "final"
+      ]
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "generated_by": { "type": "string" },
+    "issues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/review_issue" }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "by_type", "by_severity"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "by_type": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "by_severity": { "type": "object", "additionalProperties": { "type": "integer" } }
+      }
+    }
+  },
+  "$defs": {
+    "review_issue": {
+      "type": "object",
+      "required": [
+        "issue_id",
+        "project_id",
+        "language_direction",
+        "chapter_id",
+        "issue_type",
+        "severity",
+        "description",
+        "status",
+        "created_by",
+        "created_at",
+        "requires_human_review",
+        "auto_fixable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "issue_id": { "type": "string" },
+        "project_id": { "type": "string" },
+        "language_direction": { "type": "string" },
+        "chapter_id": { "type": "string" },
+        "paragraph_id": { "type": "string" },
+        "segment_id": { "type": "string" },
+        "issue_type": {
+          "type": "string",
+          "description": "Stable taxonomy label; see translation_quality_taxonomy_reference_inspired.md"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "source_text_ref": { "type": "string" },
+        "target_text_ref": { "type": "string" },
+        "description": { "type": "string" },
+        "suggested_fix": { "type": "string" },
+        "evidence": { "type": "object" },
+        "related_term_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "related_character_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "related_world_bible_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "acknowledged", "resolved", "wont_fix"]
+        },
+        "created_by": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "resolved_at": { "type": ["string", "null"], "format": "date-time" },
+        "requires_human_review": { "type": "boolean" },
+        "auto_fixable": { "type": "boolean" },
+        "human_edited_segment": { "type": "boolean" }
+      }
+    }
+  }
+}

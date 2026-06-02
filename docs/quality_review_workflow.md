@@ -33,6 +33,23 @@
 
 ## Review Issue Schema
 
+权威 JSON Schema：`data/schemas/review_issue.schema.json`。样例报告：`data/examples/review_issue_report.example.json`（synthetic fixture 生成，可提交）。
+
+报告顶层字段：
+
+```yaml
+schema_version:
+project_id:
+language_direction:
+review_status:   # 对齐下方审核状态机
+generated_at:
+generated_by:
+issues: []
+summary: { total, by_type, by_severity }
+```
+
+单条 `ReviewIssue` 字段：
+
 ```yaml
 issue_id:
 project_id:
@@ -40,20 +57,35 @@ language_direction:
 chapter_id:
 paragraph_id:
 segment_id:
-issue_type:
+issue_type:      # 稳定标签，见 translation_quality_taxonomy_reference_inspired.md
 severity:
-source_text:
-target_text:
+source_text_ref: # 短引用，非全文
+target_text_ref:
 description:
 suggested_fix:
 related_term_ids:
 related_character_ids:
 related_world_bible_ids:
-status:
+status:          # open | acknowledged | resolved | wont_fix
 created_by:
 created_at:
 resolved_at:
+requires_human_review:
+auto_fixable:
+human_edited_segment:
 ```
+
+## Round 49 机器审核维度（deterministic）
+
+| 维度 | Checker | 标签示例 | 说明 |
+|------|---------|----------|------|
+| 术语一致性 | `checker.term_consistency` | `LOCKED_TERM_VIOLATION`, `INCONSISTENT_TERM` | 对照 glossary fixture；locked 禁止自动改译文 |
+| 段落对齐 / 漏译启发 | `checker.segment_alignment` | `SEGMENT_ALIGNMENT_ERROR`, `OMISSION` | expected/orphan segment_id；词数比例启发式 |
+| 润色 diff | `checker.refinement_diff` | `OVER_REFINEMENT` | draft vs refined 表面差异（不写入正文） |
+
+CLI：`python3 scripts/run_quality_review.py --write-example`。Workbench：`frontend/issues.html` 读取 `frontend/assets/review-issue-report.json`；状态仅写 localStorage，**不覆盖** `human_edited` 段落。
+
+留待 Round 50+：语义误译、角色语气、世界观、日文残留、机翻腔等（需模型或更厚规则）。
 
 ## 审核状态
 

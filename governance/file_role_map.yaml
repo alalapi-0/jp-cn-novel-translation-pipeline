@@ -62,6 +62,24 @@ legacy:
     role: historical_round_state
     treat_as_authority: false
 
+quality_review_round_49:
+  - path: data/schemas/review_issue.schema.json
+    role: review_issue_schema
+  - path: data/examples/review_issue_report.example.json
+    role: review_issue_fixture_report
+  - path: scripts/run_quality_review.py
+    role: quality_review_cli
+  - path: src/quality_review/
+    role: quality_review_library
+  - path: frontend/issues.html
+    role: workbench_issue_dashboard
+  - path: frontend/assets/review-issue-report.json
+    role: workbench_issue_data
+  - path: docs/quality_review_workbench_wireup.md
+    role: workbench_wireup_doc
+  - path: docs/round_50_e2e_acceptance_checklist.md
+    role: round_50_e2e_checklist
+
 generated_future:
   - path: governance/repo_inventory.generated.json
     role: generated_inventory

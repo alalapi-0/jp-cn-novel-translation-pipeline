@@ -1,0 +1,41 @@
+{
+  "project_id": "demo-jp-cn",
+  "language_direction": "JP_TO_CN",
+  "chapter_id": "ch-001",
+  "expected_segment_ids": ["seg-001", "seg-002", "seg-003"],
+  "paragraphs": [
+    {
+      "paragraph_id": "para-001",
+      "segments": [
+        {
+          "segment_id": "seg-001",
+          "source_text": "（合成原文 A：角色取出魔力結晶 — 占位）",
+          "target_text": "（合成译文 A：使用了魔法结晶 — 故意违反锁定术语）",
+          "draft_text": "（合成初译 A — mock）",
+          "refined_text": "（合成润色 A：魔法结晶加强语气 — mock diff）",
+          "status": "machine_translated",
+          "human_edited": false
+        },
+        {
+          "segment_id": "seg-002",
+          "source_text": "（合成原文 B：他望向异世界的天空，心中充满疑问与期待，久久无法平静 — 占位）",
+          "target_text": "异界。",
+          "draft_text": "（合成初译 B — mock）",
+          "refined_text": "（合成润色 B — mock）",
+          "status": "machine_translated",
+          "human_edited": false
+        },
+        {
+          "segment_id": "seg-003",
+          "source_text": "（合成原文 C：人工已编辑 — 占位）",
+          "target_text": "（人工终稿 C — human_edited 保护）",
+          "draft_text": "（旧初译 C — 勿覆盖）",
+          "refined_text": "（旧润色 C — 勿覆盖）",
+          "status": "human_reviewed",
+          "human_edited": true
+        }
+      ]
+    }
+  ],
+  "orphan_segment_ids": ["seg-extra-999"]
+}

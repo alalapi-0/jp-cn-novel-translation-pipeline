@@ -1,29 +1,30 @@
-round_id: round_48_vector_db_inspection_tools
-round_name: "Vector DB inspection tools"
-round_number_human: "48"
+round_id: round_49_translation_quality_auto_review_workbench
+round_name: "Translation quality auto-review workbench"
+round_number_human: "49"
 status: completed
-type: tooling
+type: review
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "data/schemas/vector_index_metadata.schema.json — chapter_id, language_direction, model, version"
-  - "scripts/vector_db_inspect.py — stats, missing metadata, orphan vectors, --example/--json"
-  - "data/examples/vector_index_mock.example.json + vector_source_manifest.example.json"
-  - "workspace/vector_store/README.md aligned with .gitignore"
-  - "tests/test_vector_db_inspect.py mock index fixtures"
-  - "agent_gate optional vector_index_health (soft fallback when no index)"
-  - "docs/agent_tooling_strategy.md Round 49/50 vector deps + cost/filter guard"
-  - "agent_gate, check:tooling, pytest all pass"
+  - "data/schemas/review_issue.schema.json — ReviewIssue report + issue fields"
+  - "src/quality_review/ — term_consistency, segment_alignment, refinement_diff checkers"
+  - "scripts/run_quality_review.py — CLI, --write-example, --workspace"
+  - "data/examples/review_* fixtures + review_issue_report.example.json (5 synthetic issues)"
+  - "frontend/issues.html + review-issue-report.json — filter, status localStorage, no auto-fix on locked"
+  - "frontend/review.html segment highlight + ?segment= deep link"
+  - "tests/test_quality_review_checkers.py + tests/ui/issues.spec.ts"
+  - "agent_gate quality_review_tooling checks"
+  - "docs/quality_review_workflow.md machine dimensions + wireup + round_50_e2e checklist"
 
 next_recommended_round:
-  id: round_49
-  title: "Translation quality auto-review workbench"
+  id: round_50
+  title: "End-to-end agent-assisted controlled translation trial"
 
 blockers:
   hard: []
   soft:
     - "pytest not on system Python; use .venv/bin/pytest for unit tests"
-    - "real vector backends (Chroma/FAISS) deferred; JSON mock index only"
-    - "workspace/vector_store/index.json absent by design — inspect exits WARNING not BLOCKED"
-    - "docs/reports/*.md gitignored; inspect reports via CLI stdout or --report"
+    - "semantic/voice/world checkers deferred to Round 50+"
+    - "issue status write-back to workspace JSON deferred — localStorage only in MVP"
+    - "docs/reports/*.md gitignored; gate report via CLI stdout"

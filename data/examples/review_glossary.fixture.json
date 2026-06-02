@@ -1,0 +1,20 @@
+{
+  "project_id": "demo-jp-cn",
+  "language_direction": "JP_TO_CN",
+  "terms": [
+    {
+      "term_id": "term-001",
+      "source": "魔力結晶",
+      "canonical_zh": "魔力结晶",
+      "locked": true,
+      "aliases_zh": ["魔法结晶"]
+    },
+    {
+      "term_id": "term-002",
+      "source": "異世界",
+      "canonical_zh": "异世界",
+      "locked": false,
+      "aliases_zh": ["异界", "另一个世界"]
+    }
+  ]
+}

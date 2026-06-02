@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>质量审核 Issue · 翻译工作台</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="banner" id="mode-banner">加载配置…</div>
+    <header>
+      <h1>Issue Review Dashboard</h1>
+      <nav>
+        <a href="/index.html">项目首页</a>
+        <a href="/issues.html">质量 Issue</a>
+        <a href="/review.html">对照审核</a>
+      </nav>
+    </header>
+    <main>
+      <div class="card">
+        <h2>审核状态机</h2>
+        <p class="meta">
+          当前报告状态：<strong id="review-status">—</strong> · 共
+          <strong id="issue-total">0</strong> 条 issue（synthetic fixture）
+        </p>
+        <p class="meta">
+          流程参考 <code>docs/quality_review_workflow.md</code>：机器审核仅生成
+          issue，不覆盖 <code>human_edited</code> 译文。
+        </p>
+      </div>
+      <div class="card filters">
+        <h2>筛选</h2>
+        <label>
+          严重程度
+          <select id="filter-severity">
+            <option value="">全部</option>
+            <option value="critical">critical</option>
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+          </select>
+        </label>
+        <label>
+          issue 类型
+          <select id="filter-type">
+            <option value="">全部</option>
+          </select>
+        </label>
+        <label>
+          状态
+          <select id="filter-status">
+            <option value="">全部</option>
+            <option value="open">open</option>
+            <option value="acknowledged">acknowledged</option>
+            <option value="resolved">resolved</option>
+            <option value="wont_fix">wont_fix</option>
+          </select>
+        </label>
+      </div>
+      <div id="issues-root"></div>
+      <pre id="status-log"></pre>
+    </main>
+    <script src="/assets/config.js"></script>
+    <script>
+      const c = window.WORKBENCH_CONFIG || {};
+      document.getElementById("mode-banner").textContent =
+        c.mockDataLabel + " · quality review dry-run";
+    </script>
+    <script src="/assets/app.js"></script>
+  </body>
+</html>

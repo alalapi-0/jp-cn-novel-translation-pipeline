@@ -5,7 +5,8 @@ Phase 1 静态审核工作台 MVP（连续自动推进轮）。
 ## 页面
 
 - `/index.html` — 项目首页（mock 项目列表）
-- `/review.html` — 原文/译文对照审核，支持通过/驳回与 `AUTO_APPROVE`
+- `/issues.html` — 质量审核 Issue 列表（读取 `assets/review-issue-report.json`）
+- `/review.html` — 原文/译文对照审核，支持通过/驳回与 `AUTO_APPROVE`；高亮有 issue 的 segment
 
 ## 本地启动
 

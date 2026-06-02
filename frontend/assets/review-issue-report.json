@@ -1,0 +1,169 @@
+{
+  "schema_version": "1.0.0",
+  "project_id": "demo-jp-cn",
+  "language_direction": "JP_TO_CN",
+  "review_status": "term_conflict",
+  "generated_at": "2026-06-02T05:18:01+00:00",
+  "generated_by": "quality_review_runner",
+  "issues": [
+    {
+      "issue_id": "ri-0001",
+      "project_id": "demo-jp-cn",
+      "language_direction": "JP_TO_CN",
+      "chapter_id": "ch-001",
+      "issue_type": "LOCKED_TERM_VIOLATION",
+      "severity": "high",
+      "description": "术语「魔力结晶」在译文中出现非规范形式「魔法结晶」（locked）",
+      "status": "open",
+      "created_by": "checker.term_consistency",
+      "created_at": "2026-06-02T05:18:01+00:00",
+      "requires_human_review": true,
+      "auto_fixable": false,
+      "paragraph_id": "para-001",
+      "segment_id": "seg-001",
+      "source_text_ref": "（合成原文 A：角色取出魔力結晶 — 占位）",
+      "target_text_ref": "（合成译文 A：使用了魔法结晶 — 故意违反锁定术语）",
+      "suggested_fix": "将译名统一为「魔力结晶」",
+      "evidence": {
+        "canonical_zh": "魔力结晶",
+        "found": "魔法结晶",
+        "locked": true
+      },
+      "related_term_ids": [
+        "term-001"
+      ],
+      "related_character_ids": [],
+      "related_world_bible_ids": [],
+      "resolved_at": null,
+      "human_edited_segment": false
+    },
+    {
+      "issue_id": "ri-0002",
+      "project_id": "demo-jp-cn",
+      "language_direction": "JP_TO_CN",
+      "chapter_id": "ch-001",
+      "issue_type": "INCONSISTENT_TERM",
+      "severity": "medium",
+      "description": "术语「异世界」在译文中出现非规范形式「异界」",
+      "status": "open",
+      "created_by": "checker.term_consistency",
+      "created_at": "2026-06-02T05:18:01+00:00",
+      "requires_human_review": false,
+      "auto_fixable": true,
+      "paragraph_id": "para-001",
+      "segment_id": "seg-002",
+      "source_text_ref": "（合成原文 B：他望向异世界的天空，心中充满疑问与期待，久久无法平静 — 占位）",
+      "target_text_ref": "异界。",
+      "suggested_fix": "将译名统一为「异世界」",
+      "evidence": {
+        "canonical_zh": "异世界",
+        "found": "异界",
+        "locked": false
+      },
+      "related_term_ids": [
+        "term-002"
+      ],
+      "related_character_ids": [],
+      "related_world_bible_ids": [],
+      "resolved_at": null,
+      "human_edited_segment": false
+    },
+    {
+      "issue_id": "ri-0003",
+      "project_id": "demo-jp-cn",
+      "language_direction": "JP_TO_CN",
+      "chapter_id": "ch-001",
+      "issue_type": "SEGMENT_ALIGNMENT_ERROR",
+      "severity": "high",
+      "description": "译文存在未在期望列表中的 segment「seg-extra-999」",
+      "status": "open",
+      "created_by": "checker.segment_alignment",
+      "created_at": "2026-06-02T05:18:01+00:00",
+      "requires_human_review": true,
+      "auto_fixable": false,
+      "paragraph_id": "",
+      "segment_id": "seg-extra-999",
+      "source_text_ref": "",
+      "target_text_ref": "",
+      "suggested_fix": "删除多余 segment 或更新 expected_segment_ids",
+      "evidence": {
+        "orphan_segment_id": "seg-extra-999"
+      },
+      "related_term_ids": [],
+      "related_character_ids": [],
+      "related_world_bible_ids": [],
+      "resolved_at": null,
+      "human_edited_segment": false
+    },
+    {
+      "issue_id": "ri-0004",
+      "project_id": "demo-jp-cn",
+      "language_direction": "JP_TO_CN",
+      "chapter_id": "ch-001",
+      "issue_type": "OMISSION",
+      "severity": "high",
+      "description": "译文词数明显少于原文，疑似漏译",
+      "status": "open",
+      "created_by": "checker.segment_alignment",
+      "created_at": "2026-06-02T05:18:01+00:00",
+      "requires_human_review": false,
+      "auto_fixable": false,
+      "paragraph_id": "para-001",
+      "segment_id": "seg-002",
+      "source_text_ref": "（合成原文 B：他望向异世界的天空，心中充满疑问与期待，久久无法平静 — 占位）",
+      "target_text_ref": "异界。",
+      "suggested_fix": "对照原文补全缺失信息",
+      "evidence": {
+        "source_token_estimate": 4,
+        "target_token_estimate": 1
+      },
+      "related_term_ids": [],
+      "related_character_ids": [],
+      "related_world_bible_ids": [],
+      "resolved_at": null,
+      "human_edited_segment": false
+    },
+    {
+      "issue_id": "ri-0005",
+      "project_id": "demo-jp-cn",
+      "language_direction": "JP_TO_CN",
+      "chapter_id": "ch-001",
+      "issue_type": "OVER_REFINEMENT",
+      "severity": "medium",
+      "description": "润色稿相对初译引入术语表面变化，需人工确认",
+      "status": "open",
+      "created_by": "checker.refinement_diff",
+      "created_at": "2026-06-02T05:18:01+00:00",
+      "requires_human_review": true,
+      "auto_fixable": false,
+      "paragraph_id": "para-001",
+      "segment_id": "seg-001",
+      "source_text_ref": "（合成初译 A — mock）",
+      "target_text_ref": "（合成润色 A：魔法结晶加强语气 — mock diff）",
+      "suggested_fix": "对照术语表与初译，避免润色改写锁定译名",
+      "evidence": {
+        "draft_snippet": "（合成初译 A — mock）",
+        "refined_snippet": "（合成润色 A：魔法结晶加强语气 — mock diff）"
+      },
+      "related_term_ids": [],
+      "related_character_ids": [],
+      "related_world_bible_ids": [],
+      "resolved_at": null,
+      "human_edited_segment": false
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "by_type": {
+      "LOCKED_TERM_VIOLATION": 1,
+      "INCONSISTENT_TERM": 1,
+      "SEGMENT_ALIGNMENT_ERROR": 1,
+      "OMISSION": 1,
+      "OVER_REFINEMENT": 1
+    },
+    "by_severity": {
+      "high": 3,
+      "medium": 2
+    }
+  }
+}

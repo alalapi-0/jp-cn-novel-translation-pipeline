@@ -63,6 +63,8 @@ workspace/embeddings/*
 workspace/vector_store/*
 workspace/model_runs/*
 workspace/checkpoints/*
+workspace/review/*
+!workspace/review/README.md
 !workspace/embeddings/.gitkeep
 !workspace/vector_store/.gitkeep
 !workspace/vector_store/README.md
