@@ -24,6 +24,7 @@
 
 - `docs/agent_tooling_strategy.md`
 - `docs/mcp_playwright_setup_plan.md`
+- `docs/mcp_verification_checklist.md`
 - `docs/agent_skills/mcp_usage_skill.md`
 - `docs/agent_gate_and_protocol_check.md`
 

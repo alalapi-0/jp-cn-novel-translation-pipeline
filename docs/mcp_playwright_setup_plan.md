@@ -120,12 +120,81 @@ npm run test:ui
 
 ## 验证清单（Round 45 执行）
 
-- [ ] Playwright CLI 可运行
-- [ ] Chromium 已安装
-- [ ] 至少 1 个 smoke test 通过
-- [ ] MCP（若启用）可 snapshot 首页
-- [ ] `artifacts/` 在 `.gitignore` 中
-- [ ] 测试不依赖真实 Lark/API
+- [x] Playwright CLI 可运行（`npm run test:ui`，3 passed，2026-06-02）
+- [x] Chromium 已安装（Round 44）
+- [x] 至少 1 个 smoke test 通过（homepage / review / console）
+- [x] MCP（若启用）可 snapshot 首页（`cursor-ide-browser` → `index.html`）
+- [x] `artifacts/` 在 `.gitignore` 中
+- [x] 测试不依赖真实 Lark/API（dry-run + mock JSON）
+
+详细 10 项清单见 [`docs/mcp_verification_checklist.md`](mcp_verification_checklist.md)。
+
+---
+
+## Round 45 最小 MCP 配置与验证步骤
+
+### Workspace MCP（`.cursor/mcp.json`）
+
+已声明 5 个 server：`chrome-devtools`、`context7`、`playwright`、`filesystem`、`github`。验证：
+
+```bash
+npm run check:mcp
+```
+
+修改 `mcp.json` 后需在 Cursor **Reload Window** 或重启 Cursor。
+
+### Cursor IDE Browser（Option A，本轮实测）
+
+1. 启动前端：`npm run dev:frontend`（默认 `http://127.0.0.1:5174`）
+2. MCP：`browser_navigate` → `http://127.0.0.1:5174/index.html`
+3. MCP：`browser_snapshot`（navigate 常附带 snapshot）
+4. 可选：`browser_navigate` → `review.html`；`browser_click` 需 snapshot 中的 `ref`
+5. 操作顺序备忘：navigate →（lock）→ snapshot → click → unlock；见 `mcp_verification_checklist.md`
+
+### Playwright CLI Fallback（Option D）
+
+```bash
+npm run test:ui
+npm run test:ui:headed   # 本地 headed 调试
+```
+
+MCP 失败时记 **WARNING**，不阻塞 Round 45/46，只要 CLI 通过。
+
+---
+
+## Round 46 页面对齐（术语 / 对照 / diff）
+
+| `frontend_workbench_plan.md` 页面 | 当前静态文件 | Round 45 MCP/CLI | Round 46 目标 |
+|-----------------------------------|--------------|------------------|---------------|
+| Project Home | `frontend/index.html` | ✓ snapshot + smoke | 保持回归 |
+| Side-by-side Review | `frontend/review.html` | ✓ snapshot + smoke | 控制台 error 扫描 |
+| Glossary Editor | 未单独 HTML | — skip | snapshot 或扩路由 + spec |
+| Character Sheet | 未单独 HTML | — skip | 同上 |
+| Polish Diff | 未单独 HTML | — skip | 同上 |
+| Chapter Manager | mock 于首页卡片 | 部分（章节数文案） | 列表导航 spec |
+
+Round 46 Prompt：`prompts/round_46_frontend_review_workbench_visual_verification.md`。最低门槛：**CLI smoke 全绿**；MCP 为增强路径（至少 6 页 pass 或 documented skip）。
+
+---
+
+## 实测结果（Round 45，2026-06-02）
+
+| 检查 | 结果 |
+|------|------|
+| `check:mcp` | PASS（5 servers） |
+| `cursor-ide-browser` 首页 snapshot | PASS（「翻译工作台」、`apiMode=dry-run`） |
+| `cursor-ide-browser` 对照页 snapshot | PASS（`review.html`，审核按钮可见） |
+| `npm run test:ui` | PASS（3/3） |
+| `agent_gate` | PASS |
+| `check:tooling` | PASS（含 pytest 9） |
+| `.venv/bin/pytest` | PASS（9） |
+
+报告全文：`docs/reports/mcp_playwright_validation_report.md`。
+
+**Warnings（非硬阻塞）：**
+
+- Workspace `@playwright/mcp` 未在本轮单独调用 tool；已用 `cursor-ide-browser` 满足 snapshot 验收。
+- `browser_click` 首页「进入对照审核」未触发 URL 变更；Round 46 对导航链可用 `browser_navigate` 或修 href。
 
 ---
 

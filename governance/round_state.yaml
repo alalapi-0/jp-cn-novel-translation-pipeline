@@ -1,22 +1,25 @@
-round_id: round_44_playwright_smoke_test_setup
-round_name: "Playwright smoke test setup"
-round_number_human: "44"
+round_id: round_45_playwright_mcp_integration
+round_name: "Playwright MCP integration"
+round_number_human: "45"
 status: completed
-type: frontend
+type: tooling
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "playwright.config.ts with webServer reuse on port 5174"
-  - "tests/ui/smoke.spec.ts homepage + review + console checks"
-  - "npm run test:ui (3 specs passing)"
-  - "Node Playwright route selected (static frontend via Python server)"
+  - "cursor-ide-browser MCP snapshot index + review pages"
+  - "docs/mcp_verification_checklist.md (10 items)"
+  - "docs/mcp_playwright_setup_plan.md Round 45 results + Round 46 page alignment"
+  - "docs/reports/mcp_playwright_validation_report.md"
+  - "npm run test:ui (3 specs), check:mcp, agent_gate, check:tooling, pytest 9 passed"
 
 next_recommended_round:
-  id: round_45
-  title: "Playwright MCP integration"
+  id: round_46
+  title: "Frontend review workbench visual verification"
 
 blockers:
   hard: []
   soft:
     - "pytest not on system Python; use .venv/bin/pytest for unit tests"
+    - "Glossary/Character/Polish diff pages not in static MVP; Round 46 documented skip expected"
+    - "workspace @playwright/mcp not tool-smoked; cursor-ide-browser verified instead"

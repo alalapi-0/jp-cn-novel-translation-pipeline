@@ -92,14 +92,17 @@ pytest tests/ 2>/dev/null || echo "tests not ready"
 
 **规划 MCP：**
 
-| MCP | 必须性 | 阶段 |
-|-----|--------|------|
-| Playwright MCP | 前端验证轮推荐 | Round 45+ |
-| Filesystem MCP | 可选 | 环境支持时 |
-| GitHub MCP | 可选 | PR/CI 轮 |
-| SQLite MCP | 可选 | 使用 SQLite 后 |
-| Browser MCP | 可选 | Cursor 内置 |
-| 自定义项目 MCP | 未来 | 按需 |
+| MCP | 必须性 | 阶段 | Round 45 状态 |
+|-----|--------|------|----------------|
+| Playwright MCP (`@playwright/mcp`) | 前端验证轮推荐 | Round 45+ | 已配置；CLI fallback 已验证 |
+| Filesystem MCP | 可选 | 环境支持时 | 已配置（workspace 根） |
+| GitHub MCP | 可选 | PR/CI 轮 | 已配置（需 `GITHUB_TOKEN`） |
+| SQLite MCP | 可选 | 使用 SQLite 后 | 未安装 |
+| Browser MCP (`cursor-ide-browser`) | Round 46 增强 | Cursor 内置 | **已验证** snapshot/click/screenshot |
+| chrome-devtools MCP | 可选 | UI 调试 | 已配置 |
+| 自定义项目 MCP | 未来 | 按需 | — |
+
+Round 45 验证清单：`docs/mcp_verification_checklist.md`。
 
 **规则：**
 
