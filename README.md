@@ -123,7 +123,9 @@ Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
 
 ## MCP / Playwright 路线
 
-MCP 与 Playwright 是**增强工具**，不是当前强制依赖。安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。前端 Round 36–40 完成后，Round 44–46 引入 Playwright 与浏览器 Workbench 验证。
+项目级 MCP 配置见 **`.cursor/mcp.json`**（playwright、filesystem、github）；使用说明见 **`docs/agent_skills/mcp_usage_skill.md`**。修改后通常需 Reload Cursor。验证：`python3 scripts/check_mcp_config.py`。
+
+MCP 与 Playwright 是**增强工具**；安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。前端 Round 36–40 完成后，Round 44–46 引入 Playwright CLI 与浏览器 Workbench 验证。
 
 ## 参考仓库方法吸收
 

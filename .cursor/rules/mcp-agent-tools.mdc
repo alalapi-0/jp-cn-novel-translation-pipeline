@@ -1,0 +1,41 @@
+---
+description: MCP 与浏览器工具使用规则（Playwright、filesystem、GitHub）
+alwaysApply: true
+---
+
+# MCP Agent Tools
+
+## 浏览器与 UI
+
+- 修改或验收 **UI / 前端** 时，必须使用 **Playwright MCP** 或等效浏览器 MCP（如 Cursor 内置 browser），不能仅凭代码推断页面成功。
+- 浏览器检查须覆盖：**页面可见内容**、**console 错误**、**network 关键请求**（若工具支持）、**核心用户流程**（导航、加载、关键按钮）。
+- Playwright 截图、trace、报告默认写入 `artifacts/`，**不得提交**到 Git。
+
+## 文件系统
+
+- 文件读写后须确认 **真实磁盘状态**（filesystem MCP 或 Read/Write/Grep）。
+- **不得** 配置 filesystem MCP 访问系统根目录（`/`、`C:\`）或整个用户主目录；本项目仅允许 `${workspaceFolder}`。
+- **不得** 读取或打印 `.env` 内容。
+
+## GitHub 与 Git
+
+- 每轮 **commit 前** 必须执行 `git diff`，确认无密钥、无未授权原文/译文、无 `.env`。
+- GitHub MCP 需要 `GITHUB_TOKEN`；无 token 时使用 `git` / `gh` CLI 或 dry-run，**不要** 因此停止整个推进，除非 GitHub 是当前任务唯一阻塞。
+- **不得** 将真实 API Key、PAT、cookie 写入仓库或规则文件。
+
+## MCP 可用性
+
+- 自动推进轮开始前，确认 `.cursor/mcp.json` 中声明的 MCP 已在 Cursor Settings → MCP 中加载。
+- 若 MCP 未加载：在轮次报告或 `governance/round_state.yaml` soft blockers 中 **记录原因**，并按 `docs/agent_skills/mcp_usage_skill.md` 使用 fallback 继续推进。
+- 缺少第三方 token 时进入 **mock / dry-run**，除非该 token 是当前轮次硬阻塞条件。
+
+## 密钥与敏感信息
+
+- Agent 使用 MCP 时 **不得打印** 密钥、token、cookie。
+- **不得** 通过 MCP 自动 push、公开发布译文或删除 `input_*` 真实原文。
+
+## 参考
+
+- `docs/agent_skills/mcp_usage_skill.md`
+- `docs/mcp_playwright_setup_plan.md`
+- `docs/agent_tooling_strategy.md`

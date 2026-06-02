@@ -1,6 +1,6 @@
-round_id: reference_method_absorption_governance
-round_name: "Reference Method Absorption Governance"
-round_number_human: "Reference Method Absorption Governance"
+round_id: mcp_tools_setup
+round_name: "MCP Tools Setup and Agent Workflow Integration"
+round_number_human: "MCP Setup"
 status: completed
 type: governance
 real_api_called: false
@@ -8,24 +8,17 @@ full_translation_executed: false
 embedding_generated: false
 vector_db_created: false
 
-protocol_standard_sync_required: true
+protocol_standard_sync_required: false
 protocol_version: "0.3.0"
 
 completed_tasks:
-  - "Audited repository for reference method absorption"
-  - "Created docs/reference_method_governance_audit.md"
-  - "Created reference methodology, method stack, pipeline, stable ID, JSONL, context, dynamic injection, prompt contract, extractor/validator, cache/checkpoint/TM, provider, exporter and taxonomy docs"
-  - "Updated README, docs index, protocol alignment, core architecture, shared core, workflow and governance docs"
-  - "Created docs/roadmap_rounds_reference_method_01_40.md"
-  - "Created RM-01 to RM-10 prompt drafts"
-  - "Audited repository and wrote docs/governance_round_02_audit.md"
-  - "Synced full repo_protocol_standard.yaml from novel-continuation-agent"
-  - "Created docs/repo_protocol_alignment.md"
-  - "Created governance skeleton YAML files and AGENTS.md / project.yaml"
-  - "Created agent tooling, MCP/Playwright, operating manual, agent gate docs"
-  - "Created docs/roadmap_rounds_41_50_tooling_and_workbench.md"
-  - "Updated governance_rules, README, docs/index"
-  - "Added tooling prompt templates and Round 41-50 prompt drafts"
+  - "Created .cursor/mcp.json with playwright, filesystem (workspaceFolder), github (GITHUB_TOKEN env)"
+  - "Created docs/agent_skills/mcp_usage_skill.md"
+  - "Updated AGENTS.md MCP Tools section"
+  - "Created .cursor/rules/mcp-agent-tools.mdc"
+  - "Added scripts/check_mcp_config.py"
+  - "Updated .gitignore to track mcp.json and cursor rules"
+  - "Updated docs/index.md and scripts/README.md"
 
 next_recommended_round:
   id: rm_02
@@ -39,21 +32,18 @@ blockers:
   soft:
     - "scripts/agent_gate.py not yet implemented"
     - "scripts/check_protocol_standard.py not yet implemented"
-    - "Playwright and MCP not installed"
+    - "GITHUB_TOKEN not set locally — GitHub MCP will degrade to git/gh CLI"
+    - "Playwright MCP requires Cursor reload and npx/Node; verify in Settings → MCP"
     - "Frontend workbench not implemented"
-    - "Reference method route is documentation-only; implementation begins in RM-02/RM-03/RM-04/RM-05"
+    - "Context7 / library-docs MCP not enabled (optional; see mcp_usage_skill.md)"
 
 legacy_round_state:
   path: round_state/translation_pipeline_governance_round.yaml
   note: "Historical first governance round; do not delete without migration report"
 
 acceptance_criteria:
-  - "Reference method methodology docs exist"
-  - "Stable ID and JSONL design exists"
-  - "Extractor and Validator design exists"
-  - "RM-01 to RM-40 roadmap exists"
-  - "RM-01 to RM-10 prompt drafts exist"
-  - "Full protocol file present at 905 lines"
-  - "Alignment report documents conflicts and overrides"
-  - "Tooling strategy and Round 41-50 roadmap exist"
+  - "Project .cursor/mcp.json exists with playwright and scoped filesystem"
+  - "MCP usage skill and agent rules documented"
+  - "check_mcp_config.py passes"
+  - "No secrets committed"
   - "No real translation or API calls in this round"
