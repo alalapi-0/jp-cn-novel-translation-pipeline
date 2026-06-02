@@ -1,33 +1,19 @@
-round_id: round_42_repo_protocol_checker
-round_name: "Repo Protocol Checker MVP"
-round_number_human: "42"
+round_id: round_44_tooling_checks_bundle
+round_name: "Tooling checks bundle and gate frontend probe"
+round_number_human: "44-prep"
 status: completed
-type: protocol
+type: tooling
 real_api_called: false
 full_translation_executed: false
-embedding_generated: false
-vector_db_created: false
-
-protocol_standard_sync_required: false
-protocol_version: "0.3.0"
 
 completed_tasks:
-  - "Implemented scripts/check_protocol_standard.py with --json"
-  - "Added tests/test_check_protocol_standard.py"
-  - "Documented gate + protocol check run order"
+  - "agent_gate frontend_mvp_exists check"
+  - "scripts/run_tooling_checks.sh and npm run check:tooling"
 
 next_recommended_round:
-  id: round_44
-  title: "Playwright smoke test setup"
-  alternative:
-    id: round_43
-    title: "Tooling environment audit"
+  id: round_43
+  title: "Tooling environment audit"
 
 blockers:
   hard: []
-  soft:
-    - "Formal Playwright CI smoke not yet in repo"
-
-acceptance_criteria:
-  - "protocol checker exit 0 on current repo"
-  - "pytest passes"
+  soft: []

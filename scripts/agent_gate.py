@@ -289,6 +289,23 @@ def check_outputs_ignored() -> list[CheckResult]:
     return results
 
 
+def check_frontend_mvp_exists() -> CheckResult:
+    index = REPO_ROOT / "frontend" / "index.html"
+    review = REPO_ROOT / "frontend" / "review.html"
+    config = REPO_ROOT / "frontend" / "assets" / "config.js"
+    if index.is_file() and review.is_file() and config.is_file():
+        return CheckResult(
+            "frontend_mvp_exists",
+            Severity.PASS,
+            "frontend index/review pages and config present",
+        )
+    return CheckResult(
+        "frontend_mvp_exists",
+        Severity.WARN,
+        "frontend MVP pages missing (expected index.html, review.html, assets/config.js)",
+    )
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -331,6 +348,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.append(check_prompt_templates())
     results.extend(check_direction_dirs())
     results.append(check_gitignore_safe())
+    results.append(check_frontend_mvp_exists())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())
