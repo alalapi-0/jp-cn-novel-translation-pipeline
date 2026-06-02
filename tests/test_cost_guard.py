@@ -82,7 +82,8 @@ def test_subsequent_call_fails_after_abort(tmp_path):
 
 def test_real_api_enabled_when_env_set(monkeypatch):
     monkeypatch.setenv("REAL_API_TESTS_ENABLED", "true")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     guard = CostGuard(CostGuardConfig.from_env())
     assert guard.allow_real_network() is True
-    with pytest.raises(NotImplementedError):
-        get_provider(ProviderMode.REAL, cost_guard=guard)
+    provider = get_provider(ProviderMode.REAL, cost_guard=guard)
+    assert provider.provider_id == "openrouter"

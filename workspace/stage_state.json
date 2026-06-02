@@ -1,0 +1,15 @@
+{
+  "phase": "draft",
+  "stage": "draft_stage_a_5ch",
+  "status": "completed",
+  "run_id": "draft-a-20260602T202102Z-5cf7e8b7",
+  "updated_at": "2026-06-02T20:34:00.757505+00:00",
+  "refine_blocked": true,
+  "summary": {
+    "translated_segments": 347,
+    "total_segments": 347,
+    "provider_mode": "real/openrouter",
+    "model_name": "deepseek/deepseek-v4-pro",
+    "run_root": "workspace/runs/draft-a-20260602T202102Z-5cf7e8b7"
+  }
+}

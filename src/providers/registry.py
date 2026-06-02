@@ -7,6 +7,7 @@ from enum import Enum
 from .cost_guard import CostGuard, CostGuardConfig
 from .dry_run_provider import DryRunProvider
 from .fake_provider import FakeProvider
+from .openrouter_provider import OpenRouterProvider
 
 
 class ProviderMode(str, Enum):
@@ -20,7 +21,7 @@ def get_provider(
     *,
     cost_guard: CostGuard | None = None,
     guard_config: CostGuardConfig | None = None,
-) -> FakeProvider | DryRunProvider:
+) -> FakeProvider | DryRunProvider | OpenRouterProvider:
     guard = cost_guard or CostGuard(guard_config or CostGuardConfig.from_env())
 
     if mode == ProviderMode.FAKE:
@@ -33,7 +34,5 @@ def get_provider(
                 "real provider blocked: REAL_API_TESTS_ENABLED is false (default). "
                 "Enable only with explicit user authorization."
             )
-        raise NotImplementedError(
-            "real provider adapters deferred to translation execution rounds; use fake or dry_run"
-        )
+        return OpenRouterProvider(cost_guard=guard)
     raise ValueError(f"unknown provider mode: {mode}")

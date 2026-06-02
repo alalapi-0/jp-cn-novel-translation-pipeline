@@ -63,6 +63,8 @@ workspace/embeddings/*
 workspace/vector_store/*
 workspace/model_runs/*
 workspace/checkpoints/*
+workspace/runs/*
+!workspace/runs/.gitkeep
 workspace/review/*
 workspace/e2e_trial/*
 workspace/manifests/*
