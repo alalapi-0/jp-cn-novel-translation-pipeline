@@ -99,9 +99,34 @@
 # 4. sys.exit(0|1|2)
 ```
 
-Round 02 仅规划，不实现完整脚本。
+Round 41 已实现 MVP（`scripts/agent_gate.py`）。
 
-参考方法吸收治理轮仅更新检查项规划，不实现 `scripts/agent_gate.py`。后续 Round 41 或 RM 工具链轮再把这些检查项转成确定性脚本。
+## MVP 已实现检查项（Round 41）
+
+| ID | 状态 |
+|----|------|
+| `docs_exist` | PASS/FAIL — README、AGENTS、project.yaml、vision、architecture、governance_rules、index |
+| `roadmap_exists` | PASS/WARN/FAIL — 00–40 为核心；41–50 默认 WARN，`--strict` 时 FAIL |
+| `protocol_exists` / `protocol_alignment_exists` | PASS/FAIL |
+| `tooling_strategy_exists` / `mcp_plan_exists` / `frontend_plan_exists` / `api_provider_strategy_exists` | PASS/FAIL |
+| 参考方法相关文档（reference、stable_id、extractor、provider、exporter） | PASS/FAIL |
+| `prompt_templates_exist` | PASS/WARN — `prompts/*_template.md` 数量 ≥ 6 |
+| `direction_dirs_exist` | PASS/WARN |
+| `gitignore_safe` | PASS/WARN |
+| `env_not_tracked` | PASS/FAIL — `.env` 被跟踪时为 BLOCKED |
+| `input_sources_ignored` / `outputs_ignored` | PASS/WARN — `git check-ignore` 探测 |
+| `git_status_*` | PASS/WARN — 工作区与分支摘要 |
+
+### 运行示例
+
+```bash
+python3 scripts/agent_gate.py
+python3 scripts/agent_gate.py --json
+python3 scripts/agent_gate.py --strict
+pytest tests/test_agent_gate.py -q
+```
+
+报告路径：`docs/reports/agent_gate_report.md`（本地，已在 `.gitignore`）。
 
 ---
 

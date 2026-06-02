@@ -4,5 +4,6 @@
 
 | 脚本 | 用途 |
 |------|------|
+| `agent_gate.py` | 确定性 Agent 门控（exit 0/1/2）；支持 `--json`、`--strict` |
 | `check_mcp_config.js` | 检查 `.cursor/mcp.json` 是否包含 5 个必需 MCP、JSON 格式、filesystem 授权与密钥泄露 |
 | `check_mcp_config.py` | 同上（Python 版，历史保留） |

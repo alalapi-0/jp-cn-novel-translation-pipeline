@@ -46,4 +46,4 @@ translation_pipeline_rules:
 automation_gate:
   entry: scripts/agent_gate.py
   report: docs/reports/agent_gate_report.md
-  status: planned_round_41
+  status: implemented_round_41

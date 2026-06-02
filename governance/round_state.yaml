@@ -1,8 +1,8 @@
-round_id: mcp_tools_setup
-round_name: "MCP Tools Setup and Agent Workflow Integration"
-round_number_human: "MCP Setup"
+round_id: round_41_agent_gate_mvp
+round_name: "Agent Gate MVP"
+round_number_human: "41"
 status: completed
-type: governance
+type: tooling
 real_api_called: false
 full_translation_executed: false
 embedding_generated: false
@@ -12,38 +12,32 @@ protocol_standard_sync_required: false
 protocol_version: "0.3.0"
 
 completed_tasks:
-  - "Created .cursor/mcp.json with playwright, filesystem (workspaceFolder), github (GITHUB_TOKEN env)"
-  - "Created docs/agent_skills/mcp_usage_skill.md"
-  - "Updated AGENTS.md MCP Tools section"
-  - "Created .cursor/rules/mcp-agent-tools.mdc"
-  - "Added scripts/check_mcp_config.py"
-  - "Updated .gitignore to track mcp.json and cursor rules"
-  - "Updated docs/index.md and scripts/README.md"
+  - "Implemented scripts/agent_gate.py with --json and --strict"
+  - "Added tests/test_agent_gate.py for exit code semantics"
+  - "Updated docs/agent_gate_and_protocol_check.md with MVP checklist"
+  - "Updated governance/agent_policy.yaml automation_gate status"
 
 next_recommended_round:
-  id: rm_02
-  title: "Core Data Flow Design"
+  id: round_42
+  title: "Repo Protocol Checker"
   alternative:
-    id: rm_03
-    title: "Stable ID Rules"
+    id: round_37
+    title: "Frontend static MVP (if prioritizing browser flow)"
 
 blockers:
   hard: []
   soft:
-    - "scripts/agent_gate.py not yet implemented"
     - "scripts/check_protocol_standard.py not yet implemented"
-    - "GITHUB_TOKEN not set locally — GitHub MCP will degrade to git/gh CLI"
-    - "Playwright MCP requires Cursor reload and npx/Node; verify in Settings → MCP"
-    - "Frontend workbench not implemented"
-    - "Context7 / library-docs MCP not enabled (optional; see mcp_usage_skill.md)"
+    - "GITHUB_TOKEN not set locally — GitHub MCP may degrade to git/gh CLI"
+    - "Frontend workbench not implemented — browser E2E limited"
+    - "Context7 MCP optional"
 
 legacy_round_state:
   path: round_state/translation_pipeline_governance_round.yaml
   note: "Historical first governance round; do not delete without migration report"
 
 acceptance_criteria:
-  - "Project .cursor/mcp.json exists with playwright and scoped filesystem"
-  - "MCP usage skill and agent rules documented"
-  - "check_mcp_config.py passes"
-  - "No secrets committed"
+  - "python3 scripts/agent_gate.py exits 0 or 1 on clean repo"
+  - "pytest tests/test_agent_gate.py passes"
+  - "No secrets in diff"
   - "No real translation or API calls in this round"
