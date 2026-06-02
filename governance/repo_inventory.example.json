@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-02T05:07:00Z",
+  "generated_at": "2026-06-02T05:08:11Z",
   "counts_summary": {
-    "scripts": 15,
-    "tests": 6,
+    "scripts": 18,
+    "tests": 10,
     "prompts": 46,
     "tooling_prompts": 10,
     "frontend_files": 7,
-    "governance_files": 7
+    "governance_files": 9
   },
   "environment_present": {
     "python": true,

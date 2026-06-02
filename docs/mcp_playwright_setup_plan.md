@@ -93,6 +93,7 @@ python -m playwright install chromium
 
 ```bash
 npx playwright test tests/ui/smoke.spec.ts
+npm run test:ui
 ```
 
 **规则：**

@@ -5,6 +5,11 @@
   "scripts": {
     "check:mcp": "node scripts/check_mcp_config.js",
     "check:tooling": "sh scripts/run_tooling_checks.sh",
-    "dev:frontend": "python3 scripts/serve_frontend.py --port 5174"
+    "dev:frontend": "python3 scripts/serve_frontend.py --port 5174",
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

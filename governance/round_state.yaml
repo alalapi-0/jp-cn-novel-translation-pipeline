@@ -1,22 +1,22 @@
-round_id: round_43_tooling_environment_audit
-round_name: "Tooling environment audit and repo inventory"
-round_number_human: "43"
+round_id: round_44_playwright_smoke_test_setup
+round_name: "Playwright smoke test setup"
+round_number_human: "44"
 status: completed
-type: tooling
+type: frontend
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "scripts/scan_repo_inventory.py inventory + environment audit"
-  - "governance/repo_inventory.example.json committed summary"
-  - "tests/test_scan_repo_inventory.py schema stability"
-  - "npm run check:tooling includes inventory scan"
+  - "playwright.config.ts with webServer reuse on port 5174"
+  - "tests/ui/smoke.spec.ts homepage + review + console checks"
+  - "npm run test:ui (3 specs passing)"
+  - "Node Playwright route selected (static frontend via Python server)"
 
 next_recommended_round:
-  id: round_44
-  title: "Playwright smoke test setup"
+  id: round_45
+  title: "Playwright MCP integration"
 
 blockers:
   hard: []
   soft:
-    - "pytest not on system Python; use .venv/bin/pytest or pip install for local test runs"
+    - "pytest not on system Python; use .venv/bin/pytest for unit tests"

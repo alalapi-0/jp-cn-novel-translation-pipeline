@@ -9,6 +9,8 @@ Thumbs.db
 
 # Local IDE/tooling state
 .idea/
+.venv/
+node_modules/
 .cursor/*
 !.cursor/mcp.json
 !.cursor/rules/
@@ -19,7 +21,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.venv/
 
 # Logs
 logs/*.log
