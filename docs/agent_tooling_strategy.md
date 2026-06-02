@@ -137,12 +137,42 @@ Round 45 验证清单：`docs/mcp_verification_checklist.md`。
 
 包括：JSON inspector、YAML validator、SQLite、Chroma、FAISS、vector index verifier、embedding metadata checker。
 
+**Round 48 已实现：**
+
+```bash
+python3 scripts/vector_db_inspect.py              # 缺失索引 → exit 1 WARNING（软 fallback）
+python3 scripts/vector_db_inspect.py --example    # 脱敏 fixture：metadata 缺失 + orphan 演示
+python3 scripts/vector_db_inspect.py --json --sample 3
+```
+
+- Schema：`data/schemas/vector_index_metadata.schema.json`
+- 样例：`data/examples/vector_index_mock.example.json`
+- 工作目录：`workspace/vector_store/`（默认 gitignore）
+
 **规则：**
 
-- 向量库早期只做设计（Round 48）
+- 向量库早期以设计与检查为主（Round 48 完成 inspect MVP）
 - 生成 embedding 前必须有 schema、metadata、过滤条件与成本控制
 - 不允许无脑 embedding 全部内容
 - 治理轮不生成 embedding、不建真实向量库
+
+**过滤与成本 guard（生成 embedding 前必填）：**
+
+| 键 | 用途 |
+|----|------|
+| `project_id` | 限定项目范围 |
+| `language_direction` | jp_to_cn / cn_to_jp |
+| `chapter_id` | 按章批量与增量索引 |
+| `text_type` | 原文/译文/术语上下文等 |
+| `model` / `version` | 模型与 pipeline 版本，防 drift |
+
+Bulk embed 须通过 `cost_guard` / `controlled_run`（Round 47）且 `--dry-run` 先过预算估算。
+
+**Round 49/50 依赖：**
+
+- Round 49（质量审核 Workbench）不依赖向量库；`context_retriever` 可先用 glossary/TM 规则子集。
+- Round 50（e2e trial）可选启用 vector search；试跑前运行 `vector_db_inspect.py`，index 缺失仅 WARNING。
+- 未来 `context_retriever`（Round 15+）将消费 `vector_store` adapter 与 stable metadata 字段。
 
 ---
 

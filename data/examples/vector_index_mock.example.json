@@ -1,0 +1,66 @@
+{
+  "index_metadata": {
+    "schema_version": "1.0.0",
+    "backend": "json_mock",
+    "project_id": "example_project",
+    "language_direction": "jp_to_cn",
+    "embedding_model": "mock-384",
+    "embedding_dimension": 384,
+    "source_manifest": "data/examples/vector_source_manifest.example.json"
+  },
+  "vectors": [
+    {
+      "embedding_id": "emb-ch01-seg001",
+      "metadata": {
+        "project_id": "example_project",
+        "language_direction": "jp_to_cn",
+        "chapter_id": "ch01",
+        "segment_id": "seg001",
+        "text_type": "source_paragraph",
+        "model": "mock-384",
+        "provider": "fake",
+        "status": "indexed",
+        "source_file": "fixtures/synthetic/ch01.txt",
+        "version": "1"
+      }
+    },
+    {
+      "embedding_id": "emb-ch01-seg002",
+      "metadata": {
+        "project_id": "example_project",
+        "language_direction": "jp_to_cn",
+        "chapter_id": "ch01",
+        "segment_id": "seg002",
+        "text_type": "source_paragraph",
+        "model": "mock-384",
+        "provider": "fake",
+        "status": "indexed",
+        "source_file": "fixtures/synthetic/ch01.txt",
+        "version": "1"
+      }
+    },
+    {
+      "embedding_id": "emb-orphan-seg999",
+      "metadata": {
+        "project_id": "example_project",
+        "language_direction": "jp_to_cn",
+        "chapter_id": "ch99",
+        "segment_id": "seg999",
+        "text_type": "source_paragraph",
+        "model": "mock-384",
+        "provider": "fake",
+        "status": "indexed",
+        "source_file": "fixtures/synthetic/ch99.txt",
+        "version": "1"
+      }
+    },
+    {
+      "embedding_id": "emb-missing-meta",
+      "metadata": {
+        "project_id": "example_project",
+        "language_direction": "jp_to_cn",
+        "chapter_id": "ch01"
+      }
+    }
+  ]
+}

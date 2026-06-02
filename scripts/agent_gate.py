@@ -8,6 +8,7 @@ Exit codes: 0=PASS, 1=WARNING, 2=BLOCKED (see governance/repo_protocol_standard.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
@@ -306,6 +307,109 @@ def check_frontend_mvp_exists() -> CheckResult:
     )
 
 
+VECTOR_INSPECT_SCRIPT = REPO_ROOT / "scripts" / "vector_db_inspect.py"
+VECTOR_SCHEMA = REPO_ROOT / "data" / "schemas" / "vector_index_metadata.schema.json"
+DEFAULT_VECTOR_INDEX = REPO_ROOT / "workspace" / "vector_store" / "index.json"
+
+
+def check_vector_store_tooling() -> list[CheckResult]:
+    """Optional vector index checks — missing index is soft fallback (WARN), not BLOCKED."""
+    results: list[CheckResult] = []
+    if VECTOR_INSPECT_SCRIPT.is_file():
+        results.append(
+            CheckResult(
+                "vector_inspect_script_exists",
+                Severity.PASS,
+                "found scripts/vector_db_inspect.py",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "vector_inspect_script_exists",
+                Severity.WARN,
+                "missing scripts/vector_db_inspect.py (Round 48 tooling)",
+            )
+        )
+        return results
+
+    if VECTOR_SCHEMA.is_file():
+        results.append(
+            CheckResult(
+                "vector_metadata_schema_exists",
+                Severity.PASS,
+                "found data/schemas/vector_index_metadata.schema.json",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "vector_metadata_schema_exists",
+                Severity.WARN,
+                "missing vector index metadata schema",
+            )
+        )
+
+    if not DEFAULT_VECTOR_INDEX.is_file():
+        results.append(
+            CheckResult(
+                "vector_index_present",
+                Severity.PASS,
+                "no workspace/vector_store/index.json — soft fallback OK for non-vector rounds",
+            )
+        )
+        return results
+
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "light_novel_vector_db_inspect_gate",
+            VECTOR_INSPECT_SCRIPT,
+        )
+        if not spec or not spec.loader:
+            raise RuntimeError("cannot load vector_db_inspect module")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        manifest = REPO_ROOT / "workspace" / "manifests" / "project_manifest.json"
+        report, _, _ = mod.run_inspection(DEFAULT_VECTOR_INDEX, manifest if manifest.is_file() else None)
+        code = mod.aggregate_exit_code(report.findings)
+        if code == 2:
+            msg = "; ".join(f.message for f in report.findings if f.severity == mod.Severity.FAIL)
+            results.append(
+                CheckResult(
+                    "vector_index_health",
+                    Severity.WARN,
+                    f"local index parse/structure issue (non-blocking): {msg or 'see vector_db_inspect'}",
+                )
+            )
+        elif code == 1:
+            warn_codes = sorted({f.code for f in report.findings if f.severity == mod.Severity.WARN})
+            results.append(
+                CheckResult(
+                    "vector_index_health",
+                    Severity.WARN,
+                    f"index present with {report.vector_count} vector(s); "
+                    f"inspect warnings: {', '.join(warn_codes) or 'metadata/orphan'}",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "vector_index_health",
+                    Severity.PASS,
+                    f"index present; {report.vector_count} vector(s) metadata OK",
+                )
+            )
+    except Exception as exc:  # noqa: BLE001 — gate must stay deterministic and never crash
+        results.append(
+            CheckResult(
+                "vector_index_health",
+                Severity.WARN,
+                f"vector inspect skipped: {exc}",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -349,6 +453,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_direction_dirs())
     results.append(check_gitignore_safe())
     results.append(check_frontend_mvp_exists())
+    results.extend(check_vector_store_tooling())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

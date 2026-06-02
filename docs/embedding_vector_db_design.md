@@ -47,7 +47,12 @@ status:
 created_at:
 model:
 provider:
+version:
 ```
+
+机器可读 schema：`data/schemas/vector_index_metadata.schema.json`（与 `docs/data_schema_plan.md` EmbeddingRecord 对齐）。
+
+只读检查：`python3 scripts/vector_db_inspect.py`（缺失 index 为 WARNING 软 fallback）；样例 `--example` 见 `data/examples/vector_index_mock.example.json`。
 
 ## 检索场景
 

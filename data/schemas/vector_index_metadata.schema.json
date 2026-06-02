@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://light-novel.local/schemas/vector_index_metadata.schema.json",
+  "title": "VectorIndexMetadata",
+  "description": "Vector index metadata for light_novel mock/JSON indexes. Cross-ref: docs/data_schema_plan.md (EmbeddingRecord), docs/embedding_vector_db_design.md.",
+  "type": "object",
+  "required": ["index_metadata", "vectors"],
+  "additionalProperties": false,
+  "properties": {
+    "index_metadata": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "backend",
+        "project_id",
+        "language_direction",
+        "embedding_model",
+        "embedding_dimension"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "description": "Index schema version (semver or major.minor.patch)."
+        },
+        "backend": {
+          "type": "string",
+          "enum": ["json_mock", "chroma", "faiss", "sqlite_vector"],
+          "description": "Vector store backend identifier."
+        },
+        "project_id": { "type": "string" },
+        "language_direction": {
+          "type": "string",
+          "enum": ["jp_to_cn", "cn_to_jp"],
+          "description": "Translation direction filter key."
+        },
+        "embedding_model": {
+          "type": "string",
+          "description": "Embedding model id used to build the index."
+        },
+        "embedding_dimension": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_manifest": {
+          "type": "string",
+          "description": "Optional path to segment manifest for orphan detection."
+        }
+      }
+    },
+    "vectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["embedding_id", "metadata"],
+        "additionalProperties": false,
+        "properties": {
+          "embedding_id": { "type": "string" },
+          "metadata": {
+            "type": "object",
+            "required": [
+              "project_id",
+              "language_direction",
+              "chapter_id",
+              "model",
+              "version"
+            ],
+            "additionalProperties": true,
+            "properties": {
+              "project_id": { "type": "string" },
+              "language_direction": {
+                "type": "string",
+                "enum": ["jp_to_cn", "cn_to_jp"]
+              },
+              "chapter_id": { "type": "string" },
+              "segment_id": { "type": "string" },
+              "paragraph_id": { "type": "string" },
+              "text_type": { "type": "string" },
+              "source_language": { "type": "string" },
+              "target_language": { "type": "string" },
+              "speaker_character_id": { "type": "string" },
+              "term_ids": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "world_bible_ids": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "source_file": { "type": "string" },
+              "target_file": { "type": "string" },
+              "status": { "type": "string" },
+              "created_at": { "type": "string" },
+              "model": {
+                "type": "string",
+                "description": "Per-record embedding model (should match index embedding_model)."
+              },
+              "provider": { "type": "string" },
+              "version": {
+                "type": "string",
+                "description": "Record or pipeline version for drift tracking."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

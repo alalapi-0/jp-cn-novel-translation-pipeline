@@ -1,26 +1,29 @@
-round_id: round_47_api_dry_run_cost_guard
-round_name: "API dry-run and cost guard hardening"
-round_number_human: "47"
+round_id: round_48_vector_db_inspection_tools
+round_name: "Vector DB inspection tools"
+round_number_human: "48"
 status: completed
-type: api_integration
+type: tooling
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "src/providers: fake_provider, dry_run_provider, cost_guard, controlled_run, registry"
-  - "tests/test_fake_provider.py, test_dry_run_provider.py, test_cost_guard.py, test_controlled_run.py"
-  - ".env.example cost guard + controlled run vars"
-  - "docs/api_provider_strategy.md Round 50 prerequisites"
-  - "scripts/run_tooling_checks.sh runs full tests/ via .venv/bin/pytest"
+  - "data/schemas/vector_index_metadata.schema.json — chapter_id, language_direction, model, version"
+  - "scripts/vector_db_inspect.py — stats, missing metadata, orphan vectors, --example/--json"
+  - "data/examples/vector_index_mock.example.json + vector_source_manifest.example.json"
+  - "workspace/vector_store/README.md aligned with .gitignore"
+  - "tests/test_vector_db_inspect.py mock index fixtures"
+  - "agent_gate optional vector_index_health (soft fallback when no index)"
+  - "docs/agent_tooling_strategy.md Round 49/50 vector deps + cost/filter guard"
   - "agent_gate, check:tooling, pytest all pass"
 
 next_recommended_round:
-  id: round_48
-  title: "Vector DB inspection tools"
+  id: round_49
+  title: "Translation quality auto-review workbench"
 
 blockers:
   hard: []
   soft:
     - "pytest not on system Python; use .venv/bin/pytest for unit tests"
-    - "real provider adapters deferred to translation execution rounds"
-    - "docs/reports/*.md gitignored; Round 47 details in docs/api_provider_strategy.md"
+    - "real vector backends (Chroma/FAISS) deferred; JSON mock index only"
+    - "workspace/vector_store/index.json absent by design — inspect exits WARNING not BLOCKED"
+    - "docs/reports/*.md gitignored; inspect reports via CLI stdout or --report"

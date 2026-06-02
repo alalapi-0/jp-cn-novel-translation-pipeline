@@ -1,0 +1,8 @@
+{
+  "project_id": "example_project",
+  "language_direction": "jp_to_cn",
+  "segments": [
+    { "chapter_id": "ch01", "segment_id": "seg001" },
+    { "chapter_id": "ch01", "segment_id": "seg002" }
+  ]
+}

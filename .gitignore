@@ -65,6 +65,7 @@ workspace/model_runs/*
 workspace/checkpoints/*
 !workspace/embeddings/.gitkeep
 !workspace/vector_store/.gitkeep
+!workspace/vector_store/README.md
 !workspace/model_runs/.gitkeep
 !workspace/checkpoints/.gitkeep
 

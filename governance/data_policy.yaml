@@ -15,7 +15,7 @@ review_history_policy:
 
 database_policy:
   mvp: local_json_markdown_sqlite
-  vector_db: deferred_until_round_48_planning
+  vector_db: json_mock_inspection_round_48
 
 privacy_policy:
   do_not_commit:

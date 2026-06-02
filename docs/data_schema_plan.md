@@ -424,7 +424,9 @@ Round 24。
 
 ### 核心字段
 
-`embedding_id`、`project_id`、`language_direction`、`text_type`、`chapter_id`、`segment_id`、`source_file`、`status`、`model`、`provider`。
+`embedding_id`、`project_id`、`language_direction`、`text_type`、`chapter_id`、`segment_id`、`source_file`、`status`、`model`、`provider`、`version`。
+
+JSON Schema（Round 48）：`data/schemas/vector_index_metadata.schema.json`。检查 CLI：`scripts/vector_db_inspect.py`。
 
 ### 关系
 
