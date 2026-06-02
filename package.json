@@ -1,0 +1,8 @@
+{
+  "name": "light-novel",
+  "private": true,
+  "description": "中日文小说互译生产流水线治理仓库",
+  "scripts": {
+    "check:mcp": "node scripts/check_mcp_config.js"
+  }
+}

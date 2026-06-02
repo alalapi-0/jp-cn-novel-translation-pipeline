@@ -4,4 +4,5 @@
 
 | 脚本 | 用途 |
 |------|------|
-| `check_mcp_config.py` | 检查 `.cursor/mcp.json` 格式、playwright 配置与 filesystem 授权范围 |
+| `check_mcp_config.js` | 检查 `.cursor/mcp.json` 是否包含 5 个必需 MCP、JSON 格式、filesystem 授权与密钥泄露 |
+| `check_mcp_config.py` | 同上（Python 版，历史保留） |

@@ -50,22 +50,31 @@
 
 ## MCP Tools
 
-本项目优先使用 **`.cursor/mcp.json`** 中声明的 MCP server（与 Cursor 全局 MCP 合并，不覆盖已有全局配置）。
+当前项目要求启用以下 **Workspace MCP Servers**（见 `.cursor/mcp.json`，与 Cursor 全局 MCP 合并，不覆盖已有全局配置）：
 
-| 能力 | Server | 说明 |
-|------|--------|------|
-| 浏览器 / E2E | `playwright` | UI 任务**必须**优先使用；边实现边浏览器检查 |
-| 项目文件 | `filesystem` | 仅 `${workspaceFolder}`；写入后确认真实文件状态 |
-| GitHub | `github` | 需环境变量 `GITHUB_TOKEN`；无 token 时降级为 git/gh CLI |
+- `chrome-devtools`
+- `context7`
+- `filesystem`
+- `github`
+- `playwright`
+
+| Server | 用途 |
+|--------|------|
+| `chrome-devtools` | 浏览器调试、console、network、页面状态检查 |
+| `context7` | 查询第三方库和框架文档 |
+| `filesystem` | 安全读取和检查当前项目文件（仅 `${workspaceFolder}`） |
+| `github` | 仓库、提交、分支、issue、PR 等相关操作 |
+| `playwright` | 浏览器自动化、页面操作、E2E 检查 |
 
 **自动推进轮约定：**
 
-- 轮次开始前确认 MCP 已在 Cursor Settings → MCP 中加载（修改配置后通常需 **Reload / 重启 Cursor**）。
-- 浏览器相关任务不得仅凭代码判断成功；须查看页面、console、network 与核心流程。
+- 自动推进轮开始前，Agent **必须**确认上述 MCP 已在 Cursor Settings → MCP 中加载（修改 `mcp.json` 后通常需 **Reload / 重启 Cursor**）。
+- 若某个 MCP 不可用，Agent 需记录原因，并使用可用替代方案继续推进（见 `docs/agent_skills/mcp_usage_skill.md`）。
+- 涉及页面、审核台、生成结果、预览、发布流程的任务，**必须**使用 `chrome-devtools` 或 `playwright` 进行真实浏览器检查；不得仅凭代码推断成功。
+- 文档和依赖不确定时，优先用 `context7` 查询。
 - GitHub 操作前必须 `git diff`，避免泄露密钥或未授权内容。
-- MCP 不可用时：记录原因于轮次报告或 `governance/round_state.yaml` soft blockers，并按 `docs/agent_skills/mcp_usage_skill.md` fallback 继续推进。
 - 缺少 token / API Key 时进入 mock / dry-run，**不要**卡死整体流程（除非该 token 为当前轮唯一硬阻塞）。
 
-**验证：** `python3 scripts/check_mcp_config.py`
+**验证：** `node scripts/check_mcp_config.js` 或 `npm run check:mcp`；亦可 `python3 scripts/check_mcp_config.py`
 
 **禁止：** 提交 token / cookie / API Key；filesystem 授权系统根目录或整个用户主目录。

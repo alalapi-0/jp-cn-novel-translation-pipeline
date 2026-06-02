@@ -1,0 +1,45 @@
+---
+description: 仓库默认必需的 Workspace MCP Servers 与安全规则
+alwaysApply: true
+---
+
+# MCP Required Servers
+
+## 默认 MCP
+
+当前仓库默认需要以下 5 个 Workspace MCP Servers：
+
+- `chrome-devtools`
+- `context7`
+- `filesystem`
+- `github`
+- `playwright`
+
+配置见 `.cursor/mcp.json`。修改后通常需 **Reload Window 或重启 Cursor** 才能加载。
+
+## 自动推进前检查
+
+Agent 开始自动推进轮前必须：
+
+1. 确认 `.cursor/mcp.json` 存在且 JSON 有效。
+2. 运行 `node scripts/check_mcp_config.js` 或 `npm run check:mcp`（若有 `package.json`）。
+3. 在 Cursor Settings → MCP 中确认上述 server 已加载；不可用则记录原因，勿无意义反复安装。
+
+## 任务分工
+
+- **UI / 浏览器任务：** 必须使用 `chrome-devtools` 或 `playwright` 进行真实浏览器检查（页面内容、console、network、核心流程）；不得仅凭代码推断成功。
+- **文档与依赖不确定：** 优先使用 `context7` 查询第三方库与框架文档。
+- **文件读写：** 仅通过 `filesystem` MCP 或 IDE 工具访问**当前项目目录**（`${workspaceFolder}`）；不得授权 `/`、`~`、用户主目录、磁盘根目录。
+- **GitHub 操作：** 操作前必须 `git status` 与 `git diff`；无 token 时降级为 `git` / `gh` CLI，不阻断其他工作。
+
+## 安全
+
+- 提交前确认无 token、API Key、cookie、`.env`、无关大文件。
+- 不得将真实密钥写入 `.cursor/mcp.json`、规则或文档。
+- MCP 不可用时记录原因于轮次报告或 `governance/round_state.yaml` soft blockers，使用 fallback 继续推进。
+
+## 参考
+
+- `AGENTS.md`
+- `docs/agent_skills/mcp_usage_skill.md`
+- `scripts/check_mcp_config.js`

@@ -121,11 +121,25 @@ Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
 
 仓库采用可移植治理标准 `governance/repo_protocol_standard.yaml`（v0.3.0）。对齐情况、冲突与迁移计划见 `docs/repo_protocol_alignment.md`。项目差异写入 `project.yaml` 与 `governance/novel_pipeline_contract.yaml`，不擅自改写协议正文。
 
-## MCP / Playwright 路线
+## Workspace MCP Servers
 
-项目级 MCP 配置见 **`.cursor/mcp.json`**（playwright、filesystem、github）；使用说明见 **`docs/agent_skills/mcp_usage_skill.md`**。修改后通常需 Reload Cursor。验证：`python3 scripts/check_mcp_config.py`。
+当前项目需要以下 Workspace MCP Servers：
 
-MCP 与 Playwright 是**增强工具**；安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。前端 Round 36–40 完成后，Round 44–46 引入 Playwright CLI 与浏览器 Workbench 验证。
+- `chrome-devtools`
+- `context7`
+- `filesystem`
+- `github`
+- `playwright`
+
+说明：
+
+1. **`.cursor/mcp.json`** 是当前项目的 Workspace MCP 配置。
+2. Cursor 可能需要**重启或重新加载窗口**（Reload Window）后才能识别新配置。
+3. **GitHub MCP** 需通过环境变量 `GITHUB_TOKEN` 提供 token（映射为 `GITHUB_PERSONAL_ACCESS_TOKEN`），**不允许**写进仓库。
+4. **filesystem MCP** 只授权当前项目目录（`${workspaceFolder}`）。
+5. 可运行 `npm run check:mcp` 或 `node scripts/check_mcp_config.js` 检查配置。
+
+使用说明见 **`docs/agent_skills/mcp_usage_skill.md`**。MCP 与 Playwright 是**增强工具**；安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。
 
 ## 参考仓库方法吸收
 
