@@ -1,8 +1,8 @@
-round_id: round_37_frontend_static_mvp
-round_name: "Frontend Static MVP with AUTO_APPROVE"
-round_number_human: "37"
+round_id: round_42_repo_protocol_checker
+round_name: "Repo Protocol Checker MVP"
+round_number_human: "42"
 status: completed
-type: implementation
+type: protocol
 real_api_called: false
 full_translation_executed: false
 embedding_generated: false
@@ -12,29 +12,22 @@ protocol_standard_sync_required: false
 protocol_version: "0.3.0"
 
 completed_tasks:
-  - "Added frontend static index/review pages with mock data"
-  - "AUTO_APPROVE and dry-run banner in config.js"
-  - "scripts/serve_frontend.py and npm run dev:frontend"
-  - "Playwright browser verification on review flow"
+  - "Implemented scripts/check_protocol_standard.py with --json"
+  - "Added tests/test_check_protocol_standard.py"
+  - "Documented gate + protocol check run order"
 
 next_recommended_round:
-  id: round_42
-  title: "Repo Protocol Checker"
+  id: round_44
+  title: "Playwright smoke test setup"
   alternative:
-    id: round_44
-    title: "Playwright smoke test setup"
+    id: round_43
+    title: "Tooling environment audit"
 
 blockers:
   hard: []
   soft:
-    - "scripts/check_protocol_standard.py not yet implemented"
-    - "cursor-ide-browser may not reach localhost — use Playwright MCP for E2E"
-
-legacy_round_state:
-  path: round_state/translation_pipeline_governance_round.yaml
-  note: "Historical first governance round"
+    - "Formal Playwright CI smoke not yet in repo"
 
 acceptance_criteria:
-  - "npm run dev:frontend serves pages with 200"
-  - "Review page shows AUTO_APPROVE approved segments"
-  - "No secrets in diff"
+  - "protocol checker exit 0 on current repo"
+  - "pytest passes"

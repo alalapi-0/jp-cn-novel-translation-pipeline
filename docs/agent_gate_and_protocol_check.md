@@ -58,7 +58,14 @@
 | `rm_roadmap_exists` | RM-01 到 RM-40 路线图 |
 | `rm_prompts_exist` | RM-01 到 RM-10 Prompt 草案 |
 
-**Protocol Checker（Round 42）：** `scripts/check_protocol_standard.py` — 读取协议与 project.yaml，输出机器可读合规报告。
+**Protocol Checker（Round 42 MVP）：** `scripts/check_protocol_standard.py` — 校验根目录/治理文件、协议版本与 `project.yaml` 对齐、AGENTS 阅读顺序。运行：
+
+```bash
+python3 scripts/check_protocol_standard.py
+python3 scripts/check_protocol_standard.py --json
+```
+
+推荐顺序：`python3 scripts/agent_gate.py && python3 scripts/check_protocol_standard.py`
 
 **Repo Contract（未来）：** `scripts/check_repo_contract.py` — 验证 governance YAML 必填字段。
 
