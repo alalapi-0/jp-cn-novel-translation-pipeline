@@ -1,25 +1,25 @@
-round_id: round_45_playwright_mcp_integration
-round_name: "Playwright MCP integration"
-round_number_human: "45"
+round_id: round_46_frontend_review_workbench_visual_verification
+round_name: "Frontend review workbench visual verification"
+round_number_human: "46"
 status: completed
-type: tooling
+type: frontend
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "cursor-ide-browser MCP snapshot index + review pages"
-  - "docs/mcp_verification_checklist.md (10 items)"
-  - "docs/mcp_playwright_setup_plan.md Round 45 results + Round 46 page alignment"
-  - "docs/reports/mcp_playwright_validation_report.md"
-  - "npm run test:ui (3 specs), check:mcp, agent_gate, check:tooling, pytest 9 passed"
+  - "frontend @5174 + MCP cursor-ide-browser snapshot index/review"
+  - "tests/ui/smoke.spec.ts extended (7 pass, 3 documented skip)"
+  - "artifacts/round_46/index.png + review.png (not staged)"
+  - "docs/reports/round_46_visual_verification_report.md"
+  - "npm run test:ui, check:mcp, agent_gate WARNING, check:tooling, pytest 9 passed"
 
 next_recommended_round:
-  id: round_46
-  title: "Frontend review workbench visual verification"
+  id: round_47
+  title: "API dry-run and cost guard hardening"
 
 blockers:
   hard: []
   soft:
     - "pytest not on system Python; use .venv/bin/pytest for unit tests"
-    - "Glossary/Character/Polish diff pages not in static MVP; Round 46 documented skip expected"
+    - "Glossary/Character/Polish diff pages not in static MVP; documented skip until Round 39+ routes"
     - "workspace @playwright/mcp not tool-smoked; cursor-ide-browser verified instead"
