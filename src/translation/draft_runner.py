@@ -169,6 +169,30 @@ def run_draft_stage_b(
     )
 
 
+def _hydrate_from_segments_json(run_root: Path, chapters: list[ParsedChapter]) -> None:
+    path = run_root / "segments.json"
+    if not path.is_file():
+        return
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    by_id: dict[str, dict[str, Any]] = {}
+    for ch in doc.get("chapters", []):
+        for seg in ch.get("segments", []):
+            sid = seg.get("segment_id")
+            if sid and (seg.get("draft_text") or "").strip():
+                by_id[sid] = seg
+    for chapter in chapters:
+        for seg in chapter.segments:
+            saved = by_id.get(seg.segment_id)
+            if not saved:
+                continue
+            seg.draft_text = saved.get("draft_text", "")
+            seg.status = saved.get("status") or "machine_translated"
+
+
+def _count_translated_segments(chapters: list[ParsedChapter]) -> int:
+    return sum(1 for ch in chapters for s in ch.segments if (s.draft_text or "").strip())
+
+
 def _default_run_id(spec: DraftStageSpec) -> str:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     if spec.stage_key == "stage_b":
@@ -218,6 +242,15 @@ def run_draft_stage(
         raise FileNotFoundError(f"no chapter files under {input_dir}")
 
     parsed_chapters = [parse_chapter_file(p) for p in chapter_paths]
+    _hydrate_from_segments_json(run_root, parsed_chapters)
+    total_expected = sum(len(ch.segments) for ch in parsed_chapters)
+    translated_before = _count_translated_segments(parsed_chapters)
+    if translated_before < total_expected and (
+        controlled.checkpoint.status == "completed"
+        or controlled.checkpoint.status.startswith("aborted")
+    ):
+        controlled.checkpoint.status = "in_progress"
+        controlled.save()
     summary = DraftRunSummary(
         run_id=run_id,
         provider_mode=provider_mode,
@@ -229,7 +262,7 @@ def run_draft_stage(
         summary.total_segments += len(chapter.segments)
 
         for batch in _split_batches(chapter):
-            pending = [s for s in batch if not controlled.is_segment_done(s.segment_id)]
+            pending = [s for s in batch if not (s.draft_text or "").strip()]
             if not pending:
                 continue
             messages = build_batch_messages(pending, chapter_label=chapter.chapter_label)
@@ -246,7 +279,7 @@ def run_draft_stage(
                 try:
                     result = provider.generate(messages, options)
                     last_exc = None
-                except (CostGuardError, RuntimeError) as exc:
+                except (CostGuardError, RuntimeError, OSError) as exc:
                     last_exc = exc
                     result = None
                     if attempt >= MAX_API_RETRIES:
@@ -312,9 +345,13 @@ def run_draft_stage(
         export_chapter_markdown(chapter, draft_dir)
         summary.chapters.append(ch_result)
 
+    summary.translated_segments = _count_translated_segments(parsed_chapters)
     if guard:
         summary.spent_usd = guard.spent_usd
         summary.spent_tokens = guard.spent_tokens
+    elif controlled.checkpoint.spent_usd:
+        summary.spent_usd = controlled.checkpoint.spent_usd
+        summary.spent_tokens = controlled.checkpoint.spent_tokens
 
     controlled.complete()
     _write_run_artifacts(
@@ -371,7 +408,8 @@ def _write_quality_reports(
     chapters: list[ParsedChapter],
 ) -> None:
     total = summary.total_segments
-    done = summary.translated_segments
+    done = _count_translated_segments(chapters)
+    summary.translated_segments = done
     coverage = done / total if total else 0.0
     chapter_ok = all(c.ok for c in summary.chapters)
     passed = (

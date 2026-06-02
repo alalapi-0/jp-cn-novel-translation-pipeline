@@ -7,6 +7,7 @@ import os
 import time
 import urllib.error
 import urllib.request
+from http.client import IncompleteRead
 from typing import Any
 
 from .cost_guard import CostGuard
@@ -69,6 +70,8 @@ class OpenRouterProvider:
             raise RuntimeError(f"OpenRouter HTTP {exc.code}: {err_body}") from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(f"OpenRouter network error: {exc.reason}") from exc
+        except (IncompleteRead, TimeoutError, OSError) as exc:
+            raise RuntimeError(f"OpenRouter network error: {exc}") from exc
 
         latency_ms = int((time.perf_counter() - started) * 1000)
         self.network_calls += 1
