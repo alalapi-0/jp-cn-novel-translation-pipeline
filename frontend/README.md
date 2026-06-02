@@ -1,3 +1,24 @@
 # frontend
 
-未来前端工作台目录。本治理轮只规划，不实现前端。
+Phase 1 静态审核工作台 MVP（连续自动推进轮）。
+
+## 页面
+
+- `/index.html` — 项目首页（mock 项目列表）
+- `/review.html` — 原文/译文对照审核，支持通过/驳回与 `AUTO_APPROVE`
+
+## 本地启动
+
+```bash
+npm run dev:frontend
+# 或
+python3 scripts/serve_frontend.py --port 5173
+```
+
+浏览器打开 `http://127.0.0.1:5173/`。
+
+## 配置
+
+`assets/config.js` 中 `AUTO_APPROVE` / `dryRunAutoApprove` 为自动推进阶段默认开启；`apiMode` 为 `dry-run`。横幅会显示 mock 标识。
+
+审核状态保存在 `localStorage`（键 `light_novel_workbench_state_v1`）。

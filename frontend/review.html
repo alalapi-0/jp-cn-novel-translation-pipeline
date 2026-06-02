@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>对照审核 · 翻译工作台</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="banner" id="mode-banner">加载配置…</div>
+    <header>
+      <h1>Side-by-side Translation Review</h1>
+      <nav>
+        <a href="/index.html">项目首页</a>
+        <a href="/review.html">对照审核</a>
+      </nav>
+    </header>
+    <main>
+      <div class="card">
+        <h2>审核控制台</h2>
+        <p class="meta">
+          API 模式：<strong id="api-mode-label">—</strong> · AUTO_APPROVE：
+          <strong id="auto-approve-label">—</strong>
+        </p>
+        <pre id="status-log"></pre>
+      </div>
+      <div id="review-root"></div>
+    </main>
+    <script src="/assets/config.js"></script>
+    <script>
+      const c = window.WORKBENCH_CONFIG || {};
+      document.getElementById("mode-banner").textContent =
+        c.mockDataLabel + " · AUTO_APPROVE=" + c.AUTO_APPROVE;
+    </script>
+    <script src="/assets/app.js"></script>
+  </body>
+</html>

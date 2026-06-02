@@ -1,8 +1,8 @@
-round_id: round_41_agent_gate_mvp
-round_name: "Agent Gate MVP"
-round_number_human: "41"
+round_id: round_37_frontend_static_mvp
+round_name: "Frontend Static MVP with AUTO_APPROVE"
+round_number_human: "37"
 status: completed
-type: tooling
+type: implementation
 real_api_called: false
 full_translation_executed: false
 embedding_generated: false
@@ -12,32 +12,29 @@ protocol_standard_sync_required: false
 protocol_version: "0.3.0"
 
 completed_tasks:
-  - "Implemented scripts/agent_gate.py with --json and --strict"
-  - "Added tests/test_agent_gate.py for exit code semantics"
-  - "Updated docs/agent_gate_and_protocol_check.md with MVP checklist"
-  - "Updated governance/agent_policy.yaml automation_gate status"
+  - "Added frontend static index/review pages with mock data"
+  - "AUTO_APPROVE and dry-run banner in config.js"
+  - "scripts/serve_frontend.py and npm run dev:frontend"
+  - "Playwright browser verification on review flow"
 
 next_recommended_round:
   id: round_42
   title: "Repo Protocol Checker"
   alternative:
-    id: round_37
-    title: "Frontend static MVP (if prioritizing browser flow)"
+    id: round_44
+    title: "Playwright smoke test setup"
 
 blockers:
   hard: []
   soft:
     - "scripts/check_protocol_standard.py not yet implemented"
-    - "GITHUB_TOKEN not set locally — GitHub MCP may degrade to git/gh CLI"
-    - "Frontend workbench not implemented — browser E2E limited"
-    - "Context7 MCP optional"
+    - "cursor-ide-browser may not reach localhost — use Playwright MCP for E2E"
 
 legacy_round_state:
   path: round_state/translation_pipeline_governance_round.yaml
-  note: "Historical first governance round; do not delete without migration report"
+  note: "Historical first governance round"
 
 acceptance_criteria:
-  - "python3 scripts/agent_gate.py exits 0 or 1 on clean repo"
-  - "pytest tests/test_agent_gate.py passes"
+  - "npm run dev:frontend serves pages with 200"
+  - "Review page shows AUTO_APPROVE approved segments"
   - "No secrets in diff"
-  - "No real translation or API calls in this round"

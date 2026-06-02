@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>翻译工作台 · 项目首页</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="banner" id="mode-banner">加载配置…</div>
+    <header>
+      <h1>翻译工作台</h1>
+      <nav>
+        <a href="/index.html">项目首页</a>
+        <a href="/review.html">对照审核</a>
+      </nav>
+    </header>
+    <main>
+      <p class="meta">Phase 1 静态 MVP · 数据来自 mock JSON · localStorage 持久化审核状态</p>
+      <div id="project-list"></div>
+      <div class="card">
+        <h2>运行配置</h2>
+        <p class="meta" id="config-summary"></p>
+      </div>
+    </main>
+    <script src="/assets/config.js"></script>
+    <script>
+      const c = window.WORKBENCH_CONFIG || {};
+      document.getElementById("mode-banner").textContent =
+        c.mockDataLabel + " · AUTO_APPROVE=" + c.AUTO_APPROVE;
+      document.getElementById("config-summary").textContent =
+        "apiMode=" + c.apiMode + ", dryRunAutoApprove=" + c.dryRunAutoApprove;
+    </script>
+    <script src="/assets/app.js"></script>
+  </body>
+</html>

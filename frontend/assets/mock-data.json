@@ -1,0 +1,27 @@
+{
+  "projects": [
+    {
+      "id": "demo-jp-cn",
+      "name": "示例项目（日译中）",
+      "direction": "JP_TO_CN",
+      "status": "review_pending",
+      "chapters": 2
+    }
+  ],
+  "segments": [
+    {
+      "id": "seg-001",
+      "chapter": 1,
+      "source": "（示例原文段落 A — 占位，非真实版权文本）",
+      "draft": "（示例初译 A — mock）",
+      "status": "pending"
+    },
+    {
+      "id": "seg-002",
+      "chapter": 1,
+      "source": "（示例原文段落 B — 占位）",
+      "draft": "（示例初译 B — mock）",
+      "status": "pending"
+    }
+  ]
+}
