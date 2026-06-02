@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Controlled translation CLI: draft Stage A (bounded chapters)."""
+"""Controlled translation CLI: draft Stage A/B (bounded chapters)."""
 
 from __future__ import annotations
 
@@ -12,14 +12,30 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from translation.draft_runner import run_draft_stage_a  # noqa: E402
+from translation.draft_runner import (  # noqa: E402
+    STAGE_A_MAX_CHAPTERS,
+    STAGE_B_MAX_CHAPTERS,
+    run_draft_stage_a,
+    run_draft_stage_b,
+)
+
+STAGE_STATE_MAP = {
+    "stage_a": "draft_stage_a_5ch",
+    "stage_b": "draft_stage_b_50ch",
+}
 
 
-def _update_stage_state(repo_root: Path, run_id: str, status: str, summary: dict) -> None:
+def _update_stage_state(
+    repo_root: Path,
+    stage: str,
+    run_id: str,
+    status: str,
+    summary: dict,
+) -> None:
     path = repo_root / "workspace" / "stage_state.json"
     payload = {
         "phase": "draft",
-        "stage": "draft_stage_a_5ch",
+        "stage": STAGE_STATE_MAP[stage],
         "status": status,
         "run_id": run_id,
         "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -33,29 +49,53 @@ def _update_stage_state(repo_root: Path, run_id: str, status: str, summary: dict
 def main() -> int:
     parser = argparse.ArgumentParser(description="Controlled novel translation")
     parser.add_argument("--phase", choices=["draft"], required=True)
-    parser.add_argument("--stage", choices=["stage_a"], required=True)
-    parser.add_argument("--limit-chapters", type=int, default=5)
+    parser.add_argument("--stage", choices=["stage_a", "stage_b"], required=True)
+    parser.add_argument("--limit-chapters", type=int, default=None)
     parser.add_argument("--input-dir", type=Path, default=REPO_ROOT / "input_jp")
     parser.add_argument("--run-id", default="")
     args = parser.parse_args()
 
-    if args.phase != "draft" or args.stage != "stage_a":
-        print("Only draft/stage_a is implemented", file=sys.stderr)
-        return 2
-    if args.limit_chapters > 5:
-        print("Hard limit: max 5 chapters per controlled Stage A run", file=sys.stderr)
+    if args.phase != "draft":
+        print("Only draft phase is implemented", file=sys.stderr)
         return 2
 
+    if args.stage == "stage_a":
+        limit = args.limit_chapters if args.limit_chapters is not None else STAGE_A_MAX_CHAPTERS
+        if limit > STAGE_A_MAX_CHAPTERS:
+            print(f"Hard limit: max {STAGE_A_MAX_CHAPTERS} chapters per Stage A run", file=sys.stderr)
+            return 2
+        run_fn = run_draft_stage_a
+    else:
+        limit = args.limit_chapters if args.limit_chapters is not None else STAGE_B_MAX_CHAPTERS
+        if limit > STAGE_B_MAX_CHAPTERS:
+            print(f"Hard limit: max {STAGE_B_MAX_CHAPTERS} chapters per Stage B run", file=sys.stderr)
+            return 2
+        run_fn = run_draft_stage_b
+
     run_id = args.run_id.strip() or None
+    _update_stage_state(
+        REPO_ROOT,
+        args.stage,
+        run_id or "pending",
+        "in_progress",
+        {"limit_chapters": limit},
+    )
+
     try:
-        summary, run_root = run_draft_stage_a(
+        summary, run_root = run_fn(
             repo_root=REPO_ROOT,
             input_dir=args.input_dir,
-            limit_chapters=args.limit_chapters,
+            limit_chapters=limit,
             run_id=run_id,
         )
     except Exception as exc:
-        _update_stage_state(REPO_ROOT, run_id or "failed", "failed", {"error": str(exc)})
+        _update_stage_state(
+            REPO_ROOT,
+            args.stage,
+            run_id or "failed",
+            "failed",
+            {"error": str(exc)},
+        )
         print(f"translate failed: {exc}", file=sys.stderr)
         return 2
 
@@ -63,6 +103,7 @@ def main() -> int:
     status = "completed" if ok else "failed"
     _update_stage_state(
         REPO_ROOT,
+        args.stage,
         summary.run_id,
         status,
         {
@@ -71,6 +112,8 @@ def main() -> int:
             "provider_mode": summary.provider_mode,
             "model_name": summary.model_name,
             "run_root": str(run_root.relative_to(REPO_ROOT)),
+            "api_calls": summary.api_calls,
+            "spent_usd": summary.spent_usd,
         },
     )
     print(

@@ -1,15 +1,17 @@
 {
   "phase": "draft",
-  "stage": "draft_stage_a_5ch",
+  "stage": "draft_stage_b_50ch",
   "status": "completed",
-  "run_id": "draft-a-20260602T202102Z-5cf7e8b7",
-  "updated_at": "2026-06-02T20:34:00.757505+00:00",
+  "run_id": "run_20260602_203645_draft_stage_b_50ch",
+  "updated_at": "2026-06-02T22:14:03.914463+00:00",
   "refine_blocked": true,
   "summary": {
-    "translated_segments": 347,
-    "total_segments": 347,
+    "translated_segments": 635,
+    "total_segments": 1825,
     "provider_mode": "real/openrouter",
     "model_name": "deepseek/deepseek-v4-pro",
-    "run_root": "workspace/runs/draft-a-20260602T202102Z-5cf7e8b7"
+    "run_root": "workspace/runs/run_20260602_203645_draft_stage_b_50ch",
+    "api_calls": 83,
+    "spent_usd": 0.0623345
   }
 }

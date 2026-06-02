@@ -1,9 +1,8 @@
-"""Run draft Stage A translation for a bounded chapter set."""
+"""Run draft Stage A/B translation for bounded chapter sets."""
 
 from __future__ import annotations
 
 import json
-import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -25,6 +24,37 @@ from translation.validator import validate_draft_items
 MAX_CHARS_PER_BATCH = 5_500
 MAX_SEGMENTS_PER_BATCH = 8
 MAX_API_RETRIES = 3
+STAGE_A_MAX_CHAPTERS = 5
+STAGE_B_MAX_CHAPTERS = 50
+
+
+@dataclass(frozen=True)
+class DraftStageSpec:
+    stage_key: str
+    scope: str
+    limit_chapters: int
+    run_id_prefix: str
+    next_stage_label: str
+    go_decision_filename: str
+
+
+STAGE_A_SPEC = DraftStageSpec(
+    stage_key="stage_a",
+    scope="draft_stage_a_5ch",
+    limit_chapters=STAGE_A_MAX_CHAPTERS,
+    run_id_prefix="draft-a",
+    next_stage_label="Stage B",
+    go_decision_filename="go_decision.md",
+)
+
+STAGE_B_SPEC = DraftStageSpec(
+    stage_key="stage_b",
+    scope="draft_stage_b_50ch",
+    limit_chapters=STAGE_B_MAX_CHAPTERS,
+    run_id_prefix="run",
+    next_stage_label="Stage C",
+    go_decision_filename="stage_draft_b_50ch_go_decision.md",
+)
 
 
 @dataclass
@@ -107,7 +137,57 @@ def run_draft_stage_a(
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
 ) -> tuple[DraftRunSummary, Path]:
-    run_id = run_id or f"draft-a-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:8]}"
+    if limit_chapters > STAGE_A_MAX_CHAPTERS:
+        raise ValueError(f"Stage A hard limit: max {STAGE_A_MAX_CHAPTERS} chapters")
+    return run_draft_stage(
+        spec=STAGE_A_SPEC,
+        repo_root=repo_root,
+        input_dir=input_dir,
+        limit_chapters=limit_chapters,
+        run_id=run_id,
+        provider_factory=provider_factory,
+    )
+
+
+def run_draft_stage_b(
+    *,
+    repo_root: Path,
+    input_dir: Path,
+    limit_chapters: int = STAGE_B_MAX_CHAPTERS,
+    run_id: str | None = None,
+    provider_factory: Callable[[CostGuard], Any] | None = None,
+) -> tuple[DraftRunSummary, Path]:
+    if limit_chapters > STAGE_B_MAX_CHAPTERS:
+        raise ValueError(f"Stage B hard limit: max {STAGE_B_MAX_CHAPTERS} chapters")
+    return run_draft_stage(
+        spec=STAGE_B_SPEC,
+        repo_root=repo_root,
+        input_dir=input_dir,
+        limit_chapters=limit_chapters,
+        run_id=run_id,
+        provider_factory=provider_factory,
+    )
+
+
+def _default_run_id(spec: DraftStageSpec) -> str:
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    if spec.stage_key == "stage_b":
+        return f"{spec.run_id_prefix}_{ts}_draft_stage_b_50ch"
+    return f"{spec.run_id_prefix}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:8]}"
+
+
+def run_draft_stage(
+    *,
+    spec: DraftStageSpec,
+    repo_root: Path,
+    input_dir: Path,
+    limit_chapters: int,
+    run_id: str | None = None,
+    provider_factory: Callable[[CostGuard], Any] | None = None,
+) -> tuple[DraftRunSummary, Path]:
+    if limit_chapters > spec.limit_chapters:
+        raise ValueError(f"{spec.scope} hard limit: max {spec.limit_chapters} chapters")
+    run_id = run_id or _default_run_id(spec)
     run_root = repo_root / "workspace" / "runs" / run_id
     draft_dir = run_root / "draft"
     draft_dir.mkdir(parents=True, exist_ok=True)
@@ -161,18 +241,27 @@ def run_draft_stage_a(
             )
             result = None
             last_exc: Exception | None = None
+            ok, msg = False, "no_attempt"
             for attempt in range(1, MAX_API_RETRIES + 1):
                 try:
                     result = provider.generate(messages, options)
                     last_exc = None
-                    break
                 except (CostGuardError, RuntimeError) as exc:
                     last_exc = exc
+                    result = None
                     if attempt >= MAX_API_RETRIES:
                         break
                     time.sleep(min(30, 5 * attempt))
+                    continue
+                ok, msg = _apply_items(chapter, pending, result.raw_output)
+                if ok:
+                    break
+                result = None
+                if attempt >= MAX_API_RETRIES:
+                    break
+                time.sleep(min(30, 5 * attempt))
             if last_exc is not None or result is None:
-                exc = last_exc or RuntimeError("provider returned no result")
+                exc = last_exc or RuntimeError(msg or "provider returned no result")
                 summary.aborted = True
                 summary.abort_reason = str(exc)
                 controlled.abort(str(exc))
@@ -182,6 +271,7 @@ def run_draft_stage_a(
                 _write_run_artifacts(
                     repo_root,
                     run_root,
+                    spec,
                     summary,
                     parsed_chapters,
                     chapter_paths,
@@ -189,7 +279,6 @@ def run_draft_stage_a(
                 )
                 return summary, run_root
 
-            ok, msg = _apply_items(chapter, pending, result.raw_output)
             summary.api_calls += 1
             ch_result.api_calls += 1
             if not ok:
@@ -202,6 +291,7 @@ def run_draft_stage_a(
                 _write_run_artifacts(
                     repo_root,
                     run_root,
+                    spec,
                     summary,
                     parsed_chapters,
                     chapter_paths,
@@ -227,15 +317,18 @@ def run_draft_stage_a(
         summary.spent_tokens = guard.spent_tokens
 
     controlled.complete()
-    _write_run_artifacts(repo_root, run_root, summary, parsed_chapters, chapter_paths, input_dir)
+    _write_run_artifacts(
+        repo_root, run_root, spec, summary, parsed_chapters, chapter_paths, input_dir
+    )
     export_segments_doc(parsed_chapters, run_root / "segments.json")
-    _write_quality_reports(run_root, summary, parsed_chapters)
+    _write_quality_reports(run_root, spec, summary, parsed_chapters)
     return summary, run_root
 
 
 def _write_run_artifacts(
     repo_root: Path,
     run_root: Path,
+    spec: DraftStageSpec,
     summary: DraftRunSummary,
     chapters: list[ParsedChapter],
     chapter_paths: list[Path],
@@ -245,8 +338,8 @@ def _write_run_artifacts(
     meta = {
         "run_id": summary.run_id,
         "phase": "draft",
-        "stage": "stage_a",
-        "scope": "draft_stage_a_5ch",
+        "stage": spec.stage_key,
+        "scope": spec.scope,
         "started_at": _utc_now(),
         "provider_mode": summary.provider_mode,
         "model_name": summary.model_name,
@@ -273,6 +366,7 @@ def _write_run_artifacts(
 
 def _write_quality_reports(
     run_root: Path,
+    spec: DraftStageSpec,
     summary: DraftRunSummary,
     chapters: list[ParsedChapter],
 ) -> None:
@@ -286,10 +380,14 @@ def _write_quality_reports(
         and coverage >= 0.98
         and done == total
     )
+    next_eligible_key = (
+        "stage_c_eligible" if spec.stage_key == "stage_b" else "stage_b_eligible"
+    )
     report = {
         "run_id": summary.run_id,
         "phase": "draft",
-        "stage": "stage_a",
+        "stage": spec.stage_key,
+        "scope": spec.scope,
         "coverage_ratio": round(coverage, 4),
         "segments_total": total,
         "segments_translated": done,
@@ -307,17 +405,20 @@ def _write_quality_reports(
             for c in summary.chapters
         ],
         "passed": passed,
-        "stage_b_eligible": passed,
+        next_eligible_key: passed,
         "generated_at": _utc_now(),
     }
     (run_root / "draft_quality_report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    stage_title = "Stage A" if spec.stage_key == "stage_a" else "Stage B"
+    chapter_cap = spec.limit_chapters
     md_lines = [
-        "# Draft Stage A 质量报告",
+        f"# Draft {stage_title} 质量报告",
         "",
         f"- run_id: `{summary.run_id}`",
+        f"- scope: `{spec.scope}`",
         f"- provider: `{summary.provider_mode}` / `{summary.model_name}`",
         f"- 段落覆盖: {done}/{total} ({coverage * 100:.1f}%)",
         f"- API 调用次数: {summary.api_calls}",
@@ -332,20 +433,29 @@ def _write_quality_reports(
     md_lines.extend(
         [
             "",
-            "## Stage B 晋级",
+            f"## {spec.next_stage_label} 晋级",
             "",
-            "可晋级 Stage B（受控扩章）" if passed else "不可晋级：需修复流水线后重跑，禁止手改译文",
+            (
+                f"可晋级 {spec.next_stage_label}（受控扩章）"
+                if passed
+                else "不可晋级：需修复流水线后重跑，禁止手改译文"
+            ),
             "",
         ]
     )
     (run_root / "draft_quality_report.md").write_text("\n".join(md_lines), encoding="utf-8")
     go = "go" if passed else "no-go"
-    (run_root / "go_decision.md").write_text(
+    stage_label = (
+        f"Stage A draft ({chapter_cap} chapters)"
+        if spec.stage_key == "stage_a"
+        else f"Stage B draft ({chapter_cap} chapters, ch-001–ch-{chapter_cap:03d})"
+    )
+    (run_root / spec.go_decision_filename).write_text(
         "\n".join(
             [
                 f"# Go decision: **{go}**",
                 "",
-                f"Stage A draft (5 chapters): {'PASS' if passed else 'FAIL'}.",
+                f"{stage_label}: {'PASS' if passed else 'FAIL'}.",
                 "",
                 "Refine phase is **blocked** until baseline draft exists and passes quality gate.",
                 "",

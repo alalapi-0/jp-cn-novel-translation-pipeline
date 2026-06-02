@@ -14,7 +14,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from providers.cost_guard import CostGuard, CostGuardConfig
 from providers.registry import ProviderMode, get_provider
 from translation.chapter_parser import parse_chapter_file
-from translation.draft_runner import run_draft_stage_a
+from translation.draft_runner import run_draft_stage_a, run_draft_stage_b
 from translation.response_extractor import extract_translations
 from translation.validator import validate_draft_items
 
@@ -99,6 +99,71 @@ def test_run_draft_stage_a_fake(tmp_path, monkeypatch):
     assert (run_root / "draft_quality_report.json").is_file()
     report = json.loads((run_root / "draft_quality_report.json").read_text(encoding="utf-8"))
     assert report["passed"] is True
+
+
+def test_run_draft_stage_b_fake(tmp_path, monkeypatch):
+    monkeypatch.setenv("CONTROLLED_RUN_ENABLED", "true")
+    monkeypatch.setenv("REAL_API_TESTS_ENABLED", "false")
+    input_dir = tmp_path / "input_jp"
+    input_dir.mkdir()
+    for n in (1, 2):
+        sample = f"""# 测试章{n}
+
+## 节
+
+段落一です。
+
+段落二です。
+"""
+        (input_dir / f"{n:03d}-test.md").write_text(sample, encoding="utf-8")
+
+    call_count = {"n": 0}
+
+    class StubProvider:
+        provider_id = "stub"
+        model_name = "stub-model"
+        network_calls = 0
+
+        def __init__(self, cost_guard=None):
+            self.cost_guard = cost_guard
+
+        def generate(self, messages, options=None):
+            from providers.types import ModelResult
+
+            self.network_calls += 1
+            call_count["n"] += 1
+            ch = "001" if call_count["n"] <= 1 else "002"
+            fixed = {
+                "items": [
+                    {"segment_id": f"ch-{ch}-seg-001", "translation": "段落一。"},
+                    {"segment_id": f"ch-{ch}-seg-002", "translation": "段落二。"},
+                ]
+            }
+            raw = json.dumps(fixed, ensure_ascii=False)
+            result = ModelResult(
+                provider_id=self.provider_id,
+                model_name=self.model_name,
+                raw_output=raw,
+                parsed_output=fixed,
+            )
+            result.mark_finished("ok")
+            if self.cost_guard:
+                self.cost_guard.record_call(10, 0.0001)
+            return result
+
+    summary, run_root = run_draft_stage_b(
+        repo_root=tmp_path,
+        input_dir=input_dir,
+        limit_chapters=2,
+        run_id="test-run-b",
+        provider_factory=lambda g: StubProvider(cost_guard=g),
+    )
+    assert summary.translated_segments == 4
+    assert (run_root / "draft_quality_report.json").is_file()
+    assert (run_root / "stage_draft_b_50ch_go_decision.md").is_file()
+    report = json.loads((run_root / "draft_quality_report.json").read_text(encoding="utf-8"))
+    assert report["passed"] is True
+    assert report["stage_c_eligible"] is True
 
 
 def test_parse_e2e_sample():
