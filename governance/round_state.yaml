@@ -1,19 +1,22 @@
-round_id: round_44_tooling_checks_bundle
-round_name: "Tooling checks bundle and gate frontend probe"
-round_number_human: "44-prep"
+round_id: round_43_tooling_environment_audit
+round_name: "Tooling environment audit and repo inventory"
+round_number_human: "43"
 status: completed
 type: tooling
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "agent_gate frontend_mvp_exists check"
-  - "scripts/run_tooling_checks.sh and npm run check:tooling"
+  - "scripts/scan_repo_inventory.py inventory + environment audit"
+  - "governance/repo_inventory.example.json committed summary"
+  - "tests/test_scan_repo_inventory.py schema stability"
+  - "npm run check:tooling includes inventory scan"
 
 next_recommended_round:
-  id: round_43
-  title: "Tooling environment audit"
+  id: round_44
+  title: "Playwright smoke test setup"
 
 blockers:
   hard: []
-  soft: []
+  soft:
+    - "pytest not on system Python; use .venv/bin/pytest or pip install for local test runs"

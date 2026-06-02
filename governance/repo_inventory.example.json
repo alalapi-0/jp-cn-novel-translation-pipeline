@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-06-02T05:07:00Z",
+  "counts_summary": {
+    "scripts": 15,
+    "tests": 6,
+    "prompts": 46,
+    "tooling_prompts": 10,
+    "frontend_files": 7,
+    "governance_files": 7
+  },
+  "environment_present": {
+    "python": true,
+    "node": true,
+    "npm": true,
+    "git": true,
+    "gh": true,
+    "pytest": false,
+    "playwright": true,
+    "mcp_config": true,
+    "env_tracked": false
+  },
+  "structure": {
+    "directions_jp_to_cn": true,
+    "directions_cn_to_jp": true,
+    "shared": true
+  },
+  "tooling_prompts_meets_minimum": true,
+  "gaps_by_round_keys": [
+    "round_41"
+  ]
+}

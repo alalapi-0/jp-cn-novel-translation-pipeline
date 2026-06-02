@@ -19,6 +19,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.venv/
 
 # Logs
 logs/*.log
@@ -74,3 +75,6 @@ temp/
 # Playwright / browser automation artifacts
 artifacts/
 .playwright-mcp/
+
+# Generated inventory (committed summary: repo_inventory.example.json)
+governance/repo_inventory.generated.json

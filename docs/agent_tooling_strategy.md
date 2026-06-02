@@ -35,7 +35,10 @@
 ```bash
 git status
 git check-ignore -v .env 2>/dev/null || true
-python3 scripts/agent_gate.py   # Round 41 起
+python3 scripts/agent_gate.py
+python3 scripts/check_protocol_standard.py
+python3 scripts/scan_repo_inventory.py   # Round 43 起
+npm run check:tooling                    # 捆绑 gate + protocol + inventory + pytest
 ```
 
 ---
