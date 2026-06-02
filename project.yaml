@@ -6,9 +6,9 @@ project:
   owner: user
   primary_language: zh-CN
   output_language: bilingual_zh_ja
-  stage: governance_and_architecture
-  current_round_human: "Governance Round 02"
-  current_round_machine: governance_round_02
+  stage: phase_2_pilot_ready
+  current_round_human: "Round 50 (Phase 1 tooling complete)"
+  current_round_machine: round_50_e2e_agent_assisted_trial
 
 repository:
   entry_points:

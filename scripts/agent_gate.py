@@ -316,6 +316,8 @@ REVIEW_ISSUE_SCHEMA = REPO_ROOT / "data" / "schemas" / "review_issue.schema.json
 REVIEW_EXAMPLE_REPORT = REPO_ROOT / "data" / "examples" / "review_issue_report.example.json"
 FRONTEND_ISSUES_PAGE = REPO_ROOT / "frontend" / "issues.html"
 REVIEW_SEGMENTS_FIXTURE = REPO_ROOT / "data" / "examples" / "review_segments.fixture.json"
+E2E_TRIAL_SCRIPT = REPO_ROOT / "scripts" / "run_round_50_e2e_trial.py"
+E2E_SYNTHETIC_SOURCE = REPO_ROOT / "data" / "examples" / "e2e_trial_chapter.md"
 
 
 def check_vector_store_tooling() -> list[CheckResult]:
@@ -484,6 +486,56 @@ def check_quality_review_tooling() -> list[CheckResult]:
     return results
 
 
+def check_round_50_e2e_trial() -> list[CheckResult]:
+    """Round 50 controlled E2E trial scaffold."""
+    results: list[CheckResult] = []
+    for cid, path in (
+        ("e2e_trial_script_exists", E2E_TRIAL_SCRIPT),
+        ("e2e_synthetic_source_exists", E2E_SYNTHETIC_SOURCE),
+    ):
+        if path.is_file():
+            results.append(CheckResult(cid, Severity.PASS, f"found: {_rel_path(path)}"))
+        else:
+            results.append(
+                CheckResult(cid, Severity.WARN, f"missing Round 50 artifact: {_rel_path(path)}")
+            )
+    if not E2E_TRIAL_SCRIPT.is_file():
+        return results
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(E2E_TRIAL_SCRIPT), "--skip-report"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 0:
+            results.append(
+                CheckResult(
+                    "round_50_e2e_trial",
+                    Severity.PASS,
+                    "controlled E2E trial script OK on synthetic sample",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_50_e2e_trial",
+                    Severity.WARN,
+                    f"E2E trial blocked: {proc.stderr.strip() or proc.stdout.strip()}",
+                )
+            )
+    except Exception as exc:  # noqa: BLE001
+        results.append(
+            CheckResult(
+                "round_50_e2e_trial",
+                Severity.WARN,
+                f"E2E trial skipped: {exc}",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -529,6 +581,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.append(check_frontend_mvp_exists())
     results.extend(check_vector_store_tooling())
     results.extend(check_quality_review_tooling())
+    results.extend(check_round_50_e2e_trial())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

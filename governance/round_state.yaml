@@ -1,30 +1,35 @@
-round_id: round_49_translation_quality_auto_review_workbench
-round_name: "Translation quality auto-review workbench"
-round_number_human: "49"
+round_id: round_50_e2e_agent_assisted_trial
+round_name: "End-to-end agent-assisted controlled translation trial"
+round_number_human: "50"
 status: completed
-type: review
+type: e2e_validation
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "data/schemas/review_issue.schema.json — ReviewIssue report + issue fields"
-  - "src/quality_review/ — term_consistency, segment_alignment, refinement_diff checkers"
-  - "scripts/run_quality_review.py — CLI, --write-example, --workspace"
-  - "data/examples/review_* fixtures + review_issue_report.example.json (5 synthetic issues)"
-  - "frontend/issues.html + review-issue-report.json — filter, status localStorage, no auto-fix on locked"
-  - "frontend/review.html segment highlight + ?segment= deep link"
-  - "tests/test_quality_review_checkers.py + tests/ui/issues.spec.ts"
-  - "agent_gate quality_review_tooling checks"
-  - "docs/quality_review_workflow.md machine dimensions + wireup + round_50_e2e checklist"
+  - "data/examples/e2e_trial_chapter.md — synthetic JP short story (non-copyright)"
+  - "scripts/run_round_50_e2e_trial.py — ingest → parse → terminology → characters → fake translate → refine → review → export → vector mock"
+  - "workspace/e2e_trial/ + workspace/review/issue_report.json — gitignored trial artifacts"
+  - "docs/reports/round_50_controlled_trial_report.md — local go/no-go (gitignored body)"
+  - "tests/test_round_50_e2e_trial.py — pipeline smoke"
+  - "agent_gate check_round_50_e2e_trial"
+  - "Playwright smoke + issues spec verified on Workbench"
+  - "Round 41–50 tooling chain closed; Phase 2 recommended"
 
 next_recommended_round:
-  id: round_50
-  title: "End-to-end agent-assisted controlled translation trial"
+  id: phase_2_round_51
+  title: "Phase 2 — long-form controlled trial, multi-project backend, semantic checkers"
+
+next_recommended_phase:
+  id: phase_2
+  title: "Production pilot — authorized long-form runs, API service layer, CI E2E"
+  rationale: "Round 41–50 tooling validated on synthetic E2E; proceed only with explicit user authorization and cost budget for real API."
 
 blockers:
   hard: []
   soft:
     - "pytest not on system Python; use .venv/bin/pytest for unit tests"
-    - "semantic/voice/world checkers deferred to Round 50+"
+    - "semantic/voice/world checkers deferred to Phase 2 (Round 51+)"
     - "issue status write-back to workspace JSON deferred — localStorage only in MVP"
     - "docs/reports/*.md gitignored; gate report via CLI stdout"
+    - "OMISSION checker token heuristic weak on unsegmented Japanese — improve in Phase 2"
