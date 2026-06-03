@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +25,36 @@ STAGE_STATE_MAP = {
     "stage_a": "draft_stage_a_5ch",
     "stage_b": "draft_stage_b_50ch",
 }
+
+
+def _acquire_translate_lock(stage: str, run_id: str) -> int:
+    """Non-blocking exclusive lock for one stage/run translate process."""
+    lock_dir = REPO_ROOT / "workspace" / ".locks"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    key = run_id.strip() if run_id.strip() else f"{stage}_default"
+    lock_path = lock_dir / f"translate_{stage}_{key}.lock"
+    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        print(
+            f"translate.py already running for stage={stage} run_id={key} (lock: {lock_path})",
+            file=sys.stderr,
+        )
+        return -1
+    os.ftruncate(fd, 0)
+    os.write(fd, f"{os.getpid()}\n".encode())
+    return fd
+
+
+def _release_translate_lock(fd: int) -> None:
+    if fd < 0:
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 def _update_stage_state(
@@ -73,55 +105,62 @@ def main() -> int:
         run_fn = run_draft_stage_b
 
     run_id = args.run_id.strip() or None
-    _update_stage_state(
-        REPO_ROOT,
-        args.stage,
-        run_id or "pending",
-        "in_progress",
-        {"limit_chapters": limit},
-    )
+    lock_fd = _acquire_translate_lock(args.stage, args.run_id)
+    if lock_fd < 0:
+        return 2
 
     try:
-        summary, run_root = run_fn(
-            repo_root=REPO_ROOT,
-            input_dir=args.input_dir,
-            limit_chapters=limit,
-            run_id=run_id,
-        )
-    except Exception as exc:
         _update_stage_state(
             REPO_ROOT,
             args.stage,
-            run_id or "failed",
-            "failed",
-            {"error": str(exc)},
+            run_id or "pending",
+            "in_progress",
+            {"limit_chapters": limit},
         )
-        print(f"translate failed: {exc}", file=sys.stderr)
-        return 2
 
-    ok = not summary.aborted and all(c.ok for c in summary.chapters)
-    status = "completed" if ok else "failed"
-    _update_stage_state(
-        REPO_ROOT,
-        args.stage,
-        summary.run_id,
-        status,
-        {
-            "translated_segments": summary.translated_segments,
-            "total_segments": summary.total_segments,
-            "provider_mode": summary.provider_mode,
-            "model_name": summary.model_name,
-            "run_root": str(run_root.relative_to(REPO_ROOT)),
-            "api_calls": summary.api_calls,
-            "spent_usd": summary.spent_usd,
-        },
-    )
-    print(
-        f"run_id={summary.run_id} status={status} "
-        f"segments={summary.translated_segments}/{summary.total_segments} "
-        f"api_calls={summary.api_calls} cost_usd={summary.spent_usd:.6f}"
-    )
-    return 0 if ok else 1
+        try:
+            summary, run_root = run_fn(
+                repo_root=REPO_ROOT,
+                input_dir=args.input_dir,
+                limit_chapters=limit,
+                run_id=run_id,
+            )
+        except Exception as exc:
+            _update_stage_state(
+                REPO_ROOT,
+                args.stage,
+                run_id or "failed",
+                "failed",
+                {"error": str(exc)},
+            )
+            print(f"translate failed: {exc}", file=sys.stderr)
+            return 2
+
+        ok = not summary.aborted and all(c.ok for c in summary.chapters)
+        status = "completed" if ok else "failed"
+        _update_stage_state(
+            REPO_ROOT,
+            args.stage,
+            summary.run_id,
+            status,
+            {
+                "translated_segments": summary.translated_segments,
+                "total_segments": summary.total_segments,
+                "provider_mode": summary.provider_mode,
+                "model_name": summary.model_name,
+                "run_root": str(run_root.relative_to(REPO_ROOT)),
+                "api_calls": summary.api_calls,
+                "spent_usd": summary.spent_usd,
+            },
+        )
+        print(
+            f"run_id={summary.run_id} status={status} "
+            f"segments={summary.translated_segments}/{summary.total_segments} "
+            f"api_calls={summary.api_calls} cost_usd={summary.spent_usd:.6f}"
+        )
+        return 0 if ok else 1
+    finally:
+        _release_translate_lock(lock_fd)
 
 
 if __name__ == "__main__":
