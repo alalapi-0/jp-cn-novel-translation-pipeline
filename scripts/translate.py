@@ -27,6 +27,24 @@ STAGE_STATE_MAP = {
 }
 
 
+def _apply_local_env(repo_root: Path) -> None:
+    env_path = repo_root / ".env"
+    if not env_path.is_file():
+        return
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        os.environ[key] = value
+
+
 def _acquire_translate_lock(stage: str, run_id: str) -> int:
     """Non-blocking exclusive lock for one stage/run translate process."""
     lock_dir = REPO_ROOT / "workspace" / ".locks"
@@ -85,7 +103,14 @@ def main() -> int:
     parser.add_argument("--limit-chapters", type=int, default=None)
     parser.add_argument("--input-dir", type=Path, default=REPO_ROOT / "input_jp")
     parser.add_argument("--run-id", default="")
+    parser.add_argument(
+        "--chapter-offset",
+        type=int,
+        default=0,
+        help="Skip first N sorted chapter files (for continuing full-novel batches)",
+    )
     args = parser.parse_args()
+    _apply_local_env(REPO_ROOT)
 
     if args.phase != "draft":
         print("Only draft phase is implemented", file=sys.stderr)
@@ -115,7 +140,7 @@ def main() -> int:
             args.stage,
             run_id or "pending",
             "in_progress",
-            {"limit_chapters": limit},
+            {"limit_chapters": limit, "chapter_offset": args.chapter_offset},
         )
 
         try:
@@ -123,6 +148,7 @@ def main() -> int:
                 repo_root=REPO_ROOT,
                 input_dir=args.input_dir,
                 limit_chapters=limit,
+                chapter_offset=args.chapter_offset,
                 run_id=run_id,
             )
         except Exception as exc:

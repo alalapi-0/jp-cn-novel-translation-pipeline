@@ -10,7 +10,7 @@ test("homepage loads project dashboard", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page.getByRole("heading", { name: "翻译工作台" })).toBeVisible();
   await expect(page.getByText("apiMode=dry-run")).toBeVisible();
-  await expect(page.getByRole("link", { name: "进入对照审核 →" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "进入对照审核 →" }).first()).toBeVisible();
 });
 
 test("project home shows chapter manager summary", async ({ page }) => {

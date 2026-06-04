@@ -9,7 +9,10 @@ full_translation_executed: false
 completed_tasks:
   - "phase_2_pilot_hold lifted — user-authorized continuous real API refine on run_20260602_203645_draft_stage_b_50ch"
   - "OpenRouter real smoke OK (session MAX_TEST_COST_USD override; .env ceiling remains 0)"
-  - "Stage C real refine batches in progress (grok-4.3 via OpenRouter); segments.json updated on disk"
+  - "Stage C real refine batches resumed after cancel (stale locks cleared; background loop)"
+  - "chapter_offset support for translate.py / draft_runner (continue ch51+ in 50-ch batches)"
+  - "Parallel real API: refine loop on 50ch run + translate ch51-100 batch started"
+  - "pilot_batch_chain.sh orchestrator for offsets 100+ after in-flight 0/50 complete"
 
 next_recommended_round:
   id: round_57_refine_complete

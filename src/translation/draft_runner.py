@@ -134,6 +134,7 @@ def run_draft_stage_a(
     repo_root: Path,
     input_dir: Path,
     limit_chapters: int,
+    chapter_offset: int = 0,
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
 ) -> tuple[DraftRunSummary, Path]:
@@ -144,6 +145,7 @@ def run_draft_stage_a(
         repo_root=repo_root,
         input_dir=input_dir,
         limit_chapters=limit_chapters,
+        chapter_offset=chapter_offset,
         run_id=run_id,
         provider_factory=provider_factory,
     )
@@ -154,6 +156,7 @@ def run_draft_stage_b(
     repo_root: Path,
     input_dir: Path,
     limit_chapters: int = STAGE_B_MAX_CHAPTERS,
+    chapter_offset: int = 0,
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
 ) -> tuple[DraftRunSummary, Path]:
@@ -164,6 +167,7 @@ def run_draft_stage_b(
         repo_root=repo_root,
         input_dir=input_dir,
         limit_chapters=limit_chapters,
+        chapter_offset=chapter_offset,
         run_id=run_id,
         provider_factory=provider_factory,
     )
@@ -206,6 +210,7 @@ def run_draft_stage(
     repo_root: Path,
     input_dir: Path,
     limit_chapters: int,
+    chapter_offset: int = 0,
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
 ) -> tuple[DraftRunSummary, Path]:
@@ -237,9 +242,11 @@ def run_draft_stage(
             provider_mode = "fake"
             model_name = provider.model_name
 
-    chapter_paths = list_chapter_files(input_dir, limit_chapters)
+    chapter_paths = list_chapter_files(input_dir, limit_chapters, offset=chapter_offset)
     if not chapter_paths:
-        raise FileNotFoundError(f"no chapter files under {input_dir}")
+        raise FileNotFoundError(
+            f"no chapter files under {input_dir} (offset={chapter_offset}, limit={limit_chapters})"
+        )
 
     parsed_chapters = [parse_chapter_file(p) for p in chapter_paths]
     _hydrate_from_segments_json(run_root, parsed_chapters)
@@ -309,6 +316,7 @@ def run_draft_stage(
                     parsed_chapters,
                     chapter_paths,
                     input_dir,
+                    chapter_offset=chapter_offset,
                 )
                 return summary, run_root
 
@@ -329,6 +337,7 @@ def run_draft_stage(
                     parsed_chapters,
                     chapter_paths,
                     input_dir,
+                    chapter_offset=chapter_offset,
                 )
                 return summary, run_root
 
@@ -355,7 +364,14 @@ def run_draft_stage(
 
     controlled.complete()
     _write_run_artifacts(
-        repo_root, run_root, spec, summary, parsed_chapters, chapter_paths, input_dir
+        repo_root,
+        run_root,
+        spec,
+        summary,
+        parsed_chapters,
+        chapter_paths,
+        input_dir,
+        chapter_offset=chapter_offset,
     )
     export_segments_doc(parsed_chapters, run_root / "segments.json")
     _write_quality_reports(run_root, spec, summary, parsed_chapters)
@@ -370,6 +386,8 @@ def _write_run_artifacts(
     chapters: list[ParsedChapter],
     chapter_paths: list[Path],
     input_dir: Path,
+    *,
+    chapter_offset: int = 0,
 ) -> None:
     export_segments_doc(chapters, run_root / "segments.json")
     meta = {
@@ -384,6 +402,7 @@ def _write_run_artifacts(
         "chapter_files": [str(p.relative_to(repo_root)) for p in chapter_paths],
         "input_dir": str(input_dir.relative_to(repo_root)),
         "limit_chapters": len(chapter_paths),
+        "chapter_offset": chapter_offset,
         "real_api_called": summary.provider_mode.startswith("real"),
         "summary": {
             "total_segments": summary.total_segments,

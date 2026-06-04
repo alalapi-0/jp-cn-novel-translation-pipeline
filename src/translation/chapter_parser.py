@@ -78,10 +78,15 @@ def parse_chapter_file(path: Path) -> ParsedChapter:
     )
 
 
-def list_chapter_files(input_dir: Path, limit: int) -> list[Path]:
+def list_chapter_files(input_dir: Path, limit: int, *, offset: int = 0) -> list[Path]:
     files = sorted(
         p
         for p in input_dir.iterdir()
         if p.is_file() and p.suffix.lower() in (".md", ".txt") and p.name != "README.md"
     )
-    return files[:limit]
+    if offset < 0:
+        raise ValueError("chapter offset must be >= 0")
+    if offset >= len(files):
+        return []
+    end = offset + limit
+    return files[offset:end]
