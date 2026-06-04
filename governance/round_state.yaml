@@ -1,23 +1,23 @@
-round_id: round_53_multi_project_manifest
-round_name: "Phase 2 — Multi-project manifest backend + Workbench switch"
-round_number_human: "53"
+round_id: round_54_semantic_checker_mvp
+round_name: "Phase 2 — Semantic checker MVP + Workbench quality-review API"
+round_number_human: "54"
 status: completed
 type: implementation
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "src/workbench/project_registry.py — workspace/manifests multi project_id + active switch"
-  - "src/workbench/server.py — /api/projects, /api/projects/active, workbench-data"
-  - "scripts/serve_frontend.py — static + manifest API on dev server"
-  - "data/examples/workbench_project.*.example.json — two demo projects"
-  - "frontend app.js — project list, switcher, API with mock fallback"
-  - "agent_gate round_53_multi_project_manifest checks"
-  - "tests/test_multi_project_manifest.py"
+  - "check_mistranslation + check_placeholder_lost in src/quality_review/checkers.py"
+  - "src/quality_review/workbench_adapter.py — manifest segments → segments_doc"
+  - "GET /api/projects/{id}/quality-review on workbench server"
+  - "review_segments.fixture seg-004/005 + workbench demo manifest segments"
+  - "frontend fetchIssueReport API-first with static fallback"
+  - "tests/test_semantic_checkers.py + agent_gate round_54_* checks"
+  - "regenerated review_issue_report.example.json + frontend asset"
 
 next_recommended_round:
-  id: round_54_semantic_checker_mvp
-  title: "Semantic checker MVP (MISTRANSLATION / PLACEHOLDER_LOST)"
+  id: round_55_ci_tooling_integration
+  title: "CI tooling integration (check:tooling + optional test:ui)"
 
 next_recommended_phase:
   id: phase_2

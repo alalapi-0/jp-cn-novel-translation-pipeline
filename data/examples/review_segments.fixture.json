@@ -2,7 +2,7 @@
   "project_id": "demo-jp-cn",
   "language_direction": "JP_TO_CN",
   "chapter_id": "ch-001",
-  "expected_segment_ids": ["seg-001", "seg-002", "seg-003"],
+  "expected_segment_ids": ["seg-001", "seg-002", "seg-003", "seg-004", "seg-005"],
   "paragraphs": [
     {
       "paragraph_id": "para-001",
@@ -33,6 +33,24 @@
           "refined_text": "（旧润色 C — 勿覆盖）",
           "status": "human_reviewed",
           "human_edited": true
+        },
+        {
+          "segment_id": "seg-004",
+          "source_text": "詳細は {{PH_LINK_1}} および https://example.com/docs を参照。",
+          "target_text": "详情请参阅文档。",
+          "draft_text": "详情请参阅文档。",
+          "refined_text": "",
+          "status": "machine_translated",
+          "human_edited": false
+        },
+        {
+          "segment_id": "seg-005",
+          "source_text": "彼女は学校に行かなかった。",
+          "target_text": "她去了学校。",
+          "draft_text": "她去了学校。",
+          "refined_text": "",
+          "status": "machine_translated",
+          "human_edited": false
         }
       ]
     }

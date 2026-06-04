@@ -317,6 +317,7 @@ REVIEW_ISSUE_SCHEMA = REPO_ROOT / "data" / "schemas" / "review_issue.schema.json
 REVIEW_EXAMPLE_REPORT = REPO_ROOT / "data" / "examples" / "review_issue_report.example.json"
 FRONTEND_ISSUES_PAGE = REPO_ROOT / "frontend" / "issues.html"
 REVIEW_SEGMENTS_FIXTURE = REPO_ROOT / "data" / "examples" / "review_segments.fixture.json"
+REVIEW_GLOSSARY_FIXTURE = REPO_ROOT / "data" / "examples" / "review_glossary.fixture.json"
 E2E_TRIAL_SCRIPT = REPO_ROOT / "scripts" / "run_round_50_e2e_trial.py"
 E2E_SYNTHETIC_SOURCE = REPO_ROOT / "data" / "examples" / "e2e_trial_chapter.md"
 
@@ -832,6 +833,110 @@ def check_round_53_multi_project_manifest() -> list[CheckResult]:
     return results
 
 
+def check_round_54_semantic_checker_mvp() -> list[CheckResult]:
+    """Round 54 MISTRANSLATION / PLACEHOLDER_LOST + workbench quality-review API."""
+    checkers_path = REPO_ROOT / "src" / "quality_review" / "checkers.py"
+    adapter_path = REPO_ROOT / "src" / "quality_review" / "workbench_adapter.py"
+    segments_fixture = REPO_ROOT / "data" / "examples" / "review_segments.fixture.json"
+    results: list[CheckResult] = []
+
+    for cid, path in (
+        ("round_54_checkers_module", checkers_path),
+        ("round_54_workbench_adapter", adapter_path),
+    ):
+        if path.is_file():
+            results.append(CheckResult(cid, Severity.PASS, f"found: {_rel_path(path)}"))
+        else:
+            results.append(CheckResult(cid, Severity.WARN, f"missing {_rel_path(path)}"))
+            return results
+
+    try:
+        sys.path.insert(0, str(REPO_ROOT / "src"))
+        from quality_review.checkers import (  # noqa: WPS433
+            check_mistranslation,
+            check_placeholder_lost,
+            reset_issue_counter,
+        )
+        from quality_review.runner import run_review  # noqa: WPS433
+
+        if not segments_fixture.is_file():
+            results.append(
+                CheckResult(
+                    "round_54_fixture_semantic_cases",
+                    Severity.WARN,
+                    "missing review_segments.fixture.json",
+                )
+            )
+            return results
+
+        report = run_review(segments_fixture, REVIEW_GLOSSARY_FIXTURE)
+        types = set(report.summary.get("by_type", {}))
+        if "MISTRANSLATION" in types and "PLACEHOLDER_LOST" in types:
+            results.append(
+                CheckResult(
+                    "round_54_fixture_semantic_cases",
+                    Severity.PASS,
+                    "fixture emits MISTRANSLATION and PLACEHOLDER_LOST",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_54_fixture_semantic_cases",
+                    Severity.WARN,
+                    f"expected semantic types, got: {sorted(types)}",
+                )
+            )
+
+        server_src = (REPO_ROOT / "src" / "workbench" / "server.py").read_text(encoding="utf-8")
+        if "/quality-review" in server_src:
+            results.append(
+                CheckResult(
+                    "round_54_quality_review_api_route",
+                    Severity.PASS,
+                    "workbench server exposes /quality-review",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_54_quality_review_api_route",
+                    Severity.WARN,
+                    "missing /api/projects/*/quality-review handler",
+                )
+            )
+
+        doc = json.loads(segments_fixture.read_text(encoding="utf-8"))
+        reset_issue_counter()
+        ph_issues = check_placeholder_lost(doc)
+        mis_issues = check_mistranslation(doc)
+        if ph_issues and mis_issues:
+            results.append(
+                CheckResult(
+                    "round_54_checker_functions",
+                    Severity.PASS,
+                    f"placeholder={len(ph_issues)} mistranslation={len(mis_issues)}",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_54_checker_functions",
+                    Severity.WARN,
+                    "semantic checker functions returned no issues on fixture",
+                )
+            )
+    except Exception as exc:  # noqa: BLE001
+        results.append(
+            CheckResult(
+                "round_54_semantic_runtime",
+                Severity.WARN,
+                f"semantic checker check skipped: {exc}",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -881,6 +986,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_round_51_openrouter_smoke())
     results.extend(check_round_52_refine_stage_c())
     results.extend(check_round_53_multi_project_manifest())
+    results.extend(check_round_54_semantic_checker_mvp())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

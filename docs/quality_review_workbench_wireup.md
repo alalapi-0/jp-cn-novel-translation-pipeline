@@ -32,6 +32,10 @@ cp data/examples/review_issue_report.example.json frontend/assets/review-issue-r
 python3 scripts/run_quality_review.py --workspace
 ```
 
+## Round 54 API
+
+`GET /api/projects/{project_id}/quality-review`（`scripts/serve_frontend.py`）对当前 manifest 的 segments 运行 deterministic checkers，返回与 `review_issue_report` 相同 schema 的 JSON。前端 `fetchIssueReport` 在 dev server 下优先请求该端点，失败时回退 `frontend/assets/review-issue-report.json`。
+
 ## 前端
 
 | 页面 | 路径 | 行为 |

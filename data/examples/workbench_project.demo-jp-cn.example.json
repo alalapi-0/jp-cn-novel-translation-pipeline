@@ -25,6 +25,20 @@
       "source": "（合成原文 C：人工已编辑 — 占位）",
       "draft": "（人工终稿 C — human_edited 保护）",
       "status": "human_reviewed"
+    },
+    {
+      "id": "seg-004",
+      "chapter": 1,
+      "source": "詳細は {{PH_LINK_1}} および https://example.com/docs を参照。",
+      "draft": "详情请参阅文档。",
+      "status": "pending"
+    },
+    {
+      "id": "seg-005",
+      "chapter": 1,
+      "source": "彼女は学校に行かなかった。",
+      "draft": "她去了学校。",
+      "status": "pending"
     }
   ]
 }

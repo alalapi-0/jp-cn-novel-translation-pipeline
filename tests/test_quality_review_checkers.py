@@ -71,10 +71,12 @@ def test_run_review_deterministic_issue_count():
     report_a = run_review(SEGMENTS, GLOSSARY)
     report_b = run_review(SEGMENTS, GLOSSARY)
     assert report_a.summary["total"] == report_b.summary["total"]
-    assert report_a.summary["total"] >= 5
+    assert report_a.summary["total"] >= 7
     types = set(report_a.summary["by_type"])
     assert "LOCKED_TERM_VIOLATION" in types
     assert "SEGMENT_ALIGNMENT_ERROR" in types
+    assert "PLACEHOLDER_LOST" in types
+    assert "MISTRANSLATION" in types
 
 
 def test_example_report_validates():

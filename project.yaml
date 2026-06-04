@@ -7,8 +7,8 @@ project:
   primary_language: zh-CN
   output_language: bilingual_zh_ja
   stage: phase_2_pilot
-  current_round_human: "Round 53 (Multi-project manifest backend)"
-  current_round_machine: round_53_multi_project_manifest
+  current_round_human: "Round 54 (Semantic checker MVP)"
+  current_round_machine: round_54_semantic_checker_mvp
 
 repository:
   entry_points:

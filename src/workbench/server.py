@@ -117,6 +117,26 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         return
                     self._send_json(HTTPStatus.OK, manifest.to_workbench_payload())
                     return
+                if rest.endswith("/quality-review"):
+                    project_id = rest[: -len("/quality-review")].strip("/")
+                    manifest = get_project_manifest(repo_root, project_id)
+                    if manifest is None:
+                        self._send_json(
+                            HTTPStatus.NOT_FOUND,
+                            {"error": f"unknown project_id: {project_id}"},
+                        )
+                        return
+                    from quality_review.workbench_adapter import (  # noqa: WPS433
+                        run_review_for_workbench,
+                    )
+
+                    report = run_review_for_workbench(
+                        project_id=manifest.project_id,
+                        language_direction=manifest.language_direction,
+                        segments=list(manifest.segments),
+                    )
+                    self._send_json(HTTPStatus.OK, report.to_dict())
+                    return
             self.send_error(HTTPStatus.NOT_FOUND)
 
     return WorkbenchHTTPRequestHandler

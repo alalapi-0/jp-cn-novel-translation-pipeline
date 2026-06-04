@@ -48,6 +48,8 @@ def derive_review_status(issues: list[ReviewIssue]) -> str:
     types = {i.issue_type for i in issues}
     if "LOCKED_TERM_VIOLATION" in types or "INCONSISTENT_TERM" in types:
         return "term_conflict"
+    if "MISTRANSLATION" in types or "PLACEHOLDER_LOST" in types:
+        return "review_needed"
     if "SEGMENT_ALIGNMENT_ERROR" in types or "OMISSION" in types:
         return "review_needed"
     if "OVER_REFINEMENT" in types:
@@ -62,9 +64,13 @@ def run_review(
     glossary_path: Path | None = None,
     *,
     generated_by: str = "quality_review_runner",
+    segments_doc: dict[str, Any] | None = None,
+    glossary_doc: dict[str, Any] | None = None,
 ) -> ReviewReport:
-    segments_doc = load_json(segments_path or DEFAULT_SEGMENTS)
-    glossary_doc = load_json(glossary_path or DEFAULT_GLOSSARY)
+    if segments_doc is None:
+        segments_doc = load_json(segments_path or DEFAULT_SEGMENTS)
+    if glossary_doc is None:
+        glossary_doc = load_json(glossary_path or DEFAULT_GLOSSARY)
     issues = run_all_checkers(segments_doc, glossary_doc)
     summary = summarize_issues(issues)
     return ReviewReport(

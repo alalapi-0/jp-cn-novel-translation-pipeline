@@ -42,9 +42,17 @@ Round 41–50 已在合成样章上验证工具链；Phase 2 在用户授权与�
 - `agent_gate` 含 `round_53_*` 检查项 PASS/WARN。
 - Playwright smoke 仍绿（双项目卡片可见）。
 
-## Round 54（建议）：语义 checker MVP
+## Round 54：语义 checker MVP
 
-- `MISTRANSLATION` / `PLACEHOLDER_LOST` 规则层；与 Round 49 Workbench 联动。
+- `src/quality_review/checkers.py`：`check_mistranslation`（日源否定 vs 中译肯定动作）、`check_placeholder_lost`（`{{}}` / URL / `{PH_*}`）。
+- `src/quality_review/workbench_adapter.py` + `GET /api/projects/{id}/quality-review`。
+- 前端 `fetchIssueReport` 优先 API，静态 JSON 回退；fixture `seg-004`/`seg-005` 可复现。
+
+### 验收
+
+- `pytest tests/test_semantic_checkers.py tests/test_quality_review_checkers.py`
+- `agent_gate` 含 `round_54_*` PASS/WARN。
+- Playwright smoke 仍绿（issues/review 无 console error）。
 
 ## Round 55（建议）：CI 集成
 

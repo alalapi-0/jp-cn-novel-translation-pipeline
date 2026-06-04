@@ -98,10 +98,27 @@
     return res.json();
   }
 
-  async function fetchIssueReport() {
+  async function fetchIssueReport(preferredProjectId) {
+    const pid = preferredProjectId || loadActiveProjectId();
+    if (pid) {
+      try {
+        const res = await fetch(
+          `/api/projects/${encodeURIComponent(pid)}/quality-review`
+        );
+        if (res.ok) {
+          const payload = await res.json();
+          payload._source = "api";
+          return payload;
+        }
+      } catch (_apiErr) {
+        /* fallback to static asset */
+      }
+    }
     const res = await fetch("/assets/review-issue-report.json");
     if (!res.ok) throw new Error(`review-issue-report.json ${res.status}`);
-    return res.json();
+    const payload = await res.json();
+    payload._source = "static";
+    return payload;
   }
 
   async function fetchProjectsApi() {
@@ -476,24 +493,36 @@
   document.addEventListener("DOMContentLoaded", async () => {
     try {
       if (document.getElementById("issues-root")) {
-        const report = await fetchIssueReport();
+        const params = new URLSearchParams(window.location.search);
+        let preferredProject = params.get("project") || "";
+        if (!preferredProject) {
+          try {
+            const registry = await fetchProjectsApi();
+            preferredProject =
+              registry.active_project_id || registry.projects?.[0]?.id || "";
+          } catch {
+            preferredProject = loadActiveProjectId() || "";
+          }
+        }
+        const report = await fetchIssueReport(preferredProject);
         bindIssuesPage(report);
         setupIssueHandlers(report);
-        log(`issue report loaded (${report.issues.length} items)`);
+        const src = report._source === "api" ? "quality-review API" : "static asset";
+        log(`issue report loaded (${report.issues.length} items · ${src})`);
         return;
-      }
-
-      let report = null;
-      try {
-        report = await fetchIssueReport();
-        issuesBySegment = indexIssues(report);
-      } catch {
-        issuesBySegment = {};
       }
 
       const params = new URLSearchParams(window.location.search);
       const preferredProject = params.get("project") || "";
       workbenchContext = await loadWorkbenchContext(preferredProject);
+
+      let report = null;
+      try {
+        report = await fetchIssueReport(workbenchContext.activeProjectId);
+        issuesBySegment = indexIssues(report);
+      } catch {
+        issuesBySegment = {};
+      }
       bindHomePage(workbenchContext);
       setupProjectSwitchHandler(workbenchContext);
       setupReviewProjectSelector(workbenchContext);

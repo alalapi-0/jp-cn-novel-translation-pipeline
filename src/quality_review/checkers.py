@@ -7,6 +7,19 @@ from .types import ReviewIssue, utc_now_iso
 
 _ISSUE_SEQ = 0
 _JP_SCRIPT_RE = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
+_PLACEHOLDER_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\{\{[^}]+\}\}"),
+    re.compile(r"\[\[[^\]]+\]\]"),
+    re.compile(r"\{PH_[A-Za-z0-9_]+\}"),
+    re.compile(r"https?://[^\s\]}>]+"),
+)
+_JP_NEGATION_RE = re.compile(
+    r"(?:ない|ません|なかった|なく|ぬ|無い|ないで|ではない|じゃない|行かない|行かなかった|していない)"
+)
+_CN_NEGATION_RE = re.compile(
+    r"(?:没有|未|非|不|没|无|未能|未曾|不会|不是|没去|没有去|未能)"
+)
+_CN_AFFIRM_MOTION_RE = re.compile(r"(?:去了|会来|来到|进入了|已经去)")
 
 
 def _text_length_units(text: str, language_direction: str) -> int:
@@ -233,6 +246,115 @@ def check_segment_alignment(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
     return issues
 
 
+def _collect_placeholders(text: str) -> list[str]:
+    tokens: list[str] = []
+    for pattern in _PLACEHOLDER_PATTERNS:
+        tokens.extend(pattern.findall(text))
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for token in tokens:
+        if token not in seen:
+            seen.add(token)
+            ordered.append(token)
+    return ordered
+
+
+def _negation_polarity_mismatch(source: str, target: str, language_direction: str) -> bool:
+    """MVP: JP source negation vs CN target affirmative motion without negation."""
+    if language_direction != "JP_TO_CN":
+        return False
+    if not source.strip() or not target.strip():
+        return False
+    if not _JP_NEGATION_RE.search(source):
+        return False
+    if _CN_NEGATION_RE.search(target):
+        return False
+    return bool(_CN_AFFIRM_MOTION_RE.search(target))
+
+
+def check_placeholder_lost(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
+    """Detect URL / brace / token placeholders present in source but missing in target."""
+    issues: list[ReviewIssue] = []
+    project_id = segments_doc["project_id"]
+    direction = segments_doc["language_direction"]
+    chapter_id = segments_doc.get("chapter_id", "ch-unknown")
+
+    for para in segments_doc.get("paragraphs", []):
+        paragraph_id = para.get("paragraph_id", "")
+        for seg in para.get("segments", []):
+            source = seg.get("source_text", "") or ""
+            target = seg.get("target_text", "") or ""
+            if not source:
+                continue
+            human_edited = bool(seg.get("human_edited"))
+            for token in _collect_placeholders(source):
+                if token in target:
+                    continue
+                issues.append(
+                    _base_issue(
+                        project_id=project_id,
+                        language_direction=direction,
+                        chapter_id=chapter_id,
+                        paragraph_id=paragraph_id,
+                        segment_id=seg.get("segment_id", ""),
+                        issue_type="PLACEHOLDER_LOST",
+                        severity="high",
+                        description=f"译文中丢失占位符「{token}」",
+                        suggested_fix="在译文中原样保留占位符或受保护标记",
+                        source_text_ref=source[:80],
+                        target_text_ref=target[:80],
+                        created_by="checker.placeholder_lost",
+                        evidence={"placeholder": token},
+                        auto_fixable=not human_edited,
+                        requires_human_review=human_edited,
+                        human_edited_segment=human_edited,
+                    )
+                )
+    return issues
+
+
+def check_mistranslation(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
+    """Rule-layer semantic MVP: negation polarity mismatch (JP→CN)."""
+    issues: list[ReviewIssue] = []
+    project_id = segments_doc["project_id"]
+    direction = segments_doc["language_direction"]
+    chapter_id = segments_doc.get("chapter_id", "ch-unknown")
+
+    for para in segments_doc.get("paragraphs", []):
+        paragraph_id = para.get("paragraph_id", "")
+        for seg in para.get("segments", []):
+            source = seg.get("source_text", "") or ""
+            target = seg.get("target_text", "") or ""
+            if not _negation_polarity_mismatch(source, target, direction):
+                continue
+            human_edited = bool(seg.get("human_edited"))
+            issues.append(
+                _base_issue(
+                    project_id=project_id,
+                    language_direction=direction,
+                    chapter_id=chapter_id,
+                    paragraph_id=paragraph_id,
+                    segment_id=seg.get("segment_id", ""),
+                    issue_type="MISTRANSLATION",
+                    severity="high",
+                    description="原文含否定而译文呈肯定动作，疑似语义极性误译",
+                    suggested_fix="对照原文否定范围，修正译文极性与动作方向",
+                    source_text_ref=source[:80],
+                    target_text_ref=target[:80],
+                    created_by="checker.mistranslation",
+                    evidence={
+                        "rule": "jp_negation_vs_cn_affirm_motion",
+                        "source_has_jp_negation": True,
+                        "target_has_cn_negation": bool(_CN_NEGATION_RE.search(target)),
+                    },
+                    auto_fixable=False,
+                    requires_human_review=True,
+                    human_edited_segment=human_edited,
+                )
+            )
+    return issues
+
+
 def check_refinement_diff(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
     """Flag draft vs refined divergence when refined changes locked-term surface forms."""
     issues: list[ReviewIssue] = []
@@ -278,6 +400,8 @@ def run_all_checkers(
     issues: list[ReviewIssue] = []
     issues.extend(check_term_consistency(segments_doc, glossary_doc))
     issues.extend(check_segment_alignment(segments_doc))
+    issues.extend(check_placeholder_lost(segments_doc))
+    issues.extend(check_mistranslation(segments_doc))
     issues.extend(check_refinement_diff(segments_doc))
     return issues
 
