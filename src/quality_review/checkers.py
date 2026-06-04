@@ -6,6 +6,24 @@ from typing import Any, Iterable
 from .types import ReviewIssue, utc_now_iso
 
 _ISSUE_SEQ = 0
+_JP_SCRIPT_RE = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
+
+
+def _text_length_units(text: str, language_direction: str) -> int:
+    """Length units for omission heuristic — CJK uses chars, Latin uses tokens."""
+    stripped = (text or "").strip()
+    if not stripped:
+        return 0
+    if language_direction == "JP_TO_CN" or _JP_SCRIPT_RE.search(stripped):
+        return len(re.sub(r"\s+", "", stripped))
+    return len(re.findall(r"\S+", stripped))
+
+
+def _likely_omission(source_len: int, target_len: int, language_direction: str) -> bool:
+    if source_len < 8 or target_len <= 0:
+        return False
+    min_target = 2 if language_direction == "JP_TO_CN" else max(1, source_len // 3)
+    return target_len <= max(min_target, source_len // 4)
 
 
 def _next_issue_id(prefix: str) -> str:
@@ -184,9 +202,9 @@ def check_segment_alignment(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
         target = seg.get("target_text", "") or ""
         if not source or not target:
             continue
-        src_len = len(re.findall(r"\S+", source))
-        tgt_len = len(re.findall(r"\S+", target))
-        if src_len >= 4 and tgt_len <= max(1, src_len // 3):
+        src_len = _text_length_units(source, direction)
+        tgt_len = _text_length_units(target, direction)
+        if _likely_omission(src_len, tgt_len, direction):
             human_edited = bool(seg.get("human_edited"))
             issues.append(
                 _base_issue(
@@ -202,7 +220,11 @@ def check_segment_alignment(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
                     source_text_ref=source[:80],
                     target_text_ref=target[:80],
                     created_by="checker.segment_alignment",
-                    evidence={"source_token_estimate": src_len, "target_token_estimate": tgt_len},
+                    evidence={
+                        "source_length_units": src_len,
+                        "target_length_units": tgt_len,
+                        "length_heuristic": "cjk_chars" if direction == "JP_TO_CN" else "mixed",
+                    },
                     human_edited_segment=human_edited,
                     requires_human_review=human_edited,
                 )

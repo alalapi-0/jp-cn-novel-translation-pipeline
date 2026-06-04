@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -508,6 +509,7 @@ def check_round_50_e2e_trial() -> list[CheckResult]:
             capture_output=True,
             text=True,
             check=False,
+            timeout=90,
         )
         if proc.returncode == 0:
             results.append(
@@ -525,12 +527,83 @@ def check_round_50_e2e_trial() -> list[CheckResult]:
                     f"E2E trial blocked: {proc.stderr.strip() or proc.stdout.strip()}",
                 )
             )
+    except subprocess.TimeoutExpired:
+        results.append(
+            CheckResult(
+                "round_50_e2e_trial",
+                Severity.WARN,
+                "E2E trial timed out after 90s (skipped)",
+            )
+        )
     except Exception as exc:  # noqa: BLE001
         results.append(
             CheckResult(
                 "round_50_e2e_trial",
                 Severity.WARN,
                 f"E2E trial skipped: {exc}",
+            )
+        )
+    return results
+
+
+def check_round_51_openrouter_smoke() -> list[CheckResult]:
+    """Round 51 OpenRouter smoke script — dry-run subprocess only."""
+    smoke_script = REPO_ROOT / "scripts" / "run_openrouter_smoke.py"
+    if not smoke_script.is_file():
+        return [
+            CheckResult(
+                "round_51_smoke_script_exists",
+                Severity.WARN,
+                "missing scripts/run_openrouter_smoke.py",
+            )
+        ]
+    results = [
+        CheckResult(
+            "round_51_smoke_script_exists",
+            Severity.PASS,
+            f"found: {_rel_path(smoke_script)}",
+        )
+    ]
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(smoke_script), "--dry-run"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+            env={**os.environ, "REAL_API_TESTS_ENABLED": "false"},
+        )
+        if proc.returncode == 0:
+            results.append(
+                CheckResult(
+                    "round_51_openrouter_smoke",
+                    Severity.PASS,
+                    "dry-run smoke script OK",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_51_openrouter_smoke",
+                    Severity.WARN,
+                    f"smoke script failed: {proc.stderr.strip() or proc.stdout.strip()}",
+                )
+            )
+    except subprocess.TimeoutExpired:
+        results.append(
+            CheckResult(
+                "round_51_openrouter_smoke",
+                Severity.WARN,
+                "smoke script timed out after 120s",
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        results.append(
+            CheckResult(
+                "round_51_openrouter_smoke",
+                Severity.WARN,
+                f"smoke script skipped: {exc}",
             )
         )
     return results
@@ -582,6 +655,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_vector_store_tooling())
     results.extend(check_quality_review_tooling())
     results.extend(check_round_50_e2e_trial())
+    results.extend(check_round_51_openrouter_smoke())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

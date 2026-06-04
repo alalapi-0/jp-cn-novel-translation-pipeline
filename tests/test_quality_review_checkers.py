@@ -12,6 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from quality_review.checkers import (  # noqa: E402
+    _likely_omission,
+    _text_length_units,
     check_segment_alignment,
     check_term_consistency,
     reset_issue_counter,
@@ -46,6 +48,16 @@ def test_term_checker_finds_locked_violation(segments_doc, glossary_doc):
     assert locked[0].segment_id == "seg-001"
     assert locked[0].auto_fixable is False
     assert locked[0].requires_human_review is True
+
+
+def test_japanese_char_length_omission_heuristic():
+    source = "彼女は異世界の空を見上げ、胸の奥で小さな期待と不安がせめぎ合うのを感じていた。"
+    target = "异界。"
+    src_len = _text_length_units(source, "JP_TO_CN")
+    tgt_len = _text_length_units(target, "JP_TO_CN")
+    assert src_len >= 20
+    assert tgt_len <= 3
+    assert _likely_omission(src_len, tgt_len, "JP_TO_CN")
 
 
 def test_alignment_checker_finds_orphan(segments_doc):

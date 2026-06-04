@@ -62,6 +62,8 @@ output_jp/review/*
 workspace/embeddings/*
 workspace/vector_store/*
 workspace/model_runs/*
+workspace/smoke/*
+!workspace/smoke/.gitkeep
 workspace/checkpoints/*
 workspace/runs/*
 !workspace/runs/.gitkeep

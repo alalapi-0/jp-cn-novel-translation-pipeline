@@ -1,35 +1,32 @@
-round_id: round_50_e2e_agent_assisted_trial
-round_name: "End-to-end agent-assisted controlled translation trial"
-round_number_human: "50"
+round_id: round_51_phase2_smoke_and_checkers
+round_name: "Phase 2 — OpenRouter smoke and Japanese OMISSION heuristic"
+round_number_human: "51"
 status: completed
-type: e2e_validation
+type: implementation
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "data/examples/e2e_trial_chapter.md — synthetic JP short story (non-copyright)"
-  - "scripts/run_round_50_e2e_trial.py — ingest → parse → terminology → characters → fake translate → refine → review → export → vector mock"
-  - "workspace/e2e_trial/ + workspace/review/issue_report.json — gitignored trial artifacts"
-  - "docs/reports/round_50_controlled_trial_report.md — local go/no-go (gitignored body)"
-  - "tests/test_round_50_e2e_trial.py — pipeline smoke"
-  - "agent_gate check_round_50_e2e_trial"
-  - "Playwright smoke + issues spec verified on Workbench"
-  - "Round 41–50 tooling chain closed; Phase 2 recommended"
+  - "scripts/run_openrouter_smoke.py — one-shot smoke with cost guard (dry-run default)"
+  - "src/quality_review/checkers.py — CJK char-length OMISSION heuristic for JP_TO_CN"
+  - "docs/roadmap_phase2_rounds_51_plus.md — Phase 2 Round 51–55 outline"
+  - "prompts/round_51_phase2_smoke_and_checkers.md"
+  - "tests/test_openrouter_smoke.py — dry-run smoke tests"
+  - "agent_gate e2e subprocess timeout=90s"
 
 next_recommended_round:
-  id: phase_2_round_51
-  title: "Phase 2 — long-form controlled trial, multi-project backend, semantic checkers"
+  id: round_52_stage_c_refine_pilot
+  title: "Stage C controlled refine pilot after Stage B draft"
 
 next_recommended_phase:
   id: phase_2
-  title: "Production pilot — authorized long-form runs, API service layer, CI E2E"
-  rationale: "Round 41–50 tooling validated on synthetic E2E; proceed only with explicit user authorization and cost budget for real API."
+  title: "Production pilot — authorized long-form runs, refine stage, semantic checkers"
 
 blockers:
   hard: []
   soft:
     - "pytest not on system Python; use .venv/bin/pytest for unit tests"
-    - "semantic/voice/world checkers deferred to Phase 2 (Round 51+)"
+    - "REAL_API smoke requires OPENROUTER_API_KEY + REAL_API_TESTS_ENABLED in local .env"
     - "issue status write-back to workspace JSON deferred — localStorage only in MVP"
     - "docs/reports/*.md gitignored; gate report via CLI stdout"
-    - "OMISSION checker token heuristic weak on unsegmented Japanese — improve in Phase 2"
+    - "stale workspace/.locks from parallel agents — remove if PID dead before translate"
