@@ -1,0 +1,81 @@
+# Round 55 — deterministic tooling on every PR/push; UI tests optional (no API keys required).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_ui_tests:
+        description: Run Playwright UI tests (npm run test:ui)
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  REAL_API_TESTS_ENABLED: "false"
+
+jobs:
+  tooling:
+    name: check:tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install Python test runner
+        run: python3 -m pip install --upgrade pip pytest
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: MCP config sanity (optional)
+        run: npm run check:mcp
+        continue-on-error: true
+
+      - name: Run tooling checks
+        run: npm run check:tooling
+
+  ui:
+    name: test:ui (optional)
+    needs: tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests == true)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright UI smoke
+        run: npm run test:ui

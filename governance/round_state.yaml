@@ -1,23 +1,21 @@
-round_id: round_54_semantic_checker_mvp
-round_name: "Phase 2 — Semantic checker MVP + Workbench quality-review API"
-round_number_human: "54"
+round_id: round_55_ci_tooling_integration
+round_name: "Phase 2 — CI tooling integration (check:tooling + optional test:ui)"
+round_number_human: "55"
 status: completed
 type: implementation
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "check_mistranslation + check_placeholder_lost in src/quality_review/checkers.py"
-  - "src/quality_review/workbench_adapter.py — manifest segments → segments_doc"
-  - "GET /api/projects/{id}/quality-review on workbench server"
-  - "review_segments.fixture seg-004/005 + workbench demo manifest segments"
-  - "frontend fetchIssueReport API-first with static fallback"
-  - "tests/test_semantic_checkers.py + agent_gate round_54_* checks"
-  - "regenerated review_issue_report.example.json + frontend asset"
+  - ".github/workflows/ci.yml — tooling job on push/PR; ui job on main push or workflow_dispatch"
+  - "scripts/run_tooling_checks.sh — CI=true forces REAL_API_TESTS_ENABLED=false"
+  - "agent_gate round_55_* checks (package scripts, workflow, tooling script)"
+  - "tests/test_ci_round55.py — workflow and package.json wiring"
+  - "docs/roadmap_phase2_rounds_51_plus.md Round 55 acceptance criteria"
 
 next_recommended_round:
-  id: round_55_ci_tooling_integration
-  title: "CI tooling integration (check:tooling + optional test:ui)"
+  id: phase_2_pilot_hold
+  title: "Phase 2 pilot hold — authorized long-form / refine / API budget per user scope"
 
 next_recommended_phase:
   id: phase_2
@@ -32,3 +30,4 @@ blockers:
     - "round_50 e2e trial subprocess timeout 90s in agent_gate"
     - "docs/reports/*.md gitignored; gate report via CLI stdout"
     - "stale workspace/.locks — do not commit; remove if PID dead"
+    - "GitHub Actions ui job skipped on PR by design; use workflow_dispatch run_ui_tests"

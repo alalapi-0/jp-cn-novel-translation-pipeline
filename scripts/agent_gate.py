@@ -937,6 +937,109 @@ def check_round_54_semantic_checker_mvp() -> list[CheckResult]:
     return results
 
 
+def check_round_55_ci_tooling_integration() -> list[CheckResult]:
+    """Round 55 GitHub Actions CI — check:tooling required, test:ui optional."""
+    results: list[CheckResult] = []
+    package_json = REPO_ROOT / "package.json"
+    tooling_script = REPO_ROOT / "scripts" / "run_tooling_checks.sh"
+    workflows_dir = REPO_ROOT / ".github" / "workflows"
+
+    if package_json.is_file():
+        text = package_json.read_text(encoding="utf-8", errors="replace")
+        scripts_ok = '"check:tooling"' in text and '"test:ui"' in text
+        if scripts_ok:
+            results.append(
+                CheckResult(
+                    "round_55_package_scripts",
+                    Severity.PASS,
+                    "package.json defines check:tooling and test:ui",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_55_package_scripts",
+                    Severity.WARN,
+                    "package.json missing check:tooling or test:ui script",
+                )
+            )
+    else:
+        results.append(
+            CheckResult(
+                "round_55_package_scripts",
+                Severity.WARN,
+                "missing package.json",
+            )
+        )
+
+    if tooling_script.is_file():
+        results.append(
+            CheckResult(
+                "round_55_tooling_script_exists",
+                Severity.PASS,
+                f"found: {_rel_path(tooling_script)}",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "round_55_tooling_script_exists",
+                Severity.WARN,
+                "missing scripts/run_tooling_checks.sh",
+            )
+        )
+
+    workflow_files = sorted(workflows_dir.glob("*.yml")) + sorted(workflows_dir.glob("*.yaml"))
+    if not workflow_files:
+        results.append(
+            CheckResult(
+                "round_55_ci_workflow_exists",
+                Severity.WARN,
+                "no .github/workflows/*.yml — CI not wired",
+            )
+        )
+        return results
+
+    ci_text = ""
+    for wf in workflow_files:
+        ci_text += wf.read_text(encoding="utf-8", errors="replace")
+    has_tooling = "check:tooling" in ci_text
+    has_ui = "test:ui" in ci_text
+    if has_tooling:
+        results.append(
+            CheckResult(
+                "round_55_ci_workflow_exists",
+                Severity.PASS,
+                f"workflow invokes check:tooling ({len(workflow_files)} file(s))",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "round_55_ci_workflow_exists",
+                Severity.WARN,
+                "workflows present but missing check:tooling step",
+            )
+        )
+    if has_ui:
+        results.append(
+            CheckResult(
+                "round_55_ci_ui_optional",
+                Severity.PASS,
+                "workflow references test:ui (optional job)",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "round_55_ci_ui_optional",
+                Severity.WARN,
+                "workflow missing optional test:ui job",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -987,6 +1090,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_round_52_refine_stage_c())
     results.extend(check_round_53_multi_project_manifest())
     results.extend(check_round_54_semantic_checker_mvp())
+    results.extend(check_round_55_ci_tooling_integration())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

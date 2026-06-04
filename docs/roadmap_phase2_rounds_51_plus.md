@@ -54,9 +54,20 @@ Round 41–50 已在合成样章上验证工具链；Phase 2 在用户授权与�
 - `agent_gate` 含 `round_54_*` PASS/WARN。
 - Playwright smoke 仍绿（issues/review 无 console error）。
 
-## Round 55（建议）：CI 集成
+## Round 55：CI 工具链集成
 
-- `npm run check:tooling` + `test:ui` 在 PR 上可选运行；无 Key 时 smoke 为 dry-run。
+### 目标
+
+- `.github/workflows/ci.yml`：`check:tooling` 在 push/PR 上必跑；`test:ui` 在 main push 与 `workflow_dispatch` 可选开启（PR 默认仅 tooling）。
+- `scripts/run_tooling_checks.sh` 在 `CI=true` 时强制 `REAL_API_TESTS_ENABLED=false`。
+- `agent_gate` 含 `round_55_*` 检查项。
+
+### 验收
+
+- `npm run check:tooling` exit 0 或 1（无 BLOCKED）。
+- `npm run check:mcp` 可 WARN（无 token 不阻塞）。
+- `agent_gate` 含 `round_55_ci_workflow_exists` PASS。
+- 本地 `npm run test:ui` 仍绿（非 CI 硬阻塞）。
 
 ## 安全与成本
 

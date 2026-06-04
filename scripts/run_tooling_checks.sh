@@ -4,6 +4,10 @@
 set -u
 cd "$(dirname "$0")/.."
 
+if [ "${CI:-}" = "true" ]; then
+  export REAL_API_TESTS_ENABLED=false
+fi
+
 run_py() {
   python3 "$1"
   code=$?
