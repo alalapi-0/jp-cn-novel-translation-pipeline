@@ -609,6 +609,87 @@ def check_round_51_openrouter_smoke() -> list[CheckResult]:
     return results
 
 
+def check_round_52_refine_stage_c() -> list[CheckResult]:
+    """Round 52 Stage C refine pilot — dry-run subprocess when Stage B run exists."""
+    refine_script = REPO_ROOT / "scripts" / "refine_stage_c.py"
+    if not refine_script.is_file():
+        return [
+            CheckResult(
+                "round_52_refine_script_exists",
+                Severity.WARN,
+                "missing scripts/refine_stage_c.py",
+            )
+        ]
+    results = [
+        CheckResult(
+            "round_52_refine_script_exists",
+            Severity.PASS,
+            f"found: {_rel_path(refine_script)}",
+        )
+    ]
+    stage_b = REPO_ROOT / "workspace" / "runs" / "run_20260602_203645_draft_stage_b_50ch" / "segments.json"
+    if not stage_b.is_file():
+        results.append(
+            CheckResult(
+                "round_52_refine_dry_run",
+                Severity.WARN,
+                "Stage B segments.json not present; refine dry-run skipped",
+            )
+        )
+        return results
+    try:
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(refine_script),
+                "--run-id",
+                "run_20260602_203645_draft_stage_b_50ch",
+                "--limit-segments",
+                "2",
+                "--dry-run",
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=180,
+            env={**os.environ, "REAL_API_TESTS_ENABLED": "false"},
+        )
+        if proc.returncode == 0:
+            results.append(
+                CheckResult(
+                    "round_52_refine_dry_run",
+                    Severity.PASS,
+                    "Stage C refine dry-run OK",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_52_refine_dry_run",
+                    Severity.WARN,
+                    f"refine dry-run failed: {proc.stderr.strip() or proc.stdout.strip()}",
+                )
+            )
+    except subprocess.TimeoutExpired:
+        results.append(
+            CheckResult(
+                "round_52_refine_dry_run",
+                Severity.WARN,
+                "refine dry-run timed out after 180s",
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        results.append(
+            CheckResult(
+                "round_52_refine_dry_run",
+                Severity.WARN,
+                f"refine dry-run skipped: {exc}",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -656,6 +737,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_quality_review_tooling())
     results.extend(check_round_50_e2e_trial())
     results.extend(check_round_51_openrouter_smoke())
+    results.extend(check_round_52_refine_stage_c())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

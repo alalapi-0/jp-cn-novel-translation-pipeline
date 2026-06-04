@@ -7,8 +7,8 @@ project:
   primary_language: zh-CN
   output_language: bilingual_zh_ja
   stage: phase_2_pilot
-  current_round_human: "Round 51 (Phase 2 smoke + checkers)"
-  current_round_machine: round_51_phase2_smoke_and_checkers
+  current_round_human: "Round 52 (Stage C refine pilot)"
+  current_round_machine: round_52_stage_c_refine_pilot
 
 repository:
   entry_points:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass, field
 from typing import Any
@@ -40,7 +39,8 @@ class DryRunProvider:
             self.cost_guard.check_before_call(messages)
             self.cost_guard.record_call(tokens, cost)
 
-        req_hash = hashlib.sha256("|".join(m.content for m in messages).encode()).hexdigest()[:16]
+        joined = "|".join(m.content for m in messages)
+        req_hash = format(abs(hash(joined)) % (16**16), "016x")[:16]
         record = DryRunRecord(
             messages=list(messages),
             options=options,

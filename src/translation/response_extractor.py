@@ -77,7 +77,9 @@ def extract_translations(raw_output: str, expected_segment_ids: list[str]) -> Ex
     seen: set[str] = set()
     for row in rows:
         sid = str(row.get("segment_id", "")).strip()
-        trans = str(row.get("translation", row.get("target_text", ""))).strip()
+        trans = str(
+            row.get("translation", row.get("refined_translation", row.get("target_text", "")))
+        ).strip()
         if not sid:
             errors.append("missing_segment_id")
             continue

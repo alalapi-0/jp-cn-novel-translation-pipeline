@@ -1,0 +1,31 @@
+{
+  "language_direction": "JP_TO_CN",
+  "pipeline_stage": "draft",
+  "chapters": [
+    {
+      "chapter_id": "ch-pilot",
+      "chapter_label": "Pilot",
+      "segments": [
+        {
+          "segment_id": "seg-001",
+          "source_text": "魔法の結晶が光った。",
+          "draft_text": "魔法结晶发出了光芒。",
+          "status": "machine_translated"
+        },
+        {
+          "segment_id": "seg-002",
+          "source_text": "彼女は空を見上げた。",
+          "draft_text": "她抬头望向天空。",
+          "status": "machine_translated",
+          "human_edited": true
+        },
+        {
+          "segment_id": "seg-003",
+          "source_text": "「大丈夫？」",
+          "draft_text": "「没事吧？」",
+          "status": "machine_translated"
+        }
+      ]
+    }
+  ]
+}

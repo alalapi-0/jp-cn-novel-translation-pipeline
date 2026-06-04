@@ -19,7 +19,6 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from providers.cost_guard import CostGuard, CostGuardConfig  # noqa: E402
 from providers.dry_run_provider import DryRunProvider  # noqa: E402
-from providers.openrouter_provider import OpenRouterProvider  # noqa: E402
 from providers.types import GenerateOptions, Message  # noqa: E402
 
 SMOKE_DIR = REPO_ROOT / "workspace" / "smoke"
@@ -103,6 +102,8 @@ def run_smoke(*, max_cost_usd: float, force_dry_run: bool) -> dict:
         )
         report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         return payload
+
+    from providers.openrouter_provider import OpenRouterProvider
 
     provider = OpenRouterProvider(
         cost_guard=guard,

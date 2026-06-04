@@ -17,10 +17,18 @@ Round 41–50 已在合成样章上验证工具链；Phase 2 在用户授权与�
 - `pytest tests/test_quality_review_checkers.py tests/test_openrouter_smoke.py` 通过。
 - `agent_gate` PASS/WARN；Playwright smoke 仍绿。
 
-## Round 52（建议）：Stage C 受控润色试跑
+## Round 52：Stage C 受控润色试跑
 
-- 在 Stage B 草稿完成后，小批量 refine（`REFINE_MODEL`），保持 `human_edited` 保护。
-- checkpoint + cost 摘要写入 `workspace/stage_state.json`。
+### 目标
+
+- `scripts/refine_stage_c.py`：小批量 refine（`REFINE_MODEL`），`human_edited` 保护，硬上限 30 段/次。
+- 产物：`refine_diff.json`、`refine_quality_report.json`；`workspace/stage_state.json` 进入 `phase=refine`。
+
+### 验收
+
+- `refine_stage_c.py --dry-run` exit 0（本地存在 Stage B run 时）。
+- `pytest tests/test_refine_stage_c.py` 通过。
+- 可选真实 API 试跑 ≤ `MAX_TEST_COST_USD`。
 
 ## Round 53（建议）：多项目 manifest 后端
 

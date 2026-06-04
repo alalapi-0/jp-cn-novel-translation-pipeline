@@ -1,22 +1,23 @@
-round_id: round_51_phase2_smoke_and_checkers
-round_name: "Phase 2 — OpenRouter smoke and Japanese OMISSION heuristic"
-round_number_human: "51"
+round_id: round_52_stage_c_refine_pilot
+round_name: "Phase 2 — Stage C controlled refine pilot"
+round_number_human: "52"
 status: completed
 type: implementation
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "scripts/run_openrouter_smoke.py — one-shot smoke with cost guard (dry-run default)"
-  - "src/quality_review/checkers.py — CJK char-length OMISSION heuristic for JP_TO_CN"
-  - "docs/roadmap_phase2_rounds_51_plus.md — Phase 2 Round 51–55 outline"
-  - "prompts/round_51_phase2_smoke_and_checkers.md"
-  - "tests/test_openrouter_smoke.py — dry-run smoke tests"
-  - "agent_gate e2e subprocess timeout=90s"
+  - "scripts/refine_stage_c.py — bounded Stage C refine pilot with flock lock"
+  - "src/translation/refine_runner.py + refine_prompt_builder.py"
+  - "refine_diff.json / refine_quality_report.json artifacts on pilot run"
+  - "workspace/stage_state.json phase=refine, refine_blocked=false after dry-run pilot"
+  - "agent_gate round_52_refine_dry_run check"
+  - "providers/dry_run_provider — avoid hashlib import hang in constrained shells"
+  - "lazy OpenRouter import in smoke + refine paths"
 
 next_recommended_round:
-  id: round_52_stage_c_refine_pilot
-  title: "Stage C controlled refine pilot after Stage B draft"
+  id: round_53_multi_project_manifest
+  title: "Multi-project manifest backend + Workbench switch"
 
 next_recommended_phase:
   id: phase_2
@@ -25,8 +26,9 @@ next_recommended_phase:
 blockers:
   hard: []
   soft:
-    - "pytest not on system Python; use .venv/bin/pytest for unit tests"
-    - "REAL_API smoke requires OPENROUTER_API_KEY + REAL_API_TESTS_ENABLED in local .env"
-    - "issue status write-back to workspace JSON deferred — localStorage only in MVP"
+    - "pytest collection can hang >120s in parallel-agent shells; prefer PYTHONPATH=src direct runs"
+    - "_hashlib import may hang in sandbox; dry_run uses builtin hash"
+    - "REAL_API openrouter smoke exceeded 490s without response — retry manually with network"
+    - "round_50 e2e trial subprocess timeout 90s in agent_gate"
     - "docs/reports/*.md gitignored; gate report via CLI stdout"
-    - "stale workspace/.locks from parallel agents — remove if PID dead before translate"
+    - "stale workspace/.locks — do not commit; remove if PID dead"
