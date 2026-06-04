@@ -68,6 +68,20 @@ main {
   margin-bottom: 1rem;
 }
 
+.card-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(61, 139, 253, 0.35);
+}
+
+#project-switcher {
+  margin-left: 0.5rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
 .card h2 {
   margin: 0 0 0.5rem;
   font-size: 1rem;

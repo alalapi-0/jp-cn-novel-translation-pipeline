@@ -1,23 +1,23 @@
-round_id: round_52_stage_c_refine_pilot
-round_name: "Phase 2 — Stage C controlled refine pilot"
-round_number_human: "52"
+round_id: round_53_multi_project_manifest
+round_name: "Phase 2 — Multi-project manifest backend + Workbench switch"
+round_number_human: "53"
 status: completed
 type: implementation
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "scripts/refine_stage_c.py — bounded Stage C refine pilot with flock lock"
-  - "src/translation/refine_runner.py + refine_prompt_builder.py"
-  - "refine_diff.json / refine_quality_report.json artifacts on pilot run"
-  - "workspace/stage_state.json phase=refine, refine_blocked=false after dry-run pilot"
-  - "agent_gate round_52_refine_dry_run check"
-  - "providers/dry_run_provider — avoid hashlib import hang in constrained shells"
-  - "lazy OpenRouter import in smoke + refine paths"
+  - "src/workbench/project_registry.py — workspace/manifests multi project_id + active switch"
+  - "src/workbench/server.py — /api/projects, /api/projects/active, workbench-data"
+  - "scripts/serve_frontend.py — static + manifest API on dev server"
+  - "data/examples/workbench_project.*.example.json — two demo projects"
+  - "frontend app.js — project list, switcher, API with mock fallback"
+  - "agent_gate round_53_multi_project_manifest checks"
+  - "tests/test_multi_project_manifest.py"
 
 next_recommended_round:
-  id: round_53_multi_project_manifest
-  title: "Multi-project manifest backend + Workbench switch"
+  id: round_54_semantic_checker_mvp
+  title: "Semantic checker MVP (MISTRANSLATION / PLACEHOLDER_LOST)"
 
 next_recommended_phase:
   id: phase_2

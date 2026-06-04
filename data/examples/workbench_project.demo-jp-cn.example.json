@@ -1,20 +1,9 @@
 {
-  "projects": [
-    {
-      "id": "demo-jp-cn",
-      "name": "示例项目（日译中）",
-      "direction": "JP_TO_CN",
-      "status": "review_pending",
-      "chapters": 2
-    },
-    {
-      "id": "demo-cn-jp",
-      "name": "示例项目（中译日）",
-      "direction": "CN_TO_JP",
-      "status": "draft_complete",
-      "chapters": 1
-    }
-  ],
+  "project_id": "demo-jp-cn",
+  "name": "示例项目（日译中）",
+  "language_direction": "JP_TO_CN",
+  "status": "review_pending",
+  "chapters": 2,
   "segments": [
     {
       "id": "seg-001",

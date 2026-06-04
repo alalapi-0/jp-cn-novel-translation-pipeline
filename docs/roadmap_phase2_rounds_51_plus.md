@@ -32,7 +32,15 @@ Round 41–50 已在合成样章上验证工具链；Phase 2 在用户授权与�
 
 ## Round 53（建议）：多项目 manifest 后端
 
-- `workspace/manifests/` 多 `project_id`；Workbench 项目切换与 gate 检查。
+- `workspace/manifests/` 多 `project_id`；`workspace/workbench_state.json` 记录当前项目。
+- `scripts/serve_frontend.py` 暴露 `/api/projects` 与项目切换；Workbench 首页/审核页可切换。
+- `data/examples/workbench_project.*.example.json` 为可提交样例；gate 自动 seed 到 workspace。
+
+### 验收
+
+- `pytest tests/test_multi_project_manifest.py` 通过。
+- `agent_gate` 含 `round_53_*` 检查项 PASS/WARN。
+- Playwright smoke 仍绿（双项目卡片可见）。
 
 ## Round 54（建议）：语义 checker MVP
 

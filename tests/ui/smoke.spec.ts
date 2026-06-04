@@ -16,6 +16,7 @@ test("homepage loads project dashboard", async ({ page }) => {
 test("project home shows chapter manager summary", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page.getByRole("heading", { name: "示例项目（日译中）" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "示例项目（中译日）" })).toBeVisible();
   await expect(page.getByText(/2 章/)).toBeVisible();
   await expect(page.getByText(/review_pending/)).toBeVisible();
 });

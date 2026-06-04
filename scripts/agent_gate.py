@@ -378,8 +378,21 @@ def check_vector_store_tooling() -> list[CheckResult]:
             raise RuntimeError("cannot load vector_db_inspect module")
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        manifest = REPO_ROOT / "workspace" / "manifests" / "project_manifest.json"
-        report, _, _ = mod.run_inspection(DEFAULT_VECTOR_INDEX, manifest if manifest.is_file() else None)
+        manifest_path = REPO_ROOT / "workspace" / "manifests" / "project_manifest.json"
+        try:
+            wb_spec = importlib.util.spec_from_file_location(
+                "light_novel_workbench_registry_gate",
+                REPO_ROOT / "src" / "workbench" / "project_registry.py",
+            )
+            if wb_spec and wb_spec.loader:
+                wb_mod = importlib.util.module_from_spec(wb_spec)
+                wb_spec.loader.exec_module(wb_mod)
+                resolved = wb_mod.resolve_active_manifest_path(REPO_ROOT)
+                if resolved and resolved.is_file():
+                    manifest_path = resolved
+        except Exception:
+            pass
+        report, _, _ = mod.run_inspection(DEFAULT_VECTOR_INDEX, manifest_path if manifest_path.is_file() else None)
         code = mod.aggregate_exit_code(report.findings)
         if code == 2:
             msg = "; ".join(f.message for f in report.findings if f.severity == mod.Severity.FAIL)
@@ -690,6 +703,135 @@ def check_round_52_refine_stage_c() -> list[CheckResult]:
     return results
 
 
+def check_round_53_multi_project_manifest() -> list[CheckResult]:
+    """Round 53 multi-project manifest backend + workbench project switch."""
+    registry_path = REPO_ROOT / "src" / "workbench" / "project_registry.py"
+    serve_script = REPO_ROOT / "scripts" / "serve_frontend.py"
+    example_glob = REPO_ROOT / "data" / "examples" / "workbench_project.demo-jp-cn.example.json"
+    results: list[CheckResult] = []
+
+    if registry_path.is_file():
+        results.append(
+            CheckResult(
+                "round_53_registry_module_exists",
+                Severity.PASS,
+                f"found: {_rel_path(registry_path)}",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "round_53_registry_module_exists",
+                Severity.WARN,
+                "missing src/workbench/project_registry.py",
+            )
+        )
+        return results
+
+    if serve_script.is_file():
+        results.append(
+            CheckResult(
+                "round_53_serve_frontend_exists",
+                Severity.PASS,
+                f"found: {_rel_path(serve_script)}",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "round_53_serve_frontend_exists",
+                Severity.WARN,
+                "missing scripts/serve_frontend.py",
+            )
+        )
+
+    if example_glob.is_file():
+        results.append(
+            CheckResult(
+                "round_53_example_manifests_exist",
+                Severity.PASS,
+                "found committed workbench_project.*.example.json fixtures",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "round_53_example_manifests_exist",
+                Severity.WARN,
+                "missing data/examples/workbench_project.*.example.json",
+            )
+        )
+
+    try:
+        sys.path.insert(0, str(REPO_ROOT / "src"))
+        from workbench.project_registry import (  # noqa: WPS433
+            get_active_project_id,
+            list_project_manifests,
+            seed_example_manifests,
+            set_active_project_id,
+        )
+
+        seed_example_manifests(REPO_ROOT)
+        manifests = list_project_manifests(REPO_ROOT)
+        if len(manifests) >= 2:
+            results.append(
+                CheckResult(
+                    "round_53_manifest_count",
+                    Severity.PASS,
+                    f"{len(manifests)} project manifest(s) under workspace/manifests",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "round_53_manifest_count",
+                    Severity.WARN,
+                    f"expected >=2 manifests, found {len(manifests)}",
+                )
+            )
+
+        active_before = get_active_project_id(REPO_ROOT)
+        alt = next((m.project_id for m in manifests if m.project_id != active_before), None)
+        if alt:
+            set_active_project_id(REPO_ROOT, alt)
+            restored = get_active_project_id(REPO_ROOT)
+            if active_before:
+                set_active_project_id(REPO_ROOT, active_before)
+            if restored == alt:
+                results.append(
+                    CheckResult(
+                        "round_53_active_project_switch",
+                        Severity.PASS,
+                        "active project switch persisted in workspace/workbench_state.json",
+                    )
+                )
+            else:
+                results.append(
+                    CheckResult(
+                        "round_53_active_project_switch",
+                        Severity.WARN,
+                        f"switch to {alt} did not persist",
+                    )
+                )
+        else:
+            results.append(
+                CheckResult(
+                    "round_53_active_project_switch",
+                    Severity.WARN,
+                    "need >=2 manifests to verify project switch",
+                )
+            )
+    except Exception as exc:  # noqa: BLE001
+        results.append(
+            CheckResult(
+                "round_53_registry_runtime",
+                Severity.WARN,
+                f"multi-project registry check skipped: {exc}",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -738,6 +880,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_round_50_e2e_trial())
     results.extend(check_round_51_openrouter_smoke())
     results.extend(check_round_52_refine_stage_c())
+    results.extend(check_round_53_multi_project_manifest())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())

@@ -1,0 +1,23 @@
+{
+  "project_id": "demo-cn-jp",
+  "name": "示例项目（中译日）",
+  "language_direction": "CN_TO_JP",
+  "status": "draft_complete",
+  "chapters": 1,
+  "segments": [
+    {
+      "id": "seg-cn-001",
+      "chapter": 1,
+      "source": "（合成中文原文：魔法结晶在掌心发光 — 占位）",
+      "draft": "（合成日文译文：掌の上で魔力結晶が光る — fixture）",
+      "status": "pending"
+    },
+    {
+      "id": "seg-cn-002",
+      "chapter": 1,
+      "source": "（合成中文原文：天空像被撕开 — 占位）",
+      "draft": "空が裂けたようだ。",
+      "status": "pending"
+    }
+  ]
+}
