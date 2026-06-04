@@ -1,21 +1,24 @@
-round_id: round_55_ci_tooling_integration
-round_name: "Phase 2 — CI tooling integration (check:tooling + optional test:ui)"
-round_number_human: "55"
+round_id: round_56_continuous_real_api_agent_foundation
+round_name: "Phase 2 — continuous real API Agent foundation"
+round_number_human: "56"
 status: completed
-type: implementation
+type: tooling
 real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - ".github/workflows/ci.yml — tooling job on push/PR; ui job on main push or workflow_dispatch"
-  - "scripts/run_tooling_checks.sh — CI=true forces REAL_API_TESTS_ENABLED=false"
-  - "agent_gate round_55_* checks (package scripts, workflow, tooling script)"
-  - "tests/test_ci_round55.py — workflow and package.json wiring"
-  - "docs/roadmap_phase2_rounds_51_plus.md Round 55 acceptance criteria"
+  - ".agent_runtime/ — continuous Agent state, queue, blocker and local report directories"
+  - "scripts/agent.py — lightweight round, queue and blocker manager"
+  - "scripts/run_real_api_smoke.py — unified dry-run / real-api smoke entrypoint"
+  - "scripts/run_browser_inspection.py — unified Playwright/browser inspection entrypoint"
+  - "docs/agent_workflow/ — runner, browser inspector, bugfix, quality optimizer, loop and quality gate docs"
+  - "package.json — npm aliases for Agent status, queue, real API and browser checks"
+  - "README.md / AGENTS.md / docs/index.md / scripts/README.md — continuous Agent foundation integration"
+  - ".gitignore — ignore runtime reports, logs, screenshots and Playwright artifacts while preserving runtime baseline files"
 
 next_recommended_round:
-  id: phase_2_pilot_hold
-  title: "Phase 2 pilot hold — authorized long-form / refine / API budget per user scope"
+  id: phase_2_cursor_continuous_handoff
+  title: "Cursor continuous handoff — use MCP/browser checks and queue-driven bugfix/quality tasks"
 
 next_recommended_phase:
   id: phase_2
@@ -24,6 +27,8 @@ next_recommended_phase:
 blockers:
   hard: []
   soft:
+    - "Real API smoke defaults to dry-run/missing_api_key; --real requires explicit key and low-cost provider support"
+    - "Browser inspection depends on existing Playwright setup and may fail if frontend smoke fixtures drift"
     - "pytest collection can hang >120s in parallel-agent shells; prefer PYTHONPATH=src direct runs"
     - "_hashlib import may hang in sandbox; dry_run uses builtin hash"
     - "REAL_API openrouter smoke exceeded 490s without response — retry manually with network"

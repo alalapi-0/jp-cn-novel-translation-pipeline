@@ -29,6 +29,8 @@ class OpenRouterProvider:
         model_name: str | None = None,
         api_key: str | None = None,
         timeout_sec: int = 600,
+        max_tokens: int | None = None,
+        temperature: float = 0.3,
     ) -> None:
         self.cost_guard = cost_guard
         self.model_name = model_name or os.environ.get("DRAFT_MODEL", DEFAULT_MODEL)
@@ -39,6 +41,8 @@ class OpenRouterProvider:
             )
         self._api_key = key.strip()
         self.timeout_sec = timeout_sec
+        self.max_tokens = max_tokens
+        self.temperature = temperature
         self.network_calls = 0
 
     def generate(self, messages: list[Message], options: GenerateOptions | None = None) -> ModelResult:
@@ -50,8 +54,10 @@ class OpenRouterProvider:
         payload = {
             "model": self.model_name,
             "messages": [{"role": m.role, "content": m.content} for m in messages],
-            "temperature": 0.3,
+            "temperature": self.temperature,
         }
+        if self.max_tokens is not None:
+            payload["max_tokens"] = self.max_tokens
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",

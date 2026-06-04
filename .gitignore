@@ -25,6 +25,8 @@ __pycache__/
 # Logs
 logs/*.log
 logs/**/*.log
+*.log
+.log
 
 # Original source files
 input_jp/*
@@ -85,7 +87,22 @@ temp/
 
 # Playwright / browser automation artifacts
 artifacts/
+artifacts/screenshots/*
 .playwright-mcp/
+playwright-report/
+test-results/
+
+# Continuous Agent runtime generated reports
+.agent_runtime/inspection_reports/*
+!.agent_runtime/inspection_reports/.gitkeep
+.agent_runtime/real_api_reports/*
+!.agent_runtime/real_api_reports/.gitkeep
+.agent_runtime/quality_reports/*
+!.agent_runtime/quality_reports/.gitkeep
+.agent_runtime/fix_reports/*
+!.agent_runtime/fix_reports/.gitkeep
+.agent_runtime/logs/*
+!.agent_runtime/logs/.gitkeep
 
 # Generated inventory (committed summary: repo_inventory.example.json)
 governance/repo_inventory.generated.json

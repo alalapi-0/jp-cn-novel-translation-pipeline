@@ -195,6 +195,60 @@ Exporter 是唯一负责生成最终阅读文件的模块。Exporter 不调用�
 4. 更新 `governance/round_state.yaml` 与本地报告。
 5. 用户或 Prompt 要求时再 commit；push 需用户授权。
 
+## Continuous Agent Foundation
+
+本仓库现在提供一套项目内连续 Agent 推进基础设施，供 Cursor / Codex / 其他 Agent 后续复用。状态、队列和阻塞记录位于 `.agent_runtime/`。
+
+查看状态：
+
+```bash
+python3 scripts/agent.py status
+```
+
+进入下一轮：
+
+```bash
+python3 scripts/agent.py next
+```
+
+加入任务：
+
+```bash
+python3 scripts/agent.py enqueue --type bugfix --reason test_failure
+python3 scripts/agent.py enqueue --type browser_inspection --reason periodic_check
+python3 scripts/agent.py enqueue --type quality_optimization --reason low_quality_result
+```
+
+运行真实 API 小测入口：
+
+```bash
+python3 scripts/run_real_api_smoke.py
+python3 scripts/run_real_api_smoke.py --real
+```
+
+运行浏览器检查：
+
+```bash
+python3 scripts/run_browser_inspection.py
+```
+
+真实 API Key 规则：
+
+- 只从环境变量读取。
+- 不提交 `.env`。
+- 不打印 Key。
+- 缺 Key 时 dry-run 或 `missing_api_key`，不阻断可替代流程。
+- 不把 mock / dry-run 伪装成真实 API。
+
+后续 Cursor 使用方式：
+
+- Cursor 读取 `AGENTS.md` 和 `docs/agent_workflow/`。
+- Cursor 使用 MCP 做页面和浏览器检查。
+- Cursor 根据 `.agent_runtime/queue.jsonl` 触发修复或优化任务。
+- 流程 bug 写入 `bugfix` 队列。
+- 质量差写入 `quality_optimization` 队列。
+- 页面问题写入 `browser_inspection` 队列。
+
 ## 当前不能做的事情
 
 - 不启动真实长篇翻译（除非进入授权后的翻译执行轮）

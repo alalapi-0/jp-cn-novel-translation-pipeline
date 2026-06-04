@@ -78,3 +78,51 @@
 **验证：** `node scripts/check_mcp_config.js` 或 `npm run check:mcp`；亦可 `python3 scripts/check_mcp_config.py`
 
 **禁止：** 提交 token / cookie / API Key；filesystem 授权系统根目录或整个用户主目录。
+
+## Continuous Real API Multi-Agent Foundation
+
+本仓库使用 `.agent_runtime/` 保存连续推进状态、任务队列、阻塞记录和本地检查报告。`.agent_runtime/status.json`、`.agent_runtime/queue.jsonl`、`.agent_runtime/blockers.jsonl` 可提交；各类运行报告、截图、日志和真实 API 摘要产物默认不提交。
+
+使用 `scripts/agent.py` 管理轮次、队列和阻塞：
+
+```bash
+python3 scripts/agent.py status
+python3 scripts/agent.py next
+python3 scripts/agent.py queue
+python3 scripts/agent.py enqueue --type bugfix --reason test_failure
+python3 scripts/agent.py block --reason "..."
+python3 scripts/agent.py unblock
+```
+
+每轮推进前应执行：
+
+```bash
+python3 scripts/agent.py status
+python3 scripts/agent.py next
+```
+
+真实 API 小规模测试统一入口：
+
+```bash
+python3 scripts/run_real_api_smoke.py
+python3 scripts/run_real_api_smoke.py --real
+```
+
+有 API Key 时优先真实 API 小测；没有 Key 时进入 dry-run 或 `missing_api_key`，不阻断可 mock / dry-run 的整体流程。脚本只从环境变量读取 Key，不读取 `.env`，不打印 Key，不保存完整真实 API 返回全文。
+
+浏览器检查统一入口：
+
+```bash
+python3 scripts/run_browser_inspection.py
+```
+
+页面相关任务应由 Cursor 后续结合 MCP / Playwright / `chrome-devtools` 做真实浏览器检查。多 Agent 分工见 `docs/agent_workflow/`：
+
+- `runner_agent.md`
+- `browser_inspector_agent.md`
+- `bugfix_agent.md`
+- `quality_optimizer_agent.md`
+- `continuous_multi_agent_loop.md`
+- `quality_gate.md`
+
+生成质量差时写入 `quality_optimization` 队列；流程 bug 时写入 `bugfix` 队列；页面显示问题写入 `browser_inspection` 或 `bugfix`。无硬阻塞时继续下一轮。

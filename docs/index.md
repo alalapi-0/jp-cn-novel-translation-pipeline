@@ -27,6 +27,12 @@
 - `docs/mcp_verification_checklist.md`
 - `docs/agent_skills/mcp_usage_skill.md`
 - `docs/agent_gate_and_protocol_check.md`
+- `docs/agent_workflow/runner_agent.md`
+- `docs/agent_workflow/browser_inspector_agent.md`
+- `docs/agent_workflow/bugfix_agent.md`
+- `docs/agent_workflow/quality_optimizer_agent.md`
+- `docs/agent_workflow/continuous_multi_agent_loop.md`
+- `docs/agent_workflow/quality_gate.md`
 
 ## 核心设计文档
 
