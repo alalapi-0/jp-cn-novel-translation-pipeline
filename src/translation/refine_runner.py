@@ -182,7 +182,7 @@ def run_refine_pilot(
                 language_direction="JP_TO_CN",
                 pipeline_stage="refinement",
                 input_reference=chapter_id,
-                prompt_version="refine_v1",
+                prompt_version="refine_v2",
             )
             expected_ids = [s["segment_id"] for s in batch]
             ok, msg, mapping = False, "no_attempt", {}

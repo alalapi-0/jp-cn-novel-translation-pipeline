@@ -9,6 +9,10 @@ cd "$REPO_ROOT"
 export REAL_API_TESTS_ENABLED=1
 export CONTROLLED_RUN_ENABLED=1
 export PYTHONUNBUFFERED=1
+export DRAFT_MODEL="${DRAFT_MODEL:-deepseek/deepseek-v4-pro}"
+export REFINE_MODEL="${REFINE_MODEL:-x-ai/grok-4.3}"
+
+PYTHON="${PYTHON:-/Users/alalapi/.local/bin/python3.12}"
 
 LOG="$REPO_ROOT/workspace/pilot_batch_chain.log"
 TOTAL_CHAPTERS=613
@@ -94,7 +98,7 @@ refine_run_until_done() {
     [[ "$eligible" -eq 0 ]] && { log "refine DONE $run_id"; return 0; }
     wait_refine_idle "$run_id"
     export MAX_TEST_COST_USD="${MAX_TEST_COST_USD:-2.0}"
-    if ! python3 scripts/refine_stage_c.py --run-id "$run_id" --limit-segments 30 >>"$LOG" 2>&1; then
+    if ! "$PYTHON" scripts/refine_stage_c.py --run-id "$run_id" --limit-segments 30 >>"$LOG" 2>&1; then
       log "refine batch FAILED exit=$? for $run_id"
       sleep 30
     fi
@@ -115,7 +119,9 @@ for meta in sorted(root.glob('run_*_draft_stage_b_50ch/run_metadata.json'), reve
     except Exception:
         continue
     if d.get('chapter_offset') != int('$offset'):
-        continue
+        co = d.get('chapter_offset')
+        if not (co is None and int('$offset') == 0):
+            continue
     rid = d.get('run_id') or meta.parent.name
     if (meta.parent / 'segments.json').is_file():
         best = rid
@@ -130,12 +136,12 @@ run_translate_batch() {
   wait_translate_idle
   log "translate offset=$offset limit=$BATCH"
   export MAX_TEST_COST_USD="${TRANSLATE_MAX_TEST_COST_USD:-2.5}"
-  python3 scripts/translate.py --phase draft --stage stage_b \
+  "$PYTHON" scripts/translate.py --phase draft --stage stage_b \
     --chapter-offset "$offset" --limit-chapters "$BATCH" >>"$LOG" 2>&1
 }
 
-# Offsets already handled by external workers (do not re-translate)
-SKIP_OFFSETS="${PILOT_SKIP_OFFSETS:-0,50}"
+# Offsets with completed draft runs (skip re-translate, still refine)
+SKIP_OFFSETS="${PILOT_SKIP_OFFSETS:-0}"
 
 log "pilot_batch_chain start TOTAL=$TOTAL_CHAPTERS BATCH=$BATCH skip=$SKIP_OFFSETS"
 
@@ -143,11 +149,7 @@ log "pilot_batch_chain start TOTAL=$TOTAL_CHAPTERS BATCH=$BATCH skip=$SKIP_OFFSE
 IFS=',' read -ra SKIP_ARR <<< "$SKIP_OFFSETS"
 for skip_off in "${SKIP_ARR[@]}"; do
   [[ -n "$skip_off" ]] || continue
-  if [[ "$skip_off" == "0" ]]; then
-    log "offset 0 draft/refine handled by existing workers"
-    continue
-  fi
-  log "drain in-flight offset=$skip_off"
+  log "drain skip-offset=$skip_off (refine existing draft, no re-translate)"
   wait_translate_idle
   rid="$(latest_run_for_offset "$skip_off")"
   if [[ -n "${rid:-}" ]] && [[ "$(draft_complete "$rid" 2>/dev/null || echo partial)" == "ok" ]]; then
@@ -186,3 +188,9 @@ while [[ "$offset" -lt "$TOTAL_CHAPTERS" ]]; do
 done
 
 log "pilot_batch_chain ALL BATCHES DONE"
+log "export start"
+if "$PYTHON" scripts/export_refined_runs.py --require-refined >>"$LOG" 2>&1; then
+  log "export DONE"
+else
+  log "export FAILED (may retry after refine completes)"
+fi
