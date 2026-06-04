@@ -4,11 +4,11 @@
   "current_role": "runner-agent",
   "last_successful_commit": null,
   "last_push_branch": null,
-  "api_mode": "missing_api_key",
+  "api_mode": "real_openrouter",
   "browser_check_interval_minutes": 5,
   "last_browser_check_at": "2026-06-04T09:30:30+00:00",
-  "last_real_api_check_at": "2026-06-04T09:30:25+00:00",
+  "last_real_api_check_at": "2026-06-04T12:50:00+00:00",
   "hard_blocked": false,
   "stop_reason": null,
-  "updated_at": "2026-06-04T09:30:30+00:00"
+  "updated_at": "2026-06-04T12:50:00+00:00"
 }

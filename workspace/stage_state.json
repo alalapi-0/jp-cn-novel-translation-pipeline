@@ -1,20 +1,13 @@
 {
   "phase": "refine",
   "stage": "refine_stage_c_pilot",
-  "status": "completed",
+  "status": "in_progress",
   "run_id": "run_20260602_203645_draft_stage_b_50ch",
-  "updated_at": "2026-06-04T02:02:47.256368+00:00",
-  "refine_blocked": false,
+  "updated_at": "2026-06-04T12:54:41.858133+00:00",
+  "refine_blocked": true,
   "pilot": true,
   "summary": {
-    "refined_segments": 2,
-    "api_calls": 0,
-    "provider_mode": "dry_run",
-    "model_name": "dry-run-no-network",
-    "run_root": "workspace/runs/run_20260602_203645_draft_stage_b_50ch",
-    "spent_usd": 0.0,
-    "spent_tokens": 0,
-    "aborted": false,
-    "abort_reason": ""
+    "limit_segments": 30,
+    "dry_run": false
   }
 }

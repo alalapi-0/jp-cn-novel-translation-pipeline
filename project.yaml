@@ -7,8 +7,8 @@ project:
   primary_language: zh-CN
   output_language: bilingual_zh_ja
   stage: phase_2_pilot
-  current_round_human: "Round 54 (Semantic checker MVP)"
-  current_round_machine: round_54_semantic_checker_mvp
+  current_round_human: "Round 57 (Continuous real API Stage C refine)"
+  current_round_machine: round_57_continuous_real_api_refine
 
 repository:
   entry_points:

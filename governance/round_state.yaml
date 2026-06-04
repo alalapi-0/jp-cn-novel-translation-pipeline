@@ -1,24 +1,19 @@
-round_id: round_56_continuous_real_api_agent_foundation
-round_name: "Phase 2 — continuous real API Agent foundation"
-round_number_human: "56"
-status: completed
-type: tooling
-real_api_called: false
+round_id: round_57_continuous_real_api_refine
+round_name: "Phase 2 — continuous real API Stage C refine (pilot hold lifted)"
+round_number_human: "57"
+status: in_progress
+type: production_pilot
+real_api_called: true
 full_translation_executed: false
 
 completed_tasks:
-  - ".agent_runtime/ — continuous Agent state, queue, blocker and local report directories"
-  - "scripts/agent.py — lightweight round, queue and blocker manager"
-  - "scripts/run_real_api_smoke.py — unified dry-run / real-api smoke entrypoint"
-  - "scripts/run_browser_inspection.py — unified Playwright/browser inspection entrypoint"
-  - "docs/agent_workflow/ — runner, browser inspector, bugfix, quality optimizer, loop and quality gate docs"
-  - "package.json — npm aliases for Agent status, queue, real API and browser checks"
-  - "README.md / AGENTS.md / docs/index.md / scripts/README.md — continuous Agent foundation integration"
-  - ".gitignore — ignore runtime reports, logs, screenshots and Playwright artifacts while preserving runtime baseline files"
+  - "phase_2_pilot_hold lifted — user-authorized continuous real API refine on run_20260602_203645_draft_stage_b_50ch"
+  - "OpenRouter real smoke OK (session MAX_TEST_COST_USD override; .env ceiling remains 0)"
+  - "Stage C real refine batches in progress (grok-4.3 via OpenRouter); segments.json updated on disk"
 
 next_recommended_round:
-  id: phase_2_cursor_continuous_handoff
-  title: "Cursor continuous handoff — use MCP/browser checks and queue-driven bugfix/quality tasks"
+  id: round_57_refine_complete
+  title: "Finish Stage C refine for all 3168 segments; quality review + workbench browser check"
 
 next_recommended_phase:
   id: phase_2
@@ -27,6 +22,7 @@ next_recommended_phase:
 blockers:
   hard: []
   soft:
+    - ".env MAX_TEST_COST_USD=0 blocks refine_stage_c real calls unless session export overrides budget per batch"
     - "Real API smoke defaults to dry-run/missing_api_key; --real requires explicit key and low-cost provider support"
     - "Browser inspection depends on existing Playwright setup and may fail if frontend smoke fixtures drift"
     - "pytest collection can hang >120s in parallel-agent shells; prefer PYTHONPATH=src direct runs"
