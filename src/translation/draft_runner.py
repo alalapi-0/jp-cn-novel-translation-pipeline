@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -193,6 +194,43 @@ def _hydrate_from_segments_json(run_root: Path, chapters: list[ParsedChapter]) -
             seg.status = saved.get("status") or "machine_translated"
 
 
+_SEGMENT_ID_RE = re.compile(r"<!--\s*(\S+)\s*-->")
+
+
+def _hydrate_from_draft_md(run_root: Path, chapters: list[ParsedChapter]) -> None:
+    """Resume in-progress draft runs when segments.json is missing but chapter .md exists."""
+    draft_dir = run_root / "draft"
+    if not draft_dir.is_dir():
+        return
+    for chapter in chapters:
+        md_path = draft_dir / f"{chapter.chapter_id}_draft_zh.md"
+        if not md_path.is_file():
+            continue
+        by_id: dict[str, str] = {}
+        current_id: str | None = None
+        buf: list[str] = []
+        for line in md_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("# "):
+                continue
+            match = _SEGMENT_ID_RE.match(line.strip())
+            if match:
+                if current_id and buf:
+                    by_id[current_id] = "\n".join(buf).strip()
+                current_id = match.group(1)
+                buf = []
+            elif current_id is not None:
+                buf.append(line)
+        if current_id and buf:
+            by_id[current_id] = "\n".join(buf).strip()
+        for seg in chapter.segments:
+            if (seg.draft_text or "").strip():
+                continue
+            text = by_id.get(seg.segment_id, "")
+            if text:
+                seg.draft_text = text
+                seg.status = "machine_translated"
+
+
 def _count_translated_segments(chapters: list[ParsedChapter]) -> int:
     return sum(1 for ch in chapters for s in ch.segments if (s.draft_text or "").strip())
 
@@ -250,6 +288,7 @@ def run_draft_stage(
 
     parsed_chapters = [parse_chapter_file(p) for p in chapter_paths]
     _hydrate_from_segments_json(run_root, parsed_chapters)
+    _hydrate_from_draft_md(run_root, parsed_chapters)
     total_expected = sum(len(ch.segments) for ch in parsed_chapters)
     translated_before = _count_translated_segments(parsed_chapters)
     if translated_before < total_expected and (

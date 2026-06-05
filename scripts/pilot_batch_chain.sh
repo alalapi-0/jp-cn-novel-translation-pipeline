@@ -25,6 +25,20 @@ pid_alive() {
   [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
 }
 
+remove_stale_locks() {
+  local lock_dir="$REPO_ROOT/workspace/.locks"
+  [[ -d "$lock_dir" ]] || return 0
+  for lock in "$lock_dir"/*.lock; do
+    [[ -f "$lock" ]] || continue
+    local pid
+    pid="$(tr -d ' \n' <"$lock" 2>/dev/null || true)"
+    if [[ -z "$pid" ]] || ! pid_alive "$pid"; then
+      rm -f "$lock"
+      log "removed stale lock $(basename "$lock")"
+    fi
+  done
+}
+
 lock_holder_alive() {
   local lock_path="$1"
   [[ -f "$lock_path" ]] || return 1
@@ -52,7 +66,7 @@ wait_refine_idle() {
 
 refine_eligible() {
   local run_id="$1"
-  python3 -c "
+  "$PYTHON" -c "
 import json
 from pathlib import Path
 p = Path('workspace/runs/$run_id/segments.json')
@@ -73,7 +87,7 @@ print(n)
 
 draft_complete() {
   local run_id="$1"
-  python3 -c "
+  "$PYTHON" -c "
 import json
 from pathlib import Path
 p = Path('workspace/runs/$run_id/segments.json')
@@ -108,7 +122,7 @@ refine_run_until_done() {
 
 latest_run_for_offset() {
   local offset="$1"
-  python3 -c "
+  "$PYTHON" -c "
 import json
 from pathlib import Path
 root = Path('workspace/runs')
@@ -131,18 +145,81 @@ if best:
 "
 }
 
+resumable_run_for_offset() {
+  local offset="$1"
+  "$PYTHON" -c "
+import json
+from pathlib import Path
+offset = int('$offset')
+ck_dir = Path('workspace/checkpoints')
+runs = Path('workspace/runs')
+for ck_path in sorted(ck_dir.glob('run_*_draft_stage_b_50ch.json'), reverse=True):
+    rid = ck_path.stem
+    try:
+        ck = json.loads(ck_path.read_text())
+    except Exception:
+        continue
+    status = ck.get('status') or ''
+    if status == 'completed':
+        continue
+    run_dir = runs / rid
+    if not run_dir.is_dir():
+        continue
+    meta = run_dir / 'run_metadata.json'
+    if meta.is_file():
+        off = int(json.loads(meta.read_text()).get('chapter_offset') or 0)
+    else:
+        segs = ck.get('completed_segments') or []
+        if not segs:
+            continue
+        ch_num = int(segs[0].split('-seg-')[0].split('-')[1])
+        off = ch_num - 1
+    if off != offset:
+        continue
+    seg_path = run_dir / 'segments.json'
+    if seg_path.is_file():
+        doc = json.loads(seg_path.read_text())
+        segs = [s for ch in doc.get('chapters', []) for s in ch.get('segments', [])]
+        if segs and all((s.get('draft_text') or '').strip() for s in segs):
+            continue
+    print(rid)
+    break
+"
+}
+
 run_translate_batch() {
   local offset="$1"
   wait_translate_idle
-  log "translate offset=$offset limit=$BATCH"
+  local resume_id
+  resume_id="$(resumable_run_for_offset "$offset")"
+  log "translate offset=$offset limit=$BATCH${resume_id:+ resume=$resume_id}"
   export MAX_TEST_COST_USD="${TRANSLATE_MAX_TEST_COST_USD:-2.5}"
-  "$PYTHON" scripts/translate.py --phase draft --stage stage_b \
-    --chapter-offset "$offset" --limit-chapters "$BATCH" >>"$LOG" 2>&1
+  local -a translate_args=(
+    scripts/translate.py --phase draft --stage stage_b
+    --chapter-offset "$offset" --limit-chapters "$BATCH"
+  )
+  if [[ -n "${resume_id:-}" ]]; then
+    translate_args+=(--run-id "$resume_id")
+  fi
+  while true; do
+    if "$PYTHON" "${translate_args[@]}" >>"$LOG" 2>&1; then
+      break
+    fi
+    rc=$?
+    if [[ "$rc" -eq 2 ]] && lock_holder_alive "$REPO_ROOT/workspace/.locks/translate_stage_b_${resume_id:-stage_b_default}.lock"; then
+      log "translate lock busy (exit=$rc); waiting 60s"
+      sleep 60
+      continue
+    fi
+    log "translate FAILED exit=$rc offset=$offset"
+    return "$rc"
+  done
 }
 
 # Offsets with completed draft runs (skip re-translate, still refine)
 SKIP_OFFSETS="${PILOT_SKIP_OFFSETS:-0}"
 
+remove_stale_locks
 log "pilot_batch_chain start TOTAL=$TOTAL_CHAPTERS BATCH=$BATCH skip=$SKIP_OFFSETS"
 
 # Finish in-flight translate/refine started outside this script
@@ -173,7 +250,7 @@ while [[ "$offset" -lt "$TOTAL_CHAPTERS" ]]; do
   run_translate_batch "$offset"
   run_id="$(latest_run_for_offset "$offset")"
   if [[ -z "${run_id:-}" ]]; then
-    run_id="$(python3 -c "import json;print(json.load(open('workspace/stage_state.json'))['run_id'])" 2>/dev/null || true)"
+    run_id="$("$PYTHON" -c "import json;print(json.load(open('workspace/stage_state.json'))['run_id'])" 2>/dev/null || true)"
   fi
   if [[ -z "${run_id:-}" ]]; then
     log "ERROR: no run_id after translate offset=$offset"

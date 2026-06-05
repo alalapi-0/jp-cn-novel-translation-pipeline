@@ -19,8 +19,14 @@ PYTHON="${PYTHON:-/Users/alalapi/.local/bin/python3.12}"
 
 LOG="$REPO_ROOT/workspace/production_pipeline.log"
 PIDFILE="$REPO_ROOT/workspace/.production_pipeline.pid"
+LOCKFILE="$REPO_ROOT/workspace/.production_pipeline.lock"
 
 log() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $*" | tee -a "$LOG"; }
+
+pid_alive() {
+  local pid="${1:-}"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
 
 remove_stale_locks() {
   local lock_dir="$REPO_ROOT/workspace/.locks"
@@ -29,29 +35,47 @@ remove_stale_locks() {
     [[ -f "$lock" ]] || continue
     local pid
     pid="$(tr -d ' \n' <"$lock" 2>/dev/null || true)"
-    if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
+    if [[ -z "$pid" ]] || ! pid_alive "$pid"; then
       rm -f "$lock"
       log "removed stale lock $(basename "$lock")"
     fi
   done
 }
 
+acquire_singleton() {
+  if [[ -f "$PIDFILE" ]]; then
+    local old_pid
+    old_pid="$(tr -d ' \n' <"$PIDFILE" 2>/dev/null || true)"
+    if pid_alive "$old_pid"; then
+      log "production_pipeline already running pid=$old_pid; exiting"
+      exit 0
+    fi
+    rm -f "$PIDFILE"
+  fi
+  if [[ -d "${LOCKFILE}.d" ]]; then
+    local lock_pid
+    lock_pid="$(tr -d ' \n' <"${LOCKFILE}.d/pid" 2>/dev/null || true)"
+    if pid_alive "$lock_pid"; then
+      log "production_pipeline lock held by pid=$lock_pid; exiting"
+      exit 0
+    fi
+    rm -rf "${LOCKFILE}.d"
+  fi
+  if ! mkdir "${LOCKFILE}.d" 2>/dev/null; then
+    log "production_pipeline lock busy; exiting"
+    exit 0
+  fi
+  echo $$ >"${LOCKFILE}.d/pid"
+  trap 'rm -rf "${LOCKFILE}.d"' EXIT
+}
+
+acquire_singleton
 echo $$ >"$PIDFILE"
 log "production_pipeline start pid=$$"
 
 remove_stale_locks
 
-# Drop incomplete offset-50 runs (no segments.json); checkpoints cannot resume without it.
-for partial in \
-  run_20260604_132246_draft_stage_b_50ch \
-  run_20260604_133044_draft_stage_b_50ch; do
-  if [[ ! -f "workspace/runs/$partial/segments.json" ]]; then
-    rm -rf "workspace/runs/$partial"
-    rm -f "workspace/checkpoints/$partial.json"
-    log "cleaned partial run $partial"
-  fi
-done
-
 bash scripts/pilot_batch_chain.sh >>"$LOG" 2>&1
 
 log "production_pipeline COMPLETE"
+rm -f "$PIDFILE"
