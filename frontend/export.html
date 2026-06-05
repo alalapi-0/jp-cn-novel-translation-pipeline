@@ -30,19 +30,26 @@
         <ul id="export-file-list" class="meta"></ul>
       </div>
       <div class="card">
-        <h2>触发导出</h2>
-        <p class="meta">优先从 <code>workspace/runs</code> 合并导出；若无 run，则回退为当前 manifest mock 导出。</p>
+        <h2>导出当前项目（manifest）</h2>
+        <p class="meta">仅导出指定项目 manifest 中的 segment 到 <code>output_cn/</code>，不合并 workspace runs。</p>
         <label>
-          项目 ID（manifest 回退用）
-          <input id="export-project-id" type="text" placeholder="demo-jp-cn" />
+          项目 ID
+          <input id="export-project-id" type="text" placeholder="demo-jp-cn" required />
         </label>
         <label class="checkbox-row">
           <input id="export-overwrite" type="checkbox" checked />
           覆盖已有导出文件
         </label>
         <div class="actions">
-          <button type="button" class="primary" id="export-run-btn">执行导出</button>
+          <button type="button" class="primary" id="export-manifest-btn">导出当前项目 manifest</button>
           <button type="button" id="export-refresh-btn">刷新状态</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>全量 runs 导出</h2>
+        <p class="meta">合并 <code>workspace/runs</code> 下已完成 Stage B run 并导出；若无 run 将报错，不会回退 manifest。</p>
+        <div class="actions">
+          <button type="button" class="danger" id="export-runs-btn">全量 runs 导出（需确认）</button>
         </div>
         <pre id="export-result"></pre>
       </div>

@@ -12,10 +12,10 @@
 # 1. Node 依赖（Playwright UI 测试 + MCP 检查）
 npm ci
 
-# 2. Python 虚拟环境与单元测试
+# 2. Python 虚拟环境与单元测试（避免 PEP 668 系统 Python 限制）
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
+.venv/bin/pip install -r requirements-dev.txt
 .venv/bin/pytest tests/ -q
 
 # 3. 启动前端 + Workbench API（默认端口 5174）
@@ -23,19 +23,19 @@ npm run dev:frontend
 # 浏览器打开 http://127.0.0.1:5174/
 ```
 
-**真实 API 小规模测试**（可选，不读取 `.env` 文件内容，只从环境变量读 Key）：
+**真实 API 小规模测试**（在已激活的 venv 或系统 Python 中均可；不读取 `.env`）：
 
 ```bash
 export OPENROUTER_API_KEY=your_key_here   # 或其他 provider 变量，见 docs/api_provider_strategy.md
 export REAL_API_TESTS_ENABLED=true
-python3 scripts/run_real_api_smoke.py --real
-# 无 Key 时自动 dry-run，exit 0，不阻断其他流程
+.venv/bin/python3 scripts/run_real_api_smoke.py --real
+# 无 Key 时：.venv/bin/python3 scripts/run_real_api_smoke.py --status-only
 ```
 
 **工具链门控与 UI 测试：**
 
 ```bash
-npm run check:tooling    # agent_gate + protocol + pytest
+.venv/bin/pytest tests/ -q          # 或 npm run check:tooling（内含 pytest）
 npm run test:ui          # Playwright（自动起 5174 dev server）
 ```
 

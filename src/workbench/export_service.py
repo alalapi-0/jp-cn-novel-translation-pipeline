@@ -104,17 +104,27 @@ def export_from_manifest(
 def run_export(
     repo_root: Path,
     *,
-    source: str = "auto",
+    source: str,
     project_id: str | None = None,
     require_refined: bool = False,
     overwrite: bool = True,
 ) -> dict[str, Any]:
+    source = str(source or "").strip().lower()
     if source == "manifest":
         if not project_id:
             raise ValueError("project_id is required for manifest export")
+        from workbench.project_id import validate_project_id
+        from workbench.project_registry import get_project_manifest
+
+        project_id = validate_project_id(project_id)
+        if get_project_manifest(repo_root, project_id) is None:
+            raise KeyError(f"unknown project_id: {project_id}")
         result = export_from_manifest(repo_root, project_id=project_id, overwrite=overwrite)
         result["status"] = export_status(repo_root)
         return result
+
+    if source != "runs":
+        raise ValueError("source must be 'manifest' or 'runs'")
 
     import importlib.util
 
@@ -124,15 +134,7 @@ def run_export(
         raise RuntimeError("export_refined_runs.py unavailable")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    try:
-        summary = module.export_all(repo_root, require_refined=require_refined)
-        summary["source"] = "runs"
-        summary["status"] = export_status(repo_root)
-        return summary
-    except FileNotFoundError:
-        if project_id:
-            result = export_from_manifest(repo_root, project_id=project_id, overwrite=overwrite)
-            result["status"] = export_status(repo_root)
-            result["fallback"] = "no draft runs; exported active manifest instead"
-            return result
-        raise
+    summary = module.export_all(repo_root, require_refined=require_refined)
+    summary["source"] = "runs"
+    summary["status"] = export_status(repo_root)
+    return summary

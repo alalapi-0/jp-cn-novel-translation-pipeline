@@ -220,11 +220,16 @@
     try {
       const registry = await fetchProjectsApi();
       const projects = registry.projects || [];
+      const projectIdOf = (p) => p.id || p.project_id;
+      const visibleIds = new Set(projects.map(projectIdOf));
+      const pickVisible = (candidate) =>
+        candidate && visibleIds.has(candidate) ? candidate : null;
       const activeId =
-        preferredProjectId ||
-        registry.active_project_id ||
-        projects[0]?.id ||
-        projects[0]?.project_id;
+        pickVisible(preferredProjectId) ||
+        pickVisible(registry.active_project_id) ||
+        pickVisible(loadActiveProjectId()) ||
+        projectIdOf(projects[0]) ||
+        null;
       if (!activeId) throw new Error("no projects in registry");
       const payload = await fetchWorkbenchDataApi(activeId);
       saveActiveProjectId(activeId);
@@ -313,7 +318,7 @@
         return;
       }
       try {
-        let createRes = await fetch("/api/projects", {
+        const createRes = await fetch("/api/projects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -323,7 +328,13 @@
           }),
         });
         if (createRes.status === 400) {
-          await switchActiveProjectApi(projectId);
+          const errPayload = await createRes.json().catch(() => ({}));
+          const msg = String(errPayload.error || "");
+          if (msg.includes("already exists")) {
+            await switchActiveProjectApi(projectId);
+          } else {
+            throw new Error(msg || "invalid project_id");
+          }
         } else if (!createRes.ok) {
           throw new Error(`create project ${createRes.status}`);
         }
@@ -719,11 +730,47 @@
       });
     }
 
-    const runBtn = document.getElementById("export-run-btn");
-    if (runBtn && runBtn.dataset.bound !== "1") {
-      runBtn.dataset.bound = "1";
-      runBtn.addEventListener("click", async () => {
+    const manifestBtn = document.getElementById("export-manifest-btn");
+    if (manifestBtn && manifestBtn.dataset.bound !== "1") {
+      manifestBtn.dataset.bound = "1";
+      manifestBtn.addEventListener("click", async () => {
         const pid = document.getElementById("export-project-id")?.value.trim();
+        const overwrite = document.getElementById("export-overwrite")?.checked !== false;
+        const resultEl = document.getElementById("export-result");
+        if (!pid) {
+          if (resultEl) resultEl.textContent = "请填写项目 ID";
+          return;
+        }
+        try {
+          const res = await fetch("/api/export/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              project_id: pid,
+              source: "manifest",
+              overwrite,
+            }),
+          });
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error || `export ${res.status}`);
+          if (resultEl) resultEl.textContent = JSON.stringify(payload, null, 2);
+          await refreshStatus();
+          log(`manifest export OK: ${pid}`);
+        } catch (err) {
+          if (resultEl) resultEl.textContent = String(err.message);
+          log(`manifest export failed: ${err.message}`);
+        }
+      });
+    }
+
+    const runsBtn = document.getElementById("export-runs-btn");
+    if (runsBtn && runsBtn.dataset.bound !== "1") {
+      runsBtn.dataset.bound = "1";
+      runsBtn.addEventListener("click", async () => {
+        const confirmed = window.confirm(
+          "将合并 workspace/runs 下所有 Stage B run 并导出到 output_cn/。若无 run 将失败。继续？"
+        );
+        if (!confirmed) return;
         const overwrite = document.getElementById("export-overwrite")?.checked !== false;
         const resultEl = document.getElementById("export-result");
         try {
@@ -731,21 +778,18 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              project_id: pid,
-              source: "auto",
+              source: "runs",
               overwrite,
             }),
           });
           const payload = await res.json();
           if (!res.ok) throw new Error(payload.error || `export ${res.status}`);
-          if (resultEl) {
-            resultEl.textContent = JSON.stringify(payload, null, 2);
-          }
+          if (resultEl) resultEl.textContent = JSON.stringify(payload, null, 2);
           await refreshStatus();
-          log(`export OK: ${payload.source || "auto"}`);
+          log("runs export OK");
         } catch (err) {
           if (resultEl) resultEl.textContent = String(err.message);
-          log(`export failed: ${err.message}`);
+          log(`runs export failed: ${err.message}`);
         }
       });
     }

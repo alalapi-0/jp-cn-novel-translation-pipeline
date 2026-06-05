@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from workbench.project_id import InvalidProjectIdError, is_test_project_id, validate_project_id
+
 MANIFESTS_DIR_NAME = "manifests"
 WORKBENCH_STATE_FILE = "workbench_state.json"
 LEGACY_MANIFEST_NAME = "project_manifest.json"
@@ -36,6 +38,7 @@ class ProjectManifest:
             "language_direction": self.language_direction,
             "status": self.status,
             "chapters": self.chapters,
+            "is_test": is_test_project_id(self.project_id),
         }
 
     def to_workbench_payload(self) -> dict[str, Any]:
@@ -126,7 +129,7 @@ def list_project_manifest_paths(repo_root: Path) -> list[Path]:
     return paths
 
 
-def list_project_manifests(repo_root: Path) -> list[ProjectManifest]:
+def list_project_manifests(repo_root: Path, *, include_test: bool = True) -> list[ProjectManifest]:
     manifests: list[ProjectManifest] = []
     seen: set[str] = set()
     for path in list_project_manifest_paths(repo_root):
@@ -137,6 +140,8 @@ def list_project_manifests(repo_root: Path) -> list[ProjectManifest]:
         if manifest.project_id in seen:
             continue
         seen.add(manifest.project_id)
+        if not include_test and is_test_project_id(manifest.project_id):
+            continue
         manifests.append(manifest)
     manifests.sort(key=lambda m: m.project_id)
     return manifests
@@ -167,9 +172,7 @@ def get_active_project_id(repo_root: Path) -> str | None:
 
 
 def set_active_project_id(repo_root: Path, project_id: str) -> ProjectManifest:
-    project_id = project_id.strip()
-    if not project_id:
-        raise ValueError("project_id is required")
+    project_id = validate_project_id(project_id)
     match = next((m for m in list_project_manifests(repo_root) if m.project_id == project_id), None)
     if match is None:
         raise KeyError(f"unknown project_id: {project_id}")
@@ -184,7 +187,10 @@ def set_active_project_id(repo_root: Path, project_id: str) -> ProjectManifest:
 
 
 def get_project_manifest(repo_root: Path, project_id: str) -> ProjectManifest | None:
-    project_id = project_id.strip()
+    try:
+        project_id = validate_project_id(project_id)
+    except InvalidProjectIdError:
+        return None
     for manifest in list_project_manifests(repo_root):
         if manifest.project_id == project_id:
             return manifest
@@ -243,9 +249,7 @@ def create_project_manifest(
     language_direction: str,
     segments: list[dict[str, Any]] | None = None,
 ) -> ProjectManifest:
-    project_id = project_id.strip()
-    if not project_id:
-        raise ValueError("project_id is required")
+    project_id = validate_project_id(project_id)
     if get_project_manifest(repo_root, project_id) is not None:
         raise ValueError(f"project already exists: {project_id}")
     payload = {
@@ -266,6 +270,7 @@ def update_project_segments(
     *,
     status: str | None = None,
 ) -> ProjectManifest:
+    project_id = validate_project_id(project_id)
     manifest = get_project_manifest(repo_root, project_id)
     if manifest is None:
         raise KeyError(f"unknown project_id: {project_id}")

@@ -108,3 +108,41 @@ def test_review_state_patch(api_server: str) -> None:
     code, loaded = _get(api_server, "/api/projects/review-state-test/review-state")
     assert code == 200
     assert loaded["review_state"]["segments"]["seg-001"]["status"] == "approved"
+
+
+def test_create_project_rejects_invalid_id(api_server: str) -> None:
+    code, payload = _post(
+        api_server,
+        "/api/projects",
+        {"project_id": "../bad", "name": "x", "language_direction": "JP_TO_CN"},
+    )
+    assert code == 400
+    assert "error" in payload
+
+
+def test_projects_list_hides_test_projects_by_default(api_server: str) -> None:
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": "pw-hidden-api", "name": "Hidden", "language_direction": "JP_TO_CN"},
+    )
+    code, payload = _get(api_server, "/api/projects")
+    assert code == 200
+    ids = {p["project_id"] for p in payload["projects"]}
+    assert "pw-hidden-api" not in ids
+    assert payload["include_test"] is False
+    assert payload["active_project_id"] != "pw-hidden-api"
+
+    code, all_payload = _get(api_server, "/api/projects?include_test=true")
+    all_ids = {p["project_id"] for p in all_payload["projects"]}
+    assert "pw-hidden-api" in all_ids
+
+
+def test_export_manifest_requires_existing_project(api_server: str) -> None:
+    code, payload = _post(
+        api_server,
+        "/api/export/run",
+        {"source": "manifest", "project_id": "missing-export-target"},
+    )
+    assert code == 400
+    assert "unknown project_id" in payload["error"]

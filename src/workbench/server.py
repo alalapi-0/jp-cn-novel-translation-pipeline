@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import json
+import traceback
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, parse_qs, urlparse
 
 from workbench.api_status import build_api_status
 from workbench.dry_run_generate import generate_segments_from_sample
 from workbench.export_service import export_status, run_export
+from workbench.project_id import InvalidProjectIdError, is_test_project_id, validate_project_id
 from workbench.project_registry import (
     create_project_manifest,
     get_active_project_id,
@@ -22,6 +24,11 @@ from workbench.project_registry import (
     update_project_segments,
 )
 from workbench.review_state import get_project_review_state, patch_project_review_state
+
+
+def _query_flag(parsed: ParseResult, name: str, *, default: bool = False) -> bool:
+    raw = parse_qs(parsed.query).get(name, ["false" if not default else "true"])[0]
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequestHandler]:
@@ -51,42 +58,76 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 raise ValueError("JSON body must be an object")
             return data
 
+        def _bad_request(self, message: str) -> None:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": message})
+
+        def _invalid_project_id(self, exc: InvalidProjectIdError) -> None:
+            self._bad_request(str(exc))
+
+        def _parse_project_id(self, raw: str) -> str:
+            return validate_project_id(raw.strip("/"))
+
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path.startswith("/api/"):
-                self._handle_api_get(parsed.path)
+                try:
+                    self._handle_api_get(parsed)
+                except InvalidProjectIdError as exc:
+                    self._invalid_project_id(exc)
+                except Exception:  # noqa: BLE001
+                    traceback.print_exc()
+                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
                 return
             super().do_GET()
 
         def do_POST(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path.startswith("/api/"):
-                self._handle_api_post(parsed.path)
+                try:
+                    self._handle_api_post(parsed.path)
+                except InvalidProjectIdError as exc:
+                    self._invalid_project_id(exc)
+                except Exception:  # noqa: BLE001
+                    traceback.print_exc()
+                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def do_PUT(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path.startswith("/api/"):
-                self._handle_api_put(parsed.path)
+                try:
+                    self._handle_api_put(parsed.path)
+                except InvalidProjectIdError as exc:
+                    self._invalid_project_id(exc)
+                except Exception:  # noqa: BLE001
+                    traceback.print_exc()
+                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def do_PATCH(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             if parsed.path.startswith("/api/"):
-                self._handle_api_patch(parsed.path)
+                try:
+                    self._handle_api_patch(parsed.path)
+                except InvalidProjectIdError as exc:
+                    self._invalid_project_id(exc)
+                except Exception:  # noqa: BLE001
+                    traceback.print_exc()
+                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def _ensure_manifests(self) -> None:
             refresh_example_manifests(repo_root)
             if get_active_project_id(repo_root) is None:
-                manifests = list_project_manifests(repo_root)
+                manifests = list_project_manifests(repo_root, include_test=True)
                 if manifests:
                     set_active_project_id(repo_root, manifests[0].project_id)
 
-        def _handle_api_get(self, path: str) -> None:
+        def _handle_api_get(self, parsed: ParseResult) -> None:
+            path = parsed.path
             self._ensure_manifests()
             if path == "/api/runtime/api-status":
                 self._send_json(HTTPStatus.OK, build_api_status(repo_root))
@@ -95,11 +136,17 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 self._send_json(HTTPStatus.OK, export_status(repo_root))
                 return
             if path == "/api/projects":
-                projects = [m.to_summary() for m in list_project_manifests(repo_root)]
+                include_test = _query_flag(parsed, "include_test", default=False)
+                projects = [
+                    m.to_summary() for m in list_project_manifests(repo_root, include_test=include_test)
+                ]
                 active = get_active_project_id(repo_root)
+                if not include_test and active and is_test_project_id(active):
+                    visible = list_project_manifests(repo_root, include_test=False)
+                    active = visible[0].project_id if visible else None
                 self._send_json(
                     HTTPStatus.OK,
-                    {"projects": projects, "active_project_id": active},
+                    {"projects": projects, "active_project_id": active, "include_test": include_test},
                 )
                 return
             if path == "/api/projects/active":
@@ -126,7 +173,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             if path.startswith(prefix):
                 rest = path[len(prefix) :]
                 if rest.endswith("/review-state"):
-                    project_id = rest[: -len("/review-state")].strip("/")
+                    project_id = self._parse_project_id(rest[: -len("/review-state")])
                     if get_project_manifest(repo_root, project_id) is None:
                         self._send_json(
                             HTTPStatus.NOT_FOUND,
@@ -142,7 +189,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     )
                     return
                 if rest.endswith("/workbench-data"):
-                    project_id = rest[: -len("/workbench-data")].strip("/")
+                    project_id = self._parse_project_id(rest[: -len("/workbench-data")])
                     manifest = get_project_manifest(repo_root, project_id)
                     if manifest is None:
                         self._send_json(
@@ -153,7 +200,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._send_json(HTTPStatus.OK, manifest.to_workbench_payload())
                     return
                 if rest.endswith("/quality-review"):
-                    project_id = rest[: -len("/quality-review")].strip("/")
+                    project_id = self._parse_project_id(rest[: -len("/quality-review")])
                     manifest = get_project_manifest(repo_root, project_id)
                     if manifest is None:
                         self._send_json(
@@ -179,7 +226,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             try:
                 body = self._read_json_body()
             except (ValueError, json.JSONDecodeError) as exc:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                self._bad_request(str(exc))
                 return
 
             if path == "/api/projects":
@@ -193,40 +240,54 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         ),
                         segments=body.get("segments") if isinstance(body.get("segments"), list) else [],
                     )
-                    set_active_project_id(repo_root, manifest.project_id)
+                    active_id = get_active_project_id(repo_root)
+                    if not is_test_project_id(manifest.project_id):
+                        set_active_project_id(repo_root, manifest.project_id)
+                        active_id = manifest.project_id
                     self._send_json(
                         HTTPStatus.CREATED,
-                        {"project": manifest.to_summary(), "active_project_id": manifest.project_id},
+                        {"project": manifest.to_summary(), "active_project_id": active_id},
                     )
+                except InvalidProjectIdError as exc:
+                    self._invalid_project_id(exc)
                 except ValueError as exc:
-                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                    self._bad_request(str(exc))
                 return
 
             if path == "/api/export/run":
+                source = str(body.get("source") or "manifest").strip().lower()
+                if source not in {"manifest", "runs"}:
+                    self._bad_request("source must be 'manifest' or 'runs'")
+                    return
                 try:
-                    project_id = str(body.get("project_id") or get_active_project_id(repo_root) or "")
+                    project_id: str | None = None
+                    if source == "manifest":
+                        project_id = validate_project_id(str(body.get("project_id") or ""))
                     result = run_export(
                         repo_root,
-                        source=str(body.get("source") or "auto"),
-                        project_id=project_id or None,
+                        source=source,
+                        project_id=project_id,
                         require_refined=bool(body.get("require_refined")),
                         overwrite=body.get("overwrite", True) is not False,
                     )
                     self._send_json(HTTPStatus.OK, result)
+                except InvalidProjectIdError as exc:
+                    self._invalid_project_id(exc)
                 except (ValueError, KeyError, FileNotFoundError) as exc:
-                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                    self._bad_request(str(exc))
                 return
 
             prefix = "/api/projects/"
             if path.startswith(prefix) and path.endswith("/dry-run-generate"):
-                project_id = path[len(prefix) : -len("/dry-run-generate")].strip("/")
+                raw_id = path[len(prefix) : -len("/dry-run-generate")].strip("/")
+                project_id = validate_project_id(raw_id)
                 manifest = get_project_manifest(repo_root, project_id)
                 if manifest is None:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": f"unknown project_id: {project_id}"})
                     return
                 sample_text = str(body.get("sample_text") or body.get("text") or "").strip()
                 if not sample_text:
-                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "sample_text is required"})
+                    self._bad_request("sample_text is required")
                     return
                 segments = generate_segments_from_sample(
                     sample_text=sample_text,
@@ -256,7 +317,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             if path == "/api/projects/active":
                 try:
                     body = self._read_json_body()
-                    project_id = str(body.get("project_id") or "").strip()
+                    project_id = validate_project_id(str(body.get("project_id") or ""))
                     manifest = set_active_project_id(repo_root, project_id)
                     self._send_json(
                         HTTPStatus.OK,
@@ -267,8 +328,8 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     )
                 except KeyError as exc:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": str(exc)})
-                except (ValueError, json.JSONDecodeError) as exc:
-                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                except (ValueError, json.JSONDecodeError, InvalidProjectIdError) as exc:
+                    self._bad_request(str(exc))
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -277,19 +338,19 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             try:
                 body = self._read_json_body()
             except (ValueError, json.JSONDecodeError) as exc:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                self._bad_request(str(exc))
                 return
 
             prefix = "/api/projects/"
             if path.startswith(prefix) and path.endswith("/review-state"):
-                project_id = path[len(prefix) : -len("/review-state")].strip("/")
+                project_id = validate_project_id(path[len(prefix) : -len("/review-state")].strip("/"))
                 if get_project_manifest(repo_root, project_id) is None:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": f"unknown project_id: {project_id}"})
                     return
                 segments = body.get("segments") if isinstance(body.get("segments"), dict) else None
                 issues = body.get("issues") if isinstance(body.get("issues"), dict) else None
                 if not segments and not issues:
-                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "segments or issues patch required"})
+                    self._bad_request("segments or issues patch required")
                     return
                 review_state = patch_project_review_state(
                     repo_root,
