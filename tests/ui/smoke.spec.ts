@@ -9,16 +9,17 @@ const MISSING_PAGES = [
 test("homepage loads project dashboard", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page.getByRole("heading", { name: "翻译工作台" })).toBeVisible();
-  await expect(page.getByText("apiMode=dry-run")).toBeVisible();
+  await expect(page.locator("#api-mode-status")).toContainText(/missing_api_key|dry_run|real_api/);
+  await expect(page.locator("#api-key-status")).toContainText(/missing_api_key|已配置/);
   await expect(page.getByRole("link", { name: "进入对照审核 →" }).first()).toBeVisible();
 });
 
 test("project home shows chapter manager summary", async ({ page }) => {
   await page.goto("/index.html");
-  await expect(page.getByRole("heading", { name: "示例项目（日译中）" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "示例项目（中译日）" })).toBeVisible();
-  await expect(page.getByText(/2 章/)).toBeVisible();
-  await expect(page.getByText(/review_pending/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /示例项目（日译中）/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /示例项目（中译日）/ })).toBeVisible();
+  await expect(page.getByText(/2 章/).first()).toBeVisible();
+  await expect(page.getByText(/review_pending/).first()).toBeVisible();
 });
 
 test("review page shows auto-approve controls", async ({ page }) => {
@@ -26,8 +27,32 @@ test("review page shows auto-approve controls", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Side-by-side Translation Review" })
   ).toBeVisible();
-  await expect(page.getByText(/AUTO_APPROVE.*true/)).toBeVisible();
+  await expect(page.getByText(/AUTO_APPROVE.*false/)).toBeVisible();
   await expect(page.getByRole("button", { name: "触发自动通过" }).first()).toBeVisible();
+});
+
+test("review page keeps pending until manual approve", async ({ page, request }) => {
+  const projectId = `pw-pending-${Date.now()}`;
+  await request.post("/api/projects", {
+    data: {
+      project_id: projectId,
+      name: "Pending Test",
+      language_direction: "JP_TO_CN",
+    },
+  });
+  await request.post(`/api/projects/${projectId}/dry-run-generate`, {
+    data: { sample_text: "テスト段落。" },
+  });
+  await page.goto(`/review.html?project=${projectId}`);
+  const badge = page.locator(".segment .badge[data-status='pending']").first();
+  await expect(badge).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".segment .badge[data-status='pending']").first()).toBeVisible();
+});
+
+test("autopilot query enables auto-approve", async ({ page }) => {
+  await page.goto("/review.html?project=demo-jp-cn&auto_approve=1");
+  await expect(page.getByText(/AUTO_APPROVE.*true/)).toBeVisible();
 });
 
 test("review page has approve and reject buttons", async ({ page }) => {
@@ -38,7 +63,7 @@ test("review page has approve and reject buttons", async ({ page }) => {
 
 test("navigation from index to review via link", async ({ page }) => {
   await page.goto("/index.html");
-  await page.getByRole("link", { name: "进入对照审核 →" }).click();
+  await page.getByRole("link", { name: "进入对照审核 →" }).first().click();
   await expect(page).toHaveURL(/review\.html/);
   await expect(
     page.getByRole("heading", { name: "Side-by-side Translation Review" })

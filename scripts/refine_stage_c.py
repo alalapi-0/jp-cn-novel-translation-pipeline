@@ -70,8 +70,8 @@ def _default_run_id() -> str:
     return ""
 
 
-def _update_stage_state(run_id: str, status: str, summary: dict) -> None:
-    path = REPO_ROOT / "workspace" / "stage_state.json"
+def _update_stage_state(run_id: str, status: str, summary: dict, *, state_path: Path | None = None) -> None:
+    path = state_path or (REPO_ROOT / "workspace" / "stage_state.json")
     payload = {
         "phase": "refine",
         "stage": "refine_stage_c_pilot",
@@ -96,6 +96,12 @@ def main() -> int:
         help=f"Max segments to refine (hard cap {STAGE_C_MAX_SEGMENTS})",
     )
     parser.add_argument("--dry-run", action="store_true", help="Force dry-run provider (no network)")
+    parser.add_argument(
+        "--stage-state-path",
+        type=Path,
+        default=None,
+        help="Write stage_state to this path (default: workspace/stage_state.json)",
+    )
     parser.add_argument("--json", action="store_true", help="Print summary JSON to stdout")
     args = parser.parse_args()
 
@@ -114,11 +120,13 @@ def main() -> int:
     if lock_fd < 0:
         return 2
 
+    stage_state_path = args.stage_state_path
     try:
         _update_stage_state(
             run_id,
             "in_progress",
             {"limit_segments": limit, "dry_run": args.dry_run},
+            state_path=stage_state_path,
         )
         try:
             summary, run_root = run_refine_pilot(
@@ -128,7 +136,7 @@ def main() -> int:
                 force_dry_run=args.dry_run,
             )
         except Exception as exc:
-            _update_stage_state(run_id, "failed", {"error": str(exc)})
+            _update_stage_state(run_id, "failed", {"error": str(exc)}, state_path=stage_state_path)
             print(f"refine failed: {exc}", file=sys.stderr)
             return 2
 
@@ -145,7 +153,7 @@ def main() -> int:
             "aborted": summary.aborted,
             "abort_reason": summary.abort_reason,
         }
-        _update_stage_state(run_id, status, payload)
+        _update_stage_state(run_id, status, payload, state_path=stage_state_path)
 
         if args.json:
             print(json.dumps(payload, ensure_ascii=False, indent=2))

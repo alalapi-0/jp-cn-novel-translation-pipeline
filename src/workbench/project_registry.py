@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,7 @@ MANIFESTS_DIR_NAME = "manifests"
 WORKBENCH_STATE_FILE = "workbench_state.json"
 LEGACY_MANIFEST_NAME = "project_manifest.json"
 EXAMPLE_GLOB = "workbench_project.*.example.json"
+_REFRESH_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -100,24 +102,42 @@ def load_project_manifest(path: Path) -> ProjectManifest:
     return parse_project_manifest(_load_json(path), path=path)
 
 
+def _manifest_project_id(path: Path) -> str | None:
+    try:
+        return parse_project_manifest(_load_json(path)).project_id
+    except (OSError, json.JSONDecodeError, ValueError):
+        return None
+
+
 def list_project_manifest_paths(repo_root: Path) -> list[Path]:
     root = manifests_dir(repo_root)
     if not root.is_dir():
         return []
-    paths = sorted(p for p in root.glob("*.json") if p.is_file())
+    paths = sorted(
+        p for p in root.glob("*.json") if p.is_file() and p.name != LEGACY_MANIFEST_NAME
+    )
     legacy = root / LEGACY_MANIFEST_NAME
-    if legacy.is_file() and legacy not in paths:
-        paths.append(legacy)
+    if legacy.is_file():
+        legacy_id = _manifest_project_id(legacy)
+        named_ids = {_manifest_project_id(p) for p in paths}
+        named_ids.discard(None)
+        if legacy_id is None or legacy_id not in named_ids:
+            paths.append(legacy)
     return paths
 
 
 def list_project_manifests(repo_root: Path) -> list[ProjectManifest]:
     manifests: list[ProjectManifest] = []
+    seen: set[str] = set()
     for path in list_project_manifest_paths(repo_root):
         try:
-            manifests.append(load_project_manifest(path))
+            manifest = load_project_manifest(path)
         except (OSError, json.JSONDecodeError, ValueError):
             continue
+        if manifest.project_id in seen:
+            continue
+        seen.add(manifest.project_id)
+        manifests.append(manifest)
     manifests.sort(key=lambda m: m.project_id)
     return manifests
 
@@ -185,6 +205,77 @@ def resolve_active_manifest_path(repo_root: Path) -> Path | None:
             return path
     legacy = manifests_dir(repo_root) / LEGACY_MANIFEST_NAME
     return legacy if legacy.is_file() else None
+
+
+def refresh_example_manifests(repo_root: Path) -> list[Path]:
+    """Copy committed example manifests into workspace/manifests (overwrite named files)."""
+    with _REFRESH_LOCK:
+        target_dir = manifests_dir(repo_root)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        written: list[Path] = []
+        for example in sorted(examples_dir(repo_root).glob(EXAMPLE_GLOB)):
+            data = _load_json(example)
+            project_id = str(data.get("project_id") or example.stem)
+            dest = target_dir / f"{project_id}.json"
+            tmp = dest.with_suffix(".json.tmp")
+            shutil.copyfile(example, tmp)
+            tmp.replace(dest)
+            written.append(dest)
+        return written
+
+
+def save_project_manifest(repo_root: Path, data: dict[str, Any]) -> ProjectManifest:
+    manifest = parse_project_manifest(data)
+    target_dir = manifests_dir(repo_root)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    dest = target_dir / f"{manifest.project_id}.json"
+    tmp = dest.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(dest)
+    return load_project_manifest(dest)
+
+
+def create_project_manifest(
+    repo_root: Path,
+    *,
+    project_id: str,
+    name: str,
+    language_direction: str,
+    segments: list[dict[str, Any]] | None = None,
+) -> ProjectManifest:
+    project_id = project_id.strip()
+    if not project_id:
+        raise ValueError("project_id is required")
+    if get_project_manifest(repo_root, project_id) is not None:
+        raise ValueError(f"project already exists: {project_id}")
+    payload = {
+        "project_id": project_id,
+        "name": name.strip() or project_id,
+        "language_direction": language_direction.strip() or "JP_TO_CN",
+        "status": "draft_pending",
+        "chapters": 1,
+        "segments": segments or [],
+    }
+    return save_project_manifest(repo_root, payload)
+
+
+def update_project_segments(
+    repo_root: Path,
+    project_id: str,
+    segments: list[dict[str, Any]],
+    *,
+    status: str | None = None,
+) -> ProjectManifest:
+    manifest = get_project_manifest(repo_root, project_id)
+    if manifest is None:
+        raise KeyError(f"unknown project_id: {project_id}")
+    path = manifest.path or (manifests_dir(repo_root) / f"{project_id}.json")
+    data = _load_json(path)
+    data["segments"] = segments
+    if status:
+        data["status"] = status
+    data["chapters"] = max(int(data.get("chapters") or 1), 1)
+    return save_project_manifest(repo_root, data)
 
 
 def seed_example_manifests(repo_root: Path, *, force: bool = False) -> list[Path]:

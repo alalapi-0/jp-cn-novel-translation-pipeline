@@ -247,3 +247,58 @@ button:disabled {
   font-size: 0.875rem;
   margin: 0 0 0.5rem;
 }
+
+.stack-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.stack-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.stack-form input,
+.stack-form textarea,
+.stack-form select,
+#export-project-id {
+  background: #243044;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.button-link {
+  display: inline-block;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+#export-file-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+#export-result {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: pre-wrap;
+}

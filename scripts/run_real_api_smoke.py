@@ -20,15 +20,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_DIR = REPO_ROOT / ".agent_runtime"
 REPORT_DIR = RUNTIME_DIR / "real_api_reports"
 STATUS_PATH = RUNTIME_DIR / "status.json"
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
-PROVIDER_ENV = {
-    "openai": "OPENAI_API_KEY",
-    "openrouter": "OPENROUTER_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "gemini": "GEMINI_API_KEY",
-    "stability": "STABILITY_API_KEY",
-    "xai": "XAI_API_KEY",
-}
+from workbench.api_status import build_api_status, detected_providers  # noqa: E402
 
 SMOKE_MESSAGES = [{"role": "user", "content": "Reply exactly: smoke_ok"}]
 
@@ -56,14 +50,6 @@ def redact_text(text: str | None) -> str:
 def ensure_runtime() -> None:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     (RUNTIME_DIR / "logs").mkdir(parents=True, exist_ok=True)
-
-
-def detected_providers() -> list[str]:
-    return [
-        provider
-        for provider, env_name in PROVIDER_ENV.items()
-        if bool(os.environ.get(env_name, "").strip())
-    ]
 
 
 def write_report(report: dict) -> Path:
@@ -230,6 +216,7 @@ def run_smoke(args: argparse.Namespace) -> tuple[dict, Path]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Unified real API smoke-test entrypoint")
     parser.add_argument("--real", action="store_true", help="Allow one low-cost real API smoke call")
+    parser.add_argument("--status-only", action="store_true", help="Print current API key / mode probe only")
     parser.add_argument("--json", action="store_true", help="Print redacted report JSON")
     parser.add_argument("--max-cost-usd", type=float, default=0.01)
     parser.add_argument("--max-tokens", type=int, default=64)
@@ -239,12 +226,34 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(normalize_argv(argv if argv is not None else sys.argv[1:]))
+    status_probe = build_api_status(REPO_ROOT)
+    if args.status_only:
+        if args.json:
+            print(json.dumps(status_probe, ensure_ascii=False, indent=2))
+        else:
+            print(
+                f"api_status: mode={status_probe['api_mode']} "
+                f"has_key={status_probe['has_api_key']} "
+                f"real_enabled={status_probe['real_api_tests_enabled']} "
+                f"providers={','.join(status_probe['detected_providers']) or 'none'}"
+            )
+        return 0
+
     report, path = run_smoke(args)
-    status = "OK" if report.get("success") else str(report.get("error_summary") or "NOT_RUN").upper()
+    ok = report.get("success")
+    status = "OK" if ok else str(report.get("error_summary") or report.get("mode") or "NOT_RUN")
     print(f"real_api_smoke: {report['mode']} {status}")
+    print(
+        f"api_status: mode={status_probe['api_mode']} "
+        f"has_key={status_probe['has_api_key']} "
+        f"real_enabled={status_probe['real_api_tests_enabled']}"
+    )
     print(f"report: {path.relative_to(REPO_ROOT)}")
+    summary = report.get("result_summary")
+    if summary and not args.json:
+        print(f"summary: {summary}")
     if args.json:
-        print(json.dumps(report, ensure_ascii=False, indent=2))
+        print(json.dumps({"smoke": report, "api_status": status_probe}, ensure_ascii=False, indent=2))
     return 0
 
 

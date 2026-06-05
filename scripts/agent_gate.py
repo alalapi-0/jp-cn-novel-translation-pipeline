@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -652,6 +653,12 @@ def check_round_52_refine_stage_c() -> list[CheckResult]:
         )
         return results
     try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".stage_state.json",
+            delete=False,
+        ) as tmp_state:
+            tmp_state_path = tmp_state.name
         proc = subprocess.run(
             [
                 sys.executable,
@@ -661,6 +668,8 @@ def check_round_52_refine_stage_c() -> list[CheckResult]:
                 "--limit-segments",
                 "2",
                 "--dry-run",
+                "--stage-state-path",
+                tmp_state_path,
             ],
             cwd=REPO_ROOT,
             capture_output=True,
@@ -669,6 +678,10 @@ def check_round_52_refine_stage_c() -> list[CheckResult]:
             timeout=180,
             env={**os.environ, "REAL_API_TESTS_ENABLED": "false"},
         )
+        try:
+            os.unlink(tmp_state_path)
+        except OSError:
+            pass
         if proc.returncode == 0:
             results.append(
                 CheckResult(

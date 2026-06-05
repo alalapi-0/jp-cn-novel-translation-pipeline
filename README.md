@@ -4,6 +4,43 @@
 
 当前仓库仍处于治理与架构准备阶段，不是生产级公开翻译发布工具。
 
+## 快速开始（本地工作台）
+
+全新 clone 后按以下步骤启动静态审核工作台并跑 smoke：
+
+```bash
+# 1. Node 依赖（Playwright UI 测试 + MCP 检查）
+npm ci
+
+# 2. Python 虚拟环境与单元测试
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+.venv/bin/pytest tests/ -q
+
+# 3. 启动前端 + Workbench API（默认端口 5174）
+npm run dev:frontend
+# 浏览器打开 http://127.0.0.1:5174/
+```
+
+**真实 API 小规模测试**（可选，不读取 `.env` 文件内容，只从环境变量读 Key）：
+
+```bash
+export OPENROUTER_API_KEY=your_key_here   # 或其他 provider 变量，见 docs/api_provider_strategy.md
+export REAL_API_TESTS_ENABLED=true
+python3 scripts/run_real_api_smoke.py --real
+# 无 Key 时自动 dry-run，exit 0，不阻断其他流程
+```
+
+**工具链门控与 UI 测试：**
+
+```bash
+npm run check:tooling    # agent_gate + protocol + pytest
+npm run test:ui          # Playwright（自动起 5174 dev server）
+```
+
+审核工作台默认 **不自动通过** segment（`AUTO_APPROVE=false`）；自动推进试验可在 URL 加 `?auto_approve=1`。
+
 ## 当前阶段
 
 当前阶段是仓库治理、架构规划与路线扩写阶段。本阶段可以补充目录、文档、Prompt 模板、路线图和轻量占位文件，但不启动真实小说翻译、不调用真实 API、不生成 embedding、不建立真实向量库、不实现复杂前端。

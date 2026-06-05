@@ -53,7 +53,7 @@ def test_workbench_payload_includes_segments(tmp_repo: Path) -> None:
     assert manifest is not None
     payload = manifest.to_workbench_payload()
     assert payload["project"]["id"] == "demo-jp-cn"
-    assert len(payload["segments"]) == 3
+    assert len(payload["segments"]) == 5
 
 
 def test_resolve_active_manifest_path(tmp_repo: Path) -> None:
@@ -62,3 +62,28 @@ def test_resolve_active_manifest_path(tmp_repo: Path) -> None:
     path = reg.resolve_active_manifest_path(tmp_repo)
     assert path is not None
     assert path.name == "demo-cn-jp.json"
+
+
+def test_legacy_manifest_hidden_when_named_manifest_exists(tmp_repo: Path) -> None:
+    reg.seed_example_manifests(tmp_repo)
+    manifests_dir = reg.manifests_dir(tmp_repo)
+    legacy = manifests_dir / reg.LEGACY_MANIFEST_NAME
+    legacy.write_text(
+        json.dumps(
+            {
+                "project_id": "demo-jp-cn",
+                "name": "legacy duplicate",
+                "language_direction": "JP_TO_CN",
+                "status": "unknown",
+                "chapters": 0,
+                "segments": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    manifests = reg.list_project_manifests(tmp_repo)
+    ids = [m.project_id for m in manifests]
+    assert ids.count("demo-jp-cn") == 1
+    jp_cn = next(m for m in manifests if m.project_id == "demo-jp-cn")
+    assert jp_cn.name == "示例项目（日译中）"

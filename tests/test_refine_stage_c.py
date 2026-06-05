@@ -62,10 +62,11 @@ def test_refine_pilot_dry_run_module(pilot_run_dir: Path, monkeypatch: pytest.Mo
     assert (pilot_run_dir / "refine_diff.json").is_file()
 
 
-def test_refine_stage_c_cli_dry_run(monkeypatch: pytest.MonkeyPatch):
+def test_refine_stage_c_cli_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.setenv("REAL_API_TESTS_ENABLED", "false")
     run_id = "run_20260602_203645_draft_stage_b_50ch"
+    stage_state = tmp_path / "stage_state.json"
     proc = subprocess.run(
         [
             sys.executable,
@@ -75,6 +76,8 @@ def test_refine_stage_c_cli_dry_run(monkeypatch: pytest.MonkeyPatch):
             "--limit-segments",
             "3",
             "--dry-run",
+            "--stage-state-path",
+            str(stage_state),
         ],
         cwd=REPO_ROOT,
         capture_output=True,
@@ -87,3 +90,6 @@ def test_refine_stage_c_cli_dry_run(monkeypatch: pytest.MonkeyPatch):
         pytest.skip("Stage B run not present locally")
     assert proc.returncode == 0, proc.stderr or proc.stdout
     assert "refined=" in proc.stdout or "refined_segments" in proc.stdout
+    assert stage_state.is_file()
+    payload = json.loads(stage_state.read_text(encoding="utf-8"))
+    assert payload["run_id"] == run_id
