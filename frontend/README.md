@@ -4,7 +4,7 @@ Phase 1 静态审核工作台 MVP。
 
 ## 页面
 
-- `/index.html` — API 状态、Quickstart（创建项目 + dry-run）、项目列表（默认隐藏 `pw-*` / `codex-*` / `dupe-*` 测试项目）
+- `/index.html` — API 状态（来自 `/api/runtime/api-status`）、Quickstart（dry-run mock + 真实 API 小样本按钮）
 - `/review.html?project=<id>` — 对照审核（`workspace/review_state.json` 持久化）
 - `/export.html` — 导出中心（manifest 单项目 / runs 全量分离）
 

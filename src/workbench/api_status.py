@@ -79,8 +79,9 @@ def build_api_status(repo_root: Path) -> dict[str, Any]:
         "runtime_api_mode": _status_file_api_mode(repo_root),
         "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "config_hint": (
-            "export OPENROUTER_API_KEY=... && export REAL_API_TESTS_ENABLED=true "
-            "&& python3 scripts/run_real_api_smoke.py --real"
+            "Put OPENROUTER_API_KEY in repo .env (local only) or export it; "
+            "set REAL_API_TESTS_ENABLED=true; run: "
+            "python3 scripts/run_real_api_smoke.py --real"
         ),
     }
     if latest:

@@ -119,7 +119,7 @@ def write_status(status: dict) -> None:
 def read_queue() -> list[dict]:
     if not QUEUE_PATH.exists():
         return []
-    tasks: list[dict] = []
+    by_id: dict[str, dict] = {}
     for raw in QUEUE_PATH.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line:
@@ -128,9 +128,18 @@ def read_queue() -> list[dict]:
             item = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(item, dict):
-            tasks.append(item)
-    return tasks
+        if not isinstance(item, dict):
+            continue
+        task_id = str(item.get("id") or "").strip()
+        if not task_id:
+            continue
+        if task_id in by_id:
+            merged = dict(by_id[task_id])
+            merged.update(item)
+            by_id[task_id] = merged
+        else:
+            by_id[task_id] = item
+    return list(by_id.values())
 
 
 def append_jsonl(path: Path, payload: dict) -> None:
@@ -204,6 +213,34 @@ def cmd_queue(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dismiss(args: argparse.Namespace) -> int:
+    now = iso_now()
+    reason = redact_text(args.reason or "manual_dismiss")
+    targets: list[dict] = []
+    if args.all_pending:
+        targets = pending_tasks()
+    elif args.id:
+        targets = [t for t in read_queue() if t.get("id") == args.id and t.get("status") == "pending"]
+    else:
+        print("agent dismiss: specify --all-pending or --id")
+        return 1
+    if not targets:
+        print("agent dismiss: no matching pending tasks")
+        return 0
+    for task in targets:
+        append_jsonl(
+            QUEUE_PATH,
+            {
+                "id": task["id"],
+                "status": "cancelled",
+                "cancel_reason": reason,
+                "updated_at": now,
+            },
+        )
+        print(f"agent dismiss: {task['id']} → cancelled ({reason})")
+    return 0
+
+
 def cmd_block(args: argparse.Namespace) -> int:
     now = iso_now()
     reason = redact_text(args.reason)
@@ -272,6 +309,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     queue_p = sub.add_parser("queue", help="Print pending task summary")
     queue_p.set_defaults(func=cmd_queue)
+
+    dismiss_p = sub.add_parser("dismiss", help="Cancel pending queue task(s)")
+    dismiss_p.add_argument("--all-pending", action="store_true", help="Cancel all pending tasks")
+    dismiss_p.add_argument("--id", help="Cancel one task by id")
+    dismiss_p.add_argument("--reason", default="manual_dismiss")
+    dismiss_p.set_defaults(func=cmd_dismiss)
     return parser
 
 

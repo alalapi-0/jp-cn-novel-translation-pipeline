@@ -48,4 +48,7 @@ def test_is_test_project_id() -> None:
     assert is_test_project_id("pw-pending-123") is True
     assert is_test_project_id("codex-demo") is True
     assert is_test_project_id("dupe-demo-jp-cn") is True
+    assert is_test_project_id("user-qs-123") is True
+    assert is_test_project_id("user-rs-123") is True
+    assert is_test_project_id("user-export-123") is True
     assert is_test_project_id("demo-jp-cn") is False

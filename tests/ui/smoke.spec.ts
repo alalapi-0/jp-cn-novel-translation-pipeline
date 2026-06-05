@@ -27,7 +27,7 @@ test("review page shows auto-approve controls", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Side-by-side Translation Review" })
   ).toBeVisible();
-  await expect(page.getByText(/AUTO_APPROVE.*false/)).toBeVisible();
+  await expect(page.locator("#auto-approve-label")).toHaveText("false");
   await expect(page.getByRole("button", { name: "触发自动通过" }).first()).toBeVisible();
 });
 
@@ -44,6 +44,7 @@ test("review page keeps pending until manual approve", async ({ page, request })
     data: { sample_text: "テスト段落。" },
   });
   await page.goto(`/review.html?project=${projectId}`);
+  await expect(page.locator("#active-project-label")).toContainText(projectId);
   const badge = page.locator(".segment .badge[data-status='pending']").first();
   await expect(badge).toBeVisible();
   await page.reload();
@@ -52,7 +53,7 @@ test("review page keeps pending until manual approve", async ({ page, request })
 
 test("autopilot query enables auto-approve", async ({ page }) => {
   await page.goto("/review.html?project=demo-jp-cn&auto_approve=1");
-  await expect(page.getByText(/AUTO_APPROVE.*true/)).toBeVisible();
+  await expect(page.locator("#auto-approve-label")).toHaveText("true");
 });
 
 test("review page has approve and reject buttons", async ({ page }) => {

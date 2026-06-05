@@ -46,31 +46,44 @@ def redact_text(text: str | None) -> str:
 def summarize_command_failure(output: str) -> str:
     clean = re.sub(r"\x1b\[[0-9;]*m", "", output)
     lines = clean.splitlines()
+    noise_res = [
+        re.compile(r"Warning: The 'NO_COLOR' env is ignored"),
+        re.compile(r"Warning: The 'FORCE_COLOR' env is ignored"),
+        re.compile(r"DeprecationWarning: DEP0205"),
+        re.compile(r"Use `node --trace-deprecation"),
+        re.compile(r"^\(node:\d+\)"),
+    ]
+
+    def is_noise(line: str) -> bool:
+        return any(p.search(line) for p in noise_res)
+
     useful: list[str] = []
-    capture = False
     for line in lines:
         stripped = line.strip()
-        if not stripped:
+        if not stripped or is_noise(stripped):
             continue
-        if stripped.startswith("[WebServer]") or " HTTP/1.1\" 200 " in stripped:
+        if stripped.startswith("[WebServer]") or ' HTTP/1.1" 200 ' in stripped:
             continue
-        lower = stripped.lower()
         if (
-            " failed" in lower
-            or "error:" in lower
-            or "strict mode violation" in lower
-            or stripped.startswith(("1)", "2)", "3)", "4)", "5)"))
+            "✘" in stripped
+            or stripped.startswith("Error:")
+            or stripped.startswith("Expected:")
+            or stripped.startswith("Locator:")
+            or stripped.startswith("Timeout:")
             or "tests/ui/" in stripped
-            or stripped.startswith(("Locator:", "Expected:", "Timeout:", "Error:"))
+            or " strict mode violation" in stripped.lower()
+            or re.match(r"^\d+\)", stripped)
         ):
-            capture = True
-        if capture:
             useful.append(stripped)
-        if len(useful) >= 80:
-            break
     if not useful:
-        useful = [line.strip() for line in lines if line.strip() and not line.strip().startswith("[WebServer]")]
-    return redact_text("\n".join(useful))
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or is_noise(stripped) or stripped.startswith("[WebServer]"):
+                continue
+            useful.append(stripped)
+            if len(useful) >= 12:
+                break
+    return redact_text("\n".join(useful[:40]))
 
 
 def load_package_json() -> dict[str, Any]:

@@ -12,6 +12,7 @@ from urllib.parse import ParseResult, parse_qs, urlparse
 
 from workbench.api_status import build_api_status
 from workbench.dry_run_generate import generate_segments_from_sample
+from workbench.real_api_generate import generate_segments_real_api
 from workbench.export_service import export_status, run_export
 from workbench.project_id import InvalidProjectIdError, is_test_project_id, validate_project_id
 from workbench.project_registry import (
@@ -42,11 +43,20 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
 
         def _send_json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
+        @staticmethod
+        def _client_gone(exc: BaseException) -> bool:
+            if isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+                return True
+            return isinstance(exc, OSError) and getattr(exc, "errno", None) in {32, 54, 104}
 
         def _read_json_body(self) -> dict[str, Any]:
             length = int(self.headers.get("Content-Length") or 0)
@@ -74,9 +84,11 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_get(parsed)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
-                except Exception:  # noqa: BLE001
-                    traceback.print_exc()
-                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                except Exception as exc:  # noqa: BLE001
+                    if not self._client_gone(exc):
+                        traceback.print_exc()
+                        self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                    return
                 return
             super().do_GET()
 
@@ -87,9 +99,11 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_post(parsed.path)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
-                except Exception:  # noqa: BLE001
-                    traceback.print_exc()
-                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                except Exception as exc:  # noqa: BLE001
+                    if not self._client_gone(exc):
+                        traceback.print_exc()
+                        self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                    return
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -100,9 +114,11 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_put(parsed.path)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
-                except Exception:  # noqa: BLE001
-                    traceback.print_exc()
-                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                except Exception as exc:  # noqa: BLE001
+                    if not self._client_gone(exc):
+                        traceback.print_exc()
+                        self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                    return
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -113,9 +129,11 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_patch(parsed.path)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
-                except Exception:  # noqa: BLE001
-                    traceback.print_exc()
-                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                except Exception as exc:  # noqa: BLE001
+                    if not self._client_gone(exc):
+                        traceback.print_exc()
+                        self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+                    return
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -304,6 +322,46 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     {
                         "project_id": project_id,
                         "segments_created": len(segments),
+                        "generation": "dry_run",
+                        "project": updated.to_summary(),
+                        "review_url": f"/review.html?project={project_id}",
+                    },
+                )
+                return
+
+            if path.startswith(prefix) and path.endswith("/real-api-generate"):
+                raw_id = path[len(prefix) : -len("/real-api-generate")].strip("/")
+                project_id = validate_project_id(raw_id)
+                manifest = get_project_manifest(repo_root, project_id)
+                if manifest is None:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": f"unknown project_id: {project_id}"})
+                    return
+                sample_text = str(body.get("sample_text") or body.get("text") or "").strip()
+                if not sample_text:
+                    self._bad_request("sample_text is required")
+                    return
+                try:
+                    segments, gen_meta = generate_segments_real_api(
+                        sample_text=sample_text,
+                        language_direction=manifest.language_direction,
+                        repo_root=repo_root,
+                    )
+                except ValueError as exc:
+                    self._bad_request(str(exc))
+                    return
+                updated = update_project_segments(
+                    repo_root,
+                    project_id,
+                    segments,
+                    status="review_pending",
+                )
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "project_id": project_id,
+                        "segments_created": len(segments),
+                        "generation": "real_api",
+                        "generation_meta": gen_meta,
                         "project": updated.to_summary(),
                         "review_url": f"/review.html?project={project_id}",
                     },
@@ -373,4 +431,9 @@ def serve(repo_root: Path, frontend_root: Path, *, host: str, port: int) -> None
     handler_cls = make_handler(repo_root, frontend_root)
     server = ThreadingHTTPServer((host, port), handler_cls)
     print(f"serving {frontend_root} + /api at http://{host}:{port}/")
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nserve_frontend: stopped")
+    finally:
+        server.shutdown()

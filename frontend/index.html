@@ -31,8 +31,9 @@
       </div>
 
       <div class="card" id="quickstart-card">
-        <h2>新用户快速体验（dry-run / fake）</h2>
-        <p class="meta">无需 CLI：创建项目 → 粘贴样本文本 → 生成 mock 译文 → 进入审核。</p>
+        <h2>新用户快速体验</h2>
+        <p class="meta">创建项目 → 粘贴样本文本 → dry-run mock 或（Key 可用时）真实 API 小样本 → 进入审核。</p>
+        <p class="meta" id="qs-real-api-hint">—</p>
         <form id="quickstart-form" class="stack-form">
           <label>
             项目 ID
@@ -54,7 +55,8 @@
             <textarea id="qs-sample-text" rows="5" placeholder="彼女は学校に行かなかった。&#10;&#10;空が裂けたようだ。"></textarea>
           </label>
           <div class="actions">
-            <button type="submit" class="primary">创建并 dry-run 生成</button>
+            <button type="submit" class="primary">创建并 dry-run 生成（mock）</button>
+            <button type="button" id="qs-real-api-btn">真实 API 小样本生成</button>
             <a id="qs-review-link" class="button-link" href="/review.html" hidden>进入对照审核 →</a>
           </div>
         </form>

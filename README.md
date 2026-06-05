@@ -23,14 +23,20 @@ npm run dev:frontend
 # 浏览器打开 http://127.0.0.1:5174/
 ```
 
-**真实 API 小规模测试**（在已激活的 venv 或系统 Python 中均可；不读取 `.env`）：
+**真实 API 小规模测试**（在已激活的 venv 中；可从 repo 根目录 `.env` 读取未设置的 Key，不打印 Key 值）：
 
 ```bash
-export OPENROUTER_API_KEY=your_key_here   # 或其他 provider 变量，见 docs/api_provider_strategy.md
+# 方式 A：repo/.env 中配置 OPENROUTER_API_KEY 与 REAL_API_TESTS_ENABLED=true
+.venv/bin/python3 scripts/run_real_api_smoke.py --real --json
+
+# 方式 B：显式 export
+export OPENROUTER_API_KEY=your_key_here
 export REAL_API_TESTS_ENABLED=true
 .venv/bin/python3 scripts/run_real_api_smoke.py --real
 # 无 Key 时：.venv/bin/python3 scripts/run_real_api_smoke.py --status-only
 ```
+
+`npm run dev:frontend` 启动时也会加载 `.env` 中**未设置**的变量，首页 API 状态卡片会反映 Key 是否可用。
 
 **工具链门控与 UI 测试：**
 
@@ -43,7 +49,7 @@ npm run test:ui          # Playwright（自动起 5174 dev server）
 
 ## 当前阶段
 
-当前阶段是仓库治理、架构规划与路线扩写阶段。本阶段可以补充目录、文档、Prompt 模板、路线图和轻量占位文件，但不启动真实小说翻译、不调用真实 API、不生成 embedding、不建立真实向量库、不实现复杂前端。
+当前阶段以仓库治理、架构规划、工具链与 Workbench MVP 为主。**治理轮**不启动大批量真实小说翻译、不建立生产级向量库；但已提供 Workbench 静态前端、dry-run 与**授权范围内**的真实 API smoke / 小样本生成（需 `OPENROUTER_API_KEY` + `REAL_API_TESTS_ENABLED=true`）。
 
 ## 支持方向
 

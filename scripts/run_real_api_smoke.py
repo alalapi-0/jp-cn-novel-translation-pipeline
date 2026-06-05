@@ -2,8 +2,8 @@
 """Unified real API smoke-test entrypoint.
 
 Default mode is dry-run or missing_api_key. Real network calls require --real
-and a supported project provider key. This script never reads .env files and
-never prints API keys.
+and a supported project provider key. Reads repo-root ``.env`` for unset keys
+only (never prints values, never overrides already-set environment variables).
 """
 
 from __future__ import annotations
@@ -21,7 +21,9 @@ RUNTIME_DIR = REPO_ROOT / ".agent_runtime"
 REPORT_DIR = RUNTIME_DIR / "real_api_reports"
 STATUS_PATH = RUNTIME_DIR / "status.json"
 sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
+from local_env import apply_local_env, applied_local_env_keys  # noqa: E402
 from workbench.api_status import build_api_status, detected_providers  # noqa: E402
 
 SMOKE_MESSAGES = [{"role": "user", "content": "Reply exactly: smoke_ok"}]
@@ -165,18 +167,26 @@ def run_openrouter_real(report: dict, *, max_cost_usd: float, max_tokens: int, t
 
 def run_smoke(args: argparse.Namespace) -> tuple[dict, Path]:
     ensure_runtime()
+    apply_local_env(REPO_ROOT)
+    dotenv_keys = applied_local_env_keys()
     created_at = iso_now()
     detected = detected_providers()
     if not detected:
         report = base_report(mode="missing_api_key", detected=detected, created_at=created_at)
         report["error_summary"] = "missing_api_key"
-        report["result_summary"] = "No supported API key was found in environment variables; no network attempted."
+        report["env_keys_applied_from_dotenv"] = dotenv_keys
+        report["result_summary"] = (
+            "No supported API key in environment"
+            + (" or repo .env" if dotenv_keys else "")
+            + "; no network attempted."
+        )
         path = write_report(report)
         update_status(api_mode="missing_api_key", checked_at=created_at)
         return report, path
 
     if not args.real:
         report = base_report(mode="dry_run", detected=detected, created_at=created_at)
+        report["env_keys_applied_from_dotenv"] = dotenv_keys
         try:
             report = run_dry_run(report, max_cost_usd=args.max_cost_usd, max_tokens=args.max_tokens)
         except Exception as exc:  # noqa: BLE001
@@ -187,6 +197,7 @@ def run_smoke(args: argparse.Namespace) -> tuple[dict, Path]:
         return report, path
 
     report = base_report(mode="real_api", detected=detected, created_at=created_at)
+    report["env_keys_applied_from_dotenv"] = dotenv_keys
     if "openrouter" not in detected:
         report["error_summary"] = "no_supported_project_real_api_client"
         report["result_summary"] = (
@@ -226,7 +237,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(normalize_argv(argv if argv is not None else sys.argv[1:]))
+    apply_local_env(REPO_ROOT)
+    dotenv_keys = applied_local_env_keys()
     status_probe = build_api_status(REPO_ROOT)
+    status_probe["env_keys_applied_from_dotenv"] = dotenv_keys
     if args.status_only:
         if args.json:
             print(json.dumps(status_probe, ensure_ascii=False, indent=2))

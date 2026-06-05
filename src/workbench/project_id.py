@@ -6,7 +6,7 @@ import re
 
 PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
 
-TEST_PROJECT_PREFIXES = ("pw-", "codex-", "dupe-")
+TEST_PROJECT_PREFIXES = ("pw-", "codex-", "dupe-", "user-qs-", "user-rs-", "user-export-")
 TEST_PROJECT_EXACT = frozenset(
     {
         "quickstart-test",

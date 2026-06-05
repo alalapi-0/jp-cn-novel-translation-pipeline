@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+test.describe.configure({ mode: "serial" });
+
 const ILLEGAL_PROJECT_ID_RE = /must not contain|path separators|invalid project_id/i;
 
 test("quickstart rejects illegal project id", async ({ page }) => {
@@ -12,13 +14,13 @@ test("quickstart rejects illegal project id", async ({ page }) => {
 });
 
 test("quickstart creates user project and links to review", async ({ page }) => {
-  const projectId = `user-qs-${Date.now()}`;
+  const projectId = `pw-qs-${Date.now()}`;
   await page.goto("/index.html");
   await page.locator("#qs-project-id").fill(projectId);
   await page.locator("#qs-project-name").fill("User Quickstart");
   await page.locator("#qs-sample-text").fill("第一段落。\n\n第二段落。");
   await page.locator("#quickstart-form button[type='submit']").click();
-  await expect(page.locator("#quickstart-result")).toContainText(/已生成/);
+  await expect(page.locator("#quickstart-result")).toContainText(/生成.*segment/);
   const reviewLink = page.locator("#qs-review-link");
   await expect(reviewLink).toBeVisible();
   await reviewLink.click();
@@ -27,7 +29,7 @@ test("quickstart creates user project and links to review", async ({ page }) => 
 });
 
 test("review state persists after reload", async ({ page, request }) => {
-  const projectId = `user-rs-${Date.now()}`;
+  const projectId = `pw-rs-${Date.now()}`;
   await request.post("/api/projects", {
     data: { project_id: projectId, name: "RS", language_direction: "JP_TO_CN" },
   });
@@ -49,7 +51,7 @@ test("export manifest fails for unknown project", async ({ page }) => {
 });
 
 test("export manifest exports only selected project", async ({ page, request }) => {
-  const projectId = `user-export-${Date.now()}`;
+  const projectId = `pw-export-${Date.now()}`;
   await request.post("/api/projects", {
     data: { project_id: projectId, name: "Export", language_direction: "JP_TO_CN" },
   });
@@ -58,7 +60,7 @@ test("export manifest exports only selected project", async ({ page, request }) 
   });
   await page.goto(`/export.html?project=${projectId}`);
   await page.locator("#export-manifest-btn").click();
-  await expect(page.locator("#export-result")).toContainText(/"source": "manifest"/);
+  await expect(page.locator("#export-result")).toContainText(/source=manifest/);
   await expect(page.locator("#export-result")).toContainText(projectId);
 });
 
@@ -79,4 +81,14 @@ test("illegal project id via API returns 400 json", async ({ request }) => {
   expect(res.status()).toBe(400);
   const body = await res.json();
   expect(body.error).toMatch(ILLEGAL_PROJECT_ID_RE);
+});
+
+test("review page counts only open issues", async ({ page, request }) => {
+  await request.patch("/api/projects/demo-jp-cn/review-state", {
+    data: { issues: { "ri-0003": { status: "resolved", at: new Date().toISOString() } } },
+  });
+  await page.goto("/review.html?project=demo-jp-cn&segment=seg-002");
+  const seg = page.locator("#seg-seg-002");
+  await expect(seg).toBeVisible();
+  await expect(seg.locator(".issue-mark")).toContainText("1 条 open issue");
 });
