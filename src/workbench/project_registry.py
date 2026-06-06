@@ -5,18 +5,40 @@ from __future__ import annotations
 import json
 import shutil
 import threading
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from workbench.project_id import InvalidProjectIdError, is_test_project_id, validate_project_id
+from workbench.project_id import (
+    InvalidProjectIdError,
+    is_history_project_id,
+    is_test_project_id,
+    project_list_category,
+    validate_project_id,
+)
 
 MANIFESTS_DIR_NAME = "manifests"
 WORKBENCH_STATE_FILE = "workbench_state.json"
 LEGACY_MANIFEST_NAME = "project_manifest.json"
 EXAMPLE_GLOB = "workbench_project.*.example.json"
 _REFRESH_LOCK = threading.Lock()
+_project_locks_guard = threading.Lock()
+_project_locks: dict[str, threading.Lock] = {}
+
+
+class ManifestWriteInProgressError(RuntimeError):
+    """Raised when another request is already writing the same manifest."""
+
+
+def _project_write_lock(project_id: str) -> threading.Lock:
+    with _project_locks_guard:
+        lock = _project_locks.get(project_id)
+        if lock is None:
+            lock = threading.Lock()
+            _project_locks[project_id] = lock
+        return lock
 
 
 @dataclass(frozen=True)
@@ -39,6 +61,7 @@ class ProjectManifest:
             "status": self.status,
             "chapters": self.chapters,
             "is_test": is_test_project_id(self.project_id),
+            "category": project_list_category(self.project_id),
         }
 
     def to_workbench_payload(self) -> dict[str, Any]:
@@ -129,7 +152,12 @@ def list_project_manifest_paths(repo_root: Path) -> list[Path]:
     return paths
 
 
-def list_project_manifests(repo_root: Path, *, include_test: bool = True) -> list[ProjectManifest]:
+def list_project_manifests(
+    repo_root: Path,
+    *,
+    include_test: bool = True,
+    include_history: bool = True,
+) -> list[ProjectManifest]:
     manifests: list[ProjectManifest] = []
     seen: set[str] = set()
     for path in list_project_manifest_paths(repo_root):
@@ -141,6 +169,8 @@ def list_project_manifests(repo_root: Path, *, include_test: bool = True) -> lis
             continue
         seen.add(manifest.project_id)
         if not include_test and is_test_project_id(manifest.project_id):
+            continue
+        if not include_history and is_history_project_id(manifest.project_id):
             continue
         manifests.append(manifest)
     manifests.sort(key=lambda m: m.project_id)
@@ -235,7 +265,7 @@ def save_project_manifest(repo_root: Path, data: dict[str, Any]) -> ProjectManif
     target_dir = manifests_dir(repo_root)
     target_dir.mkdir(parents=True, exist_ok=True)
     dest = target_dir / f"{manifest.project_id}.json"
-    tmp = dest.with_suffix(".json.tmp")
+    tmp = dest.with_name(f"{dest.name}.{uuid.uuid4().hex}.tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     tmp.replace(dest)
     return load_project_manifest(dest)
@@ -271,16 +301,22 @@ def update_project_segments(
     status: str | None = None,
 ) -> ProjectManifest:
     project_id = validate_project_id(project_id)
-    manifest = get_project_manifest(repo_root, project_id)
-    if manifest is None:
-        raise KeyError(f"unknown project_id: {project_id}")
-    path = manifest.path or (manifests_dir(repo_root) / f"{project_id}.json")
-    data = _load_json(path)
-    data["segments"] = segments
-    if status:
-        data["status"] = status
-    data["chapters"] = max(int(data.get("chapters") or 1), 1)
-    return save_project_manifest(repo_root, data)
+    lock = _project_write_lock(project_id)
+    if not lock.acquire(blocking=False):
+        raise ManifestWriteInProgressError(f"manifest write in progress: {project_id}")
+    try:
+        manifest = get_project_manifest(repo_root, project_id)
+        if manifest is None:
+            raise KeyError(f"unknown project_id: {project_id}")
+        path = manifest.path or (manifests_dir(repo_root) / f"{project_id}.json")
+        data = _load_json(path)
+        data["segments"] = segments
+        if status:
+            data["status"] = status
+        data["chapters"] = max(int(data.get("chapters") or 1), 1)
+        return save_project_manifest(repo_root, data)
+    finally:
+        lock.release()
 
 
 def seed_example_manifests(repo_root: Path, *, force: bool = False) -> list[Path]:

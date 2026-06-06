@@ -10,12 +10,14 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import ParseResult, parse_qs, urlparse
 
+from providers.cost_guard import CostGuardError
 from workbench.api_status import build_api_status
 from workbench.dry_run_generate import generate_segments_from_sample
 from workbench.real_api_generate import generate_segments_real_api
 from workbench.export_service import export_status, run_export
-from workbench.project_id import InvalidProjectIdError, is_test_project_id, validate_project_id
+from workbench.project_id import InvalidProjectIdError, is_history_project_id, is_test_project_id, validate_project_id
 from workbench.project_registry import (
+    ManifestWriteInProgressError,
     create_project_manifest,
     get_active_project_id,
     get_project_manifest,
@@ -73,6 +75,20 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
 
         def _invalid_project_id(self, exc: InvalidProjectIdError) -> None:
             self._bad_request(str(exc))
+
+        def _cost_guard_error(self, exc: CostGuardError) -> None:
+            report = exc.report or {}
+            reason = str(report.get("reason") or exc)
+            self._send_json(
+                HTTPStatus.CONFLICT,
+                {
+                    "error": reason,
+                    "cost_guard": report,
+                },
+            )
+
+        def _manifest_busy(self, exc: ManifestWriteInProgressError) -> None:
+            self._send_json(HTTPStatus.CONFLICT, {"error": str(exc)})
 
         def _parse_project_id(self, raw: str) -> str:
             return validate_project_id(raw.strip("/"))
@@ -155,16 +171,32 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 return
             if path == "/api/projects":
                 include_test = _query_flag(parsed, "include_test", default=False)
+                include_history = _query_flag(parsed, "include_history", default=False)
                 projects = [
-                    m.to_summary() for m in list_project_manifests(repo_root, include_test=include_test)
+                    m.to_summary()
+                    for m in list_project_manifests(
+                        repo_root, include_test=include_test, include_history=include_history
+                    )
                 ]
                 active = get_active_project_id(repo_root)
                 if not include_test and active and is_test_project_id(active):
-                    visible = list_project_manifests(repo_root, include_test=False)
+                    visible = list_project_manifests(
+                        repo_root, include_test=False, include_history=include_history
+                    )
+                    active = visible[0].project_id if visible else None
+                elif not include_history and active and is_history_project_id(active):
+                    visible = list_project_manifests(
+                        repo_root, include_test=include_test, include_history=False
+                    )
                     active = visible[0].project_id if visible else None
                 self._send_json(
                     HTTPStatus.OK,
-                    {"projects": projects, "active_project_id": active, "include_test": include_test},
+                    {
+                        "projects": projects,
+                        "active_project_id": active,
+                        "include_test": include_test,
+                        "include_history": include_history,
+                    },
                 )
                 return
             if path == "/api/projects/active":
@@ -311,12 +343,16 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     sample_text=sample_text,
                     language_direction=manifest.language_direction,
                 )
-                updated = update_project_segments(
-                    repo_root,
-                    project_id,
-                    segments,
-                    status="review_pending",
-                )
+                try:
+                    updated = update_project_segments(
+                        repo_root,
+                        project_id,
+                        segments,
+                        status="review_pending",
+                    )
+                except ManifestWriteInProgressError as exc:
+                    self._manifest_busy(exc)
+                    return
                 self._send_json(
                     HTTPStatus.OK,
                     {
@@ -349,12 +385,19 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 except ValueError as exc:
                     self._bad_request(str(exc))
                     return
-                updated = update_project_segments(
-                    repo_root,
-                    project_id,
-                    segments,
-                    status="review_pending",
-                )
+                except CostGuardError as exc:
+                    self._cost_guard_error(exc)
+                    return
+                try:
+                    updated = update_project_segments(
+                        repo_root,
+                        project_id,
+                        segments,
+                        status="review_pending",
+                    )
+                except ManifestWriteInProgressError as exc:
+                    self._manifest_busy(exc)
+                    return
                 self._send_json(
                     HTTPStatus.OK,
                     {

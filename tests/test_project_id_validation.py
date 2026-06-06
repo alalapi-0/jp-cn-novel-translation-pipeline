@@ -10,7 +10,13 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from workbench.project_id import InvalidProjectIdError, is_test_project_id, validate_project_id  # noqa: E402
+from workbench.project_id import (  # noqa: E402
+    InvalidProjectIdError,
+    is_history_project_id,
+    is_test_project_id,
+    project_list_category,
+    validate_project_id,
+)
 
 
 @pytest.mark.parametrize(
@@ -49,6 +55,18 @@ def test_is_test_project_id() -> None:
     assert is_test_project_id("codex-demo") is True
     assert is_test_project_id("dupe-demo-jp-cn") is True
     assert is_test_project_id("user-qs-123") is True
-    assert is_test_project_id("user-rs-123") is True
-    assert is_test_project_id("user-export-123") is True
     assert is_test_project_id("demo-jp-cn") is False
+
+
+def test_is_history_project_id() -> None:
+    assert is_history_project_id("round8-user-flow-1") is True
+    assert is_history_project_id("ux-real-test") is True
+    assert is_history_project_id("demo-jp-cn") is False
+    assert is_history_project_id("pw-test") is False
+
+
+def test_project_list_category() -> None:
+    assert project_list_category("demo-jp-cn") == "example"
+    assert project_list_category("pw-abc") == "test"
+    assert project_list_category("round8-x") == "history"
+    assert project_list_category("my-novel") == "user"

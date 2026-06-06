@@ -312,3 +312,12 @@ button:disabled {
   max-height: 12rem;
   overflow: auto;
 }
+
+.export-recent {
+  font-weight: 600;
+  color: var(--accent, #0969da);
+}
+
+.empty-review {
+  border-left: 4px solid var(--warn, #d4a017);
+}

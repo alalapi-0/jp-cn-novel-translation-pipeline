@@ -20,19 +20,25 @@
     </header>
     <main>
       <div class="card" id="api-status-card">
-        <h2>真实 API 状态</h2>
+        <h2>真实 API 状态（当前环境）</h2>
         <p class="meta">
           模式：<strong id="api-mode-status">加载中…</strong> · Key：
           <strong id="api-key-status">—</strong> · REAL_API_TESTS_ENABLED：
           <strong id="real-api-enabled-status">—</strong>
         </p>
-        <p class="meta" id="api-smoke-summary">—</p>
+        <p class="meta" id="api-budget-summary">—</p>
+        <p class="meta" id="api-workbench-ready">—</p>
+        <details id="api-smoke-history">
+          <summary>历史 smoke 记录（不代表当前可用）</summary>
+          <p class="meta" id="api-smoke-summary">—</p>
+        </details>
+        <p class="meta" id="api-runner-note"></p>
         <p class="meta"><code id="api-config-hint">—</code></p>
       </div>
 
       <div class="card" id="quickstart-card">
         <h2>新用户快速体验</h2>
-        <p class="meta">创建项目 → 粘贴样本文本 → dry-run mock 或（Key 可用时）真实 API 小样本 → 进入审核。</p>
+        <p class="meta">创建项目 → 粘贴样本文本 → dry-run mock 或（预算允许时）真实 API 小样本 → 进入审核。</p>
         <p class="meta" id="qs-real-api-hint">—</p>
         <form id="quickstart-form" class="stack-form">
           <label>
@@ -55,7 +61,7 @@
             <textarea id="qs-sample-text" rows="5" placeholder="彼女は学校に行かなかった。&#10;&#10;空が裂けたようだ。"></textarea>
           </label>
           <div class="actions">
-            <button type="submit" class="primary">创建并 dry-run 生成（mock）</button>
+            <button type="submit" class="primary" id="qs-dry-run-btn">创建并 dry-run 生成（mock）</button>
             <button type="button" id="qs-real-api-btn">真实 API 小样本生成</button>
             <a id="qs-review-link" class="button-link" href="/review.html" hidden>进入对照审核 →</a>
           </div>
@@ -64,6 +70,11 @@
       </div>
 
       <div id="project-list"></div>
+      <details id="project-history-details" class="card" hidden>
+        <summary>历史 / 测试项目（<span id="project-history-count">0</span>）</summary>
+        <div id="project-history-list"></div>
+      </details>
+
       <div class="card">
         <h2>运行配置</h2>
         <p class="meta" id="config-summary"></p>

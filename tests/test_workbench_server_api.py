@@ -138,6 +138,21 @@ def test_projects_list_hides_test_projects_by_default(api_server: str) -> None:
     assert "pw-hidden-api" in all_ids
 
 
+def test_projects_list_hides_history_by_default(api_server: str) -> None:
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": "round8-user-flow-test", "name": "History", "language_direction": "JP_TO_CN"},
+    )
+    code, payload = _get(api_server, "/api/projects")
+    assert code == 200
+    ids = {p["project_id"] for p in payload["projects"]}
+    assert "round8-user-flow-test" not in ids
+    code, all_payload = _get(api_server, "/api/projects?include_history=true")
+    all_ids = {p["project_id"] for p in all_payload["projects"]}
+    assert "round8-user-flow-test" in all_ids
+
+
 def test_export_manifest_requires_existing_project(api_server: str) -> None:
     code, payload = _post(
         api_server,

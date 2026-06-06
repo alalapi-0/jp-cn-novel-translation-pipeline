@@ -372,6 +372,8 @@ def check_vector_store_tooling() -> list[CheckResult]:
         return results
 
     try:
+        if str(REPO_ROOT / "src") not in sys.path:
+            sys.path.insert(0, str(REPO_ROOT / "src"))
         spec = importlib.util.spec_from_file_location(
             "light_novel_vector_db_inspect_gate",
             VECTOR_INSPECT_SCRIPT,
@@ -428,7 +430,7 @@ def check_vector_store_tooling() -> list[CheckResult]:
             CheckResult(
                 "vector_index_health",
                 Severity.WARN,
-                f"vector inspect skipped: {exc}",
+                f"vector inspect skipped ({type(exc).__name__}): {exc}",
             )
         )
     return results

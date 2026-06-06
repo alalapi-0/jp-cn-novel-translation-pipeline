@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
-from workbench.api_status import resolve_api_mode
+from providers.cost_guard import CostGuard, CostGuardConfig, CostGuardError
+from workbench.api_status import workbench_real_api_ready
 from workbench.dry_run_generate import _split_paragraphs
 
 MAX_PARAGRAPHS = 3
@@ -14,7 +14,8 @@ MAX_CHARS_PER_PARA = 400
 
 
 def real_api_available() -> bool:
-    return resolve_api_mode() == "real_api"
+    ready, _ = workbench_real_api_ready()
+    return ready
 
 
 def generate_segments_real_api(
@@ -23,11 +24,9 @@ def generate_segments_real_api(
     language_direction: str = "JP_TO_CN",
     repo_root: Path,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    if not real_api_available():
-        raise ValueError(
-            "real_api_unavailable: configure OPENROUTER_API_KEY and REAL_API_TESTS_ENABLED=true"
-        )
-    from providers.cost_guard import CostGuard, CostGuardConfig
+    ready, reason = workbench_real_api_ready()
+    if not ready:
+        raise ValueError(f"real_api_unavailable: {reason or 'not configured'}")
     from providers.openrouter_provider import OpenRouterProvider
     from providers.types import GenerateOptions, Message
 
@@ -40,14 +39,7 @@ def generate_segments_real_api(
                 f"paragraph too long (max {MAX_CHARS_PER_PARA} chars for real API sample)"
             )
 
-    guard = CostGuard(
-        CostGuardConfig(
-            real_api_tests_enabled=True,
-            max_test_cost_usd=float(os.environ.get("MAX_TEST_COST_USD", "0.05")),
-            max_tokens_per_run=int(os.environ.get("MAX_TOKENS_PER_RUN", "2048")),
-            log_dir=repo_root / ".agent_runtime" / "logs",
-        )
-    )
+    guard = CostGuard(CostGuardConfig.from_env(log_dir=repo_root / ".agent_runtime" / "logs"))
     provider = OpenRouterProvider(
         cost_guard=guard,
         max_tokens=512,
@@ -60,6 +52,7 @@ def generate_segments_real_api(
         "provider": provider.provider_id,
         "model": provider.model_name,
         "network_calls": 0,
+        "max_test_cost_usd": guard.config.max_test_cost_usd,
     }
 
     for idx, para in enumerate(paragraphs, start=1):
@@ -67,10 +60,13 @@ def generate_segments_real_api(
             f"Translate the following text to {target_lang}. "
             f"Return only the translation, no explanation.\n\n{para}"
         )
-        result = provider.generate(
-            [Message(role="user", content=prompt)],
-            GenerateOptions(pipeline_stage="workbench_real_sample", input_reference=f"seg-{idx}"),
-        )
+        try:
+            result = provider.generate(
+                [Message(role="user", content=prompt)],
+                GenerateOptions(pipeline_stage="workbench_real_sample", input_reference=f"seg-{idx}"),
+            )
+        except CostGuardError:
+            raise
         seg_id = f"seg-{idx:03d}"
         segments.append(
             {

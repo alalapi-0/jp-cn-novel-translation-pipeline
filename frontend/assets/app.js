@@ -73,6 +73,13 @@
     return lines.join("\n");
   }
 
+  function exportHighlightPaths(payload) {
+    const paths = [];
+    if (payload?.translated_path) paths.push(payload.translated_path);
+    if (payload?.bilingual_path) paths.push(payload.bilingual_path);
+    return paths;
+  }
+
   async function refreshRuntimeApiStatus() {
     try {
       runtimeApiStatus = await fetchApiStatus();
@@ -265,10 +272,43 @@
     return payload;
   }
 
-  async function fetchProjectsApi() {
-    const res = await fetch("/api/projects");
+  async function fetchProjectsApi(options = {}) {
+    const params = new URLSearchParams();
+    if (options.includeTest) params.set("include_test", "true");
+    if (options.includeHistory) params.set("include_history", "true");
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`/api/projects${qs}`);
     if (!res.ok) throw new Error(`/api/projects ${res.status}`);
     return res.json();
+  }
+
+  function categoryBadge(category) {
+    switch (category) {
+      case "example":
+        return '<span class="badge ok">示例</span>';
+      case "test":
+        return '<span class="badge">测试</span>';
+      case "history":
+        return '<span class="badge">历史</span>';
+      default:
+        return '<span class="badge ok">用户</span>';
+    }
+  }
+
+  function setQuickstartGenerating(active) {
+    for (const id of ["qs-dry-run-btn", "qs-real-api-btn"]) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = active;
+    }
+  }
+
+  function formatGenerateError(payload, fallback) {
+    const reason = payload?.error || fallback;
+    if (payload?.cost_guard) {
+      const cg = payload.cost_guard;
+      return `${reason}（预算上限 MAX_TEST_COST_USD=${cg.max_test_cost_usd ?? "—"}，预估/已用=${cg.projected_cost ?? cg.spent_usd ?? "—"}）`;
+    }
+    return String(reason);
   }
 
   async function fetchWorkbenchDataApi(projectId) {
@@ -381,24 +421,36 @@
           : "missing_api_key";
       }
       if (realEl) realEl.textContent = String(Boolean(status.real_api_tests_enabled));
+      const budgetEl = document.getElementById("api-budget-summary");
+      if (budgetEl) {
+        budgetEl.textContent = `预算：MAX_TEST_COST_USD=${status.max_test_cost_usd} · MAX_TOKENS_PER_RUN=${status.max_tokens_per_run}`;
+      }
+      const readyEl = document.getElementById("api-workbench-ready");
+      if (readyEl) {
+        readyEl.textContent = status.workbench_real_api_ready
+          ? "Workbench 真实 API 小样本：可用"
+          : `Workbench 真实 API 小样本：不可用（${status.workbench_real_api_block_reason || "—"}）`;
+      }
       if (smokeEl) {
         smokeEl.textContent = status.last_smoke
-          ? `最近 smoke：${status.last_smoke.mode} · success=${status.last_smoke.success} · ${status.last_smoke.created_at || "—"}`
-          : "尚未运行 smoke；CLI: python3 scripts/run_real_api_smoke.py";
+          ? `mode=${status.last_smoke.mode} · success=${status.last_smoke.success} · ${status.last_smoke.created_at || "—"}`
+          : "尚无历史 smoke 记录";
+      }
+      const runnerNote = document.getElementById("api-runner-note");
+      if (runnerNote) {
+        runnerNote.textContent = status.runner_status_note || "";
       }
       if (hintEl) hintEl.textContent = status.config_hint || "—";
       if (realGenBtn) {
-        realGenBtn.disabled = status.api_mode !== "real_api";
-        realGenBtn.title =
-          status.api_mode === "real_api"
-            ? "调用 OpenRouter 翻译最多 3 段（有成本）"
-            : "需 OPENROUTER_API_KEY + REAL_API_TESTS_ENABLED=true";
+        realGenBtn.disabled = !status.workbench_real_api_ready;
+        realGenBtn.title = status.workbench_real_api_ready
+          ? `调用 OpenRouter（预算上限 $${status.max_test_cost_usd}）`
+          : status.workbench_real_api_block_reason || "真实 API 不可用";
       }
       if (realGenHint) {
-        realGenHint.textContent =
-          status.api_mode === "real_api"
-            ? "真实 API 小样本：最多 3 段、每段 ≤400 字；dry-run 按钮仍为 mock。"
-            : "页面内 dry-run 生成始终为 mock；真实 API 需配置 Key 后可用小样本按钮或 CLI smoke。";
+        realGenHint.textContent = status.workbench_real_api_ready
+          ? `真实 API 小样本：最多 3 段、每段 ≤400 字；预算上限 MAX_TEST_COST_USD=${status.max_test_cost_usd}。`
+          : `页面 dry-run 始终为 mock。真实 API 需 Key + REAL_API_TESTS_ENABLED + MAX_TEST_COST_USD>0（当前：${status.workbench_real_api_block_reason || "—"}）。`;
       }
       const summary = document.getElementById("config-summary");
       if (summary) {
@@ -448,26 +500,34 @@
       mode === "real_api"
         ? `/api/projects/${encodeURIComponent(projectId)}/real-api-generate`
         : `/api/projects/${encodeURIComponent(projectId)}/dry-run-generate`;
-    const genRes = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sample_text: sampleText }),
-    });
-    const genPayload = await genRes.json().catch(() => ({}));
-    if (!genRes.ok) throw new Error(genPayload.error || `${mode} generate ${genRes.status}`);
-    saveActiveProjectId(projectId);
-    const label = mode === "real_api" ? "真实 API" : "dry-run mock";
-    if (resultEl) {
-      resultEl.textContent = `已用 ${label} 生成 ${genPayload.segments_created} 个 segment，可进入审核。`;
+    setQuickstartGenerating(true);
+    try {
+      const genRes = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sample_text: sampleText }),
+      });
+      const genPayload = await genRes.json().catch(() => ({}));
+      if (!genRes.ok) {
+        throw new Error(formatGenerateError(genPayload, `${mode} generate ${genRes.status}`));
+      }
+      saveActiveProjectId(projectId);
+      const label = mode === "real_api" ? "真实 API" : "dry-run mock";
+      if (resultEl) {
+        resultEl.textContent = `已用 ${label} 生成 ${genPayload.segments_created} 个 segment，可进入审核。`;
+      }
+      if (reviewLink) {
+        reviewLink.href = genPayload.review_url || `/review.html?project=${encodeURIComponent(projectId)}`;
+        reviewLink.hidden = false;
+      }
+      workbenchContext = await loadWorkbenchContext(projectId);
+      bindHomePage(workbenchContext);
+      await bindHiddenProjectsPanel();
+      log(`quickstart: ${projectId} ${mode} segments=${genPayload.segments_created}`);
+      return genPayload;
+    } finally {
+      setQuickstartGenerating(false);
     }
-    if (reviewLink) {
-      reviewLink.href = genPayload.review_url || `/review.html?project=${encodeURIComponent(projectId)}`;
-      reviewLink.hidden = false;
-    }
-    workbenchContext = await loadWorkbenchContext(projectId);
-    bindHomePage(workbenchContext);
-    log(`quickstart: ${projectId} ${mode} segments=${genPayload.segments_created}`);
-    return genPayload;
   }
 
   function setupQuickstartForm() {
@@ -510,12 +570,15 @@
           if (resultEl) resultEl.textContent = "请填写项目 ID 与样本文本。";
           return;
         }
-        if (runtimeApiStatus?.api_mode !== "real_api") {
-          if (resultEl) resultEl.textContent = "真实 API 不可用：请配置 Key 并启用 REAL_API_TESTS_ENABLED。";
+        if (runtimeApiStatus?.workbench_real_api_ready !== true) {
+          if (resultEl) {
+            resultEl.textContent = `真实 API 不可用：${runtimeApiStatus?.workbench_real_api_block_reason || "未配置"}`;
+          }
           return;
         }
+        const budget = runtimeApiStatus?.max_test_cost_usd ?? 0;
         const confirmed = window.confirm(
-          "将调用 OpenRouter 真实翻译（最多 3 段，有 API 成本）。继续？"
+          `将调用 OpenRouter 真实翻译（最多 3 段，预算上限 MAX_TEST_COST_USD=${budget}）。继续？`
         );
         if (!confirmed) return;
         try {
@@ -679,6 +742,22 @@
       projectLabel.textContent = `${workbenchContext.activeProject.name} (${workbenchContext.activeProjectId})`;
     }
 
+    if (!data.segments || data.segments.length === 0) {
+      const pid = workbenchContext?.activeProjectId || "";
+      const status = workbenchContext?.activeProject?.status || "unknown";
+      root.innerHTML = `
+        <div class="card empty-review">
+          <h2>尚无 segment 可审核</h2>
+          <p class="meta">项目「${escapeHtml(pid)}」当前没有译文 segment（状态：${escapeHtml(status)}）。</p>
+          <p class="meta">可能原因：生成失败、尚未生成、或预算/并发导致写入未完成。</p>
+          <p>
+            <a href="/index.html">返回 Quickstart 重新生成</a>
+            · <a href="/review.html?project=${encodeURIComponent(pid)}">刷新本页</a>
+          </p>
+        </div>`;
+      return;
+    }
+
     root.innerHTML = data.segments
       .map((seg) => {
         const status = segmentStatus(seg, state);
@@ -731,17 +810,13 @@
     if (autoCount > 0) bindReviewPage(data);
   }
 
-  function bindHomePage(ctx) {
-    const list = document.getElementById("project-list");
-    if (!list) return;
-    const activeId = ctx.activeProjectId;
-    list.innerHTML = ctx.projects
-      .map((p) => {
-        const pid = p.id || p.project_id;
-        const isActive = pid === activeId;
-        return `
+  function renderProjectCard(p, activeId) {
+    const pid = p.id || p.project_id;
+    const isActive = pid === activeId;
+    const cat = p.category || "user";
+    return `
       <div class="card${isActive ? " card-active" : ""}">
-        <h2>${escapeHtml(p.name)}${isActive ? ' <span class="badge ok">当前</span>' : ""}</h2>
+        <h2>${escapeHtml(p.name)} ${categoryBadge(cat)}${isActive ? ' <span class="badge ok">当前</span>' : ""}</h2>
         <p class="meta">方向 ${escapeHtml(p.direction || p.language_direction)} · ${p.chapters} 章 · 状态 ${escapeHtml(p.status)}</p>
         <p>
           <a href="/review.html?project=${encodeURIComponent(pid)}">进入对照审核 →</a>
@@ -754,7 +829,39 @@
           }
         </p>
       </div>`;
-      })
+  }
+
+  async function bindHiddenProjectsPanel() {
+    const details = document.getElementById("project-history-details");
+    const list = document.getElementById("project-history-list");
+    const countEl = document.getElementById("project-history-count");
+    if (!details || !list) return;
+    try {
+      const registry = await fetchProjectsApi({ includeTest: true, includeHistory: true });
+      const hidden = (registry.projects || []).filter((p) => {
+        const cat = p.category || "user";
+        return cat === "test" || cat === "history";
+      });
+      if (countEl) countEl.textContent = String(hidden.length);
+      if (!hidden.length) {
+        details.hidden = true;
+        list.innerHTML = "";
+        return;
+      }
+      details.hidden = false;
+      const activeId = workbenchContext?.activeProjectId || registry.active_project_id || "";
+      list.innerHTML = hidden.map((p) => renderProjectCard(p, activeId)).join("");
+    } catch (err) {
+      log(`hidden projects load failed: ${err.message}`);
+    }
+  }
+
+  function bindHomePage(ctx) {
+    const list = document.getElementById("project-list");
+    if (!list) return;
+    const activeId = ctx.activeProjectId;
+    list.innerHTML = ctx.projects
+      .map((p) => renderProjectCard(p, activeId))
       .join("");
 
     const sourceEl = document.getElementById("data-source-label");
@@ -861,6 +968,7 @@
     if (!zhDir) return;
     const projectInput = document.getElementById("export-project-id");
     if (projectInput && projectId) projectInput.value = projectId;
+    let highlightPaths = new Set();
 
     async function refreshStatus() {
       const res = await fetch("/api/export/status");
@@ -874,9 +982,14 @@
       const countEl = document.getElementById("export-file-count");
       if (list) {
         const files = [...(status.translated_files || []), ...(status.bilingual_files || [])];
-        if (countEl) countEl.textContent = String(files.length);
+        if (countEl) countEl.textContent = String(status.translated_count + status.bilingual_count);
         list.innerHTML = files.length
-          ? files.map((f) => `<li>${escapeHtml(f)}</li>`).join("")
+          ? files
+              .map((f) => {
+                const cls = highlightPaths.has(f) ? ' class="export-recent"' : "";
+                return `<li${cls}>${escapeHtml(f)}</li>`;
+              })
+              .join("")
           : "<li>尚无导出文件</li>";
       }
       return status;
@@ -918,8 +1031,16 @@
           });
           const payload = await res.json();
           if (!res.ok) throw new Error(payload.error || `export ${res.status}`);
-          if (resultEl) resultEl.textContent = formatExportResult(payload);
+          highlightPaths = new Set(exportHighlightPaths(payload));
+          if (resultEl) {
+            const recent = exportHighlightPaths(payload);
+            resultEl.textContent =
+              formatExportResult(payload) +
+              (recent.length ? `\n\n本次导出文件：\n${recent.map((p) => `  - ${p}`).join("\n")}` : "");
+          }
           await refreshStatus();
+          const details = document.getElementById("export-history-details");
+          if (details) details.open = true;
           log(`manifest export OK: ${pid}`);
         } catch (err) {
           if (resultEl) resultEl.textContent = String(err.message);
@@ -949,8 +1070,16 @@
           });
           const payload = await res.json();
           if (!res.ok) throw new Error(payload.error || `export ${res.status}`);
-          if (resultEl) resultEl.textContent = formatExportResult(payload);
+          highlightPaths = new Set(exportHighlightPaths(payload));
+          if (resultEl) {
+            const recent = exportHighlightPaths(payload);
+            resultEl.textContent =
+              formatExportResult(payload) +
+              (recent.length ? `\n\n本次导出文件：\n${recent.map((p) => `  - ${p}`).join("\n")}` : "");
+          }
           await refreshStatus();
+          const details = document.getElementById("export-history-details");
+          if (details) details.open = true;
           log("runs export OK");
         } catch (err) {
           if (resultEl) resultEl.textContent = String(err.message);
@@ -1016,6 +1145,7 @@
       }
 
       bindHomePage(workbenchContext);
+      await bindHiddenProjectsPanel();
       setupProjectSwitchHandler(workbenchContext);
       setupReviewProjectSelector(workbenchContext);
       setupReviewClickHandler(workbenchContext.activeProjectId);
