@@ -114,6 +114,28 @@
     return lines.join("\n");
   }
 
+  function formatTranslationAssetsResult(payload) {
+    if (!payload || typeof payload !== "object") return String(payload);
+    if (payload.exists === false) {
+      return `尚未构建翻译记忆资产\nproject_id=${payload.project_id || ""}\nasset_path=${payload.asset_path || ""}`;
+    }
+    const stats = payload.stats || {};
+    return [
+      "翻译记忆资产可用",
+      payload.project_id ? `project_id=${payload.project_id}` : null,
+      payload.mode ? `mode=${payload.mode}` : null,
+      payload.status_mode ? `status_mode=${payload.status_mode}` : null,
+      payload.asset_path ? `asset_path=${payload.asset_path}` : null,
+      stats.pairs != null ? `pairs=${stats.pairs}` : null,
+      stats.term_candidates != null ? `term_candidates=${stats.term_candidates}` : null,
+      stats.proper_noun_candidates != null ? `proper_noun_candidates=${stats.proper_noun_candidates}` : null,
+      stats.api_calls != null ? `api_calls=${stats.api_calls}` : null,
+      payload.created_at ? `created_at=${payload.created_at}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
   function exportHighlightPaths(payload) {
     const paths = [];
     if (payload?.translated_path) paths.push(payload.translated_path);
@@ -1999,6 +2021,17 @@
       return status;
     }
 
+    async function refreshTranslationAssetsStatus() {
+      const resultEl = document.getElementById("translation-assets-result");
+      const pid = currentExportProjectId();
+      if (!resultEl || !pid) return null;
+      const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/translation-assets`);
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || `translation-assets ${res.status}`);
+      resultEl.textContent = formatTranslationAssetsResult(payload);
+      return payload;
+    }
+
     const refreshBtn = document.getElementById("export-refresh-btn");
     if (refreshBtn && refreshBtn.dataset.bound !== "1") {
       refreshBtn.dataset.bound = "1";
@@ -2099,6 +2132,50 @@
       });
     }
 
+    const buildAssetsBtn = document.getElementById("build-assets-btn");
+    if (buildAssetsBtn && buildAssetsBtn.dataset.bound !== "1") {
+      buildAssetsBtn.dataset.bound = "1";
+      buildAssetsBtn.addEventListener("click", async () => {
+        const pid = currentExportProjectId();
+        const resultEl = document.getElementById("translation-assets-result");
+        if (!pid) {
+          if (resultEl) resultEl.textContent = "请填写项目 ID";
+          return;
+        }
+        try {
+          const res = await fetch("/api/translation-assets/build", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              project_id: pid,
+              mode: "agent",
+              status_mode: "approved",
+            }),
+          });
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error || `translation-assets ${res.status}`);
+          if (resultEl) resultEl.textContent = formatTranslationAssetsResult(payload);
+          log(`translation assets built: ${pid}`);
+        } catch (err) {
+          if (resultEl) resultEl.textContent = String(err.message);
+          log(`translation assets failed: ${err.message}`);
+        }
+      });
+    }
+
+    const refreshAssetsBtn = document.getElementById("refresh-assets-btn");
+    if (refreshAssetsBtn && refreshAssetsBtn.dataset.bound !== "1") {
+      refreshAssetsBtn.dataset.bound = "1";
+      refreshAssetsBtn.addEventListener("click", async () => {
+        try {
+          await refreshTranslationAssetsStatus();
+          log("translation assets status refreshed");
+        } catch (err) {
+          log(`translation assets status error: ${err.message}`);
+        }
+      });
+    }
+
     const runsBtn = document.getElementById("export-runs-btn");
     if (runsBtn && runsBtn.dataset.bound !== "1") {
       runsBtn.dataset.bound = "1";
@@ -2134,6 +2211,7 @@
 
     try {
       await refreshStatus();
+      await refreshTranslationAssetsStatus();
     } catch (err) {
       log(`export status error: ${err.message}`);
     }

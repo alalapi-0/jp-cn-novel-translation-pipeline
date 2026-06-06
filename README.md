@@ -70,6 +70,18 @@ npm run check:tooling  # 内含 pytest + MCP 检查
 
 审核工作台默认 **不自动通过** segment（`AUTO_APPROVE=false`）；自动推进试验可在 URL 加 `?auto_approve=1`。
 
+**翻译记忆/资产沉淀：**
+
+重启或重试翻译任务前，可把 Workbench 已审核通过内容沉淀为本地资产。默认 `agent` 模式不调用外部 API：
+
+```bash
+python3 scripts/build_translation_assets.py --project-id demo-jp-cn
+python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
+  --asset-context workspace/assets/translation_memory/demo-jp-cn.json
+```
+
+导出中心也提供“翻译记忆资产”入口。详见 [`docs/translation_memory_assets.md`](docs/translation_memory_assets.md)。
+
 ## 当前阶段
 
 当前阶段以仓库治理、架构规划、工具链与 Workbench MVP 为主。**治理轮**不启动大批量真实小说翻译、不建立生产级向量库；但已提供 Workbench 静态前端、dry-run 与**授权范围内**的真实 API smoke / 小样本生成（需 `OPENROUTER_API_KEY` + `REAL_API_TESTS_ENABLED=true`）。

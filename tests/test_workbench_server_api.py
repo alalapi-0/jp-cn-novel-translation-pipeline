@@ -230,6 +230,100 @@ def test_export_manifest_approved_only_uses_review_state(
     assert "Beta line." not in text
 
 
+def test_build_translation_assets_api_uses_approved_only(
+    api_server: str,
+    api_repo_root: Path,
+) -> None:
+    project_id = "pw-assets-approved-only"
+    code, _ = _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Assets", "language_direction": "JP_TO_CN"},
+    )
+    assert code == 201
+    code, _ = _post(
+        api_server,
+        f"/api/projects/{project_id}/dry-run-generate",
+        {"sample_text": "アルファの森へ向かう。\n\n【レア】称号を獲得した。"},
+    )
+    assert code == 200
+    host, port = api_server.split(":")
+    conn = HTTPConnection(host, int(port), timeout=10)
+    patch = json.dumps(
+        {
+            "segments": {
+                "seg-001": {"status": "approved"},
+                "seg-002": {"status": "rejected"},
+            }
+        }
+    ).encode("utf-8")
+    conn.request(
+        "PATCH",
+        f"/api/projects/{project_id}/review-state",
+        body=patch,
+        headers={"Content-Type": "application/json"},
+    )
+    res = conn.getresponse()
+    assert res.status == 200
+    _ = res.read()
+    conn.close()
+
+    code, payload = _post(
+        api_server,
+        "/api/translation-assets/build",
+        {"project_id": project_id},
+    )
+    assert code == 200
+    assert payload["mode"] == "agent"
+    assert payload["stats"]["api_calls"] == 0
+    assert payload["stats"]["pairs"] == 1
+    asset_path = api_repo_root / payload["asset_path"]
+    doc = json.loads(asset_path.read_text(encoding="utf-8"))
+    assert "seg-001" in doc["segment_map"]
+    assert "seg-002" not in doc["segment_map"]
+
+    code, status = _get(api_server, f"/api/projects/{project_id}/translation-assets")
+    assert code == 200
+    assert status["exists"] is True
+    assert status["stats"]["pairs"] == 1
+
+
+def test_translation_assets_external_api_reports_clear_error(api_server: str) -> None:
+    project_id = "pw-assets-external-blocked"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "External", "language_direction": "JP_TO_CN"},
+    )
+    _post(
+        api_server,
+        f"/api/projects/{project_id}/dry-run-generate",
+        {"sample_text": "アルファ"},
+    )
+    host, port = api_server.split(":")
+    conn = HTTPConnection(host, int(port), timeout=10)
+    patch = json.dumps({"segments": {"seg-001": {"status": "approved"}}}).encode("utf-8")
+    conn.request(
+        "PATCH",
+        f"/api/projects/{project_id}/review-state",
+        body=patch,
+        headers={"Content-Type": "application/json"},
+    )
+    res = conn.getresponse()
+    assert res.status == 200
+    _ = res.read()
+    conn.close()
+
+    code, payload = _post(
+        api_server,
+        "/api/translation-assets/build",
+        {"project_id": project_id, "mode": "external_api"},
+    )
+    assert code == 409
+    assert payload["mode"] == "external_api"
+    assert "external_api mode" in payload["error"]
+
+
 def test_export_manifest_draft_requires_confirmation(api_server: str) -> None:
     project_id = "pw-export-draft-confirm"
     _post(

@@ -58,6 +58,17 @@
         <pre id="export-result" class="export-result"></pre>
       </div>
       <div class="card">
+        <h2>翻译记忆资产</h2>
+        <p class="meta">
+          从当前项目已审核通过的段落沉淀术语、译名、短语映射和风格提示；默认 agent/local 模式不调用外部 API。
+        </p>
+        <div class="actions">
+          <button type="button" class="primary" id="build-assets-btn">构建 approved 翻译资产</button>
+          <button type="button" id="refresh-assets-btn">刷新资产状态</button>
+        </div>
+        <pre id="translation-assets-result" class="export-result">尚未检查资产状态。</pre>
+      </div>
+      <div class="card">
         <h2>全量 runs 导出</h2>
         <p class="meta">合并 <code>workspace/runs</code> 下已完成 Stage B run 并导出；若无 run 将报错，不会回退 manifest。</p>
         <div class="actions">

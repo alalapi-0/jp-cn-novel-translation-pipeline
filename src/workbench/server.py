@@ -49,6 +49,10 @@ from workbench.project_registry import (
     update_project_segments,
 )
 from workbench.review_state import get_project_review_state, patch_project_review_state
+from assets.translation_memory import (
+    ExternalAssetExtractionUnavailable,
+    build_translation_memory_assets,
+)
 
 
 def _query_flag(parsed: ParseResult, name: str, *, default: bool = False) -> bool:
@@ -311,6 +315,46 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         },
                     )
                     return
+                if rest.endswith("/translation-assets"):
+                    project_id = self._parse_project_id(rest[: -len("/translation-assets")])
+                    if get_project_manifest(repo_root, project_id) is None:
+                        self._send_json(
+                            HTTPStatus.NOT_FOUND,
+                            {"error": f"unknown project_id: {project_id}"},
+                        )
+                        return
+                    asset_path = (
+                        repo_root
+                        / "workspace"
+                        / "assets"
+                        / "translation_memory"
+                        / f"{project_id}.json"
+                    )
+                    if not asset_path.is_file():
+                        self._send_json(
+                            HTTPStatus.OK,
+                            {
+                                "project_id": project_id,
+                                "exists": False,
+                                "asset_path": str(asset_path.relative_to(repo_root)),
+                            },
+                        )
+                        return
+                    data = json.loads(asset_path.read_text(encoding="utf-8"))
+                    stats = data.get("stats") if isinstance(data, dict) else {}
+                    self._send_json(
+                        HTTPStatus.OK,
+                        {
+                            "project_id": project_id,
+                            "exists": True,
+                            "asset_path": str(asset_path.relative_to(repo_root)),
+                            "mode": data.get("mode"),
+                            "status_mode": data.get("status_mode"),
+                            "stats": stats if isinstance(stats, dict) else {},
+                            "created_at": data.get("created_at"),
+                        },
+                    )
+                    return
                 if rest.endswith("/workbench-data"):
                     project_id = self._parse_project_id(rest[: -len("/workbench-data")])
                     manifest = get_project_manifest(repo_root, project_id)
@@ -397,6 +441,36 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         confirm_draft=body.get("confirm_draft") is True,
                     )
                     self._send_json(HTTPStatus.OK, result)
+                except InvalidProjectIdError as exc:
+                    self._invalid_project_id(exc)
+                except (ValueError, KeyError, FileNotFoundError) as exc:
+                    self._bad_request(str(exc))
+                return
+
+            if path == "/api/translation-assets/build":
+                try:
+                    project_id = validate_project_id(str(body.get("project_id") or ""))
+                    mode = str(body.get("mode") or "agent").strip().lower()
+                    status_mode = str(body.get("status_mode") or "approved").strip().lower()
+                    doc = build_translation_memory_assets(
+                        repo_root=repo_root,
+                        project_id=project_id,
+                        mode=mode,  # type: ignore[arg-type]
+                        status_mode=status_mode,  # type: ignore[arg-type]
+                    )
+                    self._send_json(
+                        HTTPStatus.OK,
+                        {
+                            "project_id": project_id,
+                            "asset_path": doc.get("asset_path_relative") or doc.get("asset_path"),
+                            "mode": doc.get("mode"),
+                            "status_mode": doc.get("status_mode"),
+                            "stats": doc.get("stats", {}),
+                            "created_at": doc.get("created_at"),
+                        },
+                    )
+                except ExternalAssetExtractionUnavailable as exc:
+                    self._send_json(HTTPStatus.CONFLICT, {"error": str(exc), "mode": "external_api"})
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
                 except (ValueError, KeyError, FileNotFoundError) as exc:

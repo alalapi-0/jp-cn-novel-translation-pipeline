@@ -22,6 +22,7 @@ def build_batch_messages(
     *,
     chapter_label: str,
     prompt_version: str = "draft_v1",
+    asset_context: str | None = None,
 ) -> list[Message]:
     items = [
         {"segment_id": s.segment_id, "source_text": s.source_text}
@@ -51,6 +52,12 @@ def build_batch_messages(
         "每个 item 必须包含 segment_id 与 translation。\n\n"
         + json.dumps(contract, ensure_ascii=False, indent=2)
     )
+    if asset_context and asset_context.strip():
+        user_content += (
+            "\n\n以下是从过往已审核/已完成译文沉淀出的翻译记忆资产。"
+            "仅在相关时用于术语、译名、短语和风格一致性；不得覆盖本次原文含义。\n"
+            + asset_context.strip()
+        )
     return [
         Message(role="system", content=SYSTEM_PROMPT),
         Message(role="user", content=user_content),

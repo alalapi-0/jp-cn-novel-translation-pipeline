@@ -117,8 +117,15 @@ def main() -> int:
         default=0,
         help="Skip first N sorted chapter files (for continuing full-novel batches)",
     )
+    parser.add_argument(
+        "--asset-context",
+        type=Path,
+        default=None,
+        help="Translation-memory asset JSON to include in restart/retry prompt context.",
+    )
     args = parser.parse_args()
     _apply_local_env(REPO_ROOT)
+    input_dir = args.input_dir if args.input_dir.is_absolute() else (REPO_ROOT / args.input_dir)
 
     if args.phase != "draft":
         print("Only draft phase is implemented", file=sys.stderr)
@@ -167,10 +174,11 @@ def main() -> int:
         try:
             summary, run_root = run_fn(
                 repo_root=REPO_ROOT,
-                input_dir=args.input_dir,
+                input_dir=input_dir,
                 limit_chapters=limit,
                 chapter_offset=args.chapter_offset,
                 run_id=run_id,
+                asset_context_path=args.asset_context,
             )
         except Exception as exc:
             _update_stage_state(
@@ -197,6 +205,7 @@ def main() -> int:
                 "provider_mode": summary.provider_mode,
                 "model_name": summary.model_name,
                 "run_root": str(run_root.relative_to(REPO_ROOT)),
+                "asset_context_path": summary.asset_context_path,
                 "api_calls": summary.api_calls,
                 "spent_usd": summary.spent_usd,
             },

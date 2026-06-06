@@ -40,6 +40,15 @@ protocol_standard:
 
 protocol_standard_sync_required: true
 
+asset_extraction:
+  enabled: false
+  default_mode: rule-based
+  allow_real_api: false
+  max_chapters: 5
+  max_segments: 50
+  max_requests: 5
+  write_to_public_asset_library: false
+
 project_overrides:
   - field: round_protocol.current_round_source
     standard_expectation: governance/round_state.yaml

@@ -1,0 +1,54 @@
+{
+  "language_direction": "JP_TO_CN",
+  "pipeline_stage": "draft",
+  "chapters": [
+    {
+      "chapter_id": "ch-001",
+      "chapter_label": "第一章 虚拟世界",
+      "segments": [
+        {
+          "segment_id": "ch-001-seg-001",
+          "source_text": "新暦12年。ＶＲ技術が社会全体に浸透していた。",
+          "draft_text": "新历12年。VR技术已渗透整个社会。",
+          "status": "machine_translated"
+        },
+        {
+          "segment_id": "ch-001-seg-002",
+          "source_text": "主人公はレベル1のステータス画面を開いた。",
+          "draft_text": "主角打开了等级1的状态面板。",
+          "status": "machine_translated"
+        },
+        {
+          "segment_id": "ch-001-seg-003",
+          "source_text": "「まさか、スキルが覚醒するなんて」",
+          "draft_text": "「没想到，技能竟然觉醒了」",
+          "status": "machine_translated"
+        },
+        {
+          "segment_id": "ch-001-seg-004",
+          "source_text": "【レア】称号を獲得した。",
+          "draft_text": "【稀有】获得了称号。",
+          "status": "machine_translated"
+        }
+      ]
+    },
+    {
+      "chapter_id": "ch-002",
+      "chapter_label": "第二章 探索",
+      "segments": [
+        {
+          "segment_id": "ch-002-seg-001",
+          "source_text": "アルファの森へ向かう。",
+          "draft_text": "前往阿尔法之森。",
+          "status": "machine_translated"
+        },
+        {
+          "segment_id": "ch-002-seg-002",
+          "source_text": "「ここで大丈夫？」",
+          "draft_text": "「这里安全吗？」",
+          "status": "machine_translated"
+        }
+      ]
+    }
+  ]
+}

@@ -80,6 +80,7 @@ class DraftRunSummary:
     spent_tokens: int = 0
     provider_mode: str = "real"
     model_name: str = ""
+    asset_context_path: str = ""
     aborted: bool = False
     abort_reason: str = ""
 
@@ -140,6 +141,7 @@ def run_draft_stage_a(
     chapter_offset: int = 0,
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
+    asset_context_path: Path | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_A_MAX_CHAPTERS:
         raise ValueError(f"Stage A hard limit: max {STAGE_A_MAX_CHAPTERS} chapters")
@@ -151,6 +153,7 @@ def run_draft_stage_a(
         chapter_offset=chapter_offset,
         run_id=run_id,
         provider_factory=provider_factory,
+        asset_context_path=asset_context_path,
     )
 
 
@@ -162,6 +165,7 @@ def run_draft_stage_b(
     chapter_offset: int = 0,
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
+    asset_context_path: Path | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_B_MAX_CHAPTERS:
         raise ValueError(f"Stage B hard limit: max {STAGE_B_MAX_CHAPTERS} chapters")
@@ -173,6 +177,7 @@ def run_draft_stage_b(
         chapter_offset=chapter_offset,
         run_id=run_id,
         provider_factory=provider_factory,
+        asset_context_path=asset_context_path,
     )
 
 
@@ -244,6 +249,22 @@ def _default_run_id(spec: DraftStageSpec) -> str:
     return f"{spec.run_id_prefix}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:8]}"
 
 
+def _load_asset_context(repo_root: Path, path: Path | None) -> tuple[str, str]:
+    if path is None:
+        return "", ""
+    resolved = path if path.is_absolute() else repo_root / path
+    if not resolved.is_file():
+        raise FileNotFoundError(f"asset context not found: {resolved}")
+    from assets.translation_memory import render_translation_asset_context
+
+    rendered = render_translation_asset_context(resolved)
+    try:
+        rel = str(resolved.relative_to(repo_root))
+    except ValueError:
+        rel = str(resolved)
+    return rendered, rel
+
+
 def run_draft_stage(
     *,
     spec: DraftStageSpec,
@@ -253,6 +274,7 @@ def run_draft_stage(
     chapter_offset: int = 0,
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
+    asset_context_path: Path | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > spec.limit_chapters:
         raise ValueError(f"{spec.scope} hard limit: max {spec.limit_chapters} chapters")
@@ -297,6 +319,7 @@ def run_draft_stage(
         )
 
     parsed_chapters = [parse_chapter_file(p) for p in chapter_paths]
+    asset_context, asset_context_ref = _load_asset_context(repo_root, asset_context_path)
     _hydrate_from_segments_json(run_root, parsed_chapters)
     _hydrate_from_draft_md(run_root, parsed_chapters)
     total_expected = sum(len(ch.segments) for ch in parsed_chapters)
@@ -323,6 +346,7 @@ def run_draft_stage(
         run_id=run_id,
         provider_mode=provider_mode,
         model_name=model_name,
+        asset_context_path=asset_context_ref,
     )
 
     for chapter in parsed_chapters:
@@ -333,7 +357,11 @@ def run_draft_stage(
             pending = [s for s in batch if not (s.draft_text or "").strip()]
             if not pending:
                 continue
-            messages = build_batch_messages(pending, chapter_label=chapter.chapter_label)
+            messages = build_batch_messages(
+                pending,
+                chapter_label=chapter.chapter_label,
+                asset_context=asset_context,
+            )
             options = GenerateOptions(
                 project_id="light-novel-jp-cn",
                 language_direction="JP_TO_CN",
@@ -501,6 +529,7 @@ def _write_run_artifacts(
         "started_at": existing_meta.get("started_at") or _utc_now(),
         "provider_mode": summary.provider_mode,
         "model_name": summary.model_name,
+        "asset_context_path": summary.asset_context_path,
         "language_direction": "JP_TO_CN",
         "chapter_files": [str(p.relative_to(repo_root)) for p in chapter_paths],
         "input_dir": str(input_dir.relative_to(repo_root)),
