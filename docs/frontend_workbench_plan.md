@@ -176,10 +176,23 @@
 
 ## 前端技术路线
 
-- Phase 1: 静态 HTML / 简单本地页面。
+- Phase 1: 静态 HTML / 简单本地页面。**← Round 57 MVP 已落地**（`frontend/` + `src/workbench/`）
 - Phase 2: React / Vite 前端。
-- Phase 3: 后端 API。
+- Phase 3: 后端 API。（Workbench 已提供只读/小样本写 API，非完整 pipeline API）
 - Phase 4: 本地 Web App。
 - Phase 5: 多项目管理。
 
-本轮不实现前端，只规划。
+## Round 57 已实现页面（对照上文规划）
+
+| 规划页面 | 当前对应 | 状态 |
+|---|---|---|
+| Project Home | `frontend/index.html` | MVP：项目列表、Quickstart、API 状态 |
+| Side-by-side Review | `frontend/review.html` | MVP：审核、项目切换、状态持久化 |
+| Quality Issues | `frontend/issues.html` | MVP：Issue 列表与数据源标注 |
+| Export | `frontend/export.html` | MVP：manifest / runs 导出 |
+
+未实现：Glossary、Character、Polish Diff、完整 Dashboard 等（见 `tests/ui/smoke.spec.ts` 显式 skip）。
+
+---
+
+> 以下各页「后续实现轮次」为 **历史路线标注**；实现状态以 `README.md` 与 `docs/architecture_overview.md`「当前已实现入口」为准。

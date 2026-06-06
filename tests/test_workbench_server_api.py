@@ -531,3 +531,157 @@ def test_project_lifecycle_blocked_when_generation_running(
     t.join()
     assert code == 409
     assert blocked["error"] == "generation_in_progress"
+
+
+def test_illegal_project_id_returns_chinese(api_server: str) -> None:
+    code, payload = _post(
+        api_server,
+        "/api/projects",
+        {"project_id": "../bad", "name": "x", "language_direction": "JP_TO_CN"},
+    )
+    assert code == 400
+    assert "不能包含" in payload["error"]
+
+
+def test_real_api_generate_blocked_without_key(api_server: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    project_id = "pw-real-blocked-no-key"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "NoKey", "language_direction": "JP_TO_CN"},
+    )
+    code, payload = _post(
+        api_server,
+        f"/api/projects/{project_id}/real-api-generate",
+        {"sample_text": "テスト", "request_id": "req-no-key"},
+    )
+    assert code == 400
+    assert "real_api_unavailable" in payload["error"]
+
+
+def test_real_api_generate_blocked_when_budget_zero(
+    api_server: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("REAL_API_TESTS_ENABLED", "true")
+    monkeypatch.setenv("MAX_TEST_COST_USD", "0")
+    project_id = "pw-real-blocked-budget"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Budget", "language_direction": "JP_TO_CN"},
+    )
+    code, payload = _post(
+        api_server,
+        f"/api/projects/{project_id}/real-api-generate",
+        {"sample_text": "テスト", "request_id": "req-budget"},
+    )
+    assert code == 400
+    assert "max_test_cost_usd_zero" in payload["error"]
+
+
+def test_real_api_generate_rejects_paragraph_too_long(api_server: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("REAL_API_TESTS_ENABLED", "true")
+    monkeypatch.setenv("MAX_TEST_COST_USD", "0.05")
+    project_id = "pw-real-para-long"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Long", "language_direction": "JP_TO_CN"},
+    )
+    long_para = "あ" * 401
+    code, payload = _post(
+        api_server,
+        f"/api/projects/{project_id}/real-api-generate",
+        {"sample_text": long_para, "request_id": "req-long"},
+    )
+    assert code == 400
+    assert "paragraph too long" in payload["error"]
+
+
+def test_real_api_generate_cost_guard_token_limit_not_success(
+    api_server: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import workbench.server as server_mod
+    from providers.cost_guard import CostGuardError
+
+    project_id = "pw-real-token-limit"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Token", "language_direction": "JP_TO_CN"},
+    )
+
+    def fake_generate(*, sample_text: str, language_direction: str, repo_root: Path):  # noqa: ARG001
+        raise CostGuardError(
+            "blocked",
+            report={"reason": "max_tokens_per_run_exceeded", "projected_tokens": 999, "max_tokens_per_run": 10},
+        )
+
+    monkeypatch.setattr(server_mod, "generate_segments_real_api", fake_generate)
+    code, payload = _post(
+        api_server,
+        f"/api/projects/{project_id}/real-api-generate",
+        {"sample_text": "短文本", "request_id": "req-token-limit"},
+    )
+    assert code == 409
+    assert payload["error"] == "max_tokens_per_run_exceeded"
+    code, job_payload = _get(api_server, f"/api/projects/{project_id}/generation-job")
+    assert code == 200
+    assert job_payload["generation_job"]["status"] == "failed"
+
+
+def test_dry_run_double_click_409_then_recovers(api_server: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    import workbench.server as server_mod
+
+    project_id = "pw-dry-409-recover"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Recover", "language_direction": "JP_TO_CN"},
+    )
+    calls = {"count": 0}
+
+    def fake_split(*, sample_text: str, language_direction: str):  # noqa: ARG001
+        calls["count"] += 1
+        time.sleep(0.2)
+        return [
+            {
+                "id": "seg-001",
+                "segment_id": "seg-001",
+                "source": sample_text,
+                "draft": "ok",
+                "status": "pending",
+            }
+        ]
+
+    monkeypatch.setattr(server_mod, "generate_segments_from_sample", fake_split)
+    responses: list[tuple[int, dict]] = []
+
+    def _call(req_id: str) -> None:
+        responses.append(
+            _post(
+                api_server,
+                f"/api/projects/{project_id}/dry-run-generate",
+                {"sample_text": "double", "request_id": req_id},
+            )
+        )
+
+    t1 = threading.Thread(target=_call, args=("req-recover-1",))
+    t2 = threading.Thread(target=_call, args=("req-recover-2",))
+    t1.start()
+    time.sleep(0.05)
+    t2.start()
+    t1.join()
+    t2.join()
+    codes = sorted(code for code, _payload in responses)
+    assert codes == [200, 409]
+    assert calls["count"] == 1
+    code, job_payload = _get(api_server, f"/api/projects/{project_id}/generation-job")
+    assert code == 200
+    assert job_payload["generation_job"]["status"] == "succeeded"
+

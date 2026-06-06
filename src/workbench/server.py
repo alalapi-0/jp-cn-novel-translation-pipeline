@@ -28,7 +28,13 @@ from workbench.generation_jobs import (
     prepare_generation_job,
     project_generation_lock,
 )
-from workbench.project_id import InvalidProjectIdError, is_history_project_id, is_test_project_id, validate_project_id
+from workbench.project_id import (
+    InvalidProjectIdError,
+    is_history_project_id,
+    is_test_project_id,
+    project_id_user_message,
+    validate_project_id,
+)
 from workbench.project_registry import (
     ManifestWriteInProgressError,
     archive_project,
@@ -90,7 +96,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": message})
 
         def _invalid_project_id(self, exc: InvalidProjectIdError) -> None:
-            self._bad_request(str(exc))
+            self._bad_request(project_id_user_message(str(exc)))
 
         def _cost_guard_error(self, exc: CostGuardError) -> None:
             report = exc.report or {}
@@ -211,7 +217,14 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 self._send_json(HTTPStatus.OK, build_api_status(repo_root))
                 return
             if path == "/api/export/status":
-                self._send_json(HTTPStatus.OK, export_status(repo_root))
+                project_id = parse_qs(parsed.query).get("project_id", [None])[0]
+                filter_pid = str(project_id).strip() if project_id else None
+                if filter_pid:
+                    try:
+                        filter_pid = validate_project_id(filter_pid)
+                    except InvalidProjectIdError:
+                        filter_pid = None
+                self._send_json(HTTPStatus.OK, export_status(repo_root, project_id=filter_pid))
                 return
             if path == "/api/projects":
                 include_test = _query_flag(parsed, "include_test", default=False)

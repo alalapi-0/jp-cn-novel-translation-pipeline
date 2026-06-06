@@ -122,7 +122,13 @@ class RouterProvider:
             "cost_estimate_usd": result.cost_estimate_usd,
             "latency_ms": result.latency_ms,
             "status": result.status,
+            "started_at": result.started_at.isoformat() if result.started_at else None,
             "finished_at": result.finished_at.isoformat() if result.finished_at else None,
+            "request_hash": result.request_hash or "",
+            "request_hash_version": 1,
+            "prompt_version": options.prompt_version,
+            "api_mode": "real" if not result.dry_run else "dry_run",
+            "production_eligible": options.metadata.get("production_eligible", True),
             "raw_output_chars": len(result.raw_output),
         }
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -1,22 +1,24 @@
-round_id: round_57_continuous_real_api_refine
-round_name: "Phase 2 — continuous real API Stage C refine (pilot hold lifted)"
-round_number_human: "57"
+round_id: round_58_throughput_recovery
+round_name: "Throughput recovery, safety gates, and isolated real API diagnostic"
+round_number_human: "58"
 status: in_progress
-type: production_pilot
-real_api_called: true
+type: throughput_recovery
+real_api_called: false
 full_translation_executed: false
 
 completed_tasks:
-  - "phase_2_pilot_hold lifted — user-authorized continuous real API refine on run_20260602_203645_draft_stage_b_50ch"
-  - "OpenRouter real smoke OK (session MAX_TEST_COST_USD override; .env ceiling remains 0)"
-  - "Stage C real refine batches resumed after cancel (stale locks cleared; background loop)"
-  - "chapter_offset support for translate.py / draft_runner (continue ch51+ in 50-ch batches)"
-  - "Parallel real API: refine loop on 50ch run + translate ch51-100 batch started"
-  - "pilot_batch_chain.sh orchestrator for offsets 100+ after in-flight 0/50 complete"
+  - "Stitch Design MCP integration: local stdio proxy, docs/design/stitch/, check:stitch, AGENTS/agent.md, Cursor rules"
+  - "P0-A: unified run_progress.json atomic writer for draft/refine"
+  - "P0-B: pipeline_worker_registry.py + production_watchdog pipefail fix"
+  - "P0-C: scripts/throughput_gate.py (ALLOW/WARN/BLOCK)"
+  - "P0-D: export_refined_runs --run-id --up-to-offset fixture verified"
+  - "P0-E: Stage C controlled runner with configurable STAGE_C_MAX_SEGMENTS"
+  - "P1: pipeline_events.jsonl + model_run metadata fields"
+  - "pytest 19/19 pass for throughput recovery test suite"
 
 next_recommended_round:
-  id: round_57_refine_complete
-  title: "Finish Stage C refine for all 3168 segments; quality review + workbench browser check"
+  id: round_58_user_approved_small_pilot
+  title: "User-approved small pilot after throughput gate ALLOW"
 
 next_recommended_phase:
   id: phase_2
@@ -25,13 +27,8 @@ next_recommended_phase:
 blockers:
   hard: []
   soft:
-    - ".env MAX_TEST_COST_USD=0 blocks refine_stage_c real calls unless session export overrides budget per batch"
-    - "Real API smoke defaults to dry-run/missing_api_key; --real requires explicit key and low-cost provider support"
-    - "Browser inspection depends on existing Playwright setup and may fail if frontend smoke fixtures drift"
+    - "STITCH_API_KEY not set in agent shell — Stitch MCP requires user-local key and Cursor Reload"
+    - "No OPENROUTER/DEEPSEEK API key in agent shell — real API diagnostic ran dry-run only"
+    - "workspace/stage_state.json still points to old refine run — requires user-approved resume"
+    - "Fourth Stage B run checkpoint/state conflict may BLOCK production until repaired"
     - "pytest collection can hang >120s in parallel-agent shells; prefer PYTHONPATH=src direct runs"
-    - "_hashlib import may hang in sandbox; dry_run uses builtin hash"
-    - "REAL_API openrouter smoke exceeded 490s without response — retry manually with network"
-    - "round_50 e2e trial subprocess timeout 90s in agent_gate"
-    - "docs/reports/*.md gitignored; gate report via CLI stdout"
-    - "stale workspace/.locks — do not commit; remove if PID dead"
-    - "GitHub Actions ui job skipped on PR by design; use workflow_dispatch run_ui_tests"

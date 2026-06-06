@@ -25,8 +25,18 @@
           当前项目：<strong id="active-project-label">—</strong>
         </p>
         <p class="meta">
+          <label for="project-switcher-search">搜索项目</label>
+          <input id="project-switcher-search" type="search" placeholder="输入名称或 ID 筛选…" />
+        </p>
+        <p class="meta">
           <label for="project-switcher">切换项目</label>
           <select id="project-switcher"></select>
+        </p>
+        <p class="meta checkbox-row">
+          <label>
+            <input id="show-test-projects" type="checkbox" />
+            显示测试/历史项目
+          </label>
         </p>
         <p class="meta">
           API 模式：<strong id="api-mode-label">—</strong> · AUTO_APPROVE：

@@ -23,6 +23,21 @@
 | 前端页面 | 首页/审核/Issue/导出的 MVP，支持状态提示和基础轮询恢复 | 统一状态中心、批量操作、可视化报表 |
 | 测试与门控 | Python 单测、Playwright UI 测试、agent_gate | 全链路回归矩阵、并发稳定性与压测 |
 
+## 当前已实现入口（Round 57 MVP）
+
+以下入口已在仓库内可用，与下文各层「规划阶段」描述并存；**以本表与 `README.md` 为准**。
+
+| 入口 | 路径 / 命令 | 说明 |
+|---|---|---|
+| 静态工作台 | `npm run dev:frontend` → `http://127.0.0.1:5174/` | 首页 Quickstart、项目列表、API 状态卡片 |
+| 对照审核 | `/review.html?project=<id>` | segment 通过/拒绝、`review_state` 持久化 |
+| 质量 Issue | `/issues.html?project=<id>` | quality-review API + fixture fallback |
+| 导出中心 | `/export.html?project=<id>` | manifest `approved`/`draft` 导出至 `output_cn/` |
+| Workbench API | `src/workbench/server.py`（由 `serve_frontend.py` 挂载） | `/api/projects`、`dry-run-generate`、`real-api-generate` 等 |
+| Python 单测 | `npm run test:py` 或 `.venv/bin/pytest tests/` | 含 server、export、api_status 等 |
+| UI 测试 | `npm run test:ui` | Playwright smoke + workbench 场景 |
+| 真实 API smoke | `.venv/bin/python scripts/run_real_api_smoke.py --real` | 需 Key + `REAL_API_TESTS_ENABLED` + `MAX_TEST_COST_USD>0` |
+
 ## User Interface Layer
 
 ### 职责
@@ -50,7 +65,9 @@
 
 ### 当前阶段是否实现
 
-未实现。当前以文件夹和文档为主。
+> **历史规划标注（Round 57 前）** — 本节描述的是早期路线图，不代表当前仓库状态。
+
+**Round 57 起**：静态 Workbench MVP 已实现（见上文「当前已实现入口」）。CLI 与完整 Dashboard 仍在路线中。
 
 ### 后续轮次如何推进
 

@@ -26,8 +26,14 @@
           <strong id="api-key-status">—</strong> · REAL_API_TESTS_ENABLED：
           <strong id="real-api-enabled-status">—</strong>
         </p>
+        <p class="meta" id="api-key-ready">—</p>
         <p class="meta" id="api-budget-summary">—</p>
         <p class="meta" id="api-workbench-ready">—</p>
+        <p class="meta" id="api-budget-fix" hidden>
+          <span id="api-budget-fix-text"></span>
+          <button type="button" id="api-copy-fix-cmd">复制启动命令</button>
+          <a id="api-diagnostic-link" href="#api-smoke-history">查看 smoke 诊断</a>
+        </p>
         <details id="api-smoke-history">
           <summary>历史 smoke 记录（不代表当前可用）</summary>
           <p class="meta" id="api-smoke-summary">—</p>
@@ -40,7 +46,7 @@
         <h2>新用户快速体验</h2>
         <p class="meta">创建项目 → 粘贴样本文本 → dry-run mock 或（预算允许时）真实 API 小样本 → 进入审核。</p>
         <p class="meta" id="qs-real-api-hint">—</p>
-        <form id="quickstart-form" class="stack-form">
+        <form id="quickstart-form" class="stack-form" action="#" method="post">
           <label>
             项目 ID
             <input id="qs-project-id" type="text" placeholder="quickstart-demo" required />

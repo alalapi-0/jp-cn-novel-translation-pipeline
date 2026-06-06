@@ -18,11 +18,15 @@ def _count_md_files(directory: Path) -> int:
     return sum(1 for p in directory.glob("*.md") if p.is_file())
 
 
-def export_status(repo_root: Path) -> dict[str, Any]:
+def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str, Any]:
     zh_dir = repo_root / "output_cn" / "translated"
     bi_dir = repo_root / "output_cn" / "bilingual"
     zh_files = sorted(p.name for p in zh_dir.glob("*.md") if p.is_file()) if zh_dir.is_dir() else []
     bi_files = sorted(p.name for p in bi_dir.glob("*.md") if p.is_file()) if bi_dir.is_dir() else []
+    if project_id:
+        stem = f"workbench_{project_id}"
+        zh_files = [name for name in zh_files if name.startswith(stem)]
+        bi_files = [name for name in bi_files if name.startswith(stem)]
     runs_root = repo_root / "workspace" / "runs"
     run_count = sum(1 for _ in runs_root.glob("run_*_draft_stage_b_50ch/run_metadata.json")) if runs_root.is_dir() else 0
     return {
@@ -32,6 +36,9 @@ def export_status(repo_root: Path) -> dict[str, Any]:
         "bilingual_count": len(bi_files),
         "translated_files": zh_files[:50],
         "bilingual_files": bi_files[:50],
+        "filtered_project_id": project_id,
+        "total_translated_count": _count_md_files(zh_dir) if zh_dir.is_dir() else 0,
+        "total_bilingual_count": _count_md_files(bi_dir) if bi_dir.is_dir() else 0,
         "draft_runs_available": run_count,
         "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }

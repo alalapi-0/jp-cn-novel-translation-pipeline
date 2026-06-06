@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from providers.cost_guard import CostGuardConfig
+from workbench.local_env import apply_local_env, applied_local_env_keys
 
 PROVIDER_ENV = {
     "openai": "OPENAI_API_KEY",
@@ -38,6 +39,30 @@ def resolve_api_mode(*, real_api_tests_enabled: bool | None = None) -> str:
         return "missing_api_key"
     enabled = _truthy("REAL_API_TESTS_ENABLED") if real_api_tests_enabled is None else real_api_tests_enabled
     return "dry_run" if not enabled else "real_api"
+
+
+BLOCK_REASON_LABELS: dict[str, str] = {
+    "missing_api_key": "未配置 API Key",
+    "real_api_tests_disabled": "REAL_API_TESTS_ENABLED 未开启",
+    "max_test_cost_usd_zero": "MAX_TEST_COST_USD=0（页面真实 API 需 >0，例如 0.01）",
+    "no_openrouter_key": "缺少 OPENROUTER_API_KEY",
+}
+
+
+def workbench_real_api_block_reason_label(reason: str | None) -> str | None:
+    if not reason:
+        return None
+    return BLOCK_REASON_LABELS.get(reason, reason)
+
+
+def workbench_real_api_fix_command(block_reason: str | None) -> str | None:
+    if block_reason == "max_test_cost_usd_zero":
+        return "export MAX_TEST_COST_USD=0.01  # 然后重启 npm run dev:frontend"
+    if block_reason == "real_api_tests_disabled":
+        return "export REAL_API_TESTS_ENABLED=true MAX_TEST_COST_USD=0.01"
+    if block_reason == "missing_api_key" or block_reason == "no_openrouter_key":
+        return "export OPENROUTER_API_KEY=your_key REAL_API_TESTS_ENABLED=true MAX_TEST_COST_USD=0.01"
+    return None
 
 
 def workbench_real_api_ready() -> tuple[bool, str | None]:
@@ -82,6 +107,7 @@ def _status_file_api_mode(repo_root: Path) -> str | None:
 
 
 def build_api_status(repo_root: Path) -> dict[str, Any]:
+    dotenv_keys = apply_local_env(repo_root)
     detected = detected_providers()
     real_enabled = _truthy("REAL_API_TESTS_ENABLED")
     mode = resolve_api_mode(real_api_tests_enabled=real_enabled)
@@ -89,8 +115,11 @@ def build_api_status(repo_root: Path) -> dict[str, Any]:
     ready, block_reason = workbench_real_api_ready()
     latest = _latest_smoke_report(repo_root)
     runtime_mode = _status_file_api_mode(repo_root)
-    configured_env_vars = [env_name for env_name in PROVIDER_ENV.values() if os.environ.get(env_name, "").strip()]
+    configured_env_vars = [
+        env_name for env_name in PROVIDER_ENV.values() if os.environ.get(env_name, "").strip()
+    ]
     payload: dict[str, Any] = {
+        "env_keys_applied_from_dotenv": dotenv_keys,
         "api_mode": mode,
         "detected_providers": detected,
         "real_api_tests_enabled": real_enabled,
@@ -100,11 +129,13 @@ def build_api_status(repo_root: Path) -> dict[str, Any]:
         "max_tokens_per_run": guard.max_tokens_per_run,
         "workbench_real_api_ready": ready,
         "workbench_real_api_block_reason": block_reason,
+        "workbench_real_api_block_reason_label": workbench_real_api_block_reason_label(block_reason),
+        "workbench_real_api_fix_command": workbench_real_api_fix_command(block_reason),
+        "api_key_configured": bool(detected),
         "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "config_hint": (
-            "Put OPENROUTER_API_KEY in repo .env (local only) or export it; "
-            "set REAL_API_TESTS_ENABLED=true and MAX_TEST_COST_USD>0; run: "
-            "python3 scripts/run_real_api_smoke.py --real"
+            "Key 在 .env 或 shell 中配置；页面真实 API 另需 REAL_API_TESTS_ENABLED=true 且 MAX_TEST_COST_USD>0；"
+            "smoke：python3 scripts/run_real_api_smoke.py --real"
         ),
     }
     if runtime_mode and runtime_mode != mode:

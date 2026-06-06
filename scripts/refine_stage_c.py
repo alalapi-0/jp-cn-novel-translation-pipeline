@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Stage C controlled refinement pilot on a completed Stage B draft run."""
+"""Stage C controlled refinement runner on a completed Stage B draft run."""
 
 from __future__ import annotations
 
 import argparse
 import fcntl
+import importlib.util
 import json
 import os
 import sys
@@ -14,7 +15,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from translation.refine_runner import STAGE_C_MAX_SEGMENTS, run_refine_pilot  # noqa: E402
+from translation.refine_runner import STAGE_C_MAX_SEGMENTS, run_refine_controlled  # noqa: E402
+from translation.run_progress import update_stage_state_if_newer  # noqa: E402
+
+_registry_spec = importlib.util.spec_from_file_location(
+    "pipeline_worker_registry",
+    REPO_ROOT / "scripts" / "pipeline_worker_registry.py",
+)
+assert _registry_spec and _registry_spec.loader
+_registry = importlib.util.module_from_spec(_registry_spec)
+_registry_spec.loader.exec_module(_registry)
 
 
 def _apply_local_env(repo_root: Path) -> None:
@@ -70,24 +80,33 @@ def _default_run_id() -> str:
     return ""
 
 
-def _update_stage_state(run_id: str, status: str, summary: dict, *, state_path: Path | None = None) -> None:
-    path = state_path or (REPO_ROOT / "workspace" / "stage_state.json")
+def _update_stage_state(
+    run_id: str,
+    status: str,
+    summary: dict,
+    *,
+    state_path: Path | None = None,
+) -> None:
     payload = {
         "phase": "refine",
-        "stage": "refine_stage_c_pilot",
+        "stage": "refine_stage_c",
         "status": status,
         "run_id": run_id,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "refine_blocked": status != "completed",
-        "pilot": True,
+        "pilot": False,
         "summary": summary,
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    update_stage_state_if_newer(
+        REPO_ROOT,
+        payload,
+        run_id=run_id,
+        state_path=state_path,
+    )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Stage C refinement pilot")
+    parser = argparse.ArgumentParser(description="Stage C controlled refinement")
     parser.add_argument("--run-id", default="", help="Draft run id (default: workspace/stage_state.json)")
     parser.add_argument(
         "--limit-segments",
@@ -120,7 +139,22 @@ def main() -> int:
     if lock_fd < 0:
         return 2
 
+    worker, reason = _registry.register_worker(
+        task_type="refine",
+        stage="refine_stage_c",
+        run_id=run_id,
+    )
+    if worker is None:
+        print(reason, file=sys.stderr)
+        _release_lock(lock_fd)
+        return 2
+
+    worker_id = worker["worker_id"]
     stage_state_path = args.stage_state_path
+
+    def heartbeat() -> None:
+        _registry.heartbeat_worker(worker_id)
+
     try:
         _update_stage_state(
             run_id,
@@ -129,14 +163,16 @@ def main() -> int:
             state_path=stage_state_path,
         )
         try:
-            summary, run_root = run_refine_pilot(
+            summary, run_root = run_refine_controlled(
                 repo_root=REPO_ROOT,
                 run_id=run_id,
                 limit_segments=limit,
                 force_dry_run=args.dry_run,
+                heartbeat_cb=heartbeat,
             )
         except Exception as exc:
             _update_stage_state(run_id, "failed", {"error": str(exc)}, state_path=stage_state_path)
+            _registry.unregister_worker(worker_id, status="failed")
             print(f"refine failed: {exc}", file=sys.stderr)
             return 2
 
@@ -154,6 +190,7 @@ def main() -> int:
             "abort_reason": summary.abort_reason,
         }
         _update_stage_state(run_id, status, payload, state_path=stage_state_path)
+        _registry.unregister_worker(worker_id, status=status)
 
         if args.json:
             print(json.dumps(payload, ensure_ascii=False, indent=2))

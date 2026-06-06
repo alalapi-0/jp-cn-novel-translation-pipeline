@@ -36,3 +36,16 @@ def test_real_api_unavailable_when_budget_zero(monkeypatch: pytest.MonkeyPatch, 
             language_direction="JP_TO_CN",
             repo_root=tmp_path,
         )
+
+
+def test_real_api_rejects_paragraph_over_400_chars(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("REAL_API_TESTS_ENABLED", "true")
+    monkeypatch.setenv("MAX_TEST_COST_USD", "0.05")
+    long_para = "x" * 401
+    with pytest.raises(ValueError, match="paragraph too long"):
+        generate_segments_real_api(
+            sample_text=long_para,
+            language_direction="JP_TO_CN",
+            repo_root=tmp_path,
+        )

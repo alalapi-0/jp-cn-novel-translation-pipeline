@@ -18,8 +18,10 @@ from providers.registry import ProviderMode, get_provider
 from providers.types import GenerateOptions
 from translation.chapter_parser import ParsedChapter, Segment, list_chapter_files, parse_chapter_file
 from translation.exporter import export_chapter_markdown, export_segments_doc
+from translation.pipeline_events import classify_error, emit_event
 from translation.prompt_builder import build_batch_messages
 from translation.response_extractor import extract_translations
+from translation.run_progress import init_run_metadata, write_run_progress
 from translation.validator import validate_draft_items
 
 MAX_CHARS_PER_BATCH = 5_500
@@ -259,6 +261,15 @@ def run_draft_stage(
     draft_dir = run_root / "draft"
     draft_dir.mkdir(parents=True, exist_ok=True)
 
+    init_run_metadata(
+        run_root,
+        run_id=run_id,
+        phase="draft",
+        stage=spec.stage_key,
+        scope=spec.scope,
+        chapter_offset=chapter_offset,
+    )
+
     guard = CostGuard(CostGuardConfig.from_env())
     ctrl_cfg = ControlledRunConfig.from_env(checkpoint_dir=repo_root / "workspace" / "checkpoints")
     ctrl_cfg.run_id = run_id
@@ -290,6 +301,18 @@ def run_draft_stage(
     _hydrate_from_draft_md(run_root, parsed_chapters)
     total_expected = sum(len(ch.segments) for ch in parsed_chapters)
     translated_before = _count_translated_segments(parsed_chapters)
+
+    write_run_progress(
+        run_root,
+        run_id=run_id,
+        phase="draft",
+        stage=spec.scope,
+        chapter_offset=chapter_offset,
+        status="in_progress",
+        total_segments=total_expected,
+        completed_segments=translated_before,
+    )
+    emit_event("draft_start", run_id=run_id, phase="draft", stage=spec.scope)
     if translated_before < total_expected and (
         controlled.checkpoint.status == "completed"
         or controlled.checkpoint.status.startswith("aborted")
@@ -346,6 +369,17 @@ def run_draft_stage(
                 ch_result.ok = False
                 ch_result.message = str(exc)
                 summary.chapters.append(ch_result)
+                write_run_progress(
+                    run_root,
+                    run_id=run_id,
+                    phase="draft",
+                    stage=spec.scope,
+                    chapter_offset=chapter_offset,
+                    status="failed",
+                    total_segments=total_expected,
+                    completed_segments=_count_translated_segments(parsed_chapters),
+                    last_error_type=classify_error(str(exc)),
+                )
                 _write_run_artifacts(
                     repo_root,
                     run_root,
@@ -388,6 +422,17 @@ def run_draft_stage(
                     )
                     summary.translated_segments += 1
                     ch_result.segments_translated += 1
+                    write_run_progress(
+                        run_root,
+                        run_id=run_id,
+                        phase="draft",
+                        stage=spec.scope,
+                        chapter_offset=chapter_offset,
+                        status="in_progress",
+                        total_segments=total_expected,
+                        completed_segments=_count_translated_segments(parsed_chapters),
+                        last_completed_segment_id=seg.segment_id,
+                    )
 
         export_chapter_markdown(chapter, draft_dir)
         summary.chapters.append(ch_result)
@@ -401,6 +446,19 @@ def run_draft_stage(
         summary.spent_tokens = controlled.checkpoint.spent_tokens
 
     controlled.complete()
+    final_status = "failed" if summary.aborted else "completed"
+    write_run_progress(
+        run_root,
+        run_id=run_id,
+        phase="draft",
+        stage=spec.scope,
+        chapter_offset=chapter_offset,
+        status=final_status,
+        total_segments=total_expected,
+        completed_segments=summary.translated_segments,
+        last_error_type=classify_error(summary.abort_reason) if summary.aborted else "",
+    )
+    emit_event("draft_complete", run_id=run_id, phase="draft", stage=spec.scope, status=final_status)
     _write_run_artifacts(
         repo_root,
         run_root,
@@ -428,12 +486,19 @@ def _write_run_artifacts(
     chapter_offset: int = 0,
 ) -> None:
     export_segments_doc(chapters, run_root / "segments.json")
+    existing_meta = {}
+    meta_path = run_root / "run_metadata.json"
+    if meta_path.is_file():
+        try:
+            existing_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            existing_meta = {}
     meta = {
         "run_id": summary.run_id,
         "phase": "draft",
         "stage": spec.stage_key,
         "scope": spec.scope,
-        "started_at": _utc_now(),
+        "started_at": existing_meta.get("started_at") or _utc_now(),
         "provider_mode": summary.provider_mode,
         "model_name": summary.model_name,
         "language_direction": "JP_TO_CN",

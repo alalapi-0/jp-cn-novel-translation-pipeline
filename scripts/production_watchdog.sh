@@ -28,16 +28,28 @@ pid_alive() {
 pipeline_alive() {
   local ps_out
   ps_out="$(ps aux 2>/dev/null || true)"
-  echo "$ps_out" | grep -qE '[s]cripts/production_pipeline\.sh' && return 0
-  echo "$ps_out" | grep -qE '[s]cripts/pilot_batch_chain\.sh' && return 0
+  if echo "$ps_out" | grep -E '[s]cripts/production_pipeline\.sh' >/dev/null 2>&1; then
+    return 0
+  fi
+  if echo "$ps_out" | grep -E '[s]cripts/pilot_batch_chain\.sh' >/dev/null 2>&1; then
+    return 0
+  fi
   return 1
 }
 
 work_in_progress() {
-  local ps_out
+  local ps_out reg_out
   ps_out="$(ps aux 2>/dev/null || true)"
-  echo "$ps_out" | grep -qE '[s]cripts/translate\.py' && return 0
-  echo "$ps_out" | grep -qE '[s]cripts/refine_stage_c\.py' && return 0
+  if echo "$ps_out" | grep -E '[s]cripts/translate\.py' >/dev/null 2>&1; then
+    return 0
+  fi
+  if echo "$ps_out" | grep -E '[s]cripts/refine_stage_c\.py' >/dev/null 2>&1; then
+    return 0
+  fi
+  reg_out="$("$PYTHON" scripts/pipeline_worker_registry.py --json 2>/dev/null || true)"
+  if echo "$reg_out" | grep -q '"active_count": [1-9]'; then
+    return 0
+  fi
   return 1
 }
 
@@ -47,12 +59,46 @@ all_batches_done() {
 }
 
 draft_progress() {
-  local run_id="${1:-run_20260604_224443_draft_stage_b_50ch}"
+  local run_id=""
+  local progress_file="$REPO_ROOT/workspace/stage_state.json"
+  if [[ -f "$progress_file" ]]; then
+    run_id="$("$PYTHON" -c "
+import json
+from pathlib import Path
+p = Path('$progress_file')
+if p.is_file():
+    d = json.loads(p.read_text())
+    print(d.get('run_id', ''))
+" 2>/dev/null || true)"
+  fi
+  if [[ -z "$run_id" ]]; then
+    run_id="$("$PYTHON" -c "
+import json
+from pathlib import Path
+runs = sorted(Path('$REPO_ROOT/workspace/runs').glob('run_*_draft_stage_b_50ch/run_progress.json'))
+if runs:
+    d = json.loads(runs[-1].read_text())
+    print(d.get('run_id', ''))
+" 2>/dev/null || true)"
+  fi
+  if [[ -z "$run_id" ]]; then
+    echo 0
+    return
+  fi
   local d="$REPO_ROOT/workspace/runs/$run_id/draft"
   if [[ -d "$d" ]]; then
     find "$d" -name '*.md' 2>/dev/null | wc -l | tr -d ' '
   else
-    echo 0
+    "$PYTHON" -c "
+import json
+from pathlib import Path
+p = Path('$REPO_ROOT/workspace/runs/$run_id/run_progress.json')
+if p.is_file():
+    d = json.loads(p.read_text())
+    print(d.get('completed_segments', 0))
+else:
+    print(0)
+" 2>/dev/null || echo 0
   fi
 }
 

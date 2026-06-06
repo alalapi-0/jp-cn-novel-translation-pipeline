@@ -19,6 +19,14 @@
       </nav>
     </header>
     <main>
+      <div id="export-session-empty" class="card meta">
+        <p>尚无本次导出。完成 manifest 或 runs 导出后，此处会显示本次结果。</p>
+      </div>
+      <div id="export-success-card" class="card export-success-card" hidden>
+        <h2>本次导出</h2>
+        <p id="export-success-summary" class="meta"></p>
+        <ul id="export-success-files" class="meta export-file-list"></ul>
+      </div>
       <div class="card">
         <h2>导出当前项目（manifest）</h2>
         <p class="meta">仅导出指定项目 manifest 中的 segment 到 <code>output_cn/</code>，不合并 workspace runs。</p>
@@ -53,11 +61,18 @@
       </div>
       <details class="card" id="export-history-details">
         <summary>历史导出文件（<span id="export-file-count">0</span> 个）</summary>
+        <p class="meta checkbox-row">
+          <label>
+            <input id="export-filter-current" type="checkbox" checked />
+            仅显示当前项目导出
+          </label>
+        </p>
         <p class="meta">
           中文译文目录：<code id="export-zh-dir">—</code>（<strong id="export-zh-count">0</strong> 个 .md）
           · 双语目录：<code id="export-bi-dir">—</code>（<strong id="export-bi-count">0</strong> 个 .md）
         </p>
         <ul id="export-file-list" class="meta export-file-list"></ul>
+        <button type="button" id="export-load-more-btn" hidden>加载更多</button>
       </details>
       <pre id="status-log"></pre>
     </main>

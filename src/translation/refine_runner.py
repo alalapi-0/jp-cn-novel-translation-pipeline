@@ -13,11 +13,14 @@ from typing import Any, Callable
 from providers.cost_guard import CostGuard, CostGuardConfig, CostGuardError
 from providers.dry_run_provider import DryRunProvider
 from providers.types import GenerateOptions
+from translation.pipeline_events import classify_error, emit_event
 from translation.refine_prompt_builder import build_refine_batch_messages
 from translation.response_extractor import extract_translations
+from translation.run_progress import write_run_progress
 
-STAGE_C_MAX_SEGMENTS = 30
-REFINE_BATCH_SIZE = 4
+STAGE_C_MAX_SEGMENTS = int(os.environ.get("STAGE_C_MAX_SEGMENTS", "500"))
+REFINE_BATCH_MAX_SEGMENTS = int(os.environ.get("REFINE_BATCH_MAX_SEGMENTS", "8"))
+REFINE_BATCH_MAX_CHARS = int(os.environ.get("REFINE_BATCH_MAX_CHARS", "6000"))
 MAX_API_RETRIES = 3
 
 
@@ -83,6 +86,37 @@ def _extract_refined(raw_output: str, expected_ids: list[str]) -> tuple[bool, st
     return True, "ok", mapping
 
 
+def _dynamic_batches(segs: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    batches: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+    char_count = 0
+    for seg in segs:
+        seg_len = len((seg.get("draft_text") or "") + (seg.get("source_text") or ""))
+        if current and (
+            len(current) >= REFINE_BATCH_MAX_SEGMENTS
+            or char_count + seg_len > REFINE_BATCH_MAX_CHARS
+        ):
+            batches.append(current)
+            current = []
+            char_count = 0
+        current.append(seg)
+        char_count += seg_len
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _count_refine_totals(doc: dict[str, Any]) -> tuple[int, int]:
+    total = refined = 0
+    for chapter in doc.get("chapters", []):
+        for seg in chapter.get("segments", []):
+            if (seg.get("draft_text") or "").strip():
+                total += 1
+            if (seg.get("refined_text") or "").strip() or seg.get("human_edited"):
+                refined += 1
+    return total, refined
+
+
 def _apply_dry_run_passthrough(
     batch: list[dict[str, Any]],
     diffs: list[dict[str, Any]],
@@ -102,16 +136,19 @@ def _apply_dry_run_passthrough(
         )
 
 
-def run_refine_pilot(
+def run_refine_controlled(
     *,
     repo_root: Path,
     run_id: str,
     limit_segments: int,
     provider_factory: Callable[[CostGuard], Any] | None = None,
     force_dry_run: bool = False,
+    max_batches: int | None = None,
+    max_retry_per_batch: int | None = None,
+    heartbeat_cb: Callable[[], None] | None = None,
 ) -> tuple[RefineRunSummary, Path]:
     if limit_segments > STAGE_C_MAX_SEGMENTS:
-        raise ValueError(f"Stage C pilot hard limit: max {STAGE_C_MAX_SEGMENTS} segments per run")
+        raise ValueError(f"Stage C hard limit: max {STAGE_C_MAX_SEGMENTS} segments per run")
 
     run_root = repo_root / "workspace" / "runs" / run_id
     segments_path = run_root / "segments.json"
@@ -121,10 +158,29 @@ def run_refine_pilot(
     quality_path = run_root / "draft_quality_report.json"
     if quality_path.is_file():
         qr = json.loads(quality_path.read_text(encoding="utf-8"))
-        if not qr.get("stage_c_eligible"):
+        if qr.get("stage_c_eligible") is False:
             raise RuntimeError("draft run not stage_c_eligible; complete Stage B first")
 
     doc = load_segments_doc(segments_path)
+    total_segments, refined_before = _count_refine_totals(doc)
+    meta_path = run_root / "run_metadata.json"
+    chapter_offset = 0
+    if meta_path.is_file():
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        chapter_offset = int(meta.get("chapter_offset") or 0)
+
+    write_run_progress(
+        run_root,
+        run_id=run_id,
+        phase="refine",
+        stage="refine_stage_c",
+        chapter_offset=chapter_offset,
+        status="in_progress",
+        total_segments=total_segments,
+        completed_segments=refined_before,
+        started_at=_utc_now(),
+    )
+    emit_event("refine_start", run_id=run_id, phase="refine", stage="refine_stage_c")
     pairs = iter_refine_candidates(doc, limit=limit_segments)
     if not pairs:
         summary = RefineRunSummary(
@@ -165,12 +221,36 @@ def run_refine_pilot(
         by_chapter.setdefault(cid, []).append(seg)
         chapter_labels[cid] = chapter.get("chapter_label", cid)
 
+    batch_limit = max_batches if max_batches is not None else 10_000
+    retry_limit = max_retry_per_batch if max_retry_per_batch is not None else MAX_API_RETRIES
+    batches_done = 0
+    last_seg_id = ""
+
     for chapter_id, segs in by_chapter.items():
-        for i in range(0, len(segs), REFINE_BATCH_SIZE):
-            batch = segs[i : i + REFINE_BATCH_SIZE]
+        for batch in _dynamic_batches(segs):
+            if batches_done >= batch_limit:
+                break
+            batch_started = time.monotonic()
             if provider_mode == "dry_run":
                 _apply_dry_run_passthrough(batch, summary.diffs)
                 summary.refined_segments += len(batch)
+                batches_done += 1
+                last_seg_id = batch[-1]["segment_id"]
+                save_segments_doc(doc, segments_path)
+                _, refined_now = _count_refine_totals(doc)
+                write_run_progress(
+                    run_root,
+                    run_id=run_id,
+                    phase="refine",
+                    stage="refine_stage_c",
+                    chapter_offset=chapter_offset,
+                    status="in_progress",
+                    total_segments=total_segments,
+                    completed_segments=refined_now,
+                    last_completed_segment_id=last_seg_id,
+                )
+                if heartbeat_cb:
+                    heartbeat_cb()
                 continue
 
             messages = build_refine_batch_messages(
@@ -186,15 +266,35 @@ def run_refine_pilot(
             )
             expected_ids = [s["segment_id"] for s in batch]
             ok, msg, mapping = False, "no_attempt", {}
-            for attempt in range(1, MAX_API_RETRIES + 1):
+            for attempt in range(1, retry_limit + 1):
                 try:
                     result = provider.generate(messages, options)
                 except (CostGuardError, RuntimeError, OSError) as exc:
-                    if attempt >= MAX_API_RETRIES:
+                    err_type = classify_error(str(exc))
+                    if attempt >= retry_limit:
                         summary.aborted = True
                         summary.abort_reason = str(exc)
                         save_segments_doc(doc, segments_path)
+                        write_run_progress(
+                            run_root,
+                            run_id=run_id,
+                            phase="refine",
+                            stage="refine_stage_c",
+                            chapter_offset=chapter_offset,
+                            status="failed",
+                            total_segments=total_segments,
+                            completed_segments=refined_before + summary.refined_segments,
+                            last_error_type=err_type,
+                        )
                         _write_refine_artifacts(run_root, summary)
+                        emit_event(
+                            "refine_batch_failed",
+                            run_id=run_id,
+                            phase="refine",
+                            stage="refine_stage_c",
+                            status="failed",
+                            error_type=err_type,
+                        )
                         return summary, run_root
                     time.sleep(min(30, 5 * attempt))
                     continue
@@ -202,7 +302,7 @@ def run_refine_pilot(
                 summary.api_calls += 1
                 if ok:
                     break
-                if attempt >= MAX_API_RETRIES:
+                if attempt >= retry_limit:
                     break
                 time.sleep(min(30, 5 * attempt))
 
@@ -210,6 +310,17 @@ def run_refine_pilot(
                 summary.aborted = True
                 summary.abort_reason = f"{chapter_id}:{msg}"
                 save_segments_doc(doc, segments_path)
+                write_run_progress(
+                    run_root,
+                    run_id=run_id,
+                    phase="refine",
+                    stage="refine_stage_c",
+                    chapter_offset=chapter_offset,
+                    status="failed",
+                    total_segments=total_segments,
+                    completed_segments=refined_before + summary.refined_segments,
+                    last_error_type=classify_error(msg),
+                )
                 _write_refine_artifacts(run_root, summary)
                 return summary, run_root
 
@@ -220,6 +331,7 @@ def run_refine_pilot(
                 seg["refined_text"] = after
                 seg["refine_status"] = "machine_refined"
                 summary.refined_segments += 1
+                last_seg_id = sid
                 summary.diffs.append(
                     {
                         "segment_id": sid,
@@ -229,13 +341,78 @@ def run_refine_pilot(
                     }
                 )
 
+            batches_done += 1
+            save_segments_doc(doc, segments_path)
+            _, refined_now = _count_refine_totals(doc)
+            write_run_progress(
+                run_root,
+                run_id=run_id,
+                phase="refine",
+                stage="refine_stage_c",
+                chapter_offset=chapter_offset,
+                status="in_progress",
+                total_segments=total_segments,
+                completed_segments=refined_now,
+                last_completed_segment_id=last_seg_id,
+            )
+            emit_event(
+                "refine_batch_complete",
+                run_id=run_id,
+                phase="refine",
+                stage="refine_stage_c",
+                status="ok",
+                duration_ms=int((time.monotonic() - batch_started) * 1000),
+                metadata={"batch_segments": len(batch), "api_calls": summary.api_calls},
+            )
+            if heartbeat_cb:
+                heartbeat_cb()
+
     if guard:
         summary.spent_usd = guard.spent_usd
         summary.spent_tokens = guard.spent_tokens
 
     save_segments_doc(doc, segments_path)
+    _, refined_final = _count_refine_totals(doc)
+    final_status = "failed" if summary.aborted else "completed"
+    write_run_progress(
+        run_root,
+        run_id=run_id,
+        phase="refine",
+        stage="refine_stage_c",
+        chapter_offset=chapter_offset,
+        status=final_status,
+        total_segments=total_segments,
+        completed_segments=refined_final,
+        last_completed_segment_id=last_seg_id,
+        last_error_type=classify_error(summary.abort_reason) if summary.aborted else "",
+    )
     _write_refine_artifacts(run_root, summary)
+    emit_event(
+        "refine_complete",
+        run_id=run_id,
+        phase="refine",
+        stage="refine_stage_c",
+        status=final_status,
+    )
     return summary, run_root
+
+
+def run_refine_pilot(
+    *,
+    repo_root: Path,
+    run_id: str,
+    limit_segments: int,
+    provider_factory: Callable[[CostGuard], Any] | None = None,
+    force_dry_run: bool = False,
+) -> tuple[RefineRunSummary, Path]:
+    """Backward-compatible alias for controlled refine runner."""
+    return run_refine_controlled(
+        repo_root=repo_root,
+        run_id=run_id,
+        limit_segments=limit_segments,
+        provider_factory=provider_factory,
+        force_dry_run=force_dry_run,
+    )
 
 
 def _write_refine_artifacts(run_root: Path, summary: RefineRunSummary) -> None:
@@ -258,7 +435,7 @@ def _write_refine_artifacts(run_root: Path, summary: RefineRunSummary) -> None:
     report = {
         "run_id": summary.run_id,
         "phase": "refine",
-        "stage": "stage_c_pilot",
+        "stage": "refine_stage_c",
         "refined_segments": summary.refined_segments,
         "api_calls": summary.api_calls,
         "cost_usd": summary.spent_usd,

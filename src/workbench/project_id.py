@@ -8,7 +8,20 @@ PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
 
 EXAMPLE_PROJECT_IDS = frozenset({"demo-jp-cn", "demo-cn-jp"})
 
-TEST_PROJECT_PREFIXES = ("pw-", "codex-", "dupe-", "user-qs-", "user-rs-", "user-export-", "pw-export-", "pw-qs-", "pw-rs-")
+TEST_PROJECT_PREFIXES = (
+    "pw-",
+    "codex-",
+    "dupe-",
+    "user-qs-",
+    "user-rs-",
+    "user-export-",
+    "user-audit-",
+    "user-dupe-",
+    "user-realapi-",
+    "pw-export-",
+    "pw-qs-",
+    "pw-rs-",
+)
 TEST_PROJECT_EXACT = frozenset(
     {
         "quickstart-test",
@@ -28,6 +41,23 @@ HISTORY_PROJECT_PREFIXES = (
 
 class InvalidProjectIdError(ValueError):
     """Raised when project_id is empty or contains unsafe characters."""
+
+
+PROJECT_ID_ERROR_ZH: dict[str, str] = {
+    "project_id must not contain leading or trailing whitespace": "项目 ID 首尾不能有空格",
+    "project_id is required": "请填写项目 ID",
+    "project_id must not be '.' or '..'": "项目 ID 不能为 '.' 或 '..'",
+    "project_id must not contain '..'": "项目 ID 不能包含 '..'（路径穿越）",
+    "project_id must not contain path separators": "项目 ID 不能包含 / 或 \\（请只用字母、数字、下划线、连字符）",
+    "project_id must not contain whitespace": "项目 ID 不能包含空格",
+    "project_id must start with a letter or digit and contain only letters, digits, '_' or '-'": (
+        "项目 ID 须以字母或数字开头，且仅含字母、数字、下划线或连字符（最多 64 字符）"
+    ),
+}
+
+
+def project_id_user_message(message: str) -> str:
+    return PROJECT_ID_ERROR_ZH.get(message, message)
 
 
 def validate_project_id(project_id: str) -> str:

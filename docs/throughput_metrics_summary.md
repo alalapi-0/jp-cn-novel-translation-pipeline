@@ -2,7 +2,7 @@
 
 ## 当前统计时间
 
-- 生成时间：2026-06-06T04:57:14.545263+00:00
+- 生成时间：2026-06-06T08:29:53.997864+00:00
 - 统计方式：只读扫描 `workspace/runs`、`workspace/checkpoints`、`workspace/model_runs`、`.agent_runtime` 与轻量日志；不调用真实 API，不读取 `.env`，不输出正文/译文。
 
 ## 当前进度表

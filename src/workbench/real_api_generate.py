@@ -8,6 +8,7 @@ from typing import Any
 from providers.cost_guard import CostGuard, CostGuardConfig, CostGuardError
 from workbench.api_status import workbench_real_api_ready
 from workbench.dry_run_generate import _split_paragraphs
+from workbench.local_env import apply_local_env
 
 MAX_PARAGRAPHS = 3
 MAX_CHARS_PER_PARA = 400
@@ -24,6 +25,7 @@ def generate_segments_real_api(
     language_direction: str = "JP_TO_CN",
     repo_root: Path,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    apply_local_env(repo_root)
     ready, reason = workbench_real_api_ready()
     if not ready:
         raise ValueError(f"real_api_unavailable: {reason or 'not configured'}")

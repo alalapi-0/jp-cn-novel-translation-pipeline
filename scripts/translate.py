@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import importlib.util
 import json
 import os
 import sys
@@ -20,6 +21,15 @@ from translation.draft_runner import (  # noqa: E402
     run_draft_stage_a,
     run_draft_stage_b,
 )
+from translation.run_progress import update_stage_state_if_newer  # noqa: E402
+
+_registry_spec = importlib.util.spec_from_file_location(
+    "pipeline_worker_registry",
+    REPO_ROOT / "scripts" / "pipeline_worker_registry.py",
+)
+assert _registry_spec and _registry_spec.loader
+_registry = importlib.util.module_from_spec(_registry_spec)
+_registry_spec.loader.exec_module(_registry)
 
 STAGE_STATE_MAP = {
     "stage_a": "draft_stage_a_5ch",
@@ -82,7 +92,6 @@ def _update_stage_state(
     status: str,
     summary: dict,
 ) -> None:
-    path = repo_root / "workspace" / "stage_state.json"
     payload = {
         "phase": "draft",
         "stage": STAGE_STATE_MAP[stage],
@@ -92,8 +101,7 @@ def _update_stage_state(
         "refine_blocked": True,
         "summary": summary,
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    update_stage_state_if_newer(repo_root, payload, run_id=run_id)
 
 
 def main() -> int:
@@ -134,11 +142,24 @@ def main() -> int:
     if lock_fd < 0:
         return 2
 
+    registry_run_id = run_id or f"{args.stage}_default"
+    worker, reason = _registry.register_worker(
+        task_type="translate",
+        stage=args.stage,
+        run_id=registry_run_id,
+        chapter_offset=args.chapter_offset,
+    )
+    if worker is None:
+        print(reason, file=sys.stderr)
+        _release_translate_lock(lock_fd)
+        return 2
+
+    worker_id = worker["worker_id"]
     try:
         _update_stage_state(
             REPO_ROOT,
             args.stage,
-            run_id or "pending",
+            registry_run_id,
             "in_progress",
             {"limit_chapters": limit, "chapter_offset": args.chapter_offset},
         )
@@ -159,6 +180,7 @@ def main() -> int:
                 "failed",
                 {"error": str(exc)},
             )
+            _registry.unregister_worker(worker_id, status="failed")
             print(f"translate failed: {exc}", file=sys.stderr)
             return 2
 
@@ -179,6 +201,7 @@ def main() -> int:
                 "spent_usd": summary.spent_usd,
             },
         )
+        _registry.unregister_worker(worker_id, status=status)
         print(
             f"run_id={summary.run_id} status={status} "
             f"segments={summary.translated_segments}/{summary.total_segments} "

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.describe.configure({ mode: "serial" });
 
-const ILLEGAL_PROJECT_ID_RE = /must not contain|path separators|invalid project_id/i;
+const ILLEGAL_PROJECT_ID_RE = /不能包含|路径|请填写项目 ID|must not contain|path separators|invalid project_id/i;
 
 test("quickstart rejects illegal project id", async ({ page }) => {
   await page.goto("/index.html");
@@ -58,8 +58,16 @@ test("export manifest exports only selected project", async ({ page, request }) 
   await request.post(`/api/projects/${projectId}/dry-run-generate`, {
     data: { sample_text: "export me" },
   });
+  await request.patch(`/api/projects/${projectId}/review-state`, {
+    data: {
+      segments: {
+        "seg-001": { status: "approved", at: new Date().toISOString() },
+      },
+    },
+  });
   await page.goto(`/export.html?project=${projectId}`);
   await page.locator("#export-manifest-btn").click();
+  await expect(page.locator("#export-success-card")).toBeVisible();
   await expect(page.locator("#export-result")).toContainText(/source=manifest/);
   await expect(page.locator("#export-result")).toContainText(projectId);
 });
@@ -84,7 +92,169 @@ test("export manifest默认仅导出 approved 并显示跳过统计", async ({ p
   await page.locator("#export-manifest-btn").click();
   await expect(page.locator("#export-result")).toContainText(/status_mode=approved/);
   await expect(page.locator("#export-result")).toContainText(/segments_exported=1/);
-  await expect(page.locator("#export-result")).toContainText(/segments_skipped_status=.*rejected:1/);
+  await expect(page.locator("#export-result")).toContainText(/segments_skipped_status=.*rejected:1|已拒绝\(rejected\):1/);
+});
+
+test("dry-run 按钮双击只触发一次生成请求", async ({ page }) => {
+  const projectId = `pw-dry-dbl-${Date.now()}`;
+  let createCount = 0;
+  let generateCount = 0;
+  let generateInFlight = false;
+
+  await page.route(/.*\/api\/projects(\?.*)?$/, async (route) => {
+    const method = route.request().method();
+    if (method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ projects: [], active_project_id: projectId }),
+      });
+      return;
+    }
+    if (method !== "POST") {
+      await route.continue();
+      return;
+    }
+    createCount += 1;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        project: {
+          id: projectId,
+          project_id: projectId,
+          name: "DryDouble",
+          language_direction: "JP_TO_CN",
+        },
+        active_project_id: projectId,
+      }),
+    });
+  });
+
+  await page.route(`**/api/projects/${projectId}/dry-run-generate`, async (route) => {
+    generateCount += 1;
+    if (generateInFlight) {
+      await route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "generation_in_progress",
+          project_id: projectId,
+          request_id: "dry-req-1",
+          generation_job: { request_id: "dry-req-1", status: "running", mode: "dry_run" },
+        }),
+      });
+      return;
+    }
+    generateInFlight = true;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        project_id: projectId,
+        request_id: "dry-req-1",
+        segments_created: 1,
+        review_url: `/review.html?project=${projectId}`,
+        generation_job: { request_id: "dry-req-1", status: "succeeded", segments_created: 1 },
+      }),
+    });
+  });
+
+  await page.route(`**/api/projects/${projectId}/generation-job`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        project_id: projectId,
+        generation_job: {
+          request_id: "dry-req-1",
+          status: "succeeded",
+          segments_created: 1,
+          response_payload: {
+            project_id: projectId,
+            request_id: "dry-req-1",
+            segments_created: 1,
+            review_url: `/review.html?project=${projectId}`,
+          },
+        },
+      }),
+    });
+  });
+
+  await page.route(`**/api/projects/${projectId}/workbench-data`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        project: { id: projectId, project_id: projectId, name: "DryDouble" },
+        segments: [{ id: "seg-001", segment_id: "seg-001", source: "A", draft: "B" }],
+      }),
+    });
+  });
+
+  await page.goto("/index.html");
+  await page.locator("#qs-project-id").fill(projectId);
+  await page.locator("#qs-project-name").fill("DryDouble");
+  await page.locator("#qs-sample-text").fill("テスト");
+  const btn = page.locator("#qs-dry-run-btn");
+  await Promise.all([btn.click(), btn.click()]);
+  await expect(page.locator("#quickstart-result")).toContainText(/dry-run|生成.*segment/);
+  await expect(page.locator("#quickstart-result")).not.toContainText(/generation_in_progress|失败/);
+  expect(createCount).toBe(1);
+  expect(generateCount).toBeLessThanOrEqual(2);
+});
+
+test("review selector hides test projects by default", async ({ page, request }) => {
+  const userId = `pw-visible-${Date.now()}`;
+  const hiddenId = `pw-hidden-${Date.now()}`;
+  await request.post("/api/projects", {
+    data: { project_id: userId, name: "Visible", language_direction: "JP_TO_CN" },
+  });
+  await request.post("/api/projects", {
+    data: { project_id: hiddenId, name: "Hidden PW", language_direction: "JP_TO_CN" },
+  });
+  await request.post(`/api/projects/${userId}/dry-run-generate`, {
+    data: { sample_text: "visible" },
+  });
+  await page.goto(`/review.html?project=${userId}`);
+  await expect(page.locator("#project-switcher")).toHaveValue(userId);
+  await expect(page.locator(`#project-switcher option[value="${hiddenId}"]`)).toHaveCount(0);
+  await page.locator("#show-test-projects").check();
+  await expect(page.locator(`#project-switcher option[value="${hiddenId}"]`)).toHaveCount(1);
+});
+
+test("export page shows session empty placeholder before export", async ({ page }) => {
+  await page.goto("/export.html");
+  await expect(page.locator("#export-session-empty")).toBeVisible();
+  await expect(page.locator("#export-success-card")).toBeHidden();
+});
+
+test("api status card shows copy fix command when budget blocks", async ({ page }) => {
+  await page.route("**/api/runtime/api-status", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        api_mode: "real_api",
+        detected_providers: ["openrouter"],
+        real_api_tests_enabled: true,
+        has_api_key: true,
+        max_test_cost_usd: 0,
+        max_tokens_per_run: 128,
+        workbench_real_api_ready: false,
+        workbench_real_api_block_reason: "max_test_cost_usd_zero",
+        workbench_real_api_block_reason_label: "MAX_TEST_COST_USD=0",
+        workbench_real_api_fix_command: "export MAX_TEST_COST_USD=0.01",
+        checked_at: new Date().toISOString(),
+        config_hint: "ok",
+        last_smoke: null,
+        runner_status_note: null,
+      }),
+    });
+  });
+  await page.goto("/index.html");
+  await expect(page.locator("#api-copy-fix-cmd")).toBeVisible();
+  await expect(page.locator("#api-budget-fix-text")).toContainText(/MAX_TEST_COST_USD/);
 });
 
 test("review selector包含并选中当前 test 项目", async ({ page, request }) => {
@@ -96,6 +266,7 @@ test("review selector包含并选中当前 test 项目", async ({ page, request 
     data: { sample_text: "selector test" },
   });
   await page.goto(`/review.html?project=${projectId}`);
+  await page.locator("#show-test-projects").check();
   await expect(page.locator("#project-switcher")).toHaveValue(projectId);
   await expect(page.locator(`#project-switcher option[value="${projectId}"]`)).toHaveCount(1);
   await expect(page.locator("#project-switcher")).toContainText("Selector");

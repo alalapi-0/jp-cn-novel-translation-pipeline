@@ -73,13 +73,22 @@ main {
   box-shadow: 0 0 0 1px rgba(61, 139, 253, 0.35);
 }
 
-#project-switcher {
+#project-switcher,
+#project-switcher-search {
   margin-left: 0.5rem;
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
+}
+
+#project-switcher-search {
+  min-width: 12rem;
+}
+
+.export-success-card {
+  border-color: var(--ok);
 }
 
 .card h2 {

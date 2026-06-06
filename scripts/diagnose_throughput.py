@@ -10,12 +10,16 @@ from __future__ import annotations
 
 import json
 import statistics
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "src"))
+from translation.run_progress import classify_run_recovery, safe_load_json as load_progress_json
+
 WORKSPACE = REPO_ROOT / "workspace"
 DIAG_DIR = WORKSPACE / "diagnostics"
 SUMMARY_PATH = REPO_ROOT / "docs" / "throughput_metrics_summary.md"
@@ -322,12 +326,77 @@ def summarize_logs() -> dict[str, Any]:
     return rows
 
 
+def summarize_recovery() -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    checkpoints: dict[str, dict[str, Any]] = {}
+    cp_dir = WORKSPACE / "checkpoints"
+    if cp_dir.is_dir():
+        for path in cp_dir.glob("*.json"):
+            data = safe_load_json(path) or {}
+            checkpoints[path.stem] = data
+
+    runs_root = WORKSPACE / "runs"
+    if runs_root.is_dir():
+        for run_dir in sorted(p for p in runs_root.iterdir() if p.is_dir()):
+            run_id = run_dir.name
+            cp = checkpoints.get(run_id, {})
+            progress = load_progress_json(run_dir / "run_progress.json") or {}
+            meta = load_progress_json(run_dir / "run_metadata.json")
+            segments = load_progress_json(run_dir / "segments.json")
+            label = classify_run_recovery(
+                run_id=run_id,
+                checkpoint_status=str(cp.get("status") or ""),
+                has_run_metadata=meta is not None,
+                has_segments=segments is not None,
+                has_progress=bool(progress),
+                progress_status=str(progress.get("status") or ""),
+            )
+            rows.append(
+                {
+                    "run_id": run_id,
+                    "recovery_label": label,
+                    "checkpoint_status": cp.get("status"),
+                    "progress_status": progress.get("status"),
+                    "chapter_offset": (meta or {}).get("chapter_offset"),
+                }
+            )
+
+    counter = Counter(r["recovery_label"] for r in rows)
+    return {"runs": rows, "recovery_counter": dict(counter)}
+
+
+def summarize_worker_registry() -> dict[str, Any]:
+    state_path = WORKSPACE / "pipeline_state.json"
+    if not state_path.is_file():
+        return {"exists": False, "active_count": 0}
+    data = safe_load_json(state_path) or {}
+    workers = data.get("workers") if isinstance(data.get("workers"), list) else []
+    return {
+        "exists": True,
+        "total_workers": len(workers),
+        "workers": [
+            {
+                "worker_id": w.get("worker_id"),
+                "pid": w.get("pid"),
+                "task_type": w.get("task_type"),
+                "stage": w.get("stage"),
+                "run_id": w.get("run_id"),
+                "status": w.get("status"),
+            }
+            for w in workers
+            if isinstance(w, dict)
+        ],
+    }
+
+
 def build_metrics() -> dict[str, Any]:
     runs = summarize_runs()
     model_runs = summarize_model_runs()
     checkpoints = summarize_checkpoints()
     agent_runtime = summarize_agent_runtime()
     logs = summarize_logs()
+    recovery = summarize_recovery()
+    worker_registry = summarize_worker_registry()
     observed_first = [
         parse_dt(runs["observed_time_range"].get("first")),
         parse_dt(model_runs["observed_time_range"].get("first")),
@@ -353,6 +422,8 @@ def build_metrics() -> dict[str, Any]:
         "model_runs": model_runs,
         "agent_runtime": agent_runtime,
         "logs": logs,
+        "recovery": recovery,
+        "worker_registry": worker_registry,
         "missing_data": [
             "model_runs 缺少 started_at，无法精确计算每次请求完整耗时区间",
             "run_metadata.started_at 在写产物时生成，不能代表真实 run 开始时间",
