@@ -1,0 +1,42 @@
+---
+description: UI 设计任务优先使用 Stitch MCP 与 docs/design/ 设计输入层
+alwaysApply: true
+---
+
+# Stitch Design MCP
+
+## 何时查阅设计层
+
+涉及 **UI、新页面、审核台、预览页、管理后台、Debug 面板** 时，Agent 必须先查看：
+
+- `docs/design/DESIGN.md`
+- `docs/design/stitch/README.md`
+- `docs/design/stitch/UI_TASKS.md`
+- `docs/design/stitch/PROMPT_TEMPLATES.md`
+
+## Stitch MCP 使用
+
+1. **新页面设计** 优先通过 `stitch` MCP 生成原型、screen、截图或 DESIGN 说明。
+2. Stitch **仅作设计输入**，不得将导出 HTML/代码 **无审查覆盖** `frontend/` 或 `src/` 业务文件。
+3. 导出物必须落入：
+   - `docs/design/stitch/exports/`
+   - `docs/design/stitch/screenshots/`
+   - `docs/design/stitch/reviews/`
+4. 实现须遵守本项目技术栈：静态 HTML + `frontend/assets/`；Dark theme CSS 变量。
+5. 实现后 **必须** 用 `playwright` 或 `chrome-devtools` 做真实浏览器检查（或 `npm run test:ui`）。
+
+## 安全
+
+- **禁止** 在 `.cursor/mcp.json`、文档、commit 中写入真实 `STITCH_API_KEY`。
+- 仅通过环境变量 `STITCH_API_KEY` 认证；`.env` 不得提交。
+- 提交前运行 `npm run check:stitch`。
+
+## MCP 不可用
+
+记录原因于 `governance/round_state.yaml` soft blockers 或轮次报告，使用 `UI_TASKS.md` / `PROMPT_TEMPLATES.md` 文字模板 + 现有页面参考继续推进。
+
+## 参考
+
+- `docs/design/stitch/STITCH_MCP_SETUP.md`
+- `docs/design/stitch/STITCH_WORKFLOW.md`
+- `docs/testing/BROWSER_TESTING.md`

@@ -10,12 +10,16 @@
     "agent:real-api:real": "python3 scripts/run_real_api_smoke.py --real",
     "agent:browser": "python3 scripts/run_browser_inspection.py",
     "check:mcp": "node scripts/check_mcp_config.js",
+    "check:stitch": "node scripts/check_stitch_config.js",
     "check:tooling": "sh scripts/run_tooling_checks.sh",
     "dev:frontend": "python3 scripts/serve_frontend.py --port 5174",
+    "test:py": "sh scripts/run_python_tests.sh",
     "test:ui": "playwright test",
     "test:ui:headed": "playwright test --headed"
   },
   "devDependencies": {
+    "@google/stitch-sdk": "^0.3.5",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "^1.60.0"
   }
 }

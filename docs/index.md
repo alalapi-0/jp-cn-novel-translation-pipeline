@@ -20,12 +20,27 @@
 - `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
 - `docs/migration_notes.md`
 
+## 设计输入层（Stitch）
+
+- `docs/design/DESIGN.md`
+- `docs/design/stitch/README.md`
+- `docs/design/stitch/STITCH_MCP_SETUP.md`
+- `docs/design/stitch/STITCH_WORKFLOW.md`
+- `docs/design/stitch/UI_TASKS.md`
+- `docs/design/stitch/PROMPT_TEMPLATES.md`
+- `docs/design/stitch/EXPORT_GUIDE.md`
+
 ## 工具链与协议文档
 
 - `docs/agent_tooling_strategy.md`
+- `docs/mcp/README.md`
+- `docs/mcp/WORKSPACE_MCP_SERVERS.md`
 - `docs/mcp_playwright_setup_plan.md`
 - `docs/mcp_verification_checklist.md`
 - `docs/agent_skills/mcp_usage_skill.md`
+- `docs/testing/BROWSER_TESTING.md`
+- `docs/testing/REAL_API_TESTING.md`
+- `docs/testing/USER_PERSPECTIVE_TESTING.md`
 - `docs/agent_gate_and_protocol_check.md`
 - `docs/agent_workflow/runner_agent.md`
 - `docs/agent_workflow/browser_inspector_agent.md`

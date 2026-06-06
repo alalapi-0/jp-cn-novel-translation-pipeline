@@ -57,6 +57,7 @@
 - `filesystem`
 - `github`
 - `playwright`
+- `stitch`
 
 | Server | 用途 |
 |--------|------|
@@ -65,6 +66,7 @@
 | `filesystem` | 安全读取和检查当前项目文件（仅 `${workspaceFolder}`） |
 | `github` | 仓库、提交、分支、issue、PR 等相关操作 |
 | `playwright` | 浏览器自动化、页面操作、E2E 检查 |
+| `stitch` | UI 设计、原型、screen HTML/截图、DESIGN 输入（见 `docs/design/stitch/`） |
 
 **自动推进轮约定：**
 
@@ -75,9 +77,29 @@
 - GitHub 操作前必须 `git diff`，避免泄露密钥或未授权内容。
 - 缺少 token / API Key 时进入 mock / dry-run，**不要**卡死整体流程（除非该 token 为当前轮唯一硬阻塞）。
 
-**验证：** `node scripts/check_mcp_config.js` 或 `npm run check:mcp`；亦可 `python3 scripts/check_mcp_config.py`
+**验证：** `node scripts/check_mcp_config.js` 或 `npm run check:mcp`；`npm run check:stitch`；亦可 `python3 scripts/check_mcp_config.py`
 
 **禁止：** 提交 token / cookie / API Key；filesystem 授权系统根目录或整个用户主目录。
+
+## Stitch Design MCP
+
+1. 本项目可使用 **Stitch** 作为 UI 设计工具（server 名：`stitch`）。
+2. 涉及 UI、页面、审核台、预览页、管理后台、视觉检查页时，Agent **应先查看**：
+   - `docs/design/DESIGN.md`
+   - `docs/design/stitch/README.md`
+   - `docs/design/stitch/UI_TASKS.md`
+   - `docs/design/stitch/PROMPT_TEMPLATES.md`
+3. 若 Stitch MCP 可用，Agent 可用其生成：UI 原型、screen、screenshot、HTML、DESIGN.md、多方案 variants。
+4. Stitch 生成结果 **必须保存到**：
+   - `docs/design/stitch/exports/`
+   - `docs/design/stitch/screenshots/`
+   - `docs/design/stitch/reviews/`
+5. Agent **不得** 将 Stitch 导出代码无审查地覆盖 `frontend/` 或 `src/` 业务代码。
+6. 实现 UI 前须将 Stitch 结果拆成可落地任务（见 `docs/design/stitch/STITCH_WORKFLOW.md`）。
+7. 实现 UI 后 **必须** 使用 Playwright 或 chrome-devtools 检查（见 `docs/testing/BROWSER_TESTING.md`）。
+8. 若 Stitch MCP 不可用，记录原因（`governance/round_state.yaml` soft blockers 或轮次报告），并用文档模板继续推进。
+
+配置：`STITCH_API_KEY` 环境变量；`npm run check:stitch`；详见 `docs/design/stitch/STITCH_MCP_SETUP.md`。
 
 ## Continuous Real API Multi-Agent Foundation
 

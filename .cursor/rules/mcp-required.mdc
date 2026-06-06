@@ -7,13 +7,14 @@ alwaysApply: true
 
 ## 默认 MCP
 
-当前仓库默认需要以下 5 个 Workspace MCP Servers：
+当前仓库默认需要以下 Workspace MCP Servers：
 
 - `chrome-devtools`
 - `context7`
 - `filesystem`
 - `github`
 - `playwright`
+- `stitch`（UI 设计；需 `STITCH_API_KEY`，见 `docs/design/stitch/`）
 
 配置见 `.cursor/mcp.json`。修改后通常需 **Reload Window 或重启 Cursor** 才能加载。
 
@@ -27,6 +28,7 @@ Agent 开始自动推进轮前必须：
 
 ## 任务分工
 
+- **UI / 新页面设计：** 优先查阅 `docs/design/`，可用 `stitch` MCP 生成原型；导出物入 `docs/design/stitch/`，不得无审查覆盖业务代码。
 - **UI / 浏览器任务：** 必须使用 `chrome-devtools` 或 `playwright` 进行真实浏览器检查（页面内容、console、network、核心流程）；不得仅凭代码推断成功。
 - **文档与依赖不确定：** 优先使用 `context7` 查询第三方库与框架文档。
 - **文件读写：** 仅通过 `filesystem` MCP 或 IDE 工具访问**当前项目目录**（`${workspaceFolder}`）；不得授权 `/`、`~`、用户主目录、磁盘根目录。

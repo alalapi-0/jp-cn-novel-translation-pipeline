@@ -6,9 +6,12 @@
 
 | Server 名称 | 包 / 命令 | 状态 | 用途 |
 |-------------|-----------|------|------|
+| `chrome-devtools` | `npx -y chrome-devtools-mcp@latest` | 已配置 | 浏览器调试、console、network、页面检查 |
+| `context7` | `npx -y @upstash/context7-mcp@latest` | 已配置 | 第三方库文档查询 |
 | `playwright` | `npx -y @playwright/mcp@latest` | 已配置 | 浏览器自动化：打开页面、snapshot、点击、截图、辅助 E2E 验收 |
 | `filesystem` | `npx -y @modelcontextprotocol/server-filesystem` | 已配置 | 项目内文件读写与目录检查（仅 `${workspaceFolder}`） |
 | `github` | `npx -y @modelcontextprotocol/server-github` | 已配置（需 token） | 读取仓库、commit、issue、PR 状态（需 `GITHUB_TOKEN`） |
+| `stitch` | `node scripts/stitch_mcp_proxy.mjs` | 已配置（需 `STITCH_API_KEY`） | UI 设计原型、screen HTML/截图；产物入 `docs/design/stitch/` |
 
 ### Cursor 内置 MCP（非本仓库 mcp.json）
 
@@ -38,6 +41,28 @@ Cursor 可能额外加载 IDE 内置能力（例如 `cursor-ide-browser`、`curs
 5. 失败时截图或 trace 写入 `artifacts/`（不提交 Git）
 
 CLI fallback：`npx playwright test`（Round 44 搭建后）。详见 `docs/mcp_playwright_setup_plan.md`。
+
+## Stitch MCP（UI 设计）
+
+**用于：**
+
+- 生成 Dashboard、审核台、导出页、Debug 面板等 UI 原型
+- 获取 screen HTML 与截图作为实现参考
+- 多方案 variants 对比布局
+
+**不用于：**
+
+- 无审查覆盖 `frontend/` 或 `src/` 业务代码
+- 翻译 API、embedding、向量库操作
+- 删除项目文件或自动 commit 大段生成代码
+
+**环境变量：** `STITCH_API_KEY`（仅环境，见 `.env.example` 占位符）
+
+**产物路径：** `docs/design/stitch/exports/`、`screenshots/`、`reviews/`
+
+**验证：** `npm run check:stitch`
+
+详见 `docs/design/stitch/STITCH_MCP_SETUP.md`、`.cursor/rules/stitch-design-mcp.mdc`。
 
 ## 文件系统 MCP 授权范围
 
@@ -76,6 +101,8 @@ CLI fallback：`npx playwright test`（Round 44 搭建后）。详见 `docs/mcp_
 | filesystem MCP 未加载 | 内置 Read/Write/Grep；`git status` 确认文件变更 |
 | `GITHUB_TOKEN` 未设置 | 本地 git / gh CLI；跳过远程 PR/issue 查询 |
 | Context7 未配置 | 阅读仓库 `docs/`；Web 搜索（治理轮慎用） |
+| `STITCH_API_KEY` 未设置 | 使用 `docs/design/stitch/PROMPT_TEMPLATES.md` 文字模板 + 现有 `frontend/` 参考 |
+| stitch MCP 未加载 | 同上；记录 soft blocker |
 | Node/npx 不可用 | 文档化阻塞项；不无限重试 npx |
 
 ## 自动推进轮如何使用 MCP
@@ -97,8 +124,12 @@ CLI fallback：`npx playwright test`（Round 44 搭建后）。详见 `docs/mcp_
 
 ## 相关文档
 
-- `AGENTS.md` — MCP Tools 节
+- `AGENTS.md` — MCP Tools 节、Stitch Design MCP 节
+- `agent.md` — 快捷入口
 - `.cursor/rules/mcp-agent-tools.mdc` — Agent 行为规则
+- `.cursor/rules/stitch-design-mcp.mdc` — Stitch UI 设计规则
+- `docs/mcp/README.md` — MCP 文档索引
+- `docs/design/stitch/` — 设计输入层
 - `docs/mcp_playwright_setup_plan.md` — Playwright / MCP 安装与验证计划
 - `docs/agent_tooling_strategy.md` — 工具分层与 fallback
 

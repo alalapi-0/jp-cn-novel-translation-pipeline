@@ -17,6 +17,7 @@ python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/pytest tests/ -q
+# 或：npm run test:py
 
 # 3. 启动前端 + Workbench API（默认端口 5174）
 npm run dev:frontend
@@ -26,7 +27,7 @@ npm run dev:frontend
 **真实 API 小规模测试**（在已激活的 venv 中；可从 repo 根目录 `.env` 读取未设置的 Key，不打印 Key 值）：
 
 ```bash
-# 方式 A：repo/.env 中配置 OPENROUTER_API_KEY 与 REAL_API_TESTS_ENABLED=true
+# 方式 A：repo/.env 中配置 OPENROUTER_API_KEY、REAL_API_TESTS_ENABLED=true、MAX_TEST_COST_USD>0（如 0.01）
 .venv/bin/python3 scripts/run_real_api_smoke.py --real --json
 
 # 方式 B：显式 export
@@ -36,7 +37,7 @@ export REAL_API_TESTS_ENABLED=true
 # 无 Key 时：.venv/bin/python3 scripts/run_real_api_smoke.py --status-only
 ```
 
-`npm run dev:frontend` 启动时也会加载 `.env` 中**未设置**的变量，首页 API 状态卡片会反映 Key 是否可用。
+`npm run dev:frontend` 启动时也会加载 `.env` 中**未设置**的变量，首页 API 状态卡片会区分 **Key 是否已配置** 与 **Workbench 页面真实 API 是否可调用**（后者还需 `MAX_TEST_COST_USD>0`）。
 
 **Model Router（统一 LLM 入口）：**
 
@@ -60,9 +61,12 @@ result = chat(
 **工具链门控与 UI 测试：**
 
 ```bash
-.venv/bin/pytest tests/ -q          # 或 npm run check:tooling（内含 pytest）
-npm run test:ui          # Playwright（自动起 5174 dev server）
+npm run test:py        # 推荐：自动使用 .venv/bin/python -m pytest
+npm run test:ui        # Playwright（自动起 5174 dev server）
+npm run check:tooling  # 内含 pytest + MCP 检查
 ```
+
+勿直接 `python3 -m pytest`（系统 Python 可能缺依赖）；若无 `.venv`，`npm run test:py` 会提示创建虚拟环境。
 
 审核工作台默认 **不自动通过** segment（`AUTO_APPROVE=false`）；自动推进试验可在 URL 加 `?auto_approve=1`。
 
@@ -194,6 +198,47 @@ Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
 
 仓库采用可移植治理标准 `governance/repo_protocol_standard.yaml`（v0.3.0）。对齐情况、冲突与迁移计划见 `docs/repo_protocol_alignment.md`。项目差异写入 `project.yaml` 与 `governance/novel_pipeline_contract.yaml`，不擅自改写协议正文。
 
+## Stitch Design MCP
+
+[Google Stitch](https://stitch.withgoogle.com/) 为本项目提供 **UI 设计能力**：生成 Dashboard、审核台、导出页、Debug 面板等原型，供 Cursor 实现时参考。
+
+| 角色 | 职责 |
+|------|------|
+| **Stitch** | 设计输入：原型、HTML、截图 |
+| **Cursor** | 按设计落地 `frontend/` |
+| **Codex** | 用户视角测试，只报问题不改代码 |
+
+### 配置
+
+1. 获取 Stitch API Key，**仅**在本机设置：`export STITCH_API_KEY=your_key_here`（见 `.env.example` 占位符，**勿提交 `.env`**）
+2. `.cursor/mcp.json` 已包含 `stitch` server（本地 stdio proxy：`scripts/stitch_mcp_proxy.mjs`）
+3. **Reload Window** 后在 Cursor Settings → MCP 确认 `stitch` 已启用
+4. 检查：`npm run check:stitch`
+
+### 设计文档与产物路径
+
+- 总览：`docs/design/DESIGN.md`
+- Stitch 用法：`docs/design/stitch/README.md`
+- 任务模板：`docs/design/stitch/UI_TASKS.md`
+- Prompt 模板：`docs/design/stitch/PROMPT_TEMPLATES.md`
+- 导出：`docs/design/stitch/exports/`、`screenshots/`、`reviews/`
+
+### 工作流摘要
+
+1. 按 `UI_TASKS.md` 选定页面 → 用 Stitch 生成 screen
+2. 导出 HTML/截图到 `docs/design/stitch/`
+3. Cursor 拆任务实现静态前端（**禁止**无审查覆盖业务代码）
+4. `npm run test:ui` 或 Playwright / chrome-devtools MCP 验收
+
+### 安全与常见问题
+
+- **不要**提交 `.env` 或把 Key 写入 `.cursor/mcp.json` / 文档
+- Stitch 负责设计，不负责翻译 API 或删除项目文件
+- 无 Key 时：用 `PROMPT_TEMPLATES.md` 文字模板继续，并记录 MCP soft blocker
+- MCP 未连接：重启 Cursor 并确认 `npm ci` 已安装 `@google/stitch-sdk`
+
+详见 `docs/design/stitch/STITCH_MCP_SETUP.md`、`AGENTS.md`（Stitch Design MCP 章节）。
+
 ## Workspace MCP Servers
 
 当前项目需要以下 Workspace MCP Servers：
@@ -203,16 +248,18 @@ Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
 - `filesystem`
 - `github`
 - `playwright`
+- `stitch`
 
 说明：
 
 1. **`.cursor/mcp.json`** 是当前项目的 Workspace MCP 配置。
 2. Cursor 可能需要**重启或重新加载窗口**（Reload Window）后才能识别新配置。
 3. **GitHub MCP** 需通过环境变量 `GITHUB_TOKEN` 提供 token（映射为 `GITHUB_PERSONAL_ACCESS_TOKEN`），**不允许**写进仓库。
-4. **filesystem MCP** 只授权当前项目目录（`${workspaceFolder}`）。
-5. 可运行 `npm run check:mcp` 或 `node scripts/check_mcp_config.js` 检查配置。
+4. **Stitch MCP** 需通过 `STITCH_API_KEY` 环境变量认证，**不允许**写进仓库。
+5. **filesystem MCP** 只授权当前项目目录（`${workspaceFolder}`）。
+6. 可运行 `npm run check:mcp`、`npm run check:stitch` 检查配置。
 
-使用说明见 **`docs/agent_skills/mcp_usage_skill.md`**。MCP 与 Playwright 是**增强工具**；安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。
+使用说明见 **`docs/agent_skills/mcp_usage_skill.md`**、**`docs/mcp/README.md`**。MCP 与 Playwright 是**增强工具**；安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。
 
 ## 参考仓库方法吸收
 
