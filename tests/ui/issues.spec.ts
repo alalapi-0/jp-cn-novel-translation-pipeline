@@ -4,9 +4,7 @@ const DEMO_JP_CN = "demo-jp-cn";
 
 test("issues dashboard lists fixture report", async ({ page }) => {
   await page.goto(`/issues.html?project=${DEMO_JP_CN}`);
-  await expect(
-    page.getByRole("heading", { name: "Issue Review Dashboard" })
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "质量 Issue 审核" })).toBeVisible();
   await expect(page.getByText(/term_conflict/)).toBeVisible();
   const cards = page.locator(".issue-card");
   await expect(cards.getByText("LOCKED_TERM_VIOLATION", { exact: true }).first()).toBeVisible();

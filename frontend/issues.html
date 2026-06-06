@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>质量审核 Issue · 翻译工作台</title>
+    <title>质量 Issue 审核 · 轻小说翻译 Workbench</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
     <div class="banner" id="mode-banner">加载配置…</div>
     <header>
-      <h1>Issue Review Dashboard</h1>
-      <nav>
+      <h1>质量 Issue 审核</h1>
+      <nav class="site-nav">
         <a href="/index.html">项目首页</a>
         <a href="/issues.html">质量 Issue</a>
         <a href="/review.html">对照审核</a>
@@ -19,6 +19,7 @@
       </nav>
     </header>
     <main>
+      <div id="issues-summary-bar" class="card" hidden></div>
       <div class="card">
         <h2>审核状态机</h2>
         <p class="meta">
@@ -32,7 +33,7 @@
           issue，不覆盖 <code>human_edited</code> 译文。
         </p>
       </div>
-      <div class="card filters">
+      <div class="card filters" id="issues-filters-card">
         <h2>筛选</h2>
         <label>
           严重程度

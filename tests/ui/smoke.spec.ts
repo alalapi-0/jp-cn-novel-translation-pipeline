@@ -8,7 +8,7 @@ const MISSING_PAGES = [
 
 test("homepage loads project dashboard", async ({ page }) => {
   await page.goto("/index.html");
-  await expect(page.getByRole("heading", { name: "翻译工作台" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "轻小说翻译 Workbench" })).toBeVisible();
   await expect(page.locator("#api-mode-status")).toContainText(/missing_api_key|dry_run|real_api/);
   await expect(page.locator("#api-key-status")).toContainText(/missing_api_key|已配置/);
   await expect(page.getByRole("link", { name: "进入对照审核 →" }).first()).toBeVisible();
@@ -24,11 +24,9 @@ test("project home shows chapter manager summary", async ({ page }) => {
 
 test("review page shows auto-approve controls", async ({ page }) => {
   await page.goto("/review.html");
-  await expect(
-    page.getByRole("heading", { name: "Side-by-side Translation Review" })
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "对照审核" })).toBeVisible();
   await expect(page.locator("#auto-approve-label")).toHaveText("false");
-  await expect(page.getByRole("button", { name: "触发自动通过" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "触发自动通过" })).toHaveCount(0);
 });
 
 test("review page keeps pending until manual approve", async ({ page, request }) => {
@@ -45,10 +43,10 @@ test("review page keeps pending until manual approve", async ({ page, request })
   });
   await page.goto(`/review.html?project=${projectId}`);
   await expect(page.locator("#active-project-label")).toContainText(projectId);
-  const badge = page.locator(".segment .badge[data-status='pending']").first();
+  const badge = page.locator(".badge[data-status='pending']").first();
   await expect(badge).toBeVisible();
   await page.reload();
-  await expect(page.locator(".segment .badge[data-status='pending']").first()).toBeVisible();
+  await expect(page.locator(".badge[data-status='pending']").first()).toBeVisible();
 });
 
 test("autopilot query enables auto-approve", async ({ page, request }) => {
@@ -77,9 +75,7 @@ test("navigation from index to review via link", async ({ page }) => {
   await page.goto("/index.html");
   await page.getByRole("link", { name: "进入对照审核 →" }).first().click();
   await expect(page).toHaveURL(/review\.html/);
-  await expect(
-    page.getByRole("heading", { name: "Side-by-side Translation Review" })
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "对照审核" })).toBeVisible();
 });
 
 test("index page has no console errors", async ({ page }) => {

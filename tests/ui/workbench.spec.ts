@@ -10,7 +10,7 @@ test("quickstart rejects illegal project id", async ({ page }) => {
   await page.locator("#qs-project-name").fill("Bad");
   await page.locator("#qs-sample-text").fill("テスト");
   await page.locator("#quickstart-form button[type='submit']").click();
-  await expect(page.locator("#quickstart-result")).toContainText(ILLEGAL_PROJECT_ID_RE);
+  await expect(page.locator("#quickstart-error-bar")).toContainText(ILLEGAL_PROJECT_ID_RE);
 });
 
 test("quickstart creates user project and links to review", async ({ page }) => {
@@ -25,7 +25,7 @@ test("quickstart creates user project and links to review", async ({ page }) => 
   await expect(reviewLink).toBeVisible();
   await reviewLink.click();
   await expect(page).toHaveURL(new RegExp(`review\\.html\\?project=${projectId}`));
-  await expect(page.locator(".segment").first()).toBeVisible();
+  await expect(page.locator(".review-layout").first()).toBeVisible();
 });
 
 test("review state persists after reload", async ({ page, request }) => {
@@ -92,7 +92,9 @@ test("export manifest默认仅导出 approved 并显示跳过统计", async ({ p
   await page.locator("#export-manifest-btn").click();
   await expect(page.locator("#export-result")).toContainText(/status_mode=approved/);
   await expect(page.locator("#export-result")).toContainText(/segments_exported=1/);
-  await expect(page.locator("#export-result")).toContainText(/segments_skipped_status=.*rejected:1|已拒绝\(rejected\):1/);
+  await expect(page.locator("#export-result")).toContainText(
+    /segments_skipped_status=.*rejected:1|已驳回\(rejected\):1/
+  );
 });
 
 test("dry-run 按钮双击只触发一次生成请求", async ({ page }) => {
@@ -352,13 +354,14 @@ test("review page counts only open issues", async ({ page, request }) => {
   });
 
   await page.goto(`/review.html?project=${projectId}&segment=${targetSeg}`);
-  const seg = page.locator(`#seg-${targetSeg}`);
-  await expect(seg).toBeVisible();
+  await expect(page.locator(`#seg-${targetSeg}`)).toBeVisible();
   const expectedOpen = targetIssues.length - 1;
   if (expectedOpen > 0) {
-    await expect(seg.locator(".issue-mark")).toContainText(`${expectedOpen} 条 open issue`);
+    await expect(page.locator(".review-reading .issue-mark")).toContainText(
+      `${expectedOpen} 条 open issue`
+    );
   } else {
-    await expect(seg.locator(".issue-mark")).toHaveCount(0);
+    await expect(page.locator(".review-reading .issue-mark")).toHaveCount(0);
   }
 });
 

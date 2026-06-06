@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>导出中心 · 翻译工作台</title>
+    <title>导出中心 · 轻小说翻译 Workbench</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
     <div class="banner" id="mode-banner">加载配置…</div>
     <header>
-      <h1>Export Center</h1>
-      <nav>
+      <h1>导出中心</h1>
+      <nav class="site-nav">
         <a href="/index.html">项目首页</a>
         <a href="/issues.html">质量 Issue</a>
         <a href="/review.html">对照审核</a>
@@ -19,13 +19,18 @@
       </nav>
     </header>
     <main>
-      <div id="export-session-empty" class="card meta">
-        <p>尚无本次导出。完成 manifest 或 runs 导出后，此处会显示本次结果。</p>
+      <div id="export-session-empty" class="card export-empty-state">
+        <p class="meta">尚无本次导出。完成 manifest 或 runs 导出后，此处会显示本次结果。</p>
       </div>
       <div id="export-success-card" class="card export-success-card" hidden>
         <h2>本次导出</h2>
-        <p id="export-success-summary" class="meta"></p>
-        <ul id="export-success-files" class="meta export-file-list"></ul>
+        <div class="export-success-header">
+          <span id="export-success-badge" class="badge badge-success">导出成功</span>
+          <span id="export-success-count" class="meta"></span>
+        </div>
+        <div id="export-skip-stats" class="export-skip-stats meta"></div>
+        <ul id="export-success-files" class="export-file-rows"></ul>
+        <p class="meta" id="export-success-meta"></p>
       </div>
       <div class="card">
         <h2>导出当前项目（manifest）</h2>

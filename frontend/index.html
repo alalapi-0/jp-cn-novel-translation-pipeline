@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>翻译工作台 · 项目首页</title>
+    <title>轻小说翻译 Workbench · 项目首页</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
     <div class="banner" id="mode-banner">加载配置…</div>
     <header>
-      <h1>翻译工作台</h1>
-      <nav>
+      <h1>轻小说翻译 Workbench</h1>
+      <nav class="site-nav">
         <a href="/index.html">项目首页</a>
         <a href="/issues.html">质量 Issue</a>
         <a href="/review.html">对照审核</a>
@@ -19,20 +19,43 @@
       </nav>
     </header>
     <main>
+      <section class="dashboard-triage" aria-label="工作台概览">
+        <div class="triage-col card" id="triage-mode">
+          <h2>当前模式</h2>
+          <p class="meta">
+            模式：<strong id="api-mode-status">加载中…</strong>
+          </p>
+          <p class="meta" id="api-key-ready">—</p>
+          <p class="meta" id="api-workbench-ready">—</p>
+          <p class="meta" id="api-budget-summary">—</p>
+          <p class="meta" id="api-budget-fix" hidden>
+            <span id="api-budget-fix-text"></span>
+            <button type="button" id="api-copy-fix-cmd">复制启动命令</button>
+            <a id="api-diagnostic-link" href="#api-smoke-history">查看 smoke 诊断</a>
+          </p>
+        </div>
+        <div class="triage-col card" id="triage-next">
+          <h2>下一步</h2>
+          <p class="meta">创建 dry-run 项目 → 粘贴样本文本 → 进入对照审核。</p>
+          <p class="meta" id="qs-real-api-hint">—</p>
+          <div class="actions triage-cta">
+            <a href="#quickstart-card" class="button-link primary-cta">创建 dry-run 项目</a>
+            <button type="button" id="qs-real-api-btn-hero" disabled title="加载中…">真实 API 小样本</button>
+          </div>
+          <p class="meta cta-disabled-reason" id="real-api-disabled-reason" hidden></p>
+        </div>
+        <div class="triage-col card" id="triage-recent">
+          <h2>最近项目</h2>
+          <div id="recent-projects-summary" class="meta">加载中…</div>
+          <p><a href="#project-list">查看全部项目 ↓</a></p>
+        </div>
+      </section>
+
       <div class="card" id="api-status-card">
         <h2>真实 API 状态（当前环境）</h2>
         <p class="meta">
-          模式：<strong id="api-mode-status">加载中…</strong> · Key：
-          <strong id="api-key-status">—</strong> · REAL_API_TESTS_ENABLED：
+          Key：<strong id="api-key-status">—</strong> · REAL_API_TESTS_ENABLED：
           <strong id="real-api-enabled-status">—</strong>
-        </p>
-        <p class="meta" id="api-key-ready">—</p>
-        <p class="meta" id="api-budget-summary">—</p>
-        <p class="meta" id="api-workbench-ready">—</p>
-        <p class="meta" id="api-budget-fix" hidden>
-          <span id="api-budget-fix-text"></span>
-          <button type="button" id="api-copy-fix-cmd">复制启动命令</button>
-          <a id="api-diagnostic-link" href="#api-smoke-history">查看 smoke 诊断</a>
         </p>
         <details id="api-smoke-history">
           <summary>历史 smoke 记录（不代表当前可用）</summary>
@@ -43,13 +66,13 @@
       </div>
 
       <div class="card" id="quickstart-card">
-        <h2>新用户快速体验</h2>
-        <p class="meta">创建项目 → 粘贴样本文本 → dry-run mock 或（预算允许时）真实 API 小样本 → 进入审核。</p>
-        <p class="meta" id="qs-real-api-hint">—</p>
+        <h2>创建 dry-run 项目</h2>
+        <div id="quickstart-error-bar" class="error-bar" role="alert" hidden></div>
         <form id="quickstart-form" class="stack-form" action="#" method="post">
-          <label>
+          <label id="qs-project-id-label">
             项目 ID
             <input id="qs-project-id" type="text" placeholder="quickstart-demo" required />
+            <span class="field-hint" id="qs-project-id-hint" hidden></span>
           </label>
           <label>
             项目名称
@@ -67,7 +90,7 @@
             <textarea id="qs-sample-text" rows="5" placeholder="彼女は学校に行かなかった。&#10;&#10;空が裂けたようだ。"></textarea>
           </label>
           <div class="actions">
-            <button type="submit" class="primary" id="qs-dry-run-btn">创建并 dry-run 生成（mock）</button>
+            <button type="submit" class="primary primary-cta" id="qs-dry-run-btn">创建并 dry-run 生成（mock）</button>
             <button type="button" id="qs-real-api-btn">真实 API 小样本生成</button>
             <a id="qs-review-link" class="button-link" href="/review.html" hidden>进入对照审核 →</a>
           </div>

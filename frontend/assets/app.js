@@ -16,6 +16,14 @@
   let generationPollTimer = null;
   let generationPollProjectId = "";
   let quickstartPollTimer = null;
+  let reviewSelectedSegmentId = null;
+
+  const SEGMENT_STATUS_ZH = {
+    pending: "待审核",
+    approved: "已通过",
+    rejected: "已驳回",
+    draft: "草稿",
+  };
 
   function getConfig() {
     const base = window.WORKBENCH_CONFIG || {};
@@ -70,7 +78,7 @@
 
   const EXPORT_SKIP_STATUS_ZH = {
     pending: "待审核",
-    rejected: "已拒绝",
+    rejected: "已驳回",
     approved: "已通过",
     draft: "草稿",
   };
@@ -302,9 +310,62 @@
     );
   }
 
+  function segmentStatusBadgeClass(status) {
+    if (status === "approved") return "badge-success";
+    if (status === "rejected") return "badge-danger";
+    if (status === "pending") return "badge-warning";
+    return "badge-neutral";
+  }
+
   function renderBadge(status) {
-    const cls = status === "approved" ? "ok" : "pending";
-    return `<span class="badge ${cls}" data-status="${status}">${status}</span>`;
+    const label = SEGMENT_STATUS_ZH[status] || status;
+    const cls = segmentStatusBadgeClass(status);
+    return `<span class="badge ${cls}" data-status="${status}" title="${escapeHtml(label)}（${escapeHtml(status)}）">${escapeHtml(label)}</span>`;
+  }
+
+  function generationModeBadge(segment) {
+    if (segment?.generated_by === "real_api") {
+      return '<span class="badge badge-real-api">真实 API</span>';
+    }
+    return '<span class="badge badge-mock">mock</span>';
+  }
+
+  function showQuickstartError(message, fieldId) {
+    const bar = document.getElementById("quickstart-error-bar");
+    if (bar) {
+      bar.hidden = false;
+      bar.textContent = message;
+    }
+    const resultEl = document.getElementById("quickstart-result");
+    if (resultEl) resultEl.textContent = "";
+    for (const id of ["qs-project-id-label"]) {
+      const label = document.getElementById(id);
+      if (label) label.classList.remove("field-error");
+    }
+    if (fieldId) {
+      const label = document.getElementById(`${fieldId}-label`) || document.getElementById(fieldId)?.closest("label");
+      if (label) label.classList.add("field-error");
+      const hint = document.getElementById(`${fieldId}-hint`);
+      if (hint) {
+        hint.hidden = false;
+        hint.textContent = message;
+      }
+    }
+  }
+
+  function clearQuickstartError() {
+    const bar = document.getElementById("quickstart-error-bar");
+    if (bar) {
+      bar.hidden = true;
+      bar.textContent = "";
+    }
+    const label = document.getElementById("qs-project-id-label");
+    if (label) label.classList.remove("field-error");
+    const hint = document.getElementById("qs-project-id-hint");
+    if (hint) {
+      hint.hidden = true;
+      hint.textContent = "";
+    }
   }
 
   function renderSeverity(severity) {
@@ -363,27 +424,68 @@
   function categoryBadge(category) {
     switch (category) {
       case "example":
-        return '<span class="badge ok">示例</span>';
+        return '<span class="badge badge-success">示例</span>';
       case "test":
-        return '<span class="badge">测试</span>';
+        return '<span class="badge badge-mock">测试</span>';
       case "history":
-        return '<span class="badge">历史</span>';
+        return '<span class="badge badge-neutral">历史</span>';
       default:
-        return '<span class="badge ok">用户</span>';
+        return '<span class="badge badge-success">用户</span>';
     }
+  }
+
+  function isHiddenProjectCategory(category) {
+    return category === "test" || category === "history";
+  }
+
+  function visibleHomeProjects(projects, activeId) {
+    return (projects || []).filter((p) => {
+      const cat = p.category || "user";
+      if (isHiddenProjectCategory(cat)) return false;
+      return true;
+    });
   }
 
   function setQuickstartGenerating(active) {
     quickstartGenerating = Boolean(active);
     const ready = runtimeApiStatus?.workbench_real_api_ready === true;
-    for (const id of ["qs-dry-run-btn", "qs-real-api-btn"]) {
+    for (const id of ["qs-dry-run-btn", "qs-real-api-btn", "qs-real-api-btn-hero"]) {
       const el = document.getElementById(id);
       if (!el) continue;
-      if (id === "qs-real-api-btn") {
+      if (id === "qs-real-api-btn" || id === "qs-real-api-btn-hero") {
         el.disabled = quickstartGenerating || quickstartRealApiInFlight || !ready;
       } else {
         el.disabled = quickstartGenerating;
       }
+    }
+  }
+
+  function syncRealApiHeroCta(status) {
+    const heroBtn = document.getElementById("qs-real-api-btn-hero");
+    const reasonEl = document.getElementById("real-api-disabled-reason");
+    if (!heroBtn) return;
+    const ready = status?.workbench_real_api_ready === true;
+    heroBtn.disabled = !ready || quickstartGenerating || quickstartRealApiInFlight;
+    const reason =
+      status?.workbench_real_api_block_reason_label ||
+      status?.workbench_real_api_block_reason ||
+      (!status?.has_api_key ? "未配置 API Key" : "预算或开关未满足");
+    heroBtn.title = ready ? "跳转至创建表单并调用真实 API" : reason;
+    if (reasonEl) {
+      if (ready) {
+        reasonEl.hidden = true;
+        reasonEl.textContent = "";
+      } else {
+        reasonEl.hidden = false;
+        reasonEl.textContent = `真实 API 不可用：${reason}`;
+      }
+    }
+    if (heroBtn.dataset.bound !== "1") {
+      heroBtn.dataset.bound = "1";
+      heroBtn.addEventListener("click", () => {
+        document.getElementById("quickstart-card")?.scrollIntoView({ behavior: "smooth" });
+        document.getElementById("qs-real-api-btn")?.click();
+      });
     }
   }
 
@@ -697,8 +799,11 @@
           !status.workbench_real_api_ready || quickstartGenerating || quickstartRealApiInFlight;
         realGenBtn.title = status.workbench_real_api_ready
           ? `调用 OpenRouter（预算上限 $${status.max_test_cost_usd}）`
-          : status.workbench_real_api_block_reason || "真实 API 不可用";
+          : status.workbench_real_api_block_reason_label ||
+            status.workbench_real_api_block_reason ||
+            "真实 API 不可用";
       }
+      syncRealApiHeroCta(status);
       if (realGenHint) {
         realGenHint.textContent = status.workbench_real_api_ready
           ? `真实 API 小样本：最多 3 段、每段 ≤400 字；预算上限 MAX_TEST_COST_USD=${status.max_test_cost_usd}。`
@@ -756,6 +861,7 @@
   }
 
   function applyQuickstartSuccess(projectId, genPayload, mode, resultEl, reviewLink) {
+    clearQuickstartError();
     currentGenerationJob = genPayload.generation_job || currentGenerationJob;
     saveActiveProjectId(projectId);
     const label = mode === "real_api" ? "真实 API" : "dry-run mock";
@@ -885,6 +991,7 @@
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       if (quickstartGenerating || quickstartRealApiInFlight) return;
+      clearQuickstartError();
       const projectId = document.getElementById("qs-project-id")?.value.trim();
       const name = document.getElementById("qs-project-name")?.value.trim() || projectId;
       const direction = document.getElementById("qs-direction")?.value || "JP_TO_CN";
@@ -895,12 +1002,13 @@
       setQuickstartGenerating(true);
       try {
         if (!projectId || !sampleText) {
-          if (resultEl) resultEl.textContent = "请填写项目 ID 与样本文本。";
+          const msg = !projectId ? "请填写项目 ID。" : "请填写样本文本。";
+          showQuickstartError(msg, !projectId ? "qs-project-id" : null);
           return;
         }
         const idErr = validateProjectIdClient(projectId);
         if (idErr) {
-          if (resultEl) resultEl.textContent = `失败：${idErr}`;
+          showQuickstartError(idErr, "qs-project-id");
           return;
         }
         const ok = await ensureQuickstartProject(projectId, name, direction, resultEl);
@@ -914,18 +1022,25 @@
           requestId
         );
       } catch (err) {
-        if (resultEl) resultEl.textContent = `失败：${err.message}`;
+        showQuickstartError(`失败：${err.message}`);
         log(`quickstart failed: ${err.message}`);
       } finally {
         setQuickstartGenerating(false);
       }
     });
 
+    const projectIdInput = document.getElementById("qs-project-id");
+    if (projectIdInput && projectIdInput.dataset.bound !== "1") {
+      projectIdInput.dataset.bound = "1";
+      projectIdInput.addEventListener("input", () => clearQuickstartError());
+    }
+
     const realBtn = document.getElementById("qs-real-api-btn");
     if (realBtn && realBtn.dataset.bound !== "1") {
       realBtn.dataset.bound = "1";
       realBtn.addEventListener("click", async () => {
         if (quickstartRealApiInFlight || quickstartGenerating) return;
+        clearQuickstartError();
         quickstartRealApiInFlight = true;
         setQuickstartGenerating(true);
         const projectId = document.getElementById("qs-project-id")?.value.trim();
@@ -937,12 +1052,13 @@
         const requestId = nextRequestId("realapi");
         try {
           if (!projectId || !sampleText) {
-            if (resultEl) resultEl.textContent = "请填写项目 ID 与样本文本。";
+            const msg = !projectId ? "请填写项目 ID。" : "请填写样本文本。";
+            showQuickstartError(msg, !projectId ? "qs-project-id" : null);
             return;
           }
           const idErr = validateProjectIdClient(projectId);
           if (idErr) {
-            if (resultEl) resultEl.textContent = `失败：${idErr}`;
+            showQuickstartError(idErr, "qs-project-id");
             return;
           }
           const latestStatus = await refreshRuntimeApiStatus();
@@ -968,7 +1084,7 @@
             requestId
           );
         } catch (err) {
-          if (resultEl) resultEl.textContent = `失败：${err.message}`;
+          showQuickstartError(`失败：${err.message}`);
           log(`real-api quickstart failed: ${err.message}`);
         } finally {
           quickstartRealApiInFlight = false;
@@ -978,32 +1094,82 @@
     }
   }
 
+  const ISSUE_SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+
+  function sortIssuesByPriority(issues, issueState) {
+    return [...issues].sort((a, b) => {
+      const aOpen = issueStatus(a, issueState) === "open" ? 0 : 1;
+      const bOpen = issueStatus(b, issueState) === "open" ? 0 : 1;
+      if (aOpen !== bOpen) return aOpen - bOpen;
+      const aSev = ISSUE_SEVERITY_ORDER[a.severity] ?? 9;
+      const bSev = ISSUE_SEVERITY_ORDER[b.severity] ?? 9;
+      return aSev - bSev;
+    });
+  }
+
   function bindIssuesPage(report) {
     const root = document.getElementById("issues-root");
     if (!root) return;
     issueReport = report;
     issuesBySegment = indexIssues(report);
     const issueState = reviewStateCache;
+    const allIssues = report.issues || [];
+    const projectId = report.project_id || currentIssuesProjectId || "";
 
     const statusEl = document.getElementById("review-status");
     const totalEl = document.getElementById("issue-total");
     if (statusEl) statusEl.textContent = report.review_status || "—";
-    if (totalEl) totalEl.textContent = String(report.summary?.total ?? report.issues.length);
+    if (totalEl) totalEl.textContent = String(report.summary?.total ?? allIssues.length);
     const sourceEl = document.getElementById("issue-data-source");
     if (sourceEl) {
       const raw = String(report._source || "unknown");
       sourceEl.textContent =
         raw === "api" ? "API" : raw === "fallback_fixture" ? "fallback→fixture" : "fixture";
-      sourceEl.className = raw === "api" ? "badge ok" : raw === "fallback_fixture" ? "badge pending" : "badge";
+      sourceEl.className =
+        raw === "api" ? "badge badge-success" : raw === "fallback_fixture" ? "badge badge-warning" : "badge badge-neutral";
     }
     const projectEl = document.getElementById("issue-project-id");
     if (projectEl) {
-      projectEl.textContent = report.project_id || currentIssuesProjectId || "—";
+      projectEl.textContent = projectId || "—";
+    }
+
+    const summaryBar = document.getElementById("issues-summary-bar");
+    const filtersCard = document.getElementById("issues-filters-card");
+    if (!allIssues.length) {
+      if (summaryBar) summaryBar.hidden = true;
+      if (filtersCard) filtersCard.hidden = true;
+      root.innerHTML = `
+        <div class="card issues-empty-state">
+          <h2>暂无质量 Issue</h2>
+          <p class="meta">当前项目尚未检测到机器审核 issue，或报告为空。可先完成对照审核，再导出已通过段落。</p>
+          <div class="actions">
+            <a class="button-link" href="/review.html?project=${encodeURIComponent(projectId)}">返回审核</a>
+            <a class="button-link" href="/export.html?project=${encodeURIComponent(projectId)}">导出已通过段落</a>
+          </div>
+        </div>`;
+      return;
+    }
+    if (filtersCard) filtersCard.hidden = false;
+
+    const openCount = allIssues.filter((i) => issueStatus(i, issueState) === "open").length;
+    const highCount = allIssues.filter(
+      (i) =>
+        issueStatus(i, issueState) === "open" &&
+        (i.severity === "critical" || i.severity === "high")
+    ).length;
+    if (summaryBar) {
+      summaryBar.hidden = false;
+      summaryBar.innerHTML = `
+        <div class="issues-summary-bar">
+          <span><strong>${openCount}</strong> 条待处理（open）</span>
+          <span><strong>${highCount}</strong> 条高严重度（critical/high）</span>
+          <span class="meta">共 ${allIssues.length} 条 · 已按 open → 严重度排序</span>
+        </div>`;
     }
 
     const typeSelect = document.getElementById("filter-type");
     if (typeSelect && typeSelect.options.length <= 1) {
-      const types = [...new Set(report.issues.map((i) => i.issue_type))].sort();
+      const types = [...new Set(allIssues.map((i) => i.issue_type))].sort();
       for (const t of types) {
         const opt = document.createElement("option");
         opt.value = t;
@@ -1016,13 +1182,16 @@
     const typeFilter = document.getElementById("filter-type")?.value || "";
     const statusFilter = document.getElementById("filter-status")?.value || "";
 
-    const filtered = report.issues.filter((issue) => {
-      const st = issueStatus(issue, issueState);
-      if (sevFilter && issue.severity !== sevFilter) return false;
-      if (typeFilter && issue.issue_type !== typeFilter) return false;
-      if (statusFilter && st !== statusFilter) return false;
-      return true;
-    });
+    const filtered = sortIssuesByPriority(
+      allIssues.filter((issue) => {
+        const st = issueStatus(issue, issueState);
+        if (sevFilter && issue.severity !== sevFilter) return false;
+        if (typeFilter && issue.issue_type !== typeFilter) return false;
+        if (statusFilter && st !== statusFilter) return false;
+        return true;
+      }),
+      issueState
+    );
 
     root.innerHTML = filtered
       .map((issue) => {
@@ -1182,43 +1351,101 @@
     }
     stopGenerationPolling();
 
-    root.innerHTML = data.segments
+    const params = new URLSearchParams(window.location.search);
+    const focus = params.get("segment");
+    const segIds = data.segments.map((s) => s.id || s.segment_id);
+    if (focus && segIds.includes(focus)) {
+      reviewSelectedSegmentId = focus;
+    } else if (!reviewSelectedSegmentId || !segIds.includes(reviewSelectedSegmentId)) {
+      reviewSelectedSegmentId = segIds[0] || null;
+    }
+
+    const selectedSeg =
+      data.segments.find((s) => (s.id || s.segment_id) === reviewSelectedSegmentId) ||
+      data.segments[0];
+    const selectedId = selectedSeg.id || selectedSeg.segment_id;
+    const selectedStatus = segmentStatus(selectedSeg, state);
+    const selectedOpenIssues = openIssuesForSegment(selectedId, state);
+    const showAutoBtn = Boolean(cfg.AUTO_APPROVE || cfg.dryRunAutoApprove);
+    const autoBtnHtml = showAutoBtn
+      ? `<button type="button" data-action="auto" data-id="${escapeHtml(selectedId)}">触发自动通过</button>`
+      : "";
+
+    const queueHtml = data.segments
       .map((seg) => {
-        const status = segmentStatus(seg, state);
         const segId = seg.id || seg.segment_id;
-        const openIssues = openIssuesForSegment(segId, state);
-        const issueMarks = openIssues.length
-          ? `<p class="issue-mark">${openIssues.length} 条 open issue · <a href="/issues.html?project=${encodeURIComponent(workbenchContext?.activeProjectId || "")}">查看</a></p>`
-          : "";
-        const highlight = openIssues.length ? " segment-has-issue" : "";
-        return `
-        <article class="segment${highlight}" id="seg-${segId}" data-segment-id="${segId}">
-          ${issueMarks}
-          <div class="grid-2">
-            <div>
-              <div class="panel-title">原文</div>
-              <p>${escapeHtml(seg.source)}</p>
-            </div>
-            <div>
-              <div class="panel-title">${escapeHtml(draftPanelTitle(runtimeApiStatus, seg))}</div>
-              <p>${escapeHtml(seg.draft)}</p>
-            </div>
-          </div>
-          <p>状态：${renderBadge(status)}</p>
-          <div class="actions">
-            <button type="button" class="primary" data-action="approve" data-id="${segId}">通过</button>
-            <button type="button" class="danger" data-action="reject" data-id="${segId}">驳回</button>
-            <button type="button" data-action="auto" data-id="${segId}">触发自动通过</button>
-          </div>
-        </article>`;
+        const st = segmentStatus(seg, state);
+        const active = segId === selectedId ? " is-active" : "";
+        const openCount = openIssuesForSegment(segId, state).length;
+        const issueDot = openCount ? ` · ${openCount} issue` : "";
+        return `<li>
+          <button type="button" class="review-queue-item${active}" data-segment-select="${escapeHtml(segId)}" id="seg-${escapeHtml(segId)}">
+            <span class="queue-id">${escapeHtml(segId)}</span>
+            ${renderBadge(st)}${issueDot}
+          </button>
+        </li>`;
       })
       .join("");
 
-    const params = new URLSearchParams(window.location.search);
-    const focus = params.get("segment");
+    const issueMarks = selectedOpenIssues.length
+      ? `<p class="issue-mark">${selectedOpenIssues.length} 条 open issue · <a href="/issues.html?project=${encodeURIComponent(workbenchContext?.activeProjectId || "")}">查看</a></p>`
+      : "";
+
+    root.innerHTML = `
+      <div class="review-layout">
+        <aside class="review-queue">
+          <h3>段落队列（${data.segments.length}）</h3>
+          <ul class="review-queue-list">${queueHtml}</ul>
+        </aside>
+        <section class="review-reading${selectedOpenIssues.length ? " segment-has-issue" : ""}">
+          <h3>对照阅读</h3>
+          ${issueMarks}
+          <div class="review-reading-panels">
+            <div>
+              <div class="panel-title">原文</div>
+              <p>${escapeHtml(selectedSeg.source)}</p>
+            </div>
+            <div>
+              <div class="panel-title">${escapeHtml(draftPanelTitle(runtimeApiStatus, selectedSeg))}</div>
+              <p>${escapeHtml(selectedSeg.draft)}</p>
+            </div>
+          </div>
+        </section>
+        <aside class="review-meta">
+          <h3>状态与操作</h3>
+          <div class="review-meta-section">
+            <div class="panel-title">审核状态</div>
+            <p>${renderBadge(selectedStatus)} ${generationModeBadge(selectedSeg)}</p>
+          </div>
+          <div class="review-meta-section">
+            <div class="panel-title">元数据</div>
+            <p class="meta">segment：<code>${escapeHtml(selectedId)}</code></p>
+            <p class="meta">项目：${escapeHtml(workbenchContext?.activeProjectId || "—")}</p>
+          </div>
+          <div class="review-meta-section">
+            <div class="panel-title">操作</div>
+            <div class="actions">
+              <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}">通过</button>
+              <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}">驳回</button>
+              ${autoBtnHtml}
+            </div>
+          </div>
+        </aside>
+      </div>`;
+
+    const mobileBar = document.getElementById("review-mobile-actions");
+    if (mobileBar) {
+      mobileBar.hidden = false;
+      mobileBar.innerHTML = `
+        <div class="actions">
+          <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}">通过</button>
+          <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}">驳回</button>
+        </div>`;
+    }
+
     if (focus) {
       const el = document.getElementById(`seg-${focus}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }
 
@@ -1299,9 +1526,34 @@
     const list = document.getElementById("project-list");
     if (!list) return;
     const activeId = ctx.activeProjectId;
-    list.innerHTML = ctx.projects
-      .map((p) => renderProjectCard(p, activeId))
-      .join("");
+    const visible = visibleHomeProjects(ctx.projects, activeId);
+    const sorted = [...visible].sort((a, b) => {
+      const aId = a.id || a.project_id;
+      const bId = b.id || b.project_id;
+      if (aId === activeId) return -1;
+      if (bId === activeId) return 1;
+      const aEx = (a.category || "") === "example" ? 1 : 0;
+      const bEx = (b.category || "") === "example" ? 1 : 0;
+      return aEx - bEx;
+    });
+    list.innerHTML = sorted.map((p) => renderProjectCard(p, activeId)).join("");
+
+    const recentEl = document.getElementById("recent-projects-summary");
+    if (recentEl) {
+      const userRecent = sorted.filter((p) => {
+        const cat = p.category || "user";
+        return cat === "user" || (p.id || p.project_id) === activeId;
+      });
+      if (!userRecent.length && !sorted.length) {
+        recentEl.textContent = "尚无用户项目，请创建 dry-run 项目。";
+      } else {
+        const names = sorted
+          .slice(0, 3)
+          .map((p) => p.name || p.id || p.project_id)
+          .join("、");
+        recentEl.textContent = `共 ${sorted.length} 个可见项目：${names}${sorted.length > 3 ? "…" : ""}`;
+      }
+    }
 
     const sourceEl = document.getElementById("data-source-label");
     if (sourceEl) {
@@ -1521,11 +1773,46 @@
     });
   }
 
+  async function handleReviewSegmentAction(btn, projectId) {
+    if (!btn || !reviewData) return;
+    const id = btn.dataset.id;
+    const seg = reviewData.segments.find((s) => (s.id || s.segment_id) === id);
+    if (!seg) return;
+    const cfg = getConfig();
+    const action = btn.dataset.action;
+    let entry;
+    if (action === "approve" || action === "auto") {
+      entry = {
+        status: "approved",
+        autoApprove: action === "auto" || Boolean(cfg.AUTO_APPROVE),
+        at: new Date().toISOString(),
+      };
+      log(`${action === "auto" ? "AUTO_APPROVE" : "manual"}: ${id} approved`);
+    } else if (action === "reject") {
+      entry = { status: "rejected", at: new Date().toISOString() };
+      log(`rejected: ${id}`);
+    } else {
+      return;
+    }
+    const activeProjectId = workbenchContext?.activeProjectId || projectId;
+    await patchReviewState(activeProjectId, { segments: { [id]: entry } });
+    bindReviewPage(reviewData);
+  }
+
   function setupReviewClickHandler(projectId) {
     const root = document.getElementById("review-root");
-    if (!root || root.dataset.bound === "1") return;
-    root.dataset.bound = "1";
-    root.addEventListener("click", async (ev) => {
+    const mobileBar = document.getElementById("review-mobile-actions");
+    const containers = [root, mobileBar].filter(Boolean);
+    for (const container of containers) {
+      if (!container || container.dataset.bound === "1") continue;
+      container.dataset.bound = "1";
+      container.addEventListener("click", async (ev) => {
+      const selectBtn = ev.target.closest("button[data-segment-select]");
+      if (selectBtn && reviewData) {
+        reviewSelectedSegmentId = selectBtn.dataset.segmentSelect;
+        bindReviewPage(reviewData);
+        return;
+      }
       const emptyBtn = ev.target.closest("button[data-empty-action]");
       if (emptyBtn) {
         const action = emptyBtn.dataset.emptyAction;
@@ -1574,45 +1861,71 @@
       }
 
       const btn = ev.target.closest("button[data-action]");
-      if (!btn || !reviewData) return;
-      const id = btn.dataset.id;
-      const seg = reviewData.segments.find((s) => (s.id || s.segment_id) === id);
-      if (!seg) return;
-      const cfg = getConfig();
-      const action = btn.dataset.action;
-      let entry;
-      if (action === "approve" || action === "auto") {
-        entry = {
-          status: "approved",
-          autoApprove: action === "auto" || Boolean(cfg.AUTO_APPROVE),
-          at: new Date().toISOString(),
-        };
-        log(`${action === "auto" ? "AUTO_APPROVE" : "manual"}: ${id} approved`);
-      } else if (action === "reject") {
-        entry = { status: "rejected", at: new Date().toISOString() };
-        log(`rejected: ${id}`);
-      } else {
-        return;
-      }
-      const activeProjectId = workbenchContext?.activeProjectId || projectId;
-      await patchReviewState(activeProjectId, { segments: { [id]: entry } });
-      bindReviewPage(reviewData);
+      if (!btn) return;
+      await handleReviewSegmentAction(btn, projectId);
     });
+    }
   }
 
   function showExportSuccessCard(payload) {
     const card = document.getElementById("export-success-card");
     const emptyEl = document.getElementById("export-session-empty");
-    const summaryEl = document.getElementById("export-success-summary");
+    const badgeEl = document.getElementById("export-success-badge");
+    const countEl = document.getElementById("export-success-count");
+    const skipEl = document.getElementById("export-skip-stats");
     const filesEl = document.getElementById("export-success-files");
-    if (!card || !summaryEl || !filesEl) return;
+    const metaEl = document.getElementById("export-success-meta");
+    if (!card || !filesEl) return;
     const paths = exportHighlightPaths(payload);
+    const skipped = payload.segments_skipped_status || {};
+    const skippedText = formatExportSkipStatus(skipped);
+    const isSkip = Boolean(payload.skipped);
     card.hidden = false;
     if (emptyEl) emptyEl.hidden = true;
-    summaryEl.textContent = formatExportResult(payload);
+    if (badgeEl) {
+      badgeEl.textContent = isSkip ? "导出跳过（文件已存在）" : "导出成功";
+      badgeEl.className = isSkip ? "badge badge-warning" : "badge badge-success";
+    }
+    if (countEl) {
+      const exported = payload.segments_exported ?? "—";
+      const total = payload.segments_total ?? "—";
+      countEl.textContent = `已导出 ${exported} / 共 ${total} 段 · 模式 ${payload.status_mode || "—"}`;
+    }
+    if (skipEl) {
+      skipEl.textContent = skippedText ? `跳过统计：${skippedText}` : "跳过统计：无";
+    }
     filesEl.innerHTML = paths.length
-      ? paths.map((p) => `<li class="export-recent">${escapeHtml(p)}</li>`).join("")
-      : "<li>（无新文件路径）</li>";
+      ? paths
+          .map(
+            (p) => `<li class="export-file-row">
+            <span class="export-recent">${escapeHtml(p)}</span>
+            <button type="button" data-copy-path="${escapeHtml(p)}">复制路径</button>
+          </li>`
+          )
+          .join("")
+      : '<li class="export-file-row meta">（无新文件路径）</li>';
+    if (metaEl) {
+      metaEl.textContent = [
+        payload.project_id ? `项目 ${payload.project_id}` : null,
+        payload.source ? `来源 ${payload.source}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    if (filesEl.dataset.copyBound !== "1") {
+      filesEl.dataset.copyBound = "1";
+      filesEl.addEventListener("click", async (ev) => {
+        const btn = ev.target.closest("button[data-copy-path]");
+        if (!btn) return;
+        const path = btn.dataset.copyPath || "";
+        try {
+          await navigator.clipboard.writeText(path);
+          log(`已复制路径：${path}`);
+        } catch {
+          log(`复制失败，请手动复制：${path}`);
+        }
+      });
+    }
   }
 
   async function bindExportPage(projectId) {

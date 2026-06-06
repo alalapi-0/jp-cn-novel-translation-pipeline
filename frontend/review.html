@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>对照审核 · 翻译工作台</title>
+    <title>对照审核 · 轻小说翻译 Workbench</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
-  <body>
+  <body class="page-review">
     <div class="banner" id="mode-banner">加载配置…</div>
     <header>
-      <h1>Side-by-side Translation Review</h1>
-      <nav>
+      <h1>对照审核</h1>
+      <nav class="site-nav">
         <a href="/index.html">项目首页</a>
         <a href="/issues.html">质量 Issue</a>
         <a href="/review.html">对照审核</a>
@@ -19,8 +19,7 @@
       </nav>
     </header>
     <main>
-      <div class="card">
-        <h2>审核控制台</h2>
+      <div class="card review-toolbar">
         <p class="meta">
           当前项目：<strong id="active-project-label">—</strong>
         </p>
@@ -45,6 +44,7 @@
         <pre id="status-log"></pre>
       </div>
       <div id="review-root"></div>
+      <div id="review-mobile-actions" class="review-mobile-bar" hidden></div>
     </main>
     <script src="/assets/config.js"></script>
     <script src="/assets/app.js"></script>
