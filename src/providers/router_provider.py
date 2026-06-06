@@ -1,4 +1,4 @@
-"""OpenRouter provider — legacy adapter delegating to model-router openai_compatible."""
+"""Bridge model-router into legacy provider.generate() interface."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from .types import GenerateOptions, Message, ModelResult
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _MODEL_ROUTER_SRC = _REPO_ROOT / "model-router" / "src"
-DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
 
 
 def _ensure_model_router_path() -> None:
@@ -23,66 +22,54 @@ def _ensure_model_router_path() -> None:
         sys.path.insert(0, path)
 
 
-class OpenRouterProvider:
-    provider_id = "openrouter"
-    model_name: str
+class RouterProvider:
+    """Real-network provider that delegates to modelRouter.chat()."""
+
+    provider_id = "model_router"
 
     def __init__(
         self,
         *,
         cost_guard: CostGuard | None = None,
+        profile: str | None = None,
         model_name: str | None = None,
-        api_key: str | None = None,
-        timeout_sec: int = 600,
+        provider: str | None = None,
+        timeout_sec: int | None = None,
         max_tokens: int | None = None,
-        temperature: float = 0.3,
+        temperature: float | None = None,
     ) -> None:
         _ensure_model_router_path()
-        from model_router.providers.openaiCompatible import OpenAICompatibleProvider  # noqa: WPS433
+        from model_router import ChatOptions, chat  # noqa: WPS433
 
+        self._chat = chat
+        self._ChatOptions = ChatOptions
         self.cost_guard = cost_guard
-        self.model_name = model_name or os.environ.get("DRAFT_MODEL", DEFAULT_MODEL)
-        key_env = "OPENROUTER_API_KEY"
-        if api_key:
-            os.environ.setdefault(key_env, api_key.strip())
-        elif not os.environ.get(key_env, "").strip():
-            raise RuntimeError(
-                "OPENROUTER_API_KEY is not set; configure locally in .env (never commit)"
-            )
-        self._inner = OpenAICompatibleProvider(
-            provider_id=self.provider_id,
-            base_url="https://openrouter.ai/api/v1",
-            api_key_env=key_env,
-            default_headers={
-                "HTTP-Referer": "https://github.com/light-novel-pipeline",
-                "X-Title": "light_novel controlled draft",
-            },
-        )
+        self.profile = profile or os.environ.get("MODEL_ROUTER_DEFAULT_PROFILE") or "draft_translation"
+        self.model_name = model_name or os.environ.get("DRAFT_MODEL", "")
+        self.provider_override = provider
         self.timeout_sec = timeout_sec
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.network_calls = 0
 
     def generate(self, messages: list[Message], options: GenerateOptions | None = None) -> ModelResult:
-        from model_router import ChatMessage  # noqa: WPS433
-
         options = options or GenerateOptions()
         est_tokens = 0
         if self.cost_guard is not None:
             est_tokens, _ = self.cost_guard.check_before_call(messages)
 
-        chat_messages = [ChatMessage(role=m.role, content=m.content) for m in messages]
-        try:
-            result = self._inner.chat(
-                chat_messages,
-                model=self.model_name,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                stream=False,
-                timeout_sec=self.timeout_sec,
-            )
-        except Exception as exc:
-            raise RuntimeError(str(exc)) from exc
+        profile = self._resolve_profile(options)
+        chat_opts = self._ChatOptions(
+            profile=profile,
+            model=self.model_name or None,
+            provider=self.provider_override,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            timeout_sec=self.timeout_sec,
+        )
+
+        payload = [{"role": m.role, "content": m.content} for m in messages]
+        result = self._chat(payload, chat_opts)
         self.network_calls += 1
 
         usage = result.usage.to_dict()
@@ -108,6 +95,14 @@ class OpenRouterProvider:
         model_result.mark_finished("ok")
         self._write_model_run(model_result, options)
         return model_result
+
+    def _resolve_profile(self, options: GenerateOptions) -> str:
+        stage = (options.pipeline_stage or "").strip().lower()
+        if stage in {"refinement", "refine", "stage_c"}:
+            return "refinement"
+        if stage in {"draft_translation", "translation", "draft"}:
+            return "draft_translation"
+        return self.profile
 
     def _write_model_run(self, result: ModelResult, options: GenerateOptions) -> None:
         log_dir = (

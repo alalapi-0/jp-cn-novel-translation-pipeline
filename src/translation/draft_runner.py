@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -13,7 +14,6 @@ from uuid import uuid4
 
 from providers.controlled_run import ControlledRunConfig, ControlledRunManager
 from providers.cost_guard import CostGuard, CostGuardConfig, CostGuardError
-from providers.openrouter_provider import OpenRouterProvider
 from providers.registry import ProviderMode, get_provider
 from providers.types import GenerateOptions
 from translation.chapter_parser import ParsedChapter, Segment, list_chapter_files, parse_chapter_file
@@ -271,14 +271,13 @@ def run_draft_stage(
         model_name = getattr(provider, "model_name", "unknown")
     else:
         mode = ProviderMode.FAKE if not guard.allow_real_network() else ProviderMode.REAL
-        if mode == ProviderMode.REAL:
-            provider = OpenRouterProvider(cost_guard=guard)
-            provider_mode = "real/openrouter"
-            model_name = provider.model_name
-        else:
-            provider = get_provider(ProviderMode.FAKE, cost_guard=guard)
+        provider = get_provider(mode, cost_guard=guard)
+        if mode == ProviderMode.FAKE:
             provider_mode = "fake"
             model_name = provider.model_name
+        else:
+            provider_mode = "real/model_router"
+            model_name = provider.model_name or os.environ.get("DRAFT_MODEL", "")
 
     chapter_paths = list_chapter_files(input_dir, limit_chapters, offset=chapter_offset)
     if not chapter_paths:

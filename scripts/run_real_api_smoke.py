@@ -83,6 +83,8 @@ def base_report(*, mode: str, detected: list[str], created_at: str) -> dict:
         "detected_providers": detected,
         "tested_provider": None,
         "success": False,
+        "transport_success": False,
+        "content_success": False,
         "error_summary": None,
         "result_summary": None,
         "created_at": created_at,
@@ -108,15 +110,21 @@ def run_dry_run(report: dict, *, max_cost_usd: float, max_tokens: int) -> dict:
         [Message(**message) for message in SMOKE_MESSAGES],
         GenerateOptions(pipeline_stage="real_api_smoke", input_reference="agent_foundation"),
     )
+    output = (result.raw_output or "").strip()
+    content_ok = bool(output)
     report.update(
         {
             "tested_provider": provider.provider_id,
-            "success": True,
+            "transport_success": True,
+            "content_success": content_ok,
+            "success": content_ok,
+            "error_summary": None if content_ok else "empty_content",
             "result_summary": {
                 "dry_run": True,
                 "estimated_tokens": result.estimated_tokens,
                 "cost_estimate_usd": result.cost_estimate_usd,
                 "network_calls": provider.network_calls,
+                "output_chars": len(output),
             },
         }
     )
@@ -148,17 +156,30 @@ def run_openrouter_real(report: dict, *, max_cost_usd: float, max_tokens: int, t
         [Message(**message) for message in SMOKE_MESSAGES],
         GenerateOptions(pipeline_stage="real_api_smoke", input_reference="agent_foundation"),
     )
+    output = (result.raw_output or "").strip()
+    has_content = bool(output)
+    smoke_ok = "smoke_ok" in output.lower() if has_content else False
+    success = has_content and smoke_ok
+    error_summary = None
+    if not has_content:
+        error_summary = "empty_content"
+    elif not smoke_ok:
+        error_summary = "smoke_token_missing"
     report.update(
         {
             "tested_provider": provider.provider_id,
-            "success": True,
+            "transport_success": True,
+            "content_success": success,
+            "success": success,
+            "error_summary": error_summary,
             "result_summary": {
                 "model_name": result.model_name,
                 "usage": result.usage,
                 "cost_estimate_usd": result.cost_estimate_usd,
                 "latency_ms": result.latency_ms,
-                "output_chars": len(result.raw_output or ""),
-                "output_preview": redact_text((result.raw_output or "")[:80]),
+                "output_chars": len(output),
+                "output_preview": redact_text(output[:80]),
+                "smoke_ok_present": smoke_ok,
             },
         }
     )

@@ -142,11 +142,11 @@ def run_refine_pilot(
         provider_mode = "custom"
         model_name = getattr(provider, "model_name", "unknown")
     elif allow_real:
-        from providers.openrouter_provider import OpenRouterProvider
+        from providers.router_provider import RouterProvider
 
         model_name = os.environ.get("REFINE_MODEL", "x-ai/grok-4.3")
-        provider = OpenRouterProvider(cost_guard=guard, model_name=model_name)
-        provider_mode = "real/openrouter"
+        provider = RouterProvider(cost_guard=guard, profile="refinement", model_name=model_name)
+        provider_mode = "real/model_router"
     else:
         provider = DryRunProvider(cost_guard=guard)
         provider_mode = "dry_run"

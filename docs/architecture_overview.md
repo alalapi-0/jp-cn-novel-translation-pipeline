@@ -13,6 +13,16 @@
 5. Checkpoint、LLM Response Cache、Translation Memory 分别解决断点、重复请求和译法复用，不得混用。
 6. Exporter 是最终阅读文件唯一生成入口，不调用模型，不修改原文。
 
+## Round 57 实际落地范围
+
+| 层/能力 | 当前实现 | 后续扩展 |
+|---|---|---|
+| Workbench API | 多项目清单、审核状态、生成/导出端点、错误码映射 | 完整任务编排、权限与协作模型 |
+| 生成链路 | dry-run 与真实 API 小样本；请求幂等 + 持久化 generation job 状态 | 后台 worker、队列调度、可中断恢复 |
+| 审核导出 | 导出前合并 manifest 与 review_state，默认仅导出 approved | 复杂审核策略、发布前 Gate 与签审 |
+| 前端页面 | 首页/审核/Issue/导出的 MVP，支持状态提示和基础轮询恢复 | 统一状态中心、批量操作、可视化报表 |
+| 测试与门控 | Python 单测、Playwright UI 测试、agent_gate | 全链路回归矩阵、并发稳定性与压测 |
+
 ## User Interface Layer
 
 ### 职责

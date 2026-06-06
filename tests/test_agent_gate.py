@@ -69,3 +69,20 @@ def test_main_json_exit_zero_on_clean_repo(gate):
     # main prints JSON; re-run checks for consistency
     results = gate.run_all_checks(strict=False)
     assert gate.aggregate_exit_code(results) == code
+
+
+def test_vector_tooling_no_none_module_dataclass_error(
+    gate,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    index_path = tmp_path / "index.json"
+    index_path.write_text(
+        '{"index_metadata":{"schema_version":"1.0.0","backend":"json_mock"}, "vectors":[]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "DEFAULT_VECTOR_INDEX", index_path)
+    results = gate.check_vector_store_tooling()
+    assert results
+    messages = [r.message for r in results]
+    assert not any("__dict__" in msg and "NoneType" in msg for msg in messages)

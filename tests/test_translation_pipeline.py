@@ -39,7 +39,7 @@ def test_registry_real_returns_openrouter(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key-not-real")
     guard = CostGuard(CostGuardConfig.from_env())
     provider = get_provider(ProviderMode.REAL, cost_guard=guard)
-    assert provider.provider_id == "openrouter"
+    assert provider.provider_id == "model_router"
 
 
 def test_run_draft_stage_a_fake(tmp_path, monkeypatch):

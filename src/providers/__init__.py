@@ -12,7 +12,7 @@ __all__ = [
     "CostGuardError",
     "DryRunProvider",
     "FakeProvider",
-    "OpenRouterProvider",
+    "RouterProvider",
     "GenerateOptions",
     "Message",
     "ModelResult",
@@ -28,6 +28,7 @@ _LAZY = {
     "CostGuardError": (".cost_guard", "CostGuardError"),
     "DryRunProvider": (".dry_run_provider", "DryRunProvider"),
     "FakeProvider": (".fake_provider", "FakeProvider"),
+    "RouterProvider": (".router_provider", "RouterProvider"),
     "OpenRouterProvider": (".openrouter_provider", "OpenRouterProvider"),
     "GenerateOptions": (".types", "GenerateOptions"),
     "Message": (".types", "Message"),
@@ -55,5 +56,6 @@ if TYPE_CHECKING:
     from .dry_run_provider import DryRunProvider
     from .fake_provider import FakeProvider
     from .openrouter_provider import OpenRouterProvider
+    from .router_provider import RouterProvider
     from .registry import ProviderMode, get_provider
     from .types import GenerateOptions, Message, ModelResult

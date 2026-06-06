@@ -1,0 +1,107 @@
+# Default profile for modelRouter.chat(...) when options.profile is omitted.
+default_profile: coding
+
+# Pipeline-oriented profiles
+profiles:
+  coding:
+    provider: openrouter
+    model: deepseek/deepseek-v4-pro
+    temperature: 0.3
+    max_tokens: null
+    fallback:
+      - provider: deepseek
+        model: deepseek-chat
+      - provider: openai
+        model: gpt-4o-mini
+
+  fast:
+    provider: openrouter
+    model: deepseek/deepseek-v4-flash
+    temperature: 0.2
+    fallback:
+      - provider: qwen
+        model: qwen-turbo
+      - provider: gemini
+        model: gemini-2.0-flash
+
+  reasoning:
+    provider: openrouter
+    model: google/gemini-2.5-pro-preview
+    temperature: 0.4
+    fallback:
+      - provider: anthropic
+        model: claude-sonnet-4-20250514
+      - provider: openai
+        model: o3-mini
+
+  draft_translation:
+    provider: openrouter
+    model: deepseek/deepseek-v4-pro
+    temperature: 0.3
+    fallback:
+      - provider: deepseek
+        model: deepseek-chat
+
+  refinement:
+    provider: openrouter
+    model: x-ai/grok-4.3
+    temperature: 0.3
+    fallback:
+      - provider: openrouter
+        model: google/gemini-2.5-pro-preview
+
+# Provider registry — keys only via environment variables (see .env.example)
+providers:
+  openrouter:
+    type: openai_compatible
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    timeout_sec: 600
+    max_retries: 2
+    default_headers:
+      HTTP-Referer: https://github.com/light-novel-pipeline
+      X-Title: light_novel model router
+
+  openai:
+    type: openai_compatible
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    timeout_sec: 120
+    max_retries: 1
+
+  deepseek:
+    type: openai_compatible
+    base_url: https://api.deepseek.com/v1
+    api_key_env: DEEPSEEK_API_KEY
+    timeout_sec: 600
+    max_retries: 1
+
+  qwen:
+    type: openai_compatible
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    api_key_env: DASHSCOPE_API_KEY
+    timeout_sec: 600
+    max_retries: 1
+
+  # Example domestic relay / proxy — set base_url to your vendor endpoint
+  domestic_relay:
+    type: openai_compatible
+    base_url: https://your-relay.example.com/v1
+    api_key_env: DOMESTIC_RELAY_API_KEY
+    timeout_sec: 600
+    max_retries: 1
+
+  anthropic:
+    type: anthropic
+    base_url: https://api.anthropic.com/v1
+    api_key_env: ANTHROPIC_API_KEY
+    timeout_sec: 600
+    max_retries: 1
+    api_version: "2023-06-01"
+
+  gemini:
+    type: gemini
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    api_key_env: GOOGLE_API_KEY
+    timeout_sec: 600
+    max_retries: 1

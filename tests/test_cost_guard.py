@@ -86,4 +86,4 @@ def test_real_api_enabled_when_env_set(monkeypatch):
     guard = CostGuard(CostGuardConfig.from_env())
     assert guard.allow_real_network() is True
     provider = get_provider(ProviderMode.REAL, cost_guard=guard)
-    assert provider.provider_id == "openrouter"
+    assert provider.provider_id == "model_router"

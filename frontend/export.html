@@ -30,6 +30,14 @@
           <input id="export-overwrite" type="checkbox" checked />
           覆盖已有导出文件
         </label>
+        <label>
+          导出模式
+          <select id="export-status-mode">
+            <option value="approved" selected>approved（默认，仅已通过）</option>
+            <option value="draft">draft（含 pending/rejected，需确认）</option>
+          </select>
+        </label>
+        <p class="meta">正式导出默认仅包含 approved 段落；选择 draft 时会二次确认并显示风险警示。</p>
         <div class="actions">
           <button type="button" class="primary" id="export-manifest-btn">导出当前项目 manifest</button>
           <button type="button" id="export-refresh-btn">刷新状态</button>

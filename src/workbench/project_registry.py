@@ -32,6 +32,10 @@ class ManifestWriteInProgressError(RuntimeError):
     """Raised when another request is already writing the same manifest."""
 
 
+class UnsafeManifestPathError(RuntimeError):
+    """Raised when project manifest path is outside workspace/manifests."""
+
+
 def _project_write_lock(project_id: str) -> threading.Lock:
     with _project_locks_guard:
         lock = _project_locks.get(project_id)
@@ -92,6 +96,24 @@ def _load_json(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"manifest must be a JSON object: {path}")
     return data
+
+
+def _path_within(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _safe_manifest_path(repo_root: Path, manifest: ProjectManifest) -> Path:
+    root = manifests_dir(repo_root)
+    candidate = (manifest.path or (root / f"{manifest.project_id}.json")).resolve()
+    if not _path_within(candidate, root):
+        raise UnsafeManifestPathError(f"unsafe manifest path for {manifest.project_id}: {candidate}")
+    if candidate.suffix != ".json":
+        raise UnsafeManifestPathError(f"refuse non-json manifest path: {candidate}")
+    return candidate
 
 
 def parse_project_manifest(data: dict[str, Any], *, path: Path | None = None) -> ProjectManifest:
@@ -317,6 +339,98 @@ def update_project_segments(
         return save_project_manifest(repo_root, data)
     finally:
         lock.release()
+
+
+def update_project_status(
+    repo_root: Path,
+    project_id: str,
+    *,
+    status: str,
+) -> ProjectManifest:
+    project_id = validate_project_id(project_id)
+    next_status = str(status or "").strip()
+    if not next_status:
+        raise ValueError("status is required")
+    lock = _project_write_lock(project_id)
+    if not lock.acquire(blocking=False):
+        raise ManifestWriteInProgressError(f"manifest write in progress: {project_id}")
+    try:
+        manifest = get_project_manifest(repo_root, project_id)
+        if manifest is None:
+            raise KeyError(f"unknown project_id: {project_id}")
+        path = _safe_manifest_path(repo_root, manifest)
+        data = _load_json(path)
+        data["status"] = next_status
+        return save_project_manifest(repo_root, data)
+    finally:
+        lock.release()
+
+
+def archive_project(repo_root: Path, project_id: str) -> ProjectManifest:
+    return update_project_status(repo_root, project_id, status="archived")
+
+
+def retry_project(repo_root: Path, project_id: str) -> ProjectManifest:
+    from workbench.generation_jobs import clear_project_generation_job
+
+    manifest = update_project_status(repo_root, project_id, status="draft_pending")
+    clear_project_generation_job(repo_root, project_id)
+    return manifest
+
+
+def _pick_next_active_project(repo_root: Path) -> str | None:
+    manifests = list_project_manifests(repo_root, include_test=True, include_history=True)
+    if not manifests:
+        return None
+    return manifests[0].project_id
+
+
+def _write_workbench_state(repo_root: Path, active_project_id: str | None) -> None:
+    state_path = workbench_state_path(repo_root)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "active_project_id": active_project_id,
+        "updated_at": utc_now(),
+    }
+    state_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def delete_test_project(repo_root: Path, project_id: str) -> dict[str, Any]:
+    from workbench.generation_jobs import delete_project_generation_state
+    from workbench.review_state import delete_project_review_state
+
+    project_id = validate_project_id(project_id)
+    if not is_test_project_id(project_id):
+        raise PermissionError("delete is restricted to test projects")
+    lock = _project_write_lock(project_id)
+    if not lock.acquire(blocking=False):
+        raise ManifestWriteInProgressError(f"manifest write in progress: {project_id}")
+    try:
+        manifest = get_project_manifest(repo_root, project_id)
+        if manifest is None:
+            raise KeyError(f"unknown project_id: {project_id}")
+        path = _safe_manifest_path(repo_root, manifest)
+        if not path.is_file():
+            raise FileNotFoundError(f"manifest file missing: {path}")
+        path.unlink()
+    finally:
+        lock.release()
+
+    delete_project_review_state(repo_root, project_id)
+    delete_project_generation_state(repo_root, project_id)
+
+    current_active = get_active_project_id(repo_root)
+    next_active = current_active
+    if current_active == project_id:
+        next_active = _pick_next_active_project(repo_root)
+        _write_workbench_state(repo_root, next_active)
+
+    remaining = list_project_manifests(repo_root, include_test=True, include_history=True)
+    return {
+        "deleted_project_id": project_id,
+        "active_project_id": next_active,
+        "remaining_projects": len(remaining),
+    }
 
 
 def seed_example_manifests(repo_root: Path, *, force: bool = False) -> list[Path]:

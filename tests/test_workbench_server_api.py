@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import threading
+import time
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -18,7 +19,7 @@ from workbench.server import make_handler  # noqa: E402
 
 
 @pytest.fixture()
-def api_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def api_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     examples = REPO_ROOT / "data" / "examples"
     for example in examples.glob("workbench_project.*.example.json"):
         target = tmp_path / "data" / "examples" / example.name
@@ -32,8 +33,20 @@ def api_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    yield f"127.0.0.1:{port}"
+    yield {"base": f"127.0.0.1:{port}", "repo_root": tmp_path}
     server.shutdown()
+
+
+@pytest.fixture()
+def api_server(api_env: dict[str, Path | str]) -> str:
+    return str(api_env["base"])
+
+
+@pytest.fixture()
+def api_repo_root(api_env: dict[str, Path | str]) -> Path:
+    root = api_env["repo_root"]
+    assert isinstance(root, Path)
+    return root
 
 
 def _get(base: str, path: str) -> tuple[int, dict]:
@@ -161,3 +174,360 @@ def test_export_manifest_requires_existing_project(api_server: str) -> None:
     )
     assert code == 400
     assert "unknown project_id" in payload["error"]
+
+
+def test_export_manifest_approved_only_uses_review_state(
+    api_server: str,
+    api_repo_root: Path,
+) -> None:
+    project_id = "pw-export-approved-only"
+    code, _ = _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Export", "language_direction": "JP_TO_CN"},
+    )
+    assert code == 201
+    code, _ = _post(
+        api_server,
+        f"/api/projects/{project_id}/dry-run-generate",
+        {"sample_text": "Alpha line.\n\nBeta line."},
+    )
+    assert code == 200
+    host, port = api_server.split(":")
+    conn = HTTPConnection(host, int(port), timeout=10)
+    patch = json.dumps(
+        {
+            "segments": {
+                "seg-001": {"status": "approved"},
+                "seg-002": {"status": "rejected"},
+            }
+        }
+    ).encode("utf-8")
+    conn.request(
+        "PATCH",
+        f"/api/projects/{project_id}/review-state",
+        body=patch,
+        headers={"Content-Type": "application/json"},
+    )
+    res = conn.getresponse()
+    assert res.status == 200
+    _ = res.read()
+    conn.close()
+
+    code, payload = _post(
+        api_server,
+        "/api/export/run",
+        {"source": "manifest", "project_id": project_id},
+    )
+    assert code == 200
+    assert payload["status_mode"] == "approved"
+    assert payload["segments_total"] == 2
+    assert payload["segments_exported"] == 1
+    assert payload["segments_skipped_status"]["rejected"] == 1
+    translated_path = api_repo_root / payload["translated_path"]
+    text = translated_path.read_text(encoding="utf-8")
+    assert "Alpha line." in text
+    assert "Beta line." not in text
+
+
+def test_export_manifest_draft_requires_confirmation(api_server: str) -> None:
+    project_id = "pw-export-draft-confirm"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Export", "language_direction": "JP_TO_CN"},
+    )
+    code, payload = _post(
+        api_server,
+        "/api/export/run",
+        {"source": "manifest", "project_id": project_id, "status_mode": "draft"},
+    )
+    assert code == 400
+    assert "confirm_draft" in payload["error"]
+
+
+def test_real_api_generation_lock_single_execution(
+    api_server: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import workbench.server as server_mod
+
+    project_id = "pw-lock-realgenerate"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Lock", "language_direction": "JP_TO_CN"},
+    )
+    calls = {"count": 0}
+
+    def fake_generate(*, sample_text: str, language_direction: str, repo_root: Path):  # noqa: ARG001
+        calls["count"] += 1
+        time.sleep(0.25)
+        return (
+            [
+                {
+                    "id": "seg-001",
+                    "segment_id": "seg-001",
+                    "source": sample_text,
+                    "draft": "stub",
+                    "status": "pending",
+                    "generated_by": "real_api",
+                }
+            ],
+            {"provider": "stub", "model": "stub-model", "network_calls": 1},
+        )
+
+    monkeypatch.setattr(server_mod, "generate_segments_real_api", fake_generate)
+    responses: list[tuple[int, dict]] = []
+
+    def _call(req_id: str) -> None:
+        responses.append(
+            _post(
+                api_server,
+                f"/api/projects/{project_id}/real-api-generate",
+                {"sample_text": "lock test", "request_id": req_id},
+            )
+        )
+
+    t1 = threading.Thread(target=_call, args=("req-lock-1",))
+    t2 = threading.Thread(target=_call, args=("req-lock-2",))
+    t1.start()
+    time.sleep(0.05)
+    code, mid_job = _get(api_server, f"/api/projects/{project_id}/generation-job")
+    assert code == 200
+    assert mid_job["generation_job"]["status"] in {"queued", "running"}
+    t2.start()
+    t1.join()
+    t2.join()
+    codes = sorted(code for code, _payload in responses)
+    assert codes == [200, 409]
+    assert calls["count"] == 1
+    conflict_payload = next(payload for code, payload in responses if code == 409)
+    assert conflict_payload["error"] == "generation_in_progress"
+    code, job_payload = _get(api_server, f"/api/projects/{project_id}/generation-job")
+    assert code == 200
+    assert job_payload["generation_job"]["status"] == "succeeded"
+
+
+def test_real_api_generation_idempotent_request_replay(
+    api_server: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import workbench.server as server_mod
+
+    project_id = "pw-idempotent-replay"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Replay", "language_direction": "JP_TO_CN"},
+    )
+    calls = {"count": 0}
+
+    def fake_generate(*, sample_text: str, language_direction: str, repo_root: Path):  # noqa: ARG001
+        calls["count"] += 1
+        return (
+            [
+                {
+                    "id": "seg-001",
+                    "segment_id": "seg-001",
+                    "source": sample_text,
+                    "draft": "stub",
+                    "status": "pending",
+                }
+            ],
+            {"provider": "stub", "model": "stub-model", "network_calls": 1},
+        )
+
+    monkeypatch.setattr(server_mod, "generate_segments_real_api", fake_generate)
+    request_id = "req-idempotent-1"
+    code, first = _post(
+        api_server,
+        f"/api/projects/{project_id}/real-api-generate",
+        {"sample_text": "idempotent", "request_id": request_id},
+    )
+    assert code == 200
+    code, second = _post(
+        api_server,
+        f"/api/projects/{project_id}/real-api-generate",
+        {"sample_text": "idempotent", "request_id": request_id},
+    )
+    assert code == 200
+    assert second["idempotent_replay"] is True
+    assert first["request_id"] == second["request_id"] == request_id
+    assert calls["count"] == 1
+
+
+def test_real_api_generation_maps_provider_errors(
+    api_server: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import workbench.server as server_mod
+
+    project_id = "pw-provider-error-map"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "ErrMap", "language_direction": "JP_TO_CN"},
+    )
+
+    def fake_generate(*, sample_text: str, language_direction: str, repo_root: Path):  # noqa: ARG001
+        raise RuntimeError("[openrouter] HTTP 429: rate limit exceeded")
+
+    monkeypatch.setattr(server_mod, "generate_segments_real_api", fake_generate)
+    code, payload = _post(
+        api_server,
+        f"/api/projects/{project_id}/real-api-generate",
+        {"sample_text": "error", "request_id": "req-error-map"},
+    )
+    assert code == 429
+    assert payload["error_code"] == "rate_limited"
+    assert "hint" in payload
+    code, job_payload = _get(api_server, f"/api/projects/{project_id}/generation-job")
+    assert code == 200
+    assert job_payload["generation_job"]["status"] == "failed"
+    assert job_payload["generation_job"]["error_code"] == "rate_limited"
+
+
+def test_project_lifecycle_archive_and_retry(api_server: str) -> None:
+    project_id = "pw-lifecycle-archive-retry"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Lifecycle", "language_direction": "JP_TO_CN"},
+    )
+    code, archived = _post(
+        api_server,
+        f"/api/projects/{project_id}/lifecycle",
+        {"action": "archive"},
+    )
+    assert code == 200
+    assert archived["project"]["status"] == "archived"
+    code, retried = _post(
+        api_server,
+        f"/api/projects/{project_id}/lifecycle",
+        {"action": "retry"},
+    )
+    assert code == 200
+    assert retried["project"]["status"] == "draft_pending"
+    code, job_payload = _get(api_server, f"/api/projects/{project_id}/generation-job")
+    assert code == 200
+    assert job_payload["generation_job"] is None
+
+
+def test_project_lifecycle_delete_requires_test_and_confirm(
+    api_server: str,
+) -> None:
+    user_project = "lifecycle-user-delete-blocked"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": user_project, "name": "User", "language_direction": "JP_TO_CN"},
+    )
+    code, forbidden = _post(
+        api_server,
+        f"/api/projects/{user_project}/lifecycle",
+        {"action": "delete", "confirm_delete": True, "confirm_phrase": f"DELETE {user_project}"},
+    )
+    assert code == 403
+    assert "restricted to test projects" in forbidden["error"]
+
+    test_project = "pw-lifecycle-delete-ok"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": test_project, "name": "Delete", "language_direction": "JP_TO_CN"},
+    )
+    _post(
+        api_server,
+        f"/api/projects/{test_project}/dry-run-generate",
+        {"sample_text": "cleanup"},
+    )
+    _post(
+        api_server,
+        f"/api/projects/{test_project}/lifecycle",
+        {"action": "retry"},
+    )
+
+    code, missing_confirm = _post(
+        api_server,
+        f"/api/projects/{test_project}/lifecycle",
+        {"action": "delete"},
+    )
+    assert code == 400
+    assert "confirm_delete" in missing_confirm["error"]
+
+    code, wrong_phrase = _post(
+        api_server,
+        f"/api/projects/{test_project}/lifecycle",
+        {"action": "delete", "confirm_delete": True, "confirm_phrase": "DELETE wrong"},
+    )
+    assert code == 400
+    assert "confirm_phrase" in wrong_phrase["error"]
+
+    code, deleted = _post(
+        api_server,
+        f"/api/projects/{test_project}/lifecycle",
+        {
+            "action": "delete",
+            "confirm_delete": True,
+            "confirm_phrase": f"DELETE {test_project}",
+        },
+    )
+    assert code == 200
+    assert deleted["deleted_project_id"] == test_project
+
+    code, payload = _get(api_server, "/api/projects?include_test=true&include_history=true")
+    assert code == 200
+    ids = {p["project_id"] for p in payload["projects"]}
+    assert test_project not in ids
+
+
+def test_project_lifecycle_blocked_when_generation_running(
+    api_server: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import workbench.server as server_mod
+
+    project_id = "pw-lifecycle-running-blocked"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Busy", "language_direction": "JP_TO_CN"},
+    )
+
+    def fake_split(*, sample_text: str, language_direction: str):  # noqa: ARG001
+        time.sleep(0.25)
+        return [
+            {
+                "id": "seg-001",
+                "segment_id": "seg-001",
+                "source": sample_text,
+                "draft": "busy",
+                "status": "pending",
+            }
+        ]
+
+    monkeypatch.setattr(server_mod, "generate_segments_from_sample", fake_split)
+
+    response_holder: list[tuple[int, dict]] = []
+
+    def _generate():
+        response_holder.append(
+            _post(
+                api_server,
+                f"/api/projects/{project_id}/dry-run-generate",
+                {"sample_text": "busy generation", "request_id": "req-busy"},
+            )
+        )
+
+    t = threading.Thread(target=_generate)
+    t.start()
+    time.sleep(0.05)
+    code, blocked = _post(
+        api_server,
+        f"/api/projects/{project_id}/lifecycle",
+        {"action": "archive"},
+    )
+    t.join()
+    assert code == 409
+    assert blocked["error"] == "generation_in_progress"

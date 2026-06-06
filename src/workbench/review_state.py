@@ -79,3 +79,17 @@ def patch_project_review_state(
             issue_map[str(issue_id)] = {**entry, "at": entry.get("at") or utc_now()}
     save_review_state(repo_root, state)
     return get_project_review_state(repo_root, project_id)
+
+
+def delete_project_review_state(repo_root: Path, project_id: str) -> bool:
+    state = load_review_state(repo_root)
+    projects = state.setdefault("projects", {})
+    if not isinstance(projects, dict):
+        state["projects"] = {}
+        save_review_state(repo_root, state)
+        return False
+    existed = str(project_id) in projects
+    if existed:
+        projects.pop(str(project_id), None)
+        save_review_state(repo_root, state)
+    return existed

@@ -51,8 +51,19 @@ test("review page keeps pending until manual approve", async ({ page, request })
   await expect(page.locator(".segment .badge[data-status='pending']").first()).toBeVisible();
 });
 
-test("autopilot query enables auto-approve", async ({ page }) => {
-  await page.goto("/review.html?project=demo-jp-cn&auto_approve=1");
+test("autopilot query enables auto-approve", async ({ page, request }) => {
+  const projectId = `pw-auto-${Date.now()}`;
+  await request.post("/api/projects", {
+    data: {
+      project_id: projectId,
+      name: "AutoApprove",
+      language_direction: "JP_TO_CN",
+    },
+  });
+  await request.post(`/api/projects/${projectId}/dry-run-generate`, {
+    data: { sample_text: "自动通过测试段落" },
+  });
+  await page.goto(`/review.html?project=${projectId}&auto_approve=1`);
   await expect(page.locator("#auto-approve-label")).toHaveText("true");
 });
 

@@ -381,6 +381,7 @@ def check_vector_store_tooling() -> list[CheckResult]:
         if not spec or not spec.loader:
             raise RuntimeError("cannot load vector_db_inspect module")
         mod = importlib.util.module_from_spec(spec)
+        sys.modules["light_novel_vector_db_inspect_gate"] = mod
         spec.loader.exec_module(mod)
         manifest_path = REPO_ROOT / "workspace" / "manifests" / "project_manifest.json"
         try:
@@ -390,6 +391,7 @@ def check_vector_store_tooling() -> list[CheckResult]:
             )
             if wb_spec and wb_spec.loader:
                 wb_mod = importlib.util.module_from_spec(wb_spec)
+                sys.modules["light_novel_workbench_registry_gate"] = wb_mod
                 wb_spec.loader.exec_module(wb_mod)
                 resolved = wb_mod.resolve_active_manifest_path(REPO_ROOT)
                 if resolved and resolved.is_file():

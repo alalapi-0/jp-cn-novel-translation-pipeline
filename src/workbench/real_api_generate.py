@@ -27,7 +27,7 @@ def generate_segments_real_api(
     ready, reason = workbench_real_api_ready()
     if not ready:
         raise ValueError(f"real_api_unavailable: {reason or 'not configured'}")
-    from providers.openrouter_provider import OpenRouterProvider
+    from providers.router_provider import RouterProvider
     from providers.types import GenerateOptions, Message
 
     paragraphs = _split_paragraphs(sample_text)[:MAX_PARAGRAPHS]
@@ -40,8 +40,9 @@ def generate_segments_real_api(
             )
 
     guard = CostGuard(CostGuardConfig.from_env(log_dir=repo_root / ".agent_runtime" / "logs"))
-    provider = OpenRouterProvider(
+    provider = RouterProvider(
         cost_guard=guard,
+        profile="fast",
         max_tokens=512,
         temperature=0.3,
     )

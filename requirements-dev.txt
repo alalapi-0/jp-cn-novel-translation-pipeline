@@ -1,2 +1,3 @@
 # Dev/test dependencies for light_novel workbench & pipeline
 pytest>=8.0,<9
+pyyaml>=6.0,<7

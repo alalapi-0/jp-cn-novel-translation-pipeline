@@ -10,6 +10,11 @@
   let currentIssuesProjectId = "";
   let reviewStateCache = { segments: {}, issues: {} };
   let runtimeApiStatus = null;
+  let quickstartGenerating = false;
+  let quickstartRealApiInFlight = false;
+  let currentGenerationJob = null;
+  let generationPollTimer = null;
+  let generationPollProjectId = "";
 
   function getConfig() {
     const base = window.WORKBENCH_CONFIG || {};
@@ -61,11 +66,20 @@
 
   function formatExportResult(payload) {
     if (!payload || typeof payload !== "object") return String(payload);
+    const skipped = payload.segments_skipped_status || {};
+    const skippedText = Object.keys(skipped).length
+      ? Object.entries(skipped)
+          .map(([key, value]) => `${key}:${value}`)
+          .join(", ")
+      : "";
     const lines = [
       payload.skipped ? "导出跳过（文件已存在）" : "导出成功",
       payload.source ? `source=${payload.source}` : null,
       payload.project_id ? `project_id=${payload.project_id}` : null,
+      payload.status_mode ? `status_mode=${payload.status_mode}` : null,
+      payload.segments_total != null ? `segments_total=${payload.segments_total}` : null,
       payload.segments_exported != null ? `segments_exported=${payload.segments_exported}` : null,
+      skippedText ? `segments_skipped_status=${skippedText}` : null,
       payload.translated_path ? `translated: ${payload.translated_path}` : null,
       payload.bilingual_path ? `bilingual: ${payload.bilingual_path}` : null,
       payload.message ? String(payload.message) : null,
@@ -91,6 +105,11 @@
       }
       return null;
     }
+  }
+
+  function nextRequestId(prefix) {
+    const rand = Math.random().toString(36).slice(2, 10);
+    return `${prefix}-${Date.now()}-${rand}`;
   }
 
   function log(line) {
@@ -251,6 +270,7 @@
 
   async function fetchIssueReport(preferredProjectId) {
     const pid = preferredProjectId || loadActiveProjectId();
+    let apiFailed = false;
     if (pid) {
       try {
         const res = await fetch(
@@ -261,14 +281,17 @@
           payload._source = "api";
           return payload;
         }
+        apiFailed = true;
       } catch (_apiErr) {
+        apiFailed = true;
         /* fallback */
       }
     }
     const res = await fetch("/assets/review-issue-report.json");
     if (!res.ok) throw new Error(`review-issue-report.json ${res.status}`);
     const payload = await res.json();
-    payload._source = "static";
+    payload._source = apiFailed ? "fallback_fixture" : "fixture";
+    payload.project_id = payload.project_id || pid || "";
     return payload;
   }
 
@@ -296,18 +319,28 @@
   }
 
   function setQuickstartGenerating(active) {
+    quickstartGenerating = Boolean(active);
+    const ready = runtimeApiStatus?.workbench_real_api_ready === true;
     for (const id of ["qs-dry-run-btn", "qs-real-api-btn"]) {
       const el = document.getElementById(id);
-      if (el) el.disabled = active;
+      if (!el) continue;
+      if (id === "qs-real-api-btn") {
+        el.disabled = quickstartGenerating || quickstartRealApiInFlight || !ready;
+      } else {
+        el.disabled = quickstartGenerating;
+      }
     }
   }
 
   function formatGenerateError(payload, fallback) {
-    const reason = payload?.error || fallback;
+    const code = payload?.error_code || payload?.error || null;
+    const reason = payload?.message || payload?.error || fallback;
+    const hint = payload?.hint ? `（建议：${payload.hint}）` : "";
     if (payload?.cost_guard) {
       const cg = payload.cost_guard;
       return `${reason}（预算上限 MAX_TEST_COST_USD=${cg.max_test_cost_usd ?? "—"}，预估/已用=${cg.projected_cost ?? cg.spent_usd ?? "—"}）`;
     }
+    if (code) return `${code}: ${reason}${hint}`;
     return String(reason);
   }
 
@@ -327,10 +360,38 @@
     return res.json();
   }
 
-  async function loadWorkbenchContext(preferredProjectId) {
+  async function runProjectLifecycleApi(projectId, action, extra = {}) {
+    const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/lifecycle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || `${action} ${res.status}`);
+    return payload;
+  }
+
+  function applyQuickstartPrefill(project) {
+    if (!project || !document.getElementById("quickstart-form")) return;
+    const projectId = project.id || project.project_id || "";
+    const name = project.name || projectId;
+    const direction = project.direction || project.language_direction || "JP_TO_CN";
+    const idEl = document.getElementById("qs-project-id");
+    const nameEl = document.getElementById("qs-project-name");
+    const dirEl = document.getElementById("qs-direction");
+    if (idEl && !idEl.value.trim()) idEl.value = projectId;
+    if (nameEl && !nameEl.value.trim()) nameEl.value = name;
+    if (dirEl && direction) dirEl.value = direction;
+  }
+
+  async function loadWorkbenchContext(preferredProjectId, options = {}) {
+    const includeHidden = Boolean(options.includeHidden);
     const explicitProjectId = String(preferredProjectId || "").trim();
     try {
-      const registry = await fetchProjectsApi();
+      const registry = await fetchProjectsApi({
+        includeTest: includeHidden,
+        includeHistory: includeHidden,
+      });
       const projects = registry.projects || [];
       const projectIdOf = (p) => p.id || p.project_id;
       const visibleIds = new Set(projects.map(projectIdOf));
@@ -345,9 +406,13 @@
             project_id: explicitProjectId,
             name: explicitProjectId,
           };
+        const mergedProjects = [...projects];
+        if (!mergedProjects.some((p) => projectIdOf(p) === explicitProjectId)) {
+          mergedProjects.push(projectSummary);
+        }
         return {
           source: "api",
-          projects,
+          projects: mergedProjects,
           activeProjectId: explicitProjectId,
           segments: payload.segments || [],
           activeProject: projectSummary,
@@ -387,6 +452,84 @@
         apiError: apiErr.message,
       };
     }
+  }
+
+  async function fetchGenerationJob(projectId) {
+    if (!projectId) return null;
+    const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/generation-job`);
+    if (!res.ok) throw new Error(`generation-job ${res.status}`);
+    const payload = await res.json();
+    return payload.generation_job || null;
+  }
+
+  async function refreshGenerationJob(projectId) {
+    if (!projectId) {
+      currentGenerationJob = null;
+      return null;
+    }
+    try {
+      currentGenerationJob = await fetchGenerationJob(projectId);
+      return currentGenerationJob;
+    } catch {
+      currentGenerationJob = null;
+      return null;
+    }
+  }
+
+  function stopGenerationPolling() {
+    if (generationPollTimer) {
+      window.clearInterval(generationPollTimer);
+      generationPollTimer = null;
+    }
+    generationPollProjectId = "";
+  }
+
+  function startGenerationPolling(projectId) {
+    if (!projectId) return;
+    if (generationPollTimer && generationPollProjectId === projectId) return;
+    stopGenerationPolling();
+    generationPollProjectId = projectId;
+    generationPollTimer = window.setInterval(async () => {
+      const job = await refreshGenerationJob(projectId);
+      const st = String(job?.status || "").toLowerCase();
+      if (st === "queued" || st === "running") return;
+      stopGenerationPolling();
+      if (!job) return;
+      if (st === "succeeded") {
+        try {
+          const includeHidden = Boolean(document.getElementById("project-switcher"));
+          const next = await loadWorkbenchContext(projectId, { includeHidden });
+          workbenchContext = next;
+          await loadReviewStateForProject(projectId);
+          bindReviewPage({ segments: next.segments || [] });
+          if (document.getElementById("project-list")) bindHomePage(next);
+          log(`generation completed: ${projectId}`);
+        } catch (err) {
+          log(`generation refresh failed: ${err.message}`);
+        }
+      } else if (st === "failed") {
+        const reason = job.error_message || job.error_code || "unknown";
+        log(`generation failed: ${reason}`);
+        if (document.getElementById("review-root")) {
+          bindReviewPage({ segments: workbenchContext?.segments || [] });
+        }
+      }
+    }, 2000);
+  }
+
+  function generationJobHint(job) {
+    if (!job) return "尚无生成任务记录。";
+    const req = job.request_id ? `request_id=${job.request_id}` : "request_id=—";
+    if (job.status === "queued" || job.status === "running") {
+      return `生成任务进行中（${job.status}，${req}）。可留在本页等待，或返回首页继续操作。`;
+    }
+    if (job.status === "failed") {
+      return `上次生成失败（${job.error_code || "generation_failed"}）。${job.error_message || "请返回首页重试。"}`;
+    }
+    if (job.status === "succeeded") {
+      return `最近一次生成成功（segments=${job.segments_created || 0}，${req}）。`;
+    }
+    return `最近任务状态：${job.status || "unknown"}（${req}）。`;
   }
 
   function indexIssues(report) {
@@ -442,7 +585,8 @@
       }
       if (hintEl) hintEl.textContent = status.config_hint || "—";
       if (realGenBtn) {
-        realGenBtn.disabled = !status.workbench_real_api_ready;
+        realGenBtn.disabled =
+          !status.workbench_real_api_ready || quickstartGenerating || quickstartRealApiInFlight;
         realGenBtn.title = status.workbench_real_api_ready
           ? `调用 OpenRouter（预算上限 $${status.max_test_cost_usd}）`
           : status.workbench_real_api_block_reason || "真实 API 不可用";
@@ -456,6 +600,7 @@
       if (summary) {
         summary.textContent = `apiMode=${status.api_mode}, has_key=${status.has_api_key}, real_enabled=${status.real_api_tests_enabled}`;
       }
+      setQuickstartGenerating(quickstartGenerating);
     } catch (err) {
       modeEl.textContent = "unavailable";
       log(`api status error: ${err.message}`);
@@ -495,7 +640,14 @@
     return true;
   }
 
-  async function runQuickstartGenerate(projectId, sampleText, mode, resultEl, reviewLink) {
+  async function runQuickstartGenerate(
+    projectId,
+    sampleText,
+    mode,
+    resultEl,
+    reviewLink,
+    requestId = ""
+  ) {
     const endpoint =
       mode === "real_api"
         ? `/api/projects/${encodeURIComponent(projectId)}/real-api-generate`
@@ -505,12 +657,16 @@
       const genRes = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sample_text: sampleText }),
+        body: JSON.stringify({
+          sample_text: sampleText,
+          request_id: requestId || nextRequestId(mode === "real_api" ? "realapi" : "dryrun"),
+        }),
       });
       const genPayload = await genRes.json().catch(() => ({}));
       if (!genRes.ok) {
         throw new Error(formatGenerateError(genPayload, `${mode} generate ${genRes.status}`));
       }
+      currentGenerationJob = genPayload.generation_job || currentGenerationJob;
       saveActiveProjectId(projectId);
       const label = mode === "real_api" ? "真实 API" : "dry-run mock";
       if (resultEl) {
@@ -522,11 +678,19 @@
       }
       workbenchContext = await loadWorkbenchContext(projectId);
       bindHomePage(workbenchContext);
+      if (document.getElementById("api-status-card")) {
+        applyQuickstartPrefill(workbenchContext.activeProject);
+      }
       await bindHiddenProjectsPanel();
       log(`quickstart: ${projectId} ${mode} segments=${genPayload.segments_created}`);
       return genPayload;
     } finally {
       setQuickstartGenerating(false);
+      if (document.getElementById("api-status-card")) {
+        await bindApiStatusPanel();
+      } else {
+        await refreshRuntimeApiStatus();
+      }
     }
   }
 
@@ -534,6 +698,12 @@
     const form = document.getElementById("quickstart-form");
     if (!form || form.dataset.bound === "1") return;
     form.dataset.bound = "1";
+    const params = new URLSearchParams(window.location.search);
+    const queryProjectId = String(params.get("project") || "").trim();
+    if (queryProjectId) {
+      const idEl = document.getElementById("qs-project-id");
+      if (idEl && !idEl.value.trim()) idEl.value = queryProjectId;
+    }
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const projectId = document.getElementById("qs-project-id")?.value.trim();
@@ -549,7 +719,14 @@
       try {
         const ok = await ensureQuickstartProject(projectId, name, direction, resultEl);
         if (!ok) return;
-        await runQuickstartGenerate(projectId, sampleText, "dry_run", resultEl, reviewLink);
+        await runQuickstartGenerate(
+          projectId,
+          sampleText,
+          "dry_run",
+          resultEl,
+          reviewLink,
+          nextRequestId("dryrun")
+        );
       } catch (err) {
         if (resultEl) resultEl.textContent = `失败：${err.message}`;
         log(`quickstart failed: ${err.message}`);
@@ -560,34 +737,48 @@
     if (realBtn && realBtn.dataset.bound !== "1") {
       realBtn.dataset.bound = "1";
       realBtn.addEventListener("click", async () => {
+        if (quickstartRealApiInFlight) return;
+        quickstartRealApiInFlight = true;
+        setQuickstartGenerating(quickstartGenerating);
         const projectId = document.getElementById("qs-project-id")?.value.trim();
         const name = document.getElementById("qs-project-name")?.value.trim() || projectId;
         const direction = document.getElementById("qs-direction")?.value || "JP_TO_CN";
         const sampleText = document.getElementById("qs-sample-text")?.value.trim();
         const resultEl = document.getElementById("quickstart-result");
         const reviewLink = document.getElementById("qs-review-link");
-        if (!projectId || !sampleText) {
-          if (resultEl) resultEl.textContent = "请填写项目 ID 与样本文本。";
-          return;
-        }
-        if (runtimeApiStatus?.workbench_real_api_ready !== true) {
-          if (resultEl) {
-            resultEl.textContent = `真实 API 不可用：${runtimeApiStatus?.workbench_real_api_block_reason || "未配置"}`;
-          }
-          return;
-        }
-        const budget = runtimeApiStatus?.max_test_cost_usd ?? 0;
-        const confirmed = window.confirm(
-          `将调用 OpenRouter 真实翻译（最多 3 段，预算上限 MAX_TEST_COST_USD=${budget}）。继续？`
-        );
-        if (!confirmed) return;
         try {
+          if (!projectId || !sampleText) {
+            if (resultEl) resultEl.textContent = "请填写项目 ID 与样本文本。";
+            return;
+          }
+          const latestStatus = await refreshRuntimeApiStatus();
+          if (latestStatus?.workbench_real_api_ready !== true) {
+            if (resultEl) {
+              resultEl.textContent = `真实 API 不可用：${latestStatus?.workbench_real_api_block_reason || "未配置"}`;
+            }
+            return;
+          }
+          const budget = latestStatus?.max_test_cost_usd ?? 0;
+          const confirmed = window.confirm(
+            `将调用 OpenRouter 真实翻译（最多 3 段，预算上限 MAX_TEST_COST_USD=${budget}）。继续？`
+          );
+          if (!confirmed) return;
           const ok = await ensureQuickstartProject(projectId, name, direction, resultEl);
           if (!ok) return;
-          await runQuickstartGenerate(projectId, sampleText, "real_api", resultEl, reviewLink);
+          await runQuickstartGenerate(
+            projectId,
+            sampleText,
+            "real_api",
+            resultEl,
+            reviewLink,
+            nextRequestId("realapi")
+          );
         } catch (err) {
           if (resultEl) resultEl.textContent = `失败：${err.message}`;
           log(`real-api quickstart failed: ${err.message}`);
+        } finally {
+          quickstartRealApiInFlight = false;
+          setQuickstartGenerating(quickstartGenerating);
         }
       });
     }
@@ -604,6 +795,17 @@
     const totalEl = document.getElementById("issue-total");
     if (statusEl) statusEl.textContent = report.review_status || "—";
     if (totalEl) totalEl.textContent = String(report.summary?.total ?? report.issues.length);
+    const sourceEl = document.getElementById("issue-data-source");
+    if (sourceEl) {
+      const raw = String(report._source || "unknown");
+      sourceEl.textContent =
+        raw === "api" ? "API" : raw === "fallback_fixture" ? "fallback→fixture" : "fixture";
+      sourceEl.className = raw === "api" ? "badge ok" : raw === "fallback_fixture" ? "badge pending" : "badge";
+    }
+    const projectEl = document.getElementById("issue-project-id");
+    if (projectEl) {
+      projectEl.textContent = report.project_id || currentIssuesProjectId || "—";
+    }
 
     const typeSelect = document.getElementById("filter-type");
     if (typeSelect && typeSelect.options.length <= 1) {
@@ -745,18 +947,46 @@
     if (!data.segments || data.segments.length === 0) {
       const pid = workbenchContext?.activeProjectId || "";
       const status = workbenchContext?.activeProject?.status || "unknown";
+      const job = currentGenerationJob;
+      const includeDeleteHint =
+        pid &&
+        (String(workbenchContext?.activeProject?.category || "").toLowerCase() === "test" ||
+          pid.startsWith("pw-") ||
+          pid.startsWith("user-"));
+      if (job && (job.status === "queued" || job.status === "running")) {
+        startGenerationPolling(pid);
+      } else {
+        stopGenerationPolling();
+      }
+      const jobRunning = job && (job.status === "queued" || job.status === "running");
       root.innerHTML = `
         <div class="card empty-review">
           <h2>尚无 segment 可审核</h2>
           <p class="meta">项目「${escapeHtml(pid)}」当前没有译文 segment（状态：${escapeHtml(status)}）。</p>
+          <p class="meta">${escapeHtml(generationJobHint(job))}</p>
           <p class="meta">可能原因：生成失败、尚未生成、或预算/并发导致写入未完成。</p>
           <p>
-            <a href="/index.html">返回 Quickstart 重新生成</a>
+            <a href="/index.html?project=${encodeURIComponent(pid)}">返回 Quickstart 继续生成</a>
             · <a href="/review.html?project=${encodeURIComponent(pid)}">刷新本页</a>
+            ${
+              includeDeleteHint
+                ? ` · <a href="/index.html?project=${encodeURIComponent(pid)}">返回首页重试/删除测试项目</a>`
+                : ""
+            }
           </p>
+          <div class="actions">
+            <button type="button" data-empty-action="retry" ${jobRunning ? "disabled" : ""}>标记可重试（draft_pending）</button>
+            <button type="button" data-empty-action="archive" ${jobRunning ? "disabled" : ""}>归档项目</button>
+            ${
+              includeDeleteHint
+                ? `<button type="button" class="danger" data-empty-action="delete" ${jobRunning ? "disabled" : ""}>删除测试项目</button>`
+                : ""
+            }
+          </div>
         </div>`;
       return;
     }
+    stopGenerationPolling();
 
     root.innerHTML = data.segments
       .map((seg) => {
@@ -814,6 +1044,18 @@
     const pid = p.id || p.project_id;
     const isActive = pid === activeId;
     const cat = p.category || "user";
+    const status = String(p.status || "").toLowerCase();
+    const lifecycleButtons = [
+      status === "archived"
+        ? ""
+        : `<button type="button" data-project-action="archive" data-project-id="${escapeHtml(pid)}">归档</button>`,
+      `<button type="button" data-project-action="retry" data-project-id="${escapeHtml(pid)}">重试（恢复为 draft_pending）</button>`,
+      cat === "test"
+        ? `<button type="button" class="danger" data-project-action="delete" data-project-id="${escapeHtml(pid)}">删除测试项目</button>`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("");
     return `
       <div class="card${isActive ? " card-active" : ""}">
         <h2>${escapeHtml(p.name)} ${categoryBadge(cat)}${isActive ? ' <span class="badge ok">当前</span>' : ""}</h2>
@@ -828,6 +1070,9 @@
               : `<button type="button" class="primary" data-switch-project="${escapeHtml(pid)}">切换为当前项目</button>`
           }
         </p>
+        <div class="actions">
+          ${lifecycleButtons}
+        </div>
       </div>`;
   }
 
@@ -874,26 +1119,82 @@
   }
 
   function setupProjectSwitchHandler(ctx) {
-    const list = document.getElementById("project-list");
-    if (!list || list.dataset.switchBound === "1") return;
-    list.dataset.switchBound = "1";
-    list.addEventListener("click", async (ev) => {
-      const btn = ev.target.closest("button[data-switch-project]");
-      if (!btn) return;
-      const projectId = btn.dataset.switchProject;
-      try {
-        if (ctx.source === "api") {
-          await switchActiveProjectApi(projectId);
+    const containers = [
+      document.getElementById("project-list"),
+      document.getElementById("project-history-list"),
+    ].filter(Boolean);
+    for (const list of containers) {
+      if (list.dataset.switchBound === "1") continue;
+      list.dataset.switchBound = "1";
+      list.addEventListener("click", async (ev) => {
+        const switchBtn = ev.target.closest("button[data-switch-project]");
+        if (switchBtn) {
+          const projectId = switchBtn.dataset.switchProject;
+          try {
+            if (ctx.source === "api") {
+              await switchActiveProjectApi(projectId);
+            }
+            saveActiveProjectId(projectId);
+            const next = await loadWorkbenchContext(projectId);
+            workbenchContext = next;
+            await refreshGenerationJob(projectId);
+            bindHomePage(next);
+            await bindHiddenProjectsPanel();
+            log(`active project → ${projectId}`);
+          } catch (err) {
+            log(`switch failed: ${err.message}`);
+          }
+          return;
         }
-        saveActiveProjectId(projectId);
-        const next = await loadWorkbenchContext(projectId);
-        workbenchContext = next;
-        bindHomePage(next);
-        log(`active project → ${projectId}`);
-      } catch (err) {
-        log(`switch failed: ${err.message}`);
-      }
-    });
+
+        const lifecycleBtn = ev.target.closest("button[data-project-action]");
+        if (!lifecycleBtn) return;
+        const action = lifecycleBtn.dataset.projectAction;
+        const projectId = lifecycleBtn.dataset.projectId;
+        if (!action || !projectId) return;
+        try {
+          let payload;
+          if (action === "archive") {
+            const confirmed = window.confirm(`确认归档项目「${projectId}」？归档后可通过“重试”恢复。`);
+            if (!confirmed) return;
+            payload = await runProjectLifecycleApi(projectId, action);
+          } else if (action === "retry") {
+            payload = await runProjectLifecycleApi(projectId, action);
+          } else if (action === "delete") {
+            const confirmed = window.confirm(
+              `将删除测试项目「${projectId}」。此操作仅删除 workspace/manifests 与状态数据，不删除 runs。继续？`
+            );
+            if (!confirmed) return;
+            const phrase = window.prompt(`请输入 DELETE ${projectId} 以确认删除：`, "");
+            if (phrase == null) return;
+            payload = await runProjectLifecycleApi(projectId, action, {
+              confirm_delete: true,
+              confirm_phrase: phrase,
+            });
+          } else {
+            return;
+          }
+          const preferred = payload.active_project_id || (action === "delete" ? "" : projectId);
+          const next = await loadWorkbenchContext(preferred);
+          workbenchContext = next;
+          await refreshGenerationJob(next.activeProjectId);
+          bindHomePage(next);
+          await bindHiddenProjectsPanel();
+          if (document.getElementById("quickstart-result")) {
+            const msg =
+              action === "delete"
+                ? `已删除测试项目：${projectId}`
+                : action === "archive"
+                  ? `已归档项目：${projectId}`
+                  : `项目已恢复为 draft_pending：${projectId}`;
+            document.getElementById("quickstart-result").textContent = msg;
+          }
+          log(`project lifecycle: ${action} ${projectId}`);
+        } catch (err) {
+          log(`project lifecycle failed: ${err.message}`);
+        }
+      });
+    }
   }
 
   function setupReviewProjectSelector(ctx) {
@@ -903,7 +1204,8 @@
       .map((p) => {
         const pid = p.id || p.project_id;
         const selected = pid === ctx.activeProjectId ? " selected" : "";
-        return `<option value="${escapeHtml(pid)}"${selected}>${escapeHtml(p.name)}</option>`;
+        const cat = p.category && p.category !== "user" ? ` [${p.category}]` : "";
+        return `<option value="${escapeHtml(pid)}"${selected}>${escapeHtml(p.name)}${cat}</option>`;
       })
       .join("");
     if (select.dataset.bound === "1") return;
@@ -915,9 +1217,10 @@
           await switchActiveProjectApi(projectId);
         }
         saveActiveProjectId(projectId);
-        const next = await loadWorkbenchContext(projectId);
+        const next = await loadWorkbenchContext(projectId, { includeHidden: true });
         workbenchContext = next;
         await loadReviewStateForProject(projectId);
+        await refreshGenerationJob(projectId);
         try {
           const report = await fetchIssueReport(projectId);
           issuesBySegment = indexIssues(report);
@@ -937,6 +1240,53 @@
     if (!root || root.dataset.bound === "1") return;
     root.dataset.bound = "1";
     root.addEventListener("click", async (ev) => {
+      const emptyBtn = ev.target.closest("button[data-empty-action]");
+      if (emptyBtn) {
+        const action = emptyBtn.dataset.emptyAction;
+        const activeProjectId = workbenchContext?.activeProjectId || projectId;
+        if (!action || !activeProjectId) return;
+        try {
+          let payload;
+          if (action === "archive") {
+            const confirmed = window.confirm(`确认归档项目「${activeProjectId}」？`);
+            if (!confirmed) return;
+            payload = await runProjectLifecycleApi(activeProjectId, "archive");
+          } else if (action === "retry") {
+            payload = await runProjectLifecycleApi(activeProjectId, "retry");
+          } else if (action === "delete") {
+            const confirmed = window.confirm(
+              `将删除测试项目「${activeProjectId}」。仅删除 workspace 下 manifest 和状态数据，不删除 runs。继续？`
+            );
+            if (!confirmed) return;
+            const phrase = window.prompt(`请输入 DELETE ${activeProjectId} 以确认删除：`, "");
+            if (phrase == null) return;
+            payload = await runProjectLifecycleApi(activeProjectId, "delete", {
+              confirm_delete: true,
+              confirm_phrase: phrase,
+            });
+          } else {
+            return;
+          }
+          const preferred = payload.active_project_id || (action === "delete" ? "" : activeProjectId);
+          const next = await loadWorkbenchContext(preferred, { includeHidden: true });
+          workbenchContext = next;
+          await loadReviewStateForProject(next.activeProjectId);
+          await refreshGenerationJob(next.activeProjectId);
+          try {
+            const report = await fetchIssueReport(next.activeProjectId);
+            issuesBySegment = indexIssues(report);
+          } catch {
+            issuesBySegment = {};
+          }
+          setupReviewProjectSelector(next);
+          bindReviewPage({ segments: next.segments || [] });
+          log(`review empty lifecycle: ${action} ${activeProjectId}`);
+        } catch (err) {
+          log(`review empty lifecycle failed: ${err.message}`);
+        }
+        return;
+      }
+
       const btn = ev.target.closest("button[data-action]");
       if (!btn || !reviewData) return;
       const id = btn.dataset.id;
@@ -958,7 +1308,8 @@
       } else {
         return;
       }
-      await patchReviewState(projectId, { segments: { [id]: entry } });
+      const activeProjectId = workbenchContext?.activeProjectId || projectId;
+      await patchReviewState(activeProjectId, { segments: { [id]: entry } });
       bindReviewPage(reviewData);
     });
   }
@@ -1014,10 +1365,21 @@
       manifestBtn.addEventListener("click", async () => {
         const pid = document.getElementById("export-project-id")?.value.trim();
         const overwrite = document.getElementById("export-overwrite")?.checked !== false;
+        const statusMode = document.getElementById("export-status-mode")?.value || "approved";
         const resultEl = document.getElementById("export-result");
         if (!pid) {
           if (resultEl) resultEl.textContent = "请填写项目 ID";
           return;
+        }
+        let confirmDraft = false;
+        if (statusMode === "draft") {
+          confirmDraft = window.confirm(
+            "Draft 导出会包含 pending/rejected 等未通过内容，仅适合临时对照。确认继续？"
+          );
+          if (!confirmDraft) {
+            if (resultEl) resultEl.textContent = "已取消：draft 导出需要显式确认。";
+            return;
+          }
         }
         try {
           const res = await fetch("/api/export/run", {
@@ -1027,6 +1389,8 @@
               project_id: pid,
               source: "manifest",
               overwrite,
+              status_mode: statusMode,
+              confirm_draft: confirmDraft,
             }),
           });
           const payload = await res.json();
@@ -1127,15 +1491,22 @@
         const report = await fetchIssueReport(preferredProject);
         bindIssuesPage(report);
         setupIssueHandlers(report);
-        const src = report._source === "api" ? "quality-review API" : "static asset";
+        const src =
+          report._source === "api"
+            ? "quality-review API"
+            : report._source === "fallback_fixture"
+              ? "fallback fixture"
+              : "fixture";
         log(`issue report loaded (${report.issues.length} items · ${src})`);
         return;
       }
 
       const params = new URLSearchParams(window.location.search);
       const preferredProject = params.get("project") || "";
-      workbenchContext = await loadWorkbenchContext(preferredProject);
+      const includeHidden = Boolean(document.getElementById("project-switcher"));
+      workbenchContext = await loadWorkbenchContext(preferredProject, { includeHidden });
       await loadReviewStateForProject(workbenchContext.activeProjectId);
+      await refreshGenerationJob(workbenchContext.activeProjectId);
 
       try {
         const report = await fetchIssueReport(workbenchContext.activeProjectId);

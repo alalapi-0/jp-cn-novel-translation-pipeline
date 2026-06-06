@@ -38,6 +38,25 @@ export REAL_API_TESTS_ENABLED=true
 
 `npm run dev:frontend` 启动时也会加载 `.env` 中**未设置**的变量，首页 API 状态卡片会反映 Key 是否可用。
 
+**Model Router（统一 LLM 入口）：**
+
+所有真实模型调用应通过 `model-router` 层，业务代码不直接依赖具体供应商 SDK。详见 [`model-router/README.md`](model-router/README.md)。
+
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path("model-router/src").resolve()))
+from model_router import chat, ChatOptions
+
+result = chat(
+    [{"role": "user", "content": "Reply exactly: smoke_ok"}],
+    ChatOptions(profile="fast", max_tokens=32),
+)
+# result.content / result.provider / result.model / result.usage
+```
+
+配置：`model-router/config/models.yaml` + `.env` 中的 `MODEL_ROUTER_DEFAULT_PROFILE` 与各 `*_API_KEY`。Pipeline 的 `get_provider(ProviderMode.REAL)` 已桥接到 Router。
+
 **工具链门控与 UI 测试：**
 
 ```bash
@@ -50,6 +69,17 @@ npm run test:ui          # Playwright（自动起 5174 dev server）
 ## 当前阶段
 
 当前阶段以仓库治理、架构规划、工具链与 Workbench MVP 为主。**治理轮**不启动大批量真实小说翻译、不建立生产级向量库；但已提供 Workbench 静态前端、dry-run 与**授权范围内**的真实 API smoke / 小样本生成（需 `OPENROUTER_API_KEY` + `REAL_API_TESTS_ENABLED=true`）。
+
+## Round 57 功能状态（当前可用 vs 未来）
+
+| 能力 | 当前可用（Round 57） | 未来功能（路线） |
+|---|---|---|
+| Quickstart 生成 | 支持 dry-run 与真实 API 小样本；带请求幂等与生成任务状态查询 | 批量章节任务编排、后台队列与重试策略 UI |
+| 审核状态 | `review_state` 持久化（approved/rejected/pending） | 更完整的人审流转（指派、批注、审计轨迹） |
+| 导出 | 支持 `approved`（默认）/`draft` 模式，导出前合并审核状态 | 多格式导出、发布前质量门禁与签出流程 |
+| 质量 Issue | 支持 quality-review API + fixture fallback，页面显示数据源 | 多轮对比、自动修复建议回写和闭环追踪 |
+| 真实 API 错误处理 | 返回脱敏错误码与可行动提示（鉴权/额度/限流/超时/网络/参数） | 细粒度 provider 诊断面板与错误统计看板 |
+| 测试体系 | Python 单测 + Playwright UI smoke；重点场景已做隔离 | 全链路稳定回归、并行/分片执行与 flaky 追踪 |
 
 ## 支持方向
 

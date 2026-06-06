@@ -32,7 +32,7 @@ def test_openrouter_incomplete_read_becomes_runtime_error(monkeypatch):
     mock_resp.read.side_effect = IncompleteRead(b"partial", 8000)
 
     with patch("urllib.request.urlopen", return_value=mock_resp):
-        with pytest.raises(RuntimeError, match="OpenRouter network error"):
+        with pytest.raises(RuntimeError, match="\\[openrouter\\]"):
             provider.generate(messages, GenerateOptions())
 
 

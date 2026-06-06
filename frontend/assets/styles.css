@@ -264,7 +264,8 @@ button:disabled {
 .stack-form input,
 .stack-form textarea,
 .stack-form select,
-#export-project-id {
+#export-project-id,
+#export-status-mode {
   background: #243044;
   color: var(--text);
   border: 1px solid var(--border);

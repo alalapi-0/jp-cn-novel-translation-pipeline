@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import traceback
+import uuid
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -13,16 +14,31 @@ from urllib.parse import ParseResult, parse_qs, urlparse
 from providers.cost_guard import CostGuardError
 from workbench.api_status import build_api_status
 from workbench.dry_run_generate import generate_segments_from_sample
+from workbench.error_mapper import map_provider_error
 from workbench.real_api_generate import generate_segments_real_api
 from workbench.export_service import export_status, run_export
+from workbench.generation_jobs import (
+    ACTIVE_JOB_STATUSES,
+    GenerationInProgressError,
+    find_generation_job,
+    get_project_generation_job,
+    mark_generation_failed,
+    mark_generation_running,
+    mark_generation_succeeded,
+    prepare_generation_job,
+    project_generation_lock,
+)
 from workbench.project_id import InvalidProjectIdError, is_history_project_id, is_test_project_id, validate_project_id
 from workbench.project_registry import (
     ManifestWriteInProgressError,
+    archive_project,
     create_project_manifest,
+    delete_test_project,
     get_active_project_id,
     get_project_manifest,
     list_project_manifests,
     refresh_example_manifests,
+    retry_project,
     set_active_project_id,
     update_project_segments,
 )
@@ -92,6 +108,34 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
 
         def _parse_project_id(self, raw: str) -> str:
             return validate_project_id(raw.strip("/"))
+
+        @staticmethod
+        def _parse_request_id(raw: Any) -> str:
+            request_id = str(raw or "").strip()
+            if not request_id:
+                request_id = uuid.uuid4().hex
+            if len(request_id) > 96:
+                raise ValueError("request_id too long (max 96 chars)")
+            if any(ch.isspace() for ch in request_id):
+                raise ValueError("request_id must not contain whitespace")
+            return request_id
+
+        def _send_generation_conflict(
+            self,
+            *,
+            project_id: str,
+            request_id: str,
+            current_job: dict[str, Any] | None = None,
+        ) -> None:
+            self._send_json(
+                HTTPStatus.CONFLICT,
+                {
+                    "error": "generation_in_progress",
+                    "project_id": project_id,
+                    "request_id": request_id,
+                    "generation_job": current_job or get_project_generation_job(repo_root, project_id),
+                },
+            )
 
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
@@ -222,6 +266,22 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             prefix = "/api/projects/"
             if path.startswith(prefix):
                 rest = path[len(prefix) :]
+                if rest.endswith("/generation-job"):
+                    project_id = self._parse_project_id(rest[: -len("/generation-job")])
+                    if get_project_manifest(repo_root, project_id) is None:
+                        self._send_json(
+                            HTTPStatus.NOT_FOUND,
+                            {"error": f"unknown project_id: {project_id}"},
+                        )
+                        return
+                    self._send_json(
+                        HTTPStatus.OK,
+                        {
+                            "project_id": project_id,
+                            "generation_job": get_project_generation_job(repo_root, project_id),
+                        },
+                    )
+                    return
                 if rest.endswith("/review-state"):
                     project_id = self._parse_project_id(rest[: -len("/review-state")])
                     if get_project_manifest(repo_root, project_id) is None:
@@ -311,6 +371,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     return
                 try:
                     project_id: str | None = None
+                    status_mode = str(body.get("status_mode") or body.get("mode") or "approved").strip().lower()
                     if source == "manifest":
                         project_id = validate_project_id(str(body.get("project_id") or ""))
                     result = run_export(
@@ -319,6 +380,8 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         project_id=project_id,
                         require_refined=bool(body.get("require_refined")),
                         overwrite=body.get("overwrite", True) is not False,
+                        status_mode=status_mode,
+                        confirm_draft=body.get("confirm_draft") is True,
                     )
                     self._send_json(HTTPStatus.OK, result)
                 except InvalidProjectIdError as exc:
@@ -328,45 +391,90 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 return
 
             prefix = "/api/projects/"
-            if path.startswith(prefix) and path.endswith("/dry-run-generate"):
-                raw_id = path[len(prefix) : -len("/dry-run-generate")].strip("/")
+            if path.startswith(prefix) and path.endswith("/lifecycle"):
+                raw_id = path[len(prefix) : -len("/lifecycle")].strip("/")
                 project_id = validate_project_id(raw_id)
                 manifest = get_project_manifest(repo_root, project_id)
                 if manifest is None:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": f"unknown project_id: {project_id}"})
                     return
-                sample_text = str(body.get("sample_text") or body.get("text") or "").strip()
-                if not sample_text:
-                    self._bad_request("sample_text is required")
+                action = str(body.get("action") or "").strip().lower()
+                if action not in {"archive", "retry", "delete"}:
+                    self._bad_request("action must be one of: archive, retry, delete")
                     return
-                segments = generate_segments_from_sample(
-                    sample_text=sample_text,
-                    language_direction=manifest.language_direction,
-                )
+                current_job = get_project_generation_job(repo_root, project_id)
+                current_status = str((current_job or {}).get("status") or "").strip().lower()
+                if current_status in ACTIVE_JOB_STATUSES:
+                    self._send_json(
+                        HTTPStatus.CONFLICT,
+                        {
+                            "error": "generation_in_progress",
+                            "action": action,
+                            "project_id": project_id,
+                            "generation_job": current_job,
+                        },
+                    )
+                    return
                 try:
-                    updated = update_project_segments(
-                        repo_root,
-                        project_id,
-                        segments,
-                        status="review_pending",
+                    if action == "archive":
+                        updated = archive_project(repo_root, project_id)
+                        self._send_json(
+                            HTTPStatus.OK,
+                            {
+                                "action": action,
+                                "project_id": project_id,
+                                "project": updated.to_summary(),
+                                "generation_job": current_job,
+                            },
+                        )
+                        return
+                    if action == "retry":
+                        updated = retry_project(repo_root, project_id)
+                        self._send_json(
+                            HTTPStatus.OK,
+                            {
+                                "action": action,
+                                "project_id": project_id,
+                                "project": updated.to_summary(),
+                                "generation_job": get_project_generation_job(repo_root, project_id),
+                            },
+                        )
+                        return
+
+                    # delete
+                    if body.get("confirm_delete") is not True:
+                        self._bad_request("delete requires confirm_delete=true")
+                        return
+                    expected_phrase = f"DELETE {project_id}"
+                    confirm_phrase = str(body.get("confirm_phrase") or "")
+                    if confirm_phrase != expected_phrase:
+                        self._bad_request(f"delete requires confirm_phrase exactly '{expected_phrase}'")
+                        return
+                    result = delete_test_project(repo_root, project_id)
+                    self._send_json(
+                        HTTPStatus.OK,
+                        {
+                            "action": action,
+                            "project_id": project_id,
+                            **result,
+                        },
                     )
                 except ManifestWriteInProgressError as exc:
                     self._manifest_busy(exc)
-                    return
-                self._send_json(
-                    HTTPStatus.OK,
-                    {
-                        "project_id": project_id,
-                        "segments_created": len(segments),
-                        "generation": "dry_run",
-                        "project": updated.to_summary(),
-                        "review_url": f"/review.html?project={project_id}",
-                    },
-                )
+                except PermissionError as exc:
+                    self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+                except KeyError as exc:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": str(exc)})
+                except (ValueError, FileNotFoundError) as exc:
+                    self._bad_request(str(exc))
                 return
 
-            if path.startswith(prefix) and path.endswith("/real-api-generate"):
-                raw_id = path[len(prefix) : -len("/real-api-generate")].strip("/")
+            if path.startswith(prefix) and (
+                path.endswith("/dry-run-generate") or path.endswith("/real-api-generate")
+            ):
+                is_real_api = path.endswith("/real-api-generate")
+                suffix = "/real-api-generate" if is_real_api else "/dry-run-generate"
+                raw_id = path[len(prefix) : -len(suffix)].strip("/")
                 project_id = validate_project_id(raw_id)
                 manifest = get_project_manifest(repo_root, project_id)
                 if manifest is None:
@@ -377,39 +485,169 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._bad_request("sample_text is required")
                     return
                 try:
-                    segments, gen_meta = generate_segments_real_api(
-                        sample_text=sample_text,
-                        language_direction=manifest.language_direction,
-                        repo_root=repo_root,
-                    )
+                    request_id = self._parse_request_id(body.get("request_id"))
                 except ValueError as exc:
                     self._bad_request(str(exc))
                     return
-                except CostGuardError as exc:
-                    self._cost_guard_error(exc)
+
+                replay = find_generation_job(repo_root, project_id, request_id)
+                if replay:
+                    replay_status = str(replay.get("status") or "").strip().lower()
+                    replay_payload = replay.get("response_payload")
+                    if replay_status == "succeeded" and isinstance(replay_payload, dict):
+                        payload = {**replay_payload, "idempotent_replay": True, "generation_job": replay}
+                        self._send_json(HTTPStatus.OK, payload)
+                        return
+                    if replay_status in ACTIVE_JOB_STATUSES:
+                        self._send_generation_conflict(
+                            project_id=project_id,
+                            request_id=request_id,
+                            current_job=replay,
+                        )
+                        return
+
+                generation_lock = project_generation_lock(project_id)
+                if not generation_lock.acquire(blocking=False):
+                    self._send_generation_conflict(project_id=project_id, request_id=request_id)
                     return
                 try:
-                    updated = update_project_segments(
-                        repo_root,
-                        project_id,
-                        segments,
-                        status="review_pending",
-                    )
-                except ManifestWriteInProgressError as exc:
-                    self._manifest_busy(exc)
-                    return
-                self._send_json(
-                    HTTPStatus.OK,
-                    {
+                    replay = find_generation_job(repo_root, project_id, request_id)
+                    if replay:
+                        replay_status = str(replay.get("status") or "").strip().lower()
+                        replay_payload = replay.get("response_payload")
+                        if replay_status == "succeeded" and isinstance(replay_payload, dict):
+                            payload = {**replay_payload, "idempotent_replay": True, "generation_job": replay}
+                            self._send_json(HTTPStatus.OK, payload)
+                            return
+                        if replay_status in ACTIVE_JOB_STATUSES:
+                            self._send_generation_conflict(
+                                project_id=project_id,
+                                request_id=request_id,
+                                current_job=replay,
+                            )
+                            return
+                    try:
+                        prepare_generation_job(
+                            repo_root,
+                            project_id,
+                            request_id=request_id,
+                            mode="real_api" if is_real_api else "dry_run",
+                            sample_text=sample_text,
+                        )
+                    except GenerationInProgressError as exc:
+                        self._send_generation_conflict(
+                            project_id=project_id,
+                            request_id=request_id,
+                            current_job=exc.job,
+                        )
+                        return
+                    mark_generation_running(repo_root, project_id, request_id)
+
+                    if is_real_api:
+                        try:
+                            segments, gen_meta = generate_segments_real_api(
+                                sample_text=sample_text,
+                                language_direction=manifest.language_direction,
+                                repo_root=repo_root,
+                            )
+                        except ValueError as exc:
+                            mark_generation_failed(
+                                repo_root,
+                                project_id,
+                                request_id,
+                                error_code="invalid_request",
+                                error_message=str(exc),
+                            )
+                            self._bad_request(str(exc))
+                            return
+                        except CostGuardError as exc:
+                            report = exc.report or {}
+                            reason = str(report.get("reason") or exc)
+                            mark_generation_failed(
+                                repo_root,
+                                project_id,
+                                request_id,
+                                error_code="cost_guard_conflict",
+                                error_message=reason,
+                            )
+                            self._cost_guard_error(exc)
+                            return
+                        except Exception as exc:  # noqa: BLE001
+                            public = map_provider_error(exc)
+                            mark_generation_failed(
+                                repo_root,
+                                project_id,
+                                request_id,
+                                error_code=public.code,
+                                error_message=public.message,
+                            )
+                            self._send_json(
+                                HTTPStatus(public.http_status),
+                                {
+                                    "error": public.code,
+                                    "error_code": public.code,
+                                    "message": public.message,
+                                    "hint": public.hint,
+                                    "request_id": request_id,
+                                    "project_id": project_id,
+                                    "generation_job": get_project_generation_job(repo_root, project_id),
+                                },
+                            )
+                            return
+                    else:
+                        segments = generate_segments_from_sample(
+                            sample_text=sample_text,
+                            language_direction=manifest.language_direction,
+                        )
+                        gen_meta = None
+
+                    try:
+                        updated = update_project_segments(
+                            repo_root,
+                            project_id,
+                            segments,
+                            status="review_pending",
+                        )
+                    except ManifestWriteInProgressError as exc:
+                        mark_generation_failed(
+                            repo_root,
+                            project_id,
+                            request_id,
+                            error_code="manifest_write_in_progress",
+                            error_message=str(exc),
+                        )
+                        self._manifest_busy(exc)
+                        return
+                    payload: dict[str, Any] = {
                         "project_id": project_id,
+                        "request_id": request_id,
                         "segments_created": len(segments),
-                        "generation": "real_api",
-                        "generation_meta": gen_meta,
+                        "generation": "real_api" if is_real_api else "dry_run",
                         "project": updated.to_summary(),
                         "review_url": f"/review.html?project={project_id}",
-                    },
-                )
-                return
+                    }
+                    if is_real_api:
+                        payload["generation_meta"] = gen_meta
+                    mark_generation_succeeded(
+                        repo_root,
+                        project_id,
+                        request_id,
+                        response_payload=payload,
+                    )
+                    payload["generation_job"] = get_project_generation_job(repo_root, project_id)
+                    self._send_json(HTTPStatus.OK, payload)
+                    return
+                except Exception as exc:  # noqa: BLE001
+                    mark_generation_failed(
+                        repo_root,
+                        project_id,
+                        request_id,
+                        error_code="generation_failed",
+                        error_message=str(exc),
+                    )
+                    raise
+                finally:
+                    generation_lock.release()
 
             self.send_error(HTTPStatus.NOT_FOUND)
 
