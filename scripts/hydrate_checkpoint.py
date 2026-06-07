@@ -169,8 +169,8 @@ def plan_hydrate(
     translated = _count_translated(chapters)
     cp_status = str(checkpoint.get("status") or "in_progress")
     cp_base = cp_status.split(":", 1)[0]
-    if cp_base in {"in_progress", "completed"}:
-        progress_status = cp_base
+    if translated >= total_segments and cp_base == "completed":
+        progress_status = "completed"
     else:
         progress_status = "in_progress"
 
