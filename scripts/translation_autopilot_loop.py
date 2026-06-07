@@ -31,6 +31,8 @@ assert _registry_spec and _registry_spec.loader
 _registry = importlib.util.module_from_spec(_registry_spec)
 _registry_spec.loader.exec_module(_registry)
 
+DEFAULT_DRAFT_MODEL = "deepseek/deepseek-v4-pro"
+
 ROUND_PLAN: dict[str, dict[str, object]] = {
     "T-002": {
         "offset": 190,
@@ -249,18 +251,24 @@ def main() -> int:
     parser.add_argument("--supervised", action="store_true", default=True)
     parser.add_argument("--auto-start-next", action="store_true")
     parser.add_argument("--continue-until", default="round-complete")
-    parser.add_argument("--draft-model", default="", help="Override DRAFT_MODEL for this round")
+    parser.add_argument("--draft-model", default=DEFAULT_DRAFT_MODEL, help="DRAFT_MODEL (default DeepSeek)")
+    parser.add_argument("--progress-interval-seconds", type=float, default=30.0)
+    parser.add_argument("--foreground", action="store_true", default=True, help="Run in foreground (required)")
+    parser.add_argument("--no-detach", action="store_true", default=True, help="Do not detach child process")
     parser.add_argument("--skip-gate", action="store_true")
     args = parser.parse_args()
     if not args.supervised:
         print("ERROR: --supervised is required for real API production", file=sys.stderr)
         return 2
+    draft_model = (args.draft_model or DEFAULT_DRAFT_MODEL).strip()
+    print(f"[autopilot] model={draft_model} round={args.round_id} poll={args.progress_interval_seconds}s", flush=True)
     return run_supervised_round(
         round_id=args.round_id,
         phase=args.phase,
         round_size=args.round_size,
-        draft_model=args.draft_model.strip(),
+        draft_model=draft_model,
         skip_gate=args.skip_gate,
+        poll_sec=args.progress_interval_seconds,
     )
 
 

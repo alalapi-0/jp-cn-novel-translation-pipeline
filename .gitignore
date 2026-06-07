@@ -80,6 +80,31 @@ workspace/manifests/*
 !workspace/model_runs/.gitkeep
 !workspace/checkpoints/.gitkeep
 
+# Workspace runtime / personalized production state (local only)
+workspace/stage_state.json
+workspace/stage_state_production.json
+workspace/control/
+workspace/diagnostics/
+workspace/round_reports/
+workspace/assets/
+workspace/logs/
+workspace/tooling/
+workspace/.locks/
+workspace/asset_extraction_runs/
+workspace/asset_user_verify_input/
+workspace/generation_jobs.json
+workspace/pipeline_state.json
+workspace/review_state.json
+workspace/workbench_state.json
+workspace/refine_batch_log.txt
+workspace/.watchdog_poll_runner.sh
+workspace/watchdog_production_poll.sh
+
+# Draft / refined / final translation outputs (real content)
+output_draft/
+output_refined/
+output_final/
+
 # Temporary files
 tmp/
 temp/

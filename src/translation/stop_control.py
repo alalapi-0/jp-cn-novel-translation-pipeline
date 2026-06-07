@@ -97,9 +97,9 @@ def is_stop_requested(
         return False
     target_wid = str(doc.get("target_worker_id") or "")
     target_rid = str(doc.get("target_run_id") or "")
-    if target_wid and worker_id and target_wid != worker_id:
+    if target_wid and target_wid not in ("*", worker_id) and worker_id and target_wid != worker_id:
         return False
-    if target_rid and run_id and target_rid != run_id:
+    if target_rid and target_rid not in ("*", run_id) and run_id and target_rid != run_id:
         return False
     return True
 

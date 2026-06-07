@@ -2,25 +2,25 @@
 
 ## 当前统计时间
 
-- 生成时间：2026-06-07T02:19:19.013079+00:00
+- 生成时间：2026-06-07T09:26:18.090951+00:00
 - 统计方式：只读扫描 `workspace/runs`、`workspace/checkpoints`、`workspace/model_runs`、`.agent_runtime` 与轻量日志；不调用真实 API，不读取 `.env`，不输出正文/译文。
 
 ## 当前进度表
 
 | 指标 | 值 |
 | --- | --- |
-| 总体运行轮数 | 12 |
-| 运行目录数 | 10 |
-| checkpoint 数 | 10 |
-| model_run 文件数 | 6797 |
-| 章节总数（run 内观测） | 169 |
-| 初翻完成章节 | 162 |
-| 润色完成章节 | 150 |
-| 初翻完成 segment | 13893 |
-| 润色完成 segment | 13193 |
-| 观测运行时长（小时） | 90.78 |
-| 章节/小时（按初翻完成章） | 1.78 |
-| 章节/轮（按初翻完成章） | 13.5 |
+| 总体运行轮数 | 13 |
+| 运行目录数 | 12 |
+| checkpoint 数 | 11 |
+| model_run 文件数 | 7496 |
+| 章节总数（run 内观测） | 239 |
+| 初翻完成章节 | 198 |
+| 润色完成章节 | 170 |
+| 初翻完成 segment | 18720 |
+| 润色完成 segment | 15389 |
+| 观测运行时长（小时） | 108.31 |
+| 章节/小时（按初翻完成章） | 1.83 |
+| 章节/轮（按初翻完成章） | 15.23 |
 | 成功 commit/push 数 | 缺少数据（需从 git log/remote 或自动化状态补采） |
 
 ## 每阶段吞吐表
@@ -28,38 +28,38 @@
 | 阶段 | 章节数 | 初翻完成章 | 润色完成章 | segment 数 | 初翻 segment | 润色 segment |
 | --- | --- | --- | --- | --- | --- | --- |
 | draft_stage_a_5ch | 17 | 10 | 0 | 1046 | 694 | 0 |
-| draft_stage_b_50ch | 150 | 150 | 150 | 13193 | 13193 | 13193 |
+| draft_stage_b_50ch | 220 | 186 | 170 | 22373 | 18020 | 15389 |
 | unknown | 2 | 2 | 0 | 6 | 6 | 0 |
 
 ## API 指标表
 
 | 指标 | 值 |
 | --- | --- |
-| provider 分布 | openrouter=6792, 缺少数据=5 |
-| model 分布 | deepseek/deepseek-v4-flash=1, deepseek/deepseek-v4-pro=3223, x-ai/grok-4.3=3568, 缺少数据=5 |
-| pipeline_stage 分布 | draft_translation=3223, openrouter_smoke=1, refinement=3568, 缺少数据=5 |
-| status 分布 | ok=6792, 缺少数据=5 |
-| 平均 latency_ms | 12292.69 |
+| provider 分布 | openrouter=7491, 缺少数据=5 |
+| model 分布 | deepseek/deepseek-v4-flash=1, deepseek/deepseek-v4-pro=3223, deepseek/deepseek-v4-pro-20260423=413, x-ai/grok-4.3=3568, x-ai/grok-4.3-20260430=286, 缺少数据=5 |
+| pipeline_stage 分布 | draft_translation=3636, openrouter_smoke=1, refinement=3854, 缺少数据=5 |
+| status 分布 | ok=7491, 缺少数据=5 |
+| 平均 latency_ms | 12569.6 |
 | 最慢 latency_ms | 216191 |
-| token 总量 | 11066795 |
-| 估算 cost_usd 总量 | 5.533398 |
+| token 总量 | 12747814 |
+| 估算 cost_usd 总量 | 6.373907 |
 | 缺少 started_at 的 model_run | 6797 |
-| 缺少 request_hash 的 model_run | 6797 |
+| 缺少 request_hash 的 model_run | 7496 |
 
 ### Provider 调用分布
 
 | provider | model_run 数 |
 | --- | --- |
-| openrouter | 6792 |
+| openrouter | 7491 |
 | 缺少数据 | 5 |
 
 ### Pipeline Stage 调用分布
 
 | pipeline_stage | model_run 数 |
 | --- | --- |
-| draft_translation | 3223 |
+| draft_translation | 3636 |
 | openrouter_smoke | 1 |
-| refinement | 3568 |
+| refinement | 3854 |
 | 缺少数据 | 5 |
 
 ## Pipeline 耗时表
@@ -71,14 +71,14 @@
 | segment/chunk | 缺少数据 |
 | context pack | 缺少数据 |
 | prompt build | 缺少数据 |
-| provider | model_run latency 可用：avg=12292.69ms max=216191ms |
+| provider | model_run latency 可用：avg=12569.6ms max=216191ms |
 | ResponseExtractor | 缺少数据 |
 | Validator | 缺少数据 |
 | quality review | 缺少数据 |
 | exporter | 缺少数据 |
 | diff/change_log | 缺少数据 |
 | git commit/push | 缺少数据 |
-| 前端/Playwright | inspection_reports=21；缺少单次耗时 |
+| 前端/Playwright | inspection_reports=22；缺少单次耗时 |
 | agent_gate | 本轮运行产生 WARNING；缺少历史耗时 |
 | 测试/build | 缺少结构化耗时 |
 

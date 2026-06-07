@@ -2,6 +2,22 @@
 
 本文档定义未来推进轮 Agent 可用的工具分层、使用时机、验证方法与禁用条件。
 
+## MCP / Browser Tools Runbook
+
+当前项目的 MCP / 浏览器工具使用规则以以下文件为准：
+
+- `docs/runbooks/mcp_browser_tools_runbook.md`
+
+后续 Agent 在涉及工具、前端、浏览器、MCP、Playwright、Chrome DevTools 时**必须先读取该 Runbook**。
+
+## 工具隔离原则
+
+1. Playwright 是默认浏览器自动化工具。
+2. chrome-devtools 需要项目独立 profile 后再作为补充工具。
+3. chrome-devtools profile 冲突时不得阻塞任务，应 fallback 到 Playwright。
+4. 端口冲突时自动换端口，不 kill 其他项目进程。
+5. 多 Agent 并行时不得共享默认 Chrome profile。
+
 ## 工具分层
 
 | 层级 | 代表工具 | 主要用途 |

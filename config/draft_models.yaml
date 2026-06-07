@@ -27,11 +27,11 @@ models:
     enabled: false
     role: draft_translation_candidate
     notes: >
-      Candidate model for controlled A/B translation test.
-      Do not enable for production until quality gate passes.
+      A/B 2026-06-07: 质量门槛通过，但 avg_latency_ms ~195000 vs DeepSeek ~8000；
+      用户决定不切换生产模型，保持 disabled。
 
 switching_rules:
   - Do not mix models mid-run without per-segment metadata.
-  - Run model_ab_test.py before enabling candidate as primary.
-  - T-002 on DeepSeek must complete before Nemotron production switch.
+  - Latency must be acceptable for 20-chapter rounds (reject if >> baseline).
+  - Production primary remains deepseek/deepseek-v4-pro (user decision 2026-06-07).
   - Fallback must remain deepseek/deepseek-v4-pro.

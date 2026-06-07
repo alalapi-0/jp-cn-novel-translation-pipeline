@@ -11,7 +11,7 @@
 - **latest run**: `run_20260607_095821_draft_stage_b_50ch`（T-002 191–210，**588/2229** 段，`stopped_by_controller` 续跑中）
 - **known blockers**:
   - ~~orphan API worker（PID 8411 无 controller）~~ → 已 `--request-stop` + supervised 机制上线
-  - Nemotron A/B 本轮未完成（超时）→ **保持 DeepSeek primary**
+  - Nemotron A/B 质量通过但延迟 ~195s/段（DeepSeek ~8s）→ **用户决定不换模型，保持 DeepSeek**
   - 润色落后初翻 — **非阻塞**，初翻优先
   - 部分必读文档缺失：`docs/priority_matrix.md`、`docs/roadmap_converged_core_first.md`（已记录）
   - 轮次报告 `source_residual` 启发式含汉字误判 — 记入 Phase B 一致性检查

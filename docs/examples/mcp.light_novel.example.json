@@ -1,7 +1,7 @@
 {
-  "_comment": "Copy ideas into .cursor/mcp.json; do not overwrite live config blindly.",
+  "note": "Example only. Adjust field names according to the actual chrome-devtools MCP server options. Copy ideas into .cursor/mcp.json; do not overwrite live config blindly.",
   "mcpServers": {
-    "chrome-devtools-light-novel": {
+    "chrome-devtools": {
       "description": "Project-isolated Chrome DevTools MCP for light_novel",
       "type": "stdio",
       "command": "bash",
@@ -10,7 +10,48 @@
         "CHROME_DEVTOOLS_MCP_USER_DATA_DIR": "~/.cache/chrome-devtools-mcp/light_novel-chrome-profile",
         "CHROME_DEVTOOLS_MCP_DEBUG_PORT": "9321"
       },
-      "_note_userDataDir": "Real CLI flag is --userDataDir; set via wrapper or npx args. Fields above are documentation + env overrides for the wrapper."
+      "_field_note": "Real CLI flags are --userDataDir and --chromeArg=--remote-debugging-port=...; set via scripts/chrome_devtools_mcp_light_novel.sh wrapper."
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "description": "Default browser automation tool for UI verification"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"]
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    },
+    "stitch": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["scripts/stitch_mcp_proxy.mjs"],
+      "env": {
+        "STITCH_API_KEY": "${env:STITCH_API_KEY}"
+      }
     }
+  },
+  "fallback": {
+    "browserAutomation": "playwright",
+    "chromeDevtoolsProfileConflict": "Use Playwright MCP; record conflict in round report; do not kill other Chrome processes",
+    "githubNoToken": "git / gh CLI",
+    "stitchNoKey": "docs/design/stitch/ templates"
+  },
+  "isolation": {
+    "profile": "~/.cache/chrome-devtools-mcp/light_novel-chrome-profile",
+    "debugPort": 9321,
+    "launcher": "scripts/chrome_devtools_mcp_light_novel.sh",
+    "runbook": "docs/runbooks/mcp_browser_tools_runbook.md"
   }
 }

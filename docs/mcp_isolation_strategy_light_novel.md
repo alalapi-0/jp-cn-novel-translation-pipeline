@@ -1,5 +1,7 @@
 # MCP Isolation Strategy for light_novel
 
+> **操作细则：** 本文件描述隔离策略；日常 Agent 操作以 `docs/runbooks/mcp_browser_tools_runbook.md` 为准。
+
 ## 6.1 目标
 
 让 light_novel 项目在与其他项目并行使用 Agent 时，仍能稳定使用 MCP 工具，尤其是浏览器相关工具。
