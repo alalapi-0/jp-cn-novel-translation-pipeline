@@ -6,7 +6,7 @@
 
 | Server 名称 | 包 / 命令 | 状态 | 用途 |
 |-------------|-----------|------|------|
-| `chrome-devtools` | `npx -y chrome-devtools-mcp@latest` | 已配置 | 浏览器调试、console、network、页面检查 |
+| `chrome-devtools` | `bash scripts/chrome_devtools_mcp_light_novel.sh` | 已配置（项目隔离 profile） | 浏览器调试、console、network、Performance；**勿共用默认 chrome-profile** |
 | `context7` | `npx -y @upstash/context7-mcp@latest` | 已配置 | 第三方库文档查询 |
 | `playwright` | `npx -y @playwright/mcp@latest` | 已配置 | 浏览器自动化：打开页面、snapshot、点击、截图、辅助 E2E 验收 |
 | `filesystem` | `npx -y @modelcontextprotocol/server-filesystem` | 已配置 | 项目内文件读写与目录检查（仅 `${workspaceFolder}`） |
@@ -41,6 +41,15 @@ Cursor 可能额外加载 IDE 内置能力（例如 `cursor-ide-browser`、`curs
 5. 失败时截图或 trace 写入 `artifacts/`（不提交 Git）
 
 CLI fallback：`npx playwright test`（Round 44 搭建后）。详见 `docs/mcp_playwright_setup_plan.md`。
+
+## chrome-devtools 隔离与 fallback
+
+- **独立 profile：** `~/.cache/chrome-devtools-mcp/light_novel-chrome-profile`（经 `scripts/chrome_devtools_mcp_light_novel.sh`）
+- **共享默认 profile 冲突：** 错误含 `browser is already running for .../chrome-profile` → **改用 playwright**，不要 kill 其他项目 Chrome
+- **检查：** `python3 scripts/check_mcp_health.py`
+- **文档：** `docs/mcp_isolation_strategy_light_novel.md`
+
+修改 `.cursor/mcp.json` 后须 Reload Cursor Window，MCP 子进程才会使用新 profile。
 
 ## Stitch MCP（UI 设计）
 

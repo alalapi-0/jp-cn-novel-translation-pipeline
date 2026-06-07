@@ -127,6 +127,7 @@
 9. 检查 `.env` 是否被 Git 跟踪
 10. 检查是否存在未提交的重要变更
 11. 运行 `scripts/agent_gate.py`（Round 41 起）
+12. UI / 浏览器轮：运行 `python3 scripts/check_mcp_health.py`（MCP 隔离检查）
 
 ---
 

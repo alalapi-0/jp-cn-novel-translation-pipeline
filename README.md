@@ -221,6 +221,7 @@ npm run check:cursor-mcp
 # 或
 bash scripts/check_cursor_mcp_status.sh
 npm run check:mcp
+python3 scripts/check_mcp_health.py
 npm run check:stitch
 ```
 
@@ -312,7 +313,9 @@ Prompt 模板：`docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`
 3. **GitHub MCP** 需通过环境变量 `GITHUB_TOKEN` 提供 token（映射为 `GITHUB_PERSONAL_ACCESS_TOKEN`），**不允许**写进仓库。
 4. **Stitch MCP** 需通过 `STITCH_API_KEY` 环境变量认证，**不允许**写进仓库。
 5. **filesystem MCP** 只授权当前项目目录（`${workspaceFolder}`）。
-6. 可运行 `npm run check:mcp`、`npm run check:stitch` 检查配置。
+6. 可运行 `npm run check:mcp`、`npm run check:stitch`、`python3 scripts/check_mcp_health.py` 检查配置。
+
+**MCP 浏览器隔离：** chrome-devtools 使用项目 wrapper（`scripts/chrome_devtools_mcp_light_novel.sh`）与独立 profile；冲突时优先 playwright。见 `docs/mcp_isolation_strategy_light_novel.md`。
 
 使用说明见 **`docs/agent_skills/mcp_usage_skill.md`**、**`docs/mcp/README.md`**。MCP 与 Playwright 是**增强工具**；安装时机、验证步骤、fallback 与安全规则见 `docs/mcp_playwright_setup_plan.md`。
 

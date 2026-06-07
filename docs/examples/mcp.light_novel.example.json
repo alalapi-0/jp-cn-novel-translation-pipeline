@@ -1,0 +1,16 @@
+{
+  "_comment": "Copy ideas into .cursor/mcp.json; do not overwrite live config blindly.",
+  "mcpServers": {
+    "chrome-devtools-light-novel": {
+      "description": "Project-isolated Chrome DevTools MCP for light_novel",
+      "type": "stdio",
+      "command": "bash",
+      "args": ["scripts/chrome_devtools_mcp_light_novel.sh"],
+      "env": {
+        "CHROME_DEVTOOLS_MCP_USER_DATA_DIR": "~/.cache/chrome-devtools-mcp/light_novel-chrome-profile",
+        "CHROME_DEVTOOLS_MCP_DEBUG_PORT": "9321"
+      },
+      "_note_userDataDir": "Real CLI flag is --userDataDir; set via wrapper or npx args. Fields above are documentation + env overrides for the wrapper."
+    }
+  }
+}

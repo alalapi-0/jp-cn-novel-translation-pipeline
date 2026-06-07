@@ -2,8 +2,9 @@
   "mcpServers": {
     "chrome-devtools": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest"]
+      "command": "bash",
+      "args": ["scripts/chrome_devtools_mcp_light_novel.sh"],
+      "description": "Project-isolated Chrome DevTools MCP (light_novel profile + port 9321)"
     },
     "context7": {
       "type": "stdio",

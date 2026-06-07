@@ -198,11 +198,26 @@ Round 46 Prompt：`prompts/round_46_frontend_review_workbench_visual_verificatio
 
 ---
 
+## MCP 浏览器工具隔离规则
+
+1. light_novel 项目不得依赖全局共享 chrome-devtools profile。
+2. chrome-devtools 必须优先使用项目独立 profile（`~/.cache/chrome-devtools-mcp/light_novel-chrome-profile`）。
+3. 如果 chrome-devtools 出现 profile lock，优先切换 playwright。
+4. 端口冲突和 profile 冲突不同；profile 冲突必须通过独立 user-data-dir/profile 解决。
+5. 多 Agent 并行时，不要 kill 其他项目进程。
+6. 前端页面检查优先使用 playwright，chrome-devtools 作为补充。
+7. 后续推进轮开始时应运行 MCP 健康检查（`python3 scripts/check_mcp_health.py`）。
+
+配置与审计：`docs/mcp_isolation_strategy_light_novel.md`、`docs/chrome_devtools_profile_conflict_audit.md`。
+
+---
+
 ## Fallback 矩阵
 
 | 失败场景 | Fallback |
 |----------|----------|
 | MCP 不可用 | Playwright CLI 脚本 |
+| chrome-devtools profile 冲突 | Playwright MCP（首选）；见 `docs/mcp_isolation_strategy_light_novel.md` |
 | Playwright 未安装 | 静态 server + curl + 人工截图 |
 | 前端未启动 | 硬阻塞（Round 46）；软阻塞（Round 44 仅搭框架） |
 | 浏览器 CI 无头失败 | 本地 headed 调试并记录 trace |

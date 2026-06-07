@@ -114,6 +114,18 @@ Round 45 验证清单：`docs/mcp_verification_checklist.md`。
 - MCP 不得自动公开发布译文
 - MCP 不得绕过 Git 审查
 
+## MCP 浏览器工具隔离规则
+
+1. light_novel 项目不得依赖全局共享 chrome-devtools profile。
+2. chrome-devtools 必须优先使用项目独立 profile（`scripts/chrome_devtools_mcp_light_novel.sh`）。
+3. 如果 chrome-devtools 出现 profile lock，优先切换 playwright。
+4. 端口冲突和 profile 冲突不同；profile 冲突必须通过独立 user-data-dir/profile 解决。
+5. 多 Agent 并行时，不要 kill 其他项目进程。
+6. 前端页面检查优先使用 playwright，chrome-devtools 作为补充。
+7. 后续推进轮开始时应运行 `python3 scripts/check_mcp_health.py`。
+
+详见 `docs/mcp_isolation_strategy_light_novel.md`。
+
 ---
 
 ## Model Provider Tools

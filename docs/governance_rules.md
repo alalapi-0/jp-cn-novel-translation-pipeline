@@ -83,6 +83,16 @@ git commit -m "docs: describe change"
 9. Review Workbench 不能只看代码；Round 46 起必须浏览器验证。
 10. 每个工具都必须有 fallback 或硬阻塞判断（见 `docs/agent_tooling_strategy.md`）。
 
+## MCP 浏览器工具隔离规则
+
+1. light_novel 项目不得依赖全局共享 chrome-devtools profile。
+2. chrome-devtools 必须优先使用项目独立 profile。
+3. 如果 chrome-devtools 出现 profile lock，优先切换 playwright。
+4. 端口冲突和 profile 冲突不同；profile 冲突必须通过独立 user-data-dir/profile 解决。
+5. 多 Agent 并行时，不要 kill 其他项目进程。
+6. 前端页面检查优先使用 playwright，chrome-devtools 作为补充。
+7. 后续推进轮开始时应运行 MCP 健康检查。
+
 ## 通用协议规则
 
 1. 每轮必须检查是否存在 `governance/repo_protocol_standard.yaml`。

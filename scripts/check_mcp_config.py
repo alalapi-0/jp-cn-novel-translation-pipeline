@@ -119,6 +119,19 @@ def main() -> int:
                 if arg in ("/", "\\", "C:\\", "C:/"):
                     errors.append(f"filesystem MCP must not grant {arg!r}")
 
+        if name == "chrome-devtools" and isinstance(args, list):
+            blob = " ".join(str(a) for a in args)
+            if (
+                "chrome_devtools_mcp_light_novel" not in blob
+                and "light_novel-chrome-profile" not in blob
+                and "--userDataDir" not in blob
+            ):
+                warnings.append(
+                    "chrome-devtools uses shared default profile risk; "
+                    "prefer scripts/chrome_devtools_mcp_light_novel.sh "
+                    "(see docs/mcp_isolation_strategy_light_novel.md)"
+                )
+
     # Scan all string values for accidental secrets (without printing values).
     for s in _collect_strings(data):
         if _looks_like_hardcoded_secret(s):

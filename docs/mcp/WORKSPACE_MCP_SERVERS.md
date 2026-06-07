@@ -17,7 +17,9 @@
 
 ### chrome-devtools
 
-- **用于**：Review Workbench 页面检查、console 错误、network 关键请求
+- **用于**：Review Workbench 页面检查、console 错误、network 关键请求、Performance/Lighthouse 等 CDP 能力
+- **隔离**：必须通过 `scripts/chrome_devtools_mcp_light_novel.sh` 使用独立 profile（`light_novel-chrome-profile`）；勿共用默认 `chrome-profile`
+- **冲突 fallback**：profile lock 时改用 **playwright**；见 `docs/mcp_isolation_strategy_light_novel.md`
 - **不用于**：读取 `.env`、自动 push、删除原文目录
 
 ### context7
@@ -52,6 +54,7 @@
 ```bash
 npm run check:mcp
 npm run check:stitch
+python3 scripts/check_mcp_health.py
 ```
 
 Cursor Settings → MCP 确认各 server 已启用。
