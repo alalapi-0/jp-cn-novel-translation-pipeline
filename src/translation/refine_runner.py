@@ -267,6 +267,8 @@ def run_refine_controlled(
             expected_ids = [s["segment_id"] for s in batch]
             ok, msg, mapping = False, "no_attempt", {}
             for attempt in range(1, retry_limit + 1):
+                if heartbeat_cb:
+                    heartbeat_cb()
                 try:
                     result = provider.generate(messages, options)
                 except (CostGuardError, RuntimeError, OSError) as exc:

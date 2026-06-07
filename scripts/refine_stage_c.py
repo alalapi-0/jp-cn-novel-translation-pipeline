@@ -14,8 +14,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from translation.refine_runner import STAGE_C_MAX_SEGMENTS, run_refine_controlled  # noqa: E402
+from local_env import apply_local_env  # noqa: E402
+
+from translation.refine_runner import (  # noqa: E402
+    STAGE_C_MAX_SEGMENTS,
+    iter_refine_candidates,
+    load_segments_doc,
+    run_refine_controlled,
+)
 from translation.run_progress import update_stage_state_if_newer  # noqa: E402
 
 _registry_spec = importlib.util.spec_from_file_location(
@@ -25,24 +33,6 @@ _registry_spec = importlib.util.spec_from_file_location(
 assert _registry_spec and _registry_spec.loader
 _registry = importlib.util.module_from_spec(_registry_spec)
 _registry_spec.loader.exec_module(_registry)
-
-
-def _apply_local_env(repo_root: Path) -> None:
-    env_path = repo_root / ".env"
-    if not env_path.is_file():
-        return
-    for raw in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        key = key.strip()
-        if not key or key in os.environ:
-            continue
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-            value = value[1:-1]
-        os.environ[key] = value
 
 
 def _acquire_refine_lock(run_id: str) -> int:
@@ -80,20 +70,46 @@ def _default_run_id() -> str:
     return ""
 
 
+def _count_remaining_refine(run_root: Path) -> int:
+    segments_path = run_root / "segments.json"
+    if not segments_path.is_file():
+        return 0
+    doc = load_segments_doc(segments_path)
+    return len(iter_refine_candidates(doc, limit=STAGE_C_MAX_SEGMENTS * 10))
+
+
+def _resolve_refine_stage_status(
+    run_status: str,
+    *,
+    remaining_refine: int,
+    aborted: bool,
+) -> tuple[str, bool]:
+    """Return (stage_status, refine_blocked). Blocked until all segments are refined."""
+    if aborted or run_status == "failed":
+        return "failed", True
+    if remaining_refine > 0:
+        return "in_progress", True
+    return "completed", False
+
+
 def _update_stage_state(
     run_id: str,
     status: str,
     summary: dict,
     *,
     state_path: Path | None = None,
+    remaining_refine: int | None = None,
 ) -> None:
+    refine_blocked = status != "completed"
+    if remaining_refine is not None:
+        refine_blocked = remaining_refine > 0 or status in {"failed", "in_progress"}
     payload = {
         "phase": "refine",
         "stage": "refine_stage_c",
         "status": status,
         "run_id": run_id,
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "refine_blocked": status != "completed",
+        "refine_blocked": refine_blocked,
         "pilot": False,
         "summary": summary,
     }
@@ -124,7 +140,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="Print summary JSON to stdout")
     args = parser.parse_args()
 
-    _apply_local_env(REPO_ROOT)
+    apply_local_env(REPO_ROOT)
     run_id = args.run_id.strip() or _default_run_id()
     if not run_id:
         print("missing --run-id and no run_id in workspace/stage_state.json", file=sys.stderr)
@@ -177,7 +193,12 @@ def main() -> int:
             return 2
 
         ok = not summary.aborted
-        status = "completed" if ok else "failed"
+        remaining_refine = _count_remaining_refine(run_root)
+        status, _ = _resolve_refine_stage_status(
+            "completed" if ok else "failed",
+            remaining_refine=remaining_refine,
+            aborted=summary.aborted,
+        )
         payload = {
             "refined_segments": summary.refined_segments,
             "api_calls": summary.api_calls,
@@ -188,8 +209,15 @@ def main() -> int:
             "spent_tokens": summary.spent_tokens,
             "aborted": summary.aborted,
             "abort_reason": summary.abort_reason,
+            "remaining_refine_segments": remaining_refine,
         }
-        _update_stage_state(run_id, status, payload, state_path=stage_state_path)
+        _update_stage_state(
+            run_id,
+            status,
+            payload,
+            state_path=stage_state_path,
+            remaining_refine=remaining_refine,
+        )
         _registry.unregister_worker(worker_id, status=status)
 
         if args.json:

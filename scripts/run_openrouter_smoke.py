@@ -16,35 +16,33 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from local_env import apply_local_env, applied_local_env_keys  # noqa: E402
 
 from providers.cost_guard import CostGuard, CostGuardConfig  # noqa: E402
 from providers.dry_run_provider import DryRunProvider  # noqa: E402
 from providers.types import GenerateOptions, Message  # noqa: E402
 
 SMOKE_DIR = REPO_ROOT / "workspace" / "smoke"
+RUNTIME_DIR = REPO_ROOT / ".agent_runtime"
+STATUS_PATH = RUNTIME_DIR / "status.json"
 DEFAULT_PROMPT = "Reply with exactly: smoke_ok"
 
 
-def _apply_local_env(repo_root: Path) -> list[str]:
-    """Set unset env vars from .env (keys only returned for logging)."""
-    env_path = repo_root / ".env"
-    if not env_path.is_file():
-        return []
-    applied: list[str] = []
-    for raw in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        key = key.strip()
-        if not key or key in os.environ:
-            continue
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-            value = value[1:-1]
-        os.environ[key] = value
-        applied.append(key)
-    return applied
+def update_agent_runtime_status(*, api_mode: str, checked_at: str) -> None:
+    if not STATUS_PATH.is_file():
+        return
+    try:
+        status = json.loads(STATUS_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return
+    if not isinstance(status, dict):
+        return
+    status["api_mode"] = api_mode
+    status["last_real_api_check_at"] = checked_at
+    status["updated_at"] = checked_at
+    STATUS_PATH.write_text(json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -55,7 +53,7 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 
 def run_smoke(*, max_cost_usd: float, force_dry_run: bool) -> dict:
-    applied_keys = _apply_local_env(REPO_ROOT)
+    applied_keys = apply_local_env(REPO_ROOT)
     has_key = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
     real_enabled = _env_bool("REAL_API_TESTS_ENABLED", False)
 
@@ -128,6 +126,8 @@ def run_smoke(*, max_cost_usd: float, force_dry_run: bool) -> dict:
         }
     )
     report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if mode == "real":
+        update_agent_runtime_status(api_mode="real_api", checked_at=payload["generated_at"])
     return payload
 
 

@@ -10,6 +10,7 @@ from typing import Any
 
 from providers.cost_guard import CostGuardConfig
 from workbench.local_env import apply_local_env, applied_local_env_keys
+from workbench.pipeline_status import build_pipeline_status, resolve_workbench_mode
 
 PROVIDER_ENV = {
     "openai": "OPENAI_API_KEY",
@@ -106,6 +107,40 @@ def _status_file_api_mode(repo_root: Path) -> str | None:
     return mode or None
 
 
+def _pipeline_gate_summary(repo_root: Path) -> dict[str, Any] | None:
+    gate_script = repo_root / "scripts" / "throughput_gate.py"
+    if not gate_script.is_file():
+        return None
+    try:
+        import importlib.util
+        import sys
+
+        spec = importlib.util.spec_from_file_location("throughput_gate_status", gate_script)
+        if not spec or not spec.loader:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        result = mod.evaluate_gate()
+        return {
+            "decision": result.get("decision"),
+            "exportable_chapters": result.get("exportable_chapters"),
+            "draft_completed_chapters": result.get("draft_completed_chapters"),
+            "refined_exportable_chapters": result.get("refined_exportable_chapters"),
+            "active_worker_count": result.get("active_worker_count"),
+            "blocks": result.get("blocks") or [],
+            "soft_blocks": result.get("soft_blocks") or [],
+            "hard_blocks": result.get("hard_blocks") or result.get("blocks") or [],
+            "warnings": (result.get("warnings") or [])[:8],
+            "fix_paths": result.get("fix_paths") or [],
+            "stage_state_run_id": result.get("stage_state_run_id"),
+            "stage_state_source": result.get("stage_state_source"),
+            "has_api_key": result.get("has_api_key"),
+        }
+    except Exception:
+        return None
+
+
 def build_api_status(repo_root: Path) -> dict[str, Any]:
     dotenv_keys = apply_local_env(repo_root)
     detected = detected_providers()
@@ -144,16 +179,30 @@ def build_api_status(repo_root: Path) -> dict[str, Any]:
         )
     else:
         payload["runner_status_note"] = None
+    env_ready = bool(detected) and real_enabled and guard.max_test_cost_usd > 0
     if latest:
+        smoke_success = bool(latest.get("success"))
+        ignorable = env_ready and not smoke_success
         payload["last_smoke"] = {
             "mode": latest.get("mode"),
-            "success": latest.get("success"),
+            "success": smoke_success,
             "created_at": latest.get("created_at"),
             "tested_provider": latest.get("tested_provider"),
             "result_summary": latest.get("result_summary"),
             "error_summary": latest.get("error_summary"),
             "historical": True,
+            "ignorable": ignorable,
+            "ignorable_note": (
+                "当前环境已就绪，可忽略历史 smoke 失败"
+                if ignorable
+                else None
+            ),
         }
     else:
         payload["last_smoke"] = None
+    pipeline = _pipeline_gate_summary(repo_root)
+    if pipeline:
+        payload["pipeline_gate"] = pipeline
+    payload["workbench_mode"] = resolve_workbench_mode(repo_root)
+    payload["pipeline_status"] = build_pipeline_status(repo_root)
     return payload

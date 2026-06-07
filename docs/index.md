@@ -18,6 +18,7 @@
 - `docs/agent_operating_manual.md`
 - `docs/roadmap_rounds_00_40.md`
 - `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
+- `docs/roadmap_phase2_rounds_51_plus.md`
 - `docs/migration_notes.md`
 
 ## 设计输入层（Stitch）

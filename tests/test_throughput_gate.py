@@ -66,6 +66,106 @@ def test_gate_allow_clean_workspace(tmp_path, monkeypatch):
     result = gate.evaluate_gate()
     assert result["decision"] in {"ALLOW", "WARN"}
     assert result["exportable_chapters"] == 1
+    assert result["draft_completed_chapters"] == 1
+    assert result["refined_exportable_chapters"] == 1
+
+
+def test_gate_split_draft_vs_refined_metrics(tmp_path, monkeypatch):
+    gate = _load_gate()
+    workspace = tmp_path / "workspace"
+    runs = workspace / "runs" / "run_split_draft_stage_b_50ch"
+    runs.mkdir(parents=True)
+    (runs / "run_metadata.json").write_text(
+        json.dumps({"run_id": "run_split_draft_stage_b_50ch", "chapter_offset": 0}),
+        encoding="utf-8",
+    )
+    (runs / "segments.json").write_text(
+        json.dumps(
+            {
+                "chapters": [
+                    {
+                        "chapter_id": "ch-001",
+                        "segments": [
+                            {"segment_id": "s1", "draft_text": "d", "refined_text": ""},
+                            {"segment_id": "s2", "draft_text": "d2", "refined_text": "r2"},
+                        ],
+                    },
+                    {
+                        "chapter_id": "ch-002",
+                        "segments": [
+                            {"segment_id": "s3", "draft_text": "d3", "refined_text": "r3"},
+                        ],
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (runs / "run_progress.json").write_text(
+        json.dumps({"status": "completed", "run_id": "run_split_draft_stage_b_50ch"}),
+        encoding="utf-8",
+    )
+    (workspace / "checkpoints").mkdir(parents=True)
+    (workspace / "checkpoints" / "run_split_draft_stage_b_50ch.json").write_text(
+        json.dumps({"status": "completed", "completed_segments": ["s1"]}),
+        encoding="utf-8",
+    )
+    (workspace / "stage_state.json").write_text(
+        json.dumps({"status": "completed", "run_id": "run_split_draft_stage_b_50ch"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "WORKSPACE", workspace)
+    monkeypatch.setattr(gate, "REPO_ROOT", tmp_path)
+
+    result = gate.evaluate_gate()
+    assert result["draft_completed_chapters"] == 2
+    assert result["refined_exportable_chapters"] == 1
+
+
+def test_gate_ignores_diagnostic_state_conflict(tmp_path, monkeypatch):
+    gate = _load_gate()
+    workspace = tmp_path / "workspace"
+    run_dir = workspace / "runs" / "asset-context-user-verify"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_progress.json").write_text(
+        json.dumps({"status": "failed", "run_id": "asset-context-user-verify"}),
+        encoding="utf-8",
+    )
+    (workspace / "checkpoints").mkdir(parents=True)
+    (workspace / "checkpoints" / "asset-context-user-verify.json").write_text(
+        json.dumps({"status": "aborted:test", "completed_segments": []}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "WORKSPACE", workspace)
+    monkeypatch.setattr(gate, "REPO_ROOT", tmp_path)
+
+    result = gate.evaluate_gate()
+    assert not any("state_conflict: run_id=asset-context-user-verify" in b for b in result["blocks"])
+    rows = gate._analyze_runs()
+    assert not any(r["run_id"] == "asset-context-user-verify" for r in rows)
+
+
+def test_gate_warns_refine_pending_after_draft_complete(tmp_path, monkeypatch):
+    gate = _load_gate()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True)
+    prod_state = workspace / "stage_state_production.json"
+    prod_state.write_text(
+        json.dumps(
+            {
+                "phase": "draft",
+                "status": "completed",
+                "run_id": "run_prod_draft_done",
+                "refine_blocked": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "WORKSPACE", workspace)
+    monkeypatch.setattr(gate, "REPO_ROOT", tmp_path)
+
+    result = gate.evaluate_gate()
+    assert any("refine_pending" in w for w in result["warnings"])
 
 
 def test_gate_block_state_conflict(tmp_path, monkeypatch):
@@ -83,3 +183,54 @@ def test_gate_block_state_conflict(tmp_path, monkeypatch):
     result = gate.evaluate_gate()
     assert result["decision"] == "BLOCK"
     assert any("completed_run_missing_artifacts" in b for b in result["blocks"])
+
+
+def test_gate_skips_diagnostic_realapi_runs_in_analysis(tmp_path, monkeypatch):
+    gate = _load_gate()
+    workspace = tmp_path / "workspace"
+    diag_id = "run_20260606_082933_realapi_diagnostic_translate_dryrun"
+    run_dir = workspace / "runs" / diag_id
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_progress.json").write_text(
+        json.dumps({"status": "in_progress", "run_id": diag_id}),
+        encoding="utf-8",
+    )
+    (workspace / "checkpoints").mkdir(parents=True)
+    (workspace / "checkpoints" / f"{diag_id}.json").write_text(
+        json.dumps({"status": "in_progress", "completed_segments": []}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "WORKSPACE", workspace)
+    monkeypatch.setattr(gate, "REPO_ROOT", tmp_path)
+
+    rows = gate._analyze_runs()
+    assert not any(r["run_id"] == diag_id for r in rows)
+
+
+def test_gate_duplicate_worker_is_warn_not_block(tmp_path, monkeypatch):
+    gate = _load_gate()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True)
+    (workspace / "stage_state_production.json").write_text(
+        json.dumps({"status": "in_progress", "run_id": "run_dup"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "WORKSPACE", workspace)
+    monkeypatch.setattr(gate, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        gate._registry,
+        "summarize_registry",
+        lambda: {
+            "active_workers": [
+                {"pid": 1, "task_type": "translate", "run_id": "run_a"},
+                {"pid": 2, "task_type": "refine", "run_id": "run_b"},
+            ],
+            "active_count": 2,
+        },
+    )
+
+    result = gate.evaluate_gate()
+    assert result["decision"] == "WARN"
+    assert not any("duplicate_worker" in b for b in result["blocks"])
+    assert any("duplicate_worker" in w for w in result["warnings"])
+    assert any("duplicate_worker" in sb for sb in result["soft_blocks"])

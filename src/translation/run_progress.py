@@ -22,6 +22,44 @@ RECOVERY_LABELS = frozenset(
     }
 )
 
+DEFAULT_STAGE_STATE_REL = "workspace/stage_state.json"
+PRODUCTION_STAGE_STATE_REL = "workspace/stage_state_production.json"
+
+DIAGNOSTIC_RUN_EXACT = frozenset(
+    {
+        "round_50_e2e",
+        "asset-context-user-verify",
+        "asset-context-user-verify-2",
+        "fixture_asset_extract_test",
+    }
+)
+
+
+def is_diagnostic_run_id(run_id: str) -> bool:
+    """Return True for test/diagnostic runs that must not block production resume."""
+    rid = (run_id or "").strip()
+    if not rid:
+        return False
+    if rid in DIAGNOSTIC_RUN_EXACT:
+        return True
+    if rid.startswith("asset-context-"):
+        return True
+    if rid.startswith("fixture_"):
+        return True
+    if rid.startswith("draft-a-"):
+        return True
+    if "realapi_diagnostic" in rid or "diagnostic_translate" in rid:
+        return True
+    return False
+
+
+def production_stage_state_path(repo_root: Path) -> Path:
+    return repo_root / PRODUCTION_STAGE_STATE_REL
+
+
+def default_stage_state_path(repo_root: Path) -> Path:
+    return repo_root / DEFAULT_STAGE_STATE_REL
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()

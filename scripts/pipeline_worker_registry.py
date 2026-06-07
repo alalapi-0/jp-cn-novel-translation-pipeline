@@ -98,14 +98,17 @@ def is_worker_stale(
     *,
     heartbeat_timeout_sec: int = DEFAULT_HEARTBEAT_TIMEOUT_SEC,
 ) -> bool:
-    pid = int(worker.get("pid") or 0)
-    if pid_alive(pid):
+    status = str(worker.get("status") or "")
+    if status not in {"pending", "in_progress"}:
         return False
+    pid = int(worker.get("pid") or 0)
     heartbeat = parse_dt(str(worker.get("heartbeat_at") or worker.get("started_at") or ""))
     if heartbeat is None:
-        return True
+        return not pid_alive(pid)
     age = (datetime.now(timezone.utc) - heartbeat).total_seconds()
-    return age > heartbeat_timeout_sec
+    if age > heartbeat_timeout_sec:
+        return True
+    return not pid_alive(pid)
 
 
 def find_active_workers(
@@ -212,6 +215,133 @@ def unregister_worker(worker_id: str, *, status: str = "completed", state_path: 
     return updated
 
 
+def _read_lock_pid(lock_path: Path) -> int | None:
+    if not lock_path.is_file():
+        return None
+    try:
+        return int(lock_path.read_text(encoding="utf-8").strip().splitlines()[0])
+    except (ValueError, IndexError, OSError):
+        return None
+
+
+def _kill_pid(pid: int) -> bool:
+    if pid <= 0 or not pid_alive(pid):
+        return False
+    import signal
+
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return False
+    for _ in range(20):
+        if not pid_alive(pid):
+            return True
+        import time
+
+        time.sleep(0.5)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError:
+        return False
+    return not pid_alive(pid)
+
+
+def _run_progress_heartbeat_age_sec(repo_root: Path, run_id: str) -> float | None:
+    """Return seconds since run_progress heartbeat for a run, or None if unavailable."""
+    rp_path = repo_root / "workspace" / "runs" / run_id / "run_progress.json"
+    if not rp_path.is_file():
+        return None
+    try:
+        data = json.loads(rp_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    heartbeat = parse_dt(str(data.get("heartbeat_at") or data.get("updated_at") or ""))
+    if heartbeat is None:
+        return None
+    return (datetime.now(timezone.utc) - heartbeat).total_seconds()
+
+
+def heal_stale_workers(
+    *,
+    heartbeat_timeout_sec: int = DEFAULT_HEARTBEAT_TIMEOUT_SEC,
+    state_path: Path | None = None,
+    lock_dir: Path | None = None,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    """Kill frozen workers (alive PID, stale heartbeat), clear locks, mark registry failed."""
+    path = state_path or DEFAULT_STATE_PATH
+    locks = lock_dir or (REPO_ROOT / "workspace" / ".locks")
+    root = repo_root or REPO_ROOT
+    state = load_state(path)
+    healed: list[dict[str, Any]] = []
+
+    for worker in state.get("workers", []):
+        if not isinstance(worker, dict) or not is_worker_stale(worker, heartbeat_timeout_sec=heartbeat_timeout_sec):
+            continue
+        pid = int(worker.get("pid") or 0)
+        run_id = str(worker.get("run_id") or "")
+        progress_age = _run_progress_heartbeat_age_sec(root, run_id) if run_id else None
+        if progress_age is not None and progress_age <= heartbeat_timeout_sec:
+            continue
+        killed = _kill_pid(pid) if pid > 0 else False
+        worker["status"] = "failed"
+        worker["heartbeat_at"] = utc_now()
+        worker["healed_at"] = utc_now()
+        worker["heal_reason"] = "stale_heartbeat" if pid_alive(pid) else "dead_pid"
+        if killed:
+            worker["heal_action"] = "sigterm_killed"
+        elif pid > 0 and pid_alive(pid):
+            worker["heal_action"] = "kill_failed"
+        else:
+            worker["heal_action"] = "marked_failed"
+        healed.append(
+            {
+                "worker_id": worker.get("worker_id"),
+                "pid": pid,
+                "task_type": worker.get("task_type"),
+                "run_id": worker.get("run_id"),
+                "heal_action": worker.get("heal_action"),
+            }
+        )
+
+    if healed:
+        save_state(state, path)
+
+    cleared_locks: list[str] = []
+    healed_pids = {int(h.get("pid") or 0) for h in healed if int(h.get("pid") or 0) > 0}
+    if locks.is_dir():
+        for lock in locks.glob("*.lock"):
+            pid = _read_lock_pid(lock)
+            if pid is None:
+                continue
+            if not pid_alive(pid):
+                lock.unlink(missing_ok=True)
+                cleared_locks.append(lock.name)
+                continue
+            if pid in healed_pids:
+                lock.unlink(missing_ok=True)
+                cleared_locks.append(lock.name)
+                continue
+            run_id = ""
+            for worker in state.get("workers", []):
+                if isinstance(worker, dict) and int(worker.get("pid") or 0) == pid:
+                    run_id = str(worker.get("run_id") or "")
+                    break
+            progress_age = _run_progress_heartbeat_age_sec(root, run_id) if run_id else None
+            if progress_age is not None and progress_age <= heartbeat_timeout_sec:
+                continue
+            if _kill_pid(pid):
+                lock.unlink(missing_ok=True)
+                cleared_locks.append(lock.name)
+
+    return {
+        "healed_workers": healed,
+        "healed_count": len(healed),
+        "cleared_locks": cleared_locks,
+        "heartbeat_timeout_sec": heartbeat_timeout_sec,
+    }
+
+
 def summarize_registry(state_path: Path | None = None) -> dict[str, Any]:
     state = load_state(state_path)
     workers = [w for w in state.get("workers", []) if isinstance(w, dict)]
@@ -231,7 +361,26 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description="Pipeline worker registry")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--heal",
+        action="store_true",
+        help="Kill stale workers and remove dead-pid lock files",
+    )
+    parser.add_argument(
+        "--heartbeat-timeout-sec",
+        type=int,
+        default=DEFAULT_HEARTBEAT_TIMEOUT_SEC,
+    )
     args = parser.parse_args()
+    if args.heal:
+        result = heal_stale_workers(heartbeat_timeout_sec=args.heartbeat_timeout_sec)
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(
+                f"healed={result['healed_count']} cleared_locks={len(result['cleared_locks'])}"
+            )
+        return 0
     summary = summarize_registry()
     if args.json:
         print(json.dumps(summary, ensure_ascii=False, indent=2))

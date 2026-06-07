@@ -13,6 +13,11 @@ from urllib.parse import ParseResult, parse_qs, urlparse
 
 from providers.cost_guard import CostGuardError
 from workbench.api_status import build_api_status
+from workbench.pipeline_status import (
+    build_pipeline_status,
+    list_production_runs,
+    production_run_segments_for_review,
+)
 from workbench.dry_run_generate import generate_segments_from_sample
 from workbench.error_mapper import map_provider_error
 from workbench.real_api_generate import generate_segments_real_api
@@ -219,6 +224,35 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             self._ensure_manifests()
             if path == "/api/runtime/api-status":
                 self._send_json(HTTPStatus.OK, build_api_status(repo_root))
+                return
+            if path == "/api/runtime/pipeline-status":
+                self._send_json(HTTPStatus.OK, build_pipeline_status(repo_root))
+                return
+            if path == "/api/runtime/production-runs":
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "runs": list_production_runs(repo_root),
+                        "checked_at": build_pipeline_status(repo_root).get("checked_at"),
+                    },
+                )
+                return
+            if path.startswith("/api/runtime/production-runs/") and path.endswith("/segments"):
+                run_id = path.removeprefix("/api/runtime/production-runs/").removesuffix("/segments")
+                run_id = run_id.strip("/")
+                if not run_id:
+                    self._bad_request("run_id required")
+                    return
+                chapter_raw = parse_qs(parsed.query).get("chapter", [None])[0]
+                chapter_filter = int(chapter_raw) if chapter_raw and str(chapter_raw).isdigit() else None
+                try:
+                    doc = production_run_segments_for_review(
+                        repo_root, run_id=run_id, chapter=chapter_filter
+                    )
+                except FileNotFoundError as exc:
+                    self._bad_request(str(exc))
+                    return
+                self._send_json(HTTPStatus.OK, doc)
                 return
             if path == "/api/export/status":
                 project_id = parse_qs(parsed.query).get("project_id", [None])[0]
@@ -431,10 +465,12 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     status_mode = str(body.get("status_mode") or body.get("mode") or "approved").strip().lower()
                     if source == "manifest":
                         project_id = validate_project_id(str(body.get("project_id") or ""))
+                    run_id_filter = str(body.get("run_id") or "").strip() or None
                     result = run_export(
                         repo_root,
                         source=source,
                         project_id=project_id,
+                        run_id=run_id_filter,
                         require_refined=bool(body.get("require_refined")),
                         overwrite=body.get("overwrite", True) is not False,
                         status_mode=status_mode,

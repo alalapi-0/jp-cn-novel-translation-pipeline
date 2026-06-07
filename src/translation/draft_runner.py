@@ -166,6 +166,7 @@ def run_draft_stage_b(
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
     asset_context_path: Path | None = None,
+    heartbeat_cb: Callable[[], None] | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_B_MAX_CHAPTERS:
         raise ValueError(f"Stage B hard limit: max {STAGE_B_MAX_CHAPTERS} chapters")
@@ -178,6 +179,7 @@ def run_draft_stage_b(
         run_id=run_id,
         provider_factory=provider_factory,
         asset_context_path=asset_context_path,
+        heartbeat_cb=heartbeat_cb,
     )
 
 
@@ -265,6 +267,11 @@ def _load_asset_context(repo_root: Path, path: Path | None) -> tuple[str, str]:
     return rendered, rel
 
 
+def _segment_needs_translation(seg: Segment) -> bool:
+    """Skip segments with draft_text; re-translate checkpoint-done segments missing draft."""
+    return not (seg.draft_text or "").strip()
+
+
 def run_draft_stage(
     *,
     spec: DraftStageSpec,
@@ -275,6 +282,7 @@ def run_draft_stage(
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
     asset_context_path: Path | None = None,
+    heartbeat_cb: Callable[[], None] | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > spec.limit_chapters:
         raise ValueError(f"{spec.scope} hard limit: max {spec.limit_chapters} chapters")
@@ -354,9 +362,11 @@ def run_draft_stage(
         summary.total_segments += len(chapter.segments)
 
         for batch in _split_batches(chapter):
-            pending = [s for s in batch if not (s.draft_text or "").strip()]
+            pending = [s for s in batch if _segment_needs_translation(s)]
             if not pending:
                 continue
+            if heartbeat_cb:
+                heartbeat_cb()
             messages = build_batch_messages(
                 pending,
                 chapter_label=chapter.chapter_label,
@@ -372,6 +382,8 @@ def run_draft_stage(
             last_exc: Exception | None = None
             ok, msg = False, "no_attempt"
             for attempt in range(1, MAX_API_RETRIES + 1):
+                if heartbeat_cb:
+                    heartbeat_cb()
                 try:
                     result = provider.generate(messages, options)
                     last_exc = None
@@ -441,15 +453,21 @@ def run_draft_stage(
                 )
                 return summary, run_root
 
+            segments_flush_interval = max(
+                1, int(os.environ.get("SEGMENTS_FLUSH_INTERVAL", "10"))
+            )
+            segments_since_flush = 0
             for seg in pending:
                 if seg.status == "machine_translated":
-                    controlled.mark_segment_done(
-                        seg.segment_id,
-                        tokens=result.estimated_tokens // max(len(pending), 1),
-                        cost_usd=result.cost_estimate_usd / max(len(pending), 1),
-                    )
+                    if not controlled.is_segment_done(seg.segment_id):
+                        controlled.mark_segment_done(
+                            seg.segment_id,
+                            tokens=result.estimated_tokens // max(len(pending), 1),
+                            cost_usd=result.cost_estimate_usd / max(len(pending), 1),
+                        )
                     summary.translated_segments += 1
                     ch_result.segments_translated += 1
+                    segments_since_flush += 1
                     write_run_progress(
                         run_root,
                         run_id=run_id,
@@ -461,6 +479,12 @@ def run_draft_stage(
                         completed_segments=_count_translated_segments(parsed_chapters),
                         last_completed_segment_id=seg.segment_id,
                     )
+                    if segments_since_flush >= segments_flush_interval:
+                        export_segments_doc(parsed_chapters, run_root / "segments.json")
+                        segments_since_flush = 0
+            export_segments_doc(parsed_chapters, run_root / "segments.json")
+            if heartbeat_cb:
+                heartbeat_cb()
 
         export_chapter_markdown(chapter, draft_dir)
         summary.chapters.append(ch_result)

@@ -65,3 +65,26 @@ def test_build_api_status_loads_dotenv_for_probe(monkeypatch: pytest.MonkeyPatch
     assert status["has_api_key"] is True
     assert "openrouter" in status["detected_providers"]
     assert "OPENROUTER_API_KEY" in status["env_keys_applied_from_dotenv"]
+
+
+def test_api_status_pipeline_and_smoke_ignorable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("REAL_API_TESTS_ENABLED", "true")
+    monkeypatch.setenv("MAX_TEST_COST_USD", "2.0")
+    runtime = tmp_path / ".agent_runtime" / "real_api_reports"
+    runtime.mkdir(parents=True)
+    (runtime / "real_api_smoke_old.json").write_text(
+        '{"mode":"real","success":false,"created_at":"2020-01-01T00:00:00Z","error_summary":"old failure"}',
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True)
+    (workspace / "stage_state_production.json").write_text(
+        '{"run_id":"run_prod_test","status":"in_progress"}',
+        encoding="utf-8",
+    )
+    status = build_api_status(tmp_path)
+    assert status.get("workbench_mode") == "production"
+    assert status.get("pipeline_status", {}).get("run_id") == "run_prod_test"
+    assert status["last_smoke"]["ignorable"] is True
+    assert status["last_smoke"]["ignorable_note"]

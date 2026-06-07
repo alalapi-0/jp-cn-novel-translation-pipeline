@@ -36,10 +36,11 @@
         </div>
         <div class="triage-col card" id="triage-next">
           <h2>下一步</h2>
-          <p class="meta">创建 dry-run 项目 → 粘贴样本文本 → 进入对照审核。</p>
+          <p class="meta" id="triage-next-hint">创建 dry-run 项目 → 粘贴样本文本 → 进入对照审核。</p>
           <p class="meta" id="qs-real-api-hint">—</p>
           <div class="actions triage-cta">
-            <a href="#quickstart-card" class="button-link primary-cta">创建 dry-run 项目</a>
+            <a href="#quickstart-card" class="button-link" id="triage-quickstart-cta">创建 dry-run 项目</a>
+            <a href="#production-runs-panel" class="button-link primary-cta" id="triage-production-cta" hidden>生产续跑</a>
             <button type="button" id="qs-real-api-btn-hero" disabled title="加载中…">真实 API 小样本</button>
           </div>
           <p class="meta cta-disabled-reason" id="real-api-disabled-reason" hidden></p>
@@ -50,6 +51,18 @@
           <p><a href="#project-list">查看全部项目 ↓</a></p>
         </div>
       </section>
+
+      <div class="card" id="production-runs-panel" hidden>
+        <h2>生产流水线</h2>
+        <div id="production-runs-grid" class="production-runs-grid"></div>
+      </div>
+
+      <div class="card" id="pipeline-gate-card">
+        <h2>生产流水线 Gate</h2>
+        <p class="meta" id="pipeline-gate-summary">加载中…</p>
+        <ul class="meta gate-warnings" id="pipeline-gate-warnings"></ul>
+        <ul class="meta" id="pipeline-gate-fixes"></ul>
+      </div>
 
       <div class="card" id="api-status-card">
         <h2>真实 API 状态（当前环境）</h2>

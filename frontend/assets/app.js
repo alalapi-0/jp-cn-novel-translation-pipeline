@@ -36,6 +36,17 @@
     return base;
   }
 
+  const WORKBENCH_MODE_ZH = {
+    production: "生产模式",
+    pilot: "Pilot 试跑",
+    quickstart: "Quickstart 试译",
+  };
+
+  function workbenchModeLabel(status) {
+    const mode = status?.workbench_mode || "quickstart";
+    return WORKBENCH_MODE_ZH[mode] || mode;
+  }
+
   function apiModeLabel(status) {
     if (!status) return "加载中…";
     if (status.has_api_key && status.api_mode === "real_api" && !status.workbench_real_api_ready) {
@@ -56,7 +67,7 @@
   function updateModeBanner(status) {
     const banner = document.getElementById("mode-banner");
     if (!banner || !status) return;
-    banner.textContent = `${apiModeLabel(status)} · api_mode=${status.api_mode}`;
+    banner.textContent = `${workbenchModeLabel(status)} · ${apiModeLabel(status)} · api_mode=${status.api_mode}`;
   }
 
   function draftPanelTitle(status, segment) {
@@ -147,6 +158,7 @@
     try {
       runtimeApiStatus = await fetchApiStatus();
       updateModeBanner(runtimeApiStatus);
+      bindProductionResumeCard(runtimeApiStatus);
       return runtimeApiStatus;
     } catch (err) {
       if (document.getElementById("status-log")) {
@@ -154,6 +166,156 @@
       }
       return null;
     }
+  }
+
+  async function fetchProductionRuns() {
+    const res = await fetch("/api/runtime/production-runs");
+    if (!res.ok) throw new Error(`/api/runtime/production-runs ${res.status}`);
+    return res.json();
+  }
+
+  async function fetchProductionRunSegments(runId, chapter) {
+    const params = new URLSearchParams();
+    if (chapter) params.set("chapter", String(chapter));
+    const qs = params.toString();
+    const url = `/api/runtime/production-runs/${encodeURIComponent(runId)}/segments${qs ? `?${qs}` : ""}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      throw new Error(payload.error || `production segments ${res.status}`);
+    }
+    return res.json();
+  }
+
+  function gateWarningCleanupCommand(warning) {
+    const text = String(warning || "");
+    if (text.startsWith("stale_lock:")) {
+      const lockMatch = text.match(/stale_lock:\s*(\S+)/);
+      const lockName = lockMatch?.[1] || "";
+      return {
+        label: `过期 worker 锁：${lockName}（进程已退出，可安全清理）`,
+        command: "python3 scripts/pipeline_worker_registry.py --heal --json",
+        altCommand: lockName ? `rm workspace/.locks/${lockName}` : "",
+      };
+    }
+    return { label: text, command: "", altCommand: "" };
+  }
+
+  function renderGateWarnings(gate) {
+    const ul = document.getElementById("pipeline-gate-warnings");
+    if (!ul) return;
+    ul.innerHTML = "";
+    const warnings = (gate && gate.warnings) || [];
+    if (!warnings.length) {
+      ul.hidden = true;
+      return;
+    }
+    ul.hidden = false;
+    for (const w of warnings.slice(0, 8)) {
+      const parsed = gateWarningCleanupCommand(w);
+      const li = document.createElement("li");
+      li.className = "gate-warning-item";
+      const label = document.createElement("span");
+      label.textContent = parsed.label;
+      li.appendChild(label);
+      if (parsed.command) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "复制清理命令";
+        btn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(parsed.command);
+            log("已复制 Gate 清理命令");
+          } catch {
+            log(`复制失败：${parsed.command}`);
+          }
+        });
+        li.appendChild(btn);
+      }
+      ul.appendChild(li);
+    }
+  }
+
+  function bindProductionRunsDashboard(status) {
+    const panel = document.getElementById("production-runs-panel");
+    const grid = document.getElementById("production-runs-grid");
+    if (!panel || !grid) return;
+    const ps = status?.pipeline_status;
+    const cards = ps?.active_run_cards || [];
+    const hasRun = cards.length > 0 || Boolean(ps?.has_production_run);
+    panel.hidden = !hasRun;
+    const prodCta = document.getElementById("triage-production-cta");
+    const quickCta = document.getElementById("triage-quickstart-cta");
+    const nextHint = document.getElementById("triage-next-hint");
+    if (prodCta) prodCta.hidden = !hasRun;
+    if (quickCta) quickCta.classList.toggle("primary-cta", !hasRun);
+    if (prodCta) prodCta.classList.toggle("primary-cta", hasRun);
+    if (nextHint) {
+      nextHint.textContent = hasRun
+        ? "生产批次已就绪：可续跑翻译、精修或进入对照审核。"
+        : "创建 dry-run 项目 → 粘贴样本文本 → 进入对照审核。";
+    }
+    if (!hasRun) {
+      grid.innerHTML = "";
+      return;
+    }
+    const rows = cards.length
+      ? cards
+      : ps?.run_id
+        ? [
+            {
+              run_id: ps.run_id,
+              task_label: ps.phase === "refine" ? "精修 Stage C" : "初译 Stage B",
+              chapter_range_label: ps.chapter_range_label,
+              status: ps.status,
+              segment_progress_label: ps.segment_progress_label,
+              last_heartbeat: ps.last_heartbeat,
+              resume_command: ps.resume_command,
+              review_url: `/review.html?production_run=${encodeURIComponent(ps.run_id)}`,
+              is_default: true,
+            },
+          ]
+        : [];
+    grid.innerHTML = rows
+      .map((card, idx) => {
+        const cardId = `prod-run-card-${idx}`;
+        return `<article class="production-run-card" id="${cardId}">
+          <h3>${escapeHtml(card.task_label || "生产任务")}${card.is_default ? "（默认）" : ""}</h3>
+          <p class="meta">${[
+            `run_id：${card.run_id || "—"}`,
+            card.chapter_range_label ? `章节：${card.chapter_range_label}` : "",
+            card.status ? `状态：${card.status}` : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}</p>
+          <p class="meta">段落进度：${escapeHtml(card.segment_progress_label || "—")}</p>
+          <p class="meta">最近心跳：${escapeHtml(card.last_heartbeat || "—")}</p>
+          <p class="meta"><code class="prod-resume-cmd">${escapeHtml(card.resume_command || "—")}</code></p>
+          <div class="actions">
+            <button type="button" class="prod-copy-cmd-btn" data-cmd="${escapeHtml(card.resume_command || "")}">复制续跑命令</button>
+            <a class="button-link" href="${escapeHtml(card.review_url || "/review.html")}">对照审核</a>
+          </div>
+        </article>`;
+      })
+      .join("");
+    grid.querySelectorAll(".prod-copy-cmd-btn").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", async () => {
+        const cmd = btn.getAttribute("data-cmd") || "";
+        if (!cmd) return;
+        try {
+          await navigator.clipboard.writeText(cmd);
+          log("已复制生产续跑命令");
+        } catch {
+          log(`复制失败，请手动复制：${cmd}`);
+        }
+      });
+    });
+  }
+
+  function bindProductionResumeCard(status) {
+    bindProductionRunsDashboard(status);
   }
 
   function nextRequestId(prefix) {
@@ -831,15 +993,65 @@
         });
       }
       if (smokeEl) {
-        smokeEl.textContent = status.last_smoke
-          ? `mode=${status.last_smoke.mode} · success=${status.last_smoke.success} · ${status.last_smoke.created_at || "—"}`
-          : "尚无历史 smoke 记录";
+        if (!status.last_smoke) {
+          smokeEl.textContent = "尚无历史 smoke 记录";
+        } else {
+          const ls = status.last_smoke;
+          const parts = [
+            `mode=${ls.mode}`,
+            `success=${ls.success}`,
+            ls.created_at || "—",
+          ];
+          if (ls.ignorable && ls.ignorable_note) {
+            parts.push(`（${ls.ignorable_note}）`);
+          } else if (!ls.success && ls.error_summary) {
+            parts.push(String(ls.error_summary));
+          }
+          smokeEl.textContent = parts.join(" · ");
+        }
       }
       const runnerNote = document.getElementById("api-runner-note");
       if (runnerNote) {
         runnerNote.textContent = status.runner_status_note || "";
       }
       if (hintEl) hintEl.textContent = status.config_hint || "—";
+      const pipelineSummary = document.getElementById("pipeline-gate-summary");
+      const pipelineFixes = document.getElementById("pipeline-gate-fixes");
+      const gate = status.pipeline_gate;
+      if (pipelineSummary) {
+        if (!gate) {
+          pipelineSummary.textContent = "Gate 状态不可用";
+        } else {
+          pipelineSummary.textContent = [
+            `决策：${gate.decision || "—"}`,
+            gate.draft_completed_chapters != null
+              ? `草稿完成章：${gate.draft_completed_chapters}（Stage B 初译齐）`
+              : null,
+            gate.refined_exportable_chapters != null
+              ? `可精修/导出章：${gate.refined_exportable_chapters}（初译+精修均齐）`
+              : `可导出章：${gate.exportable_chapters ?? "—"}`,
+            `活跃 worker：${gate.active_worker_count ?? 0}`,
+            gate.stage_state_run_id ? `stage_state：${gate.stage_state_run_id} (${gate.stage_state_source || "—"})` : "",
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        }
+      }
+      renderGateWarnings(gate);
+      if (pipelineFixes) {
+        pipelineFixes.innerHTML = "";
+        const fixes = (gate && gate.fix_paths) || [];
+        for (const step of fixes.slice(0, 5)) {
+          const li = document.createElement("li");
+          li.textContent = step.replace(/^rm -f /, "删除锁文件：");
+          pipelineFixes.appendChild(li);
+        }
+        if (!fixes.length && gate && (gate.blocks || []).length) {
+          const li = document.createElement("li");
+          li.textContent = (gate.blocks || []).join("；");
+          pipelineFixes.appendChild(li);
+        }
+      }
       if (realGenBtn) {
         realGenBtn.disabled =
           !status.workbench_real_api_ready || quickstartGenerating || quickstartRealApiInFlight;
@@ -1037,6 +1249,7 @@
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       if (quickstartGenerating || quickstartRealApiInFlight) return;
+      setQuickstartGenerating(true);
       clearQuickstartError();
       const projectId = document.getElementById("qs-project-id")?.value.trim();
       const name = document.getElementById("qs-project-name")?.value.trim() || projectId;
@@ -1045,7 +1258,6 @@
       const resultEl = document.getElementById("quickstart-result");
       const reviewLink = document.getElementById("qs-review-link");
       const requestId = nextRequestId("dryrun");
-      setQuickstartGenerating(true);
       try {
         if (!projectId || !sampleText) {
           const msg = !projectId ? "请填写项目 ID。" : "请填写样本文本。";
@@ -1748,6 +1960,112 @@
     return parts.join("");
   }
 
+  function pickProductionDefaultRun(runs, pipelineStatus) {
+    const inProgress = runs.filter((r) => r.status === "in_progress");
+    const draftInProgress = inProgress
+      .filter((r) => r.run_id !== pipelineStatus?.run_id || pipelineStatus?.phase !== "refine")
+      .sort((a, b) => (b.chapter_offset || 0) - (a.chapter_offset || 0));
+    if (draftInProgress.length) return draftInProgress[0].run_id;
+    const defaultRun = runs.find((r) => r.is_default);
+    if (defaultRun) return defaultRun.run_id;
+    return runs[0]?.run_id || "";
+  }
+
+  async function populateProductionRunSwitcher(defaultRunId, options = {}) {
+    const select = document.getElementById("production-run-switcher");
+    if (!select) return "";
+    try {
+      const payload = await fetchProductionRuns();
+      const runs = payload.runs || [];
+      let chosen = defaultRunId;
+      if (!chosen && options.autoSelectProduction) {
+        const status = options.pipelineStatus || (await fetchApiStatus()).pipeline_status;
+        chosen = pickProductionDefaultRun(runs, status);
+      }
+      const optionHtml = [
+        `<option value="">— 使用 manifest 项目 —</option>`,
+        ...runs.map((r) => {
+          const progress = r.segment_progress_label ? ` · ${r.segment_progress_label}` : "";
+          const label = `${r.run_id}${r.is_default ? "（默认）" : ""}${progress}`;
+          const selected = r.run_id === chosen ? " selected" : "";
+          return `<option value="${escapeHtml(r.run_id)}"${selected}>${escapeHtml(label)}</option>`;
+        }),
+      ];
+      select.innerHTML = optionHtml.join("");
+      return chosen;
+    } catch (err) {
+      select.innerHTML = '<option value="">生产 run 加载失败</option>';
+      log(`production runs error: ${err.message}`);
+      return "";
+    }
+  }
+
+  async function loadProductionReview(runId, chapter) {
+    const doc = await fetchProductionRunSegments(runId, chapter);
+    const chapterSelect = document.getElementById("production-chapter-filter");
+    if (chapterSelect) {
+      const chapters = doc.chapters_available || [];
+      chapterSelect.disabled = !chapters.length;
+      chapterSelect.innerHTML = [
+        '<option value="">全部章节</option>',
+        ...chapters.map((n) => {
+          const sel = String(n) === String(chapter || "") ? " selected" : "";
+          return `<option value="${n}"${sel}>第 ${n} 章</option>`;
+        }),
+      ].join("");
+    }
+    const projectLabel = document.getElementById("active-project-label");
+    if (projectLabel) {
+      projectLabel.textContent = `生产 run：${runId}${chapter ? ` · 第 ${chapter} 章` : ""}`;
+    }
+    bindReviewPage({ segments: doc.segments || [] });
+    log(`production review loaded: ${runId} segments=${(doc.segments || []).length}`);
+  }
+
+  function setupProductionRunSelector() {
+    const select = document.getElementById("production-run-switcher");
+    const chapterSelect = document.getElementById("production-chapter-filter");
+    if (!select || select.dataset.bound === "1") return;
+    select.dataset.bound = "1";
+    const params = new URLSearchParams(window.location.search);
+    const initialRun = params.get("production_run") || "";
+    const workbenchMode = params.get("workbench_mode") || "";
+    const autoProduction = workbenchMode === "production";
+    populateProductionRunSwitcher(initialRun, { autoSelectProduction: autoProduction }).then(
+      async (chosenRun) => {
+        const runToLoad = initialRun || chosenRun;
+        if (runToLoad) {
+          if (chapterSelect) chapterSelect.disabled = false;
+          await loadProductionReview(runToLoad, params.get("chapter") || "");
+        }
+      }
+    );
+    select.addEventListener("change", async () => {
+      const runId = select.value;
+      if (!runId) {
+        if (workbenchContext) bindReviewPage({ segments: workbenchContext.segments || [] });
+        return;
+      }
+      try {
+        await loadProductionReview(runId, chapterSelect?.value || "");
+      } catch (err) {
+        log(`production review failed: ${err.message}`);
+      }
+    });
+    if (chapterSelect && chapterSelect.dataset.bound !== "1") {
+      chapterSelect.dataset.bound = "1";
+      chapterSelect.addEventListener("change", async () => {
+        const runId = select.value;
+        if (!runId) return;
+        try {
+          await loadProductionReview(runId, chapterSelect.value || "");
+        } catch (err) {
+          log(`production chapter filter failed: ${err.message}`);
+        }
+      });
+    }
+  }
+
   function setupReviewProjectSelector(ctx) {
     const select = document.getElementById("project-switcher");
     if (!select) return;
@@ -2052,6 +2370,15 @@
         : status.total_bilingual_count ?? status.bilingual_count;
       document.getElementById("export-zh-count").textContent = String(totalZh);
       document.getElementById("export-bi-count").textContent = String(totalBi);
+      const prodSummaryEl = document.getElementById("export-production-summary");
+      if (prodSummaryEl && status.production_summary) {
+        const ps = status.production_summary;
+        const parts = [
+          `output_cn 已译章节：${ps.output_cn_translated_count ?? totalZh}`,
+          ps.last_export_at ? `最近导出：${ps.last_export_at}` : null,
+        ].filter(Boolean);
+        prodSummaryEl.textContent = parts.join(" · ");
+      }
       const list = document.getElementById("export-file-list");
       const countEl = document.getElementById("export-file-count");
       const loadMoreBtn = document.getElementById("export-load-more-btn");
@@ -2241,24 +2568,58 @@
       });
     }
 
+    const runSelect = document.getElementById("export-production-run");
+    if (runSelect && runSelect.dataset.bound !== "1") {
+      runSelect.dataset.bound = "1";
+      try {
+        const apiStatus = await fetchApiStatus().catch(() => ({}));
+        const payload = await fetchProductionRuns();
+        const runs = payload.runs || [];
+        const params = new URLSearchParams(window.location.search);
+        const autoProduction =
+          params.get("workbench_mode") === "production" || apiStatus.workbench_mode === "production";
+        const chosen = autoProduction
+          ? pickProductionDefaultRun(runs, apiStatus.pipeline_status)
+          : runs.find((r) => r.is_default)?.run_id || runs[0]?.run_id || "";
+        runSelect.innerHTML = runs.length
+          ? runs
+              .map((r) => {
+                const progress = r.segment_progress_label ? ` · ${r.segment_progress_label}` : "";
+                const label = `${r.run_id}${r.is_default ? "（默认）" : ""}${progress}`;
+                const selected = r.run_id === chosen ? " selected" : "";
+                return `<option value="${escapeHtml(r.run_id)}"${selected}>${escapeHtml(label)}</option>`;
+              })
+              .join("")
+          : '<option value="">无可用生产 run</option>';
+      } catch (err) {
+        runSelect.innerHTML = '<option value="">加载失败</option>';
+        log(`export run list error: ${err.message}`);
+      }
+    }
+
     const runsBtn = document.getElementById("export-runs-btn");
     if (runsBtn && runsBtn.dataset.bound !== "1") {
       runsBtn.dataset.bound = "1";
       runsBtn.addEventListener("click", async () => {
+        const runId = document.getElementById("export-production-run")?.value || "";
         const confirmed = window.confirm(
-          "将合并 workspace/runs 下所有 Stage B run 并导出到 output_cn/。若无 run 将失败。继续？"
+          runId
+            ? `将导出生产 run「${runId}」到 output_cn/。继续？`
+            : "将合并 workspace/runs 下所有 Stage B run 并导出到 output_cn/。若无 run 将失败。继续？"
         );
         if (!confirmed) return;
         const overwrite = document.getElementById("export-overwrite")?.checked !== false;
         const resultEl = document.getElementById("export-result");
         try {
+          const body = {
+            source: "runs",
+            overwrite,
+          };
+          if (runId) body.run_id = runId;
           const res = await fetch("/api/export/run", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              source: "runs",
-              overwrite,
-            }),
+            body: JSON.stringify(body),
           });
           const payload = await res.json();
           if (!res.ok) throw new Error(payload.error || `export ${res.status}`);
@@ -2348,6 +2709,7 @@
       await bindHiddenProjectsPanel();
       setupProjectSwitchHandler(workbenchContext);
       setupReviewProjectSelector(workbenchContext);
+      setupProductionRunSelector();
       setupReviewClickHandler(workbenchContext.activeProjectId);
       setupReviewKeyboardHandler(workbenchContext.activeProjectId);
       bindReviewPage({ segments: workbenchContext.segments });

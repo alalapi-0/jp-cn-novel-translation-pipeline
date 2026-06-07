@@ -69,10 +69,17 @@
         <pre id="translation-assets-result" class="export-result">尚未检查资产状态。</pre>
       </div>
       <div class="card">
-        <h2>全量 runs 导出</h2>
-        <p class="meta">合并 <code>workspace/runs</code> 下已完成 Stage B run 并导出；若无 run 将报错，不会回退 manifest。</p>
+        <h2>生产 run 导出</h2>
+        <p class="meta" id="export-production-summary">加载生产导出摘要…</p>
+        <p class="meta">选择 <code>workspace/runs</code> 下的 Stage B 生产 run；生产模式下默认选取 stage_state 默认 run 或最新 in_progress 初译批次。</p>
+        <label>
+          生产 run
+          <select id="export-production-run">
+            <option value="">加载中…</option>
+          </select>
+        </label>
         <div class="actions">
-          <button type="button" class="danger" id="export-runs-btn">全量 runs 导出（需确认）</button>
+          <button type="button" class="danger" id="export-runs-btn">导出所选生产 run（需确认）</button>
         </div>
       </div>
       <details class="card" id="export-history-details">

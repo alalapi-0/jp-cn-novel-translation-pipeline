@@ -6,16 +6,24 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-export REAL_API_TESTS_ENABLED=1
-export CONTROLLED_RUN_ENABLED=1
 export PYTHONUNBUFFERED=1
 export DRAFT_MODEL="${DRAFT_MODEL:-deepseek/deepseek-v4-pro}"
 export REFINE_MODEL="${REFINE_MODEL:-x-ai/grok-4.3}"
 export TRANSLATE_MAX_TEST_COST_USD="${TRANSLATE_MAX_TEST_COST_USD:-2.5}"
 export MAX_TEST_COST_USD="${MAX_TEST_COST_USD:-2.0}"
 export PILOT_SKIP_OFFSETS="${PILOT_SKIP_OFFSETS:-0}"
+export PRODUCTION_STAGE_STATE_PATH="${PRODUCTION_STAGE_STATE_PATH:-workspace/stage_state_production.json}"
 
-PYTHON="${PYTHON:-/Users/alalapi/.local/bin/python3.12}"
+if [[ -x "$REPO_ROOT/.venv/bin/python" ]]; then
+  PYTHON="${PYTHON:-$REPO_ROOT/.venv/bin/python}"
+else
+  PYTHON="${PYTHON:-python3}"
+fi
+
+# Load .env into this shell (keys only; never log values)
+"$PYTHON" -c "from pathlib import Path; import sys; sys.path.insert(0, 'scripts'); from local_env import apply_local_env; apply_local_env(Path('$REPO_ROOT'))" 2>/dev/null || true
+export REAL_API_TESTS_ENABLED="${REAL_API_TESTS_ENABLED:-1}"
+export CONTROLLED_RUN_ENABLED="${CONTROLLED_RUN_ENABLED:-1}"
 
 LOG="$REPO_ROOT/workspace/production_pipeline.log"
 PIDFILE="$REPO_ROOT/workspace/.production_pipeline.pid"

@@ -14,6 +14,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from local_env import apply_local_env  # noqa: E402
 
 from translation.draft_runner import (  # noqa: E402
     STAGE_A_MAX_CHAPTERS,
@@ -35,24 +38,6 @@ STAGE_STATE_MAP = {
     "stage_a": "draft_stage_a_5ch",
     "stage_b": "draft_stage_b_50ch",
 }
-
-
-def _apply_local_env(repo_root: Path) -> None:
-    env_path = repo_root / ".env"
-    if not env_path.is_file():
-        return
-    for raw in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        key = key.strip()
-        if not key or key in os.environ:
-            continue
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-            value = value[1:-1]
-        os.environ[key] = value
 
 
 def _acquire_translate_lock(stage: str, run_id: str) -> int:
@@ -91,6 +76,8 @@ def _update_stage_state(
     run_id: str,
     status: str,
     summary: dict,
+    *,
+    state_path: Path | None = None,
 ) -> None:
     payload = {
         "phase": "draft",
@@ -101,7 +88,7 @@ def _update_stage_state(
         "refine_blocked": True,
         "summary": summary,
     }
-    update_stage_state_if_newer(repo_root, payload, run_id=run_id)
+    update_stage_state_if_newer(repo_root, payload, run_id=run_id, state_path=state_path)
 
 
 def main() -> int:
@@ -123,8 +110,15 @@ def main() -> int:
         default=None,
         help="Translation-memory asset JSON to include in restart/retry prompt context.",
     )
+    parser.add_argument(
+        "--stage-state-path",
+        type=Path,
+        default=None,
+        help="Write stage_state to this path (default: workspace/stage_state.json)",
+    )
     args = parser.parse_args()
-    _apply_local_env(REPO_ROOT)
+    apply_local_env(REPO_ROOT)
+    stage_state_path = args.stage_state_path
     input_dir = args.input_dir if args.input_dir.is_absolute() else (REPO_ROOT / args.input_dir)
 
     if args.phase != "draft":
@@ -162,6 +156,10 @@ def main() -> int:
         return 2
 
     worker_id = worker["worker_id"]
+
+    def heartbeat() -> None:
+        _registry.heartbeat_worker(worker_id)
+
     try:
         _update_stage_state(
             REPO_ROOT,
@@ -169,6 +167,7 @@ def main() -> int:
             registry_run_id,
             "in_progress",
             {"limit_chapters": limit, "chapter_offset": args.chapter_offset},
+            state_path=stage_state_path,
         )
 
         try:
@@ -179,6 +178,7 @@ def main() -> int:
                 chapter_offset=args.chapter_offset,
                 run_id=run_id,
                 asset_context_path=args.asset_context,
+                heartbeat_cb=heartbeat if args.stage == "stage_b" else None,
             )
         except Exception as exc:
             _update_stage_state(
@@ -187,6 +187,7 @@ def main() -> int:
                 run_id or "failed",
                 "failed",
                 {"error": str(exc)},
+                state_path=stage_state_path,
             )
             _registry.unregister_worker(worker_id, status="failed")
             print(f"translate failed: {exc}", file=sys.stderr)
@@ -209,6 +210,7 @@ def main() -> int:
                 "api_calls": summary.api_calls,
                 "spent_usd": summary.spent_usd,
             },
+            state_path=stage_state_path,
         )
         _registry.unregister_worker(worker_id, status=status)
         print(

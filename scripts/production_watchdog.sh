@@ -10,6 +10,7 @@ LOG="$REPO_ROOT/workspace/watchdog_poll.log"
 PIDFILE="$REPO_ROOT/workspace/.production_watchdog.pid"
 LOCKFILE="$REPO_ROOT/workspace/.production_watchdog.lock"
 INTERVAL="${WATCHDOG_INTERVAL_SEC:-240}"
+HEAL_TIMEOUT="${WATCHDOG_HEAL_TIMEOUT_SEC:-600}"
 
 export REAL_API_TESTS_ENABLED=1 CONTROLLED_RUN_ENABLED=1 PYTHONUNBUFFERED=1
 export TRANSLATE_MAX_TEST_COST_USD="${TRANSLATE_MAX_TEST_COST_USD:-2.5}"
@@ -60,7 +61,10 @@ all_batches_done() {
 
 draft_progress() {
   local run_id=""
-  local progress_file="$REPO_ROOT/workspace/stage_state.json"
+  local progress_file="$REPO_ROOT/workspace/stage_state_production.json"
+  if [[ ! -f "$progress_file" ]]; then
+    progress_file="$REPO_ROOT/workspace/stage_state.json"
+  fi
   if [[ -f "$progress_file" ]]; then
     run_id="$("$PYTHON" -c "
 import json
@@ -113,6 +117,83 @@ restart_pipeline() {
   sleep 5
 }
 
+heal_stale_workers() {
+  local heal_out
+  heal_out="$("$PYTHON" scripts/pipeline_worker_registry.py --heal \
+    --heartbeat-timeout-sec "$HEAL_TIMEOUT" --json 2>/dev/null || true)"
+  if echo "$heal_out" | grep -q '"healed_count": [1-9]'; then
+    wlog "healed stale workers: $heal_out"
+  fi
+  if echo "$heal_out" | grep -q '"cleared_locks": \[[^]]\+]'; then
+    wlog "cleared stale locks: $heal_out"
+  fi
+}
+
+auto_resume_stale_drafts() {
+  if work_in_progress; then
+    return 0
+  fi
+  local resume_run offset limit
+  read -r resume_run offset limit <<EOF
+$("$PYTHON" -c "
+import os, sys
+from pathlib import Path
+sys.path.insert(0, 'src')
+from translation.run_progress import safe_load_json, is_diagnostic_run_id
+root = Path('$REPO_ROOT')
+runs_root = root / 'workspace' / 'runs'
+lock_dir = root / 'workspace' / '.locks'
+
+def pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+def read_lock_pid(lock_path):
+    try:
+        return int(lock_path.read_text(encoding='utf-8').strip().splitlines()[0])
+    except (ValueError, IndexError, OSError):
+        return None
+
+best = None
+for run_dir in sorted(runs_root.glob('run_*_draft_stage_b_50ch')):
+    run_id = run_dir.name
+    if is_diagnostic_run_id(run_id):
+        continue
+    progress = safe_load_json(run_dir / 'run_progress.json') or {}
+    if progress.get('status') != 'in_progress':
+        continue
+    lock = lock_dir / f'translate_stage_b_{run_id}.lock'
+    if lock.is_file():
+        pid = read_lock_pid(lock)
+        if pid is not None and pid_alive(pid):
+            continue
+    meta = safe_load_json(run_dir / 'run_metadata.json') or {}
+    offset = int(meta.get('chapter_offset') or progress.get('chapter_offset') or 0)
+    limit = int(meta.get('limit_chapters') or 50)
+    if best is None or offset > best[1]:
+        best = (run_id, offset, limit)
+if best:
+    print(best[0], best[1], best[2])
+" 2>/dev/null || true)
+EOF
+  if [[ -z "$resume_run" ]]; then
+    return 0
+  fi
+  wlog "AUTO_RESUME draft translate run_id=$resume_run offset=$offset limit=$limit"
+  nohup env PYTHON="$PYTHON" REAL_API_TESTS_ENABLED=1 CONTROLLED_RUN_ENABLED=1 \
+    TRANSLATE_MAX_TEST_COST_USD="${TRANSLATE_MAX_TEST_COST_USD}" \
+    MAX_TEST_COST_USD="${MAX_TEST_COST_USD}" \
+    "$PYTHON" scripts/resume_production.py \
+    --run-id "$resume_run" \
+    --chapter-offset "$offset" \
+    --target-new-chapters "$limit" \
+    --no-hydrate >>"$REPO_ROOT/workspace/production_pipeline.log" 2>&1 &
+  sleep 5
+}
+
 if [[ -f "$PIDFILE" ]]; then
   old_pid="$(tr -d ' \n' <"$PIDFILE" 2>/dev/null || true)"
   if pid_alive "$old_pid"; then
@@ -143,6 +224,8 @@ wlog "watchdog start pid=$$ interval=${INTERVAL}s PILOT_SKIP_OFFSETS=${PILOT_SKI
 sleep 15
 
 while true; do
+  heal_stale_workers
+  auto_resume_stale_drafts
   ch51_drafts="$(draft_progress)"
   ps_lines="$(ps aux 2>/dev/null | grep -v grep | grep -E 'production_pipeline|pilot_batch_chain|translate\.py|refine_stage_c' | awk '{print $2,$11,$12,$13,$14}' | head -6 | tr '\n' ' ')"
   wlog "poll ch51-100_draft_md=${ch51_drafts}/50 ps: ${ps_lines:-NONE}"

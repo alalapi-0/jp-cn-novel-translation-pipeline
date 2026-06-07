@@ -18,6 +18,21 @@ def _count_md_files(directory: Path) -> int:
     return sum(1 for p in directory.glob("*.md") if p.is_file())
 
 
+def _latest_export_mtime(directory: Path) -> str | None:
+    if not directory.is_dir():
+        return None
+    latest: float | None = None
+    for path in directory.glob("*.md"):
+        if not path.is_file():
+            continue
+        mtime = path.stat().st_mtime
+        if latest is None or mtime > latest:
+            latest = mtime
+    if latest is None:
+        return None
+    return datetime.fromtimestamp(latest, tz=timezone.utc).replace(microsecond=0).isoformat()
+
+
 def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str, Any]:
     zh_dir = repo_root / "output_cn" / "translated"
     bi_dir = repo_root / "output_cn" / "bilingual"
@@ -29,6 +44,7 @@ def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str
         bi_files = [name for name in bi_files if name.startswith(stem)]
     runs_root = repo_root / "workspace" / "runs"
     run_count = sum(1 for _ in runs_root.glob("run_*_draft_stage_b_50ch/run_metadata.json")) if runs_root.is_dir() else 0
+    total_zh = _count_md_files(zh_dir) if zh_dir.is_dir() else 0
     return {
         "translated_dir": str(zh_dir.relative_to(repo_root)),
         "bilingual_dir": str(bi_dir.relative_to(repo_root)),
@@ -37,9 +53,13 @@ def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str
         "translated_files": zh_files[:50],
         "bilingual_files": bi_files[:50],
         "filtered_project_id": project_id,
-        "total_translated_count": _count_md_files(zh_dir) if zh_dir.is_dir() else 0,
+        "total_translated_count": total_zh,
         "total_bilingual_count": _count_md_files(bi_dir) if bi_dir.is_dir() else 0,
         "draft_runs_available": run_count,
+        "production_summary": {
+            "output_cn_translated_count": total_zh,
+            "last_export_at": _latest_export_mtime(zh_dir),
+        },
         "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }
 
@@ -151,6 +171,7 @@ def run_export(
     *,
     source: str,
     project_id: str | None = None,
+    run_id: str | None = None,
     require_refined: bool = False,
     overwrite: bool = True,
     status_mode: str = "approved",
@@ -191,7 +212,12 @@ def run_export(
         raise RuntimeError("export_refined_runs.py unavailable")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    summary = module.export_all(repo_root, require_refined=require_refined)
+    summary = module.export_all(
+        repo_root,
+        require_refined=require_refined,
+        run_id=str(run_id).strip() or None,
+        overwrite=overwrite,
+    )
     summary["source"] = "runs"
     summary["status"] = export_status(repo_root)
     return summary

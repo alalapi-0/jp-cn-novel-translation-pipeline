@@ -675,3 +675,35 @@ kbd {
     display: none;
   }
 }
+
+.production-runs-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.production-run-card {
+  background: #121a26;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.production-run-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.gate-warnings {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.gate-warning-item {
+  margin-bottom: 0.35rem;
+}
+
+.gate-warning-item button {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+}
