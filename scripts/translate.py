@@ -25,6 +25,7 @@ from translation.draft_runner import (  # noqa: E402
     run_draft_stage_b,
 )
 from translation.run_progress import update_stage_state_if_newer  # noqa: E402
+from translation.stop_control import StopRequested, check_stop_or_raise, clear_stop_request, install_signal_handlers  # noqa: E402
 
 _registry_spec = importlib.util.spec_from_file_location(
     "pipeline_worker_registry",
@@ -116,8 +117,16 @@ def main() -> int:
         default=None,
         help="Write stage_state to this path (default: workspace/stage_state.json)",
     )
+    parser.add_argument("--controller-pid", type=int, default=0)
+    parser.add_argument("--controller-run-id", default="")
+    parser.add_argument("--round-id", default="")
     args = parser.parse_args()
     apply_local_env(REPO_ROOT)
+    install_signal_handlers()
+    clear_stop_request(REPO_ROOT)
+    controller_pid = int(args.controller_pid or os.environ.get("TRANSLATION_CONTROLLER_PID", "0") or 0)
+    controller_run_id = (args.controller_run_id or os.environ.get("TRANSLATION_CONTROLLER_RUN_ID", "")).strip()
+    round_id = (args.round_id or os.environ.get("TRANSLATION_ROUND_ID", "")).strip()
     stage_state_path = args.stage_state_path
     input_dir = args.input_dir if args.input_dir.is_absolute() else (REPO_ROOT / args.input_dir)
 
@@ -144,11 +153,19 @@ def main() -> int:
         return 2
 
     registry_run_id = run_id or f"{args.stage}_default"
+    chapter_end = args.chapter_offset + limit
     worker, reason = _registry.register_worker(
         task_type="translate",
         stage=args.stage,
         run_id=registry_run_id,
         chapter_offset=args.chapter_offset,
+        controller_pid=controller_pid,
+        controller_run_id=controller_run_id,
+        round_id=round_id,
+        chapter_range=f"{args.chapter_offset + 1}-{chapter_end}",
+        provider="model_router",
+        model=os.environ.get("DRAFT_MODEL", "deepseek/deepseek-v4-pro"),
+        stop_policy="stop_when_controller_exits",
     )
     if worker is None:
         print(reason, file=sys.stderr)
@@ -158,6 +175,7 @@ def main() -> int:
     worker_id = worker["worker_id"]
 
     def heartbeat() -> None:
+        check_stop_or_raise(worker_id=worker_id, run_id=registry_run_id, repo_root=REPO_ROOT)
         _registry.heartbeat_worker(worker_id)
 
     try:
@@ -171,15 +189,30 @@ def main() -> int:
         )
 
         try:
-            summary, run_root = run_fn(
-                repo_root=REPO_ROOT,
-                input_dir=input_dir,
-                limit_chapters=limit,
-                chapter_offset=args.chapter_offset,
-                run_id=run_id,
-                asset_context_path=args.asset_context,
-                heartbeat_cb=heartbeat if args.stage == "stage_b" else None,
+            run_kwargs = {
+                "repo_root": REPO_ROOT,
+                "input_dir": input_dir,
+                "limit_chapters": limit,
+                "chapter_offset": args.chapter_offset,
+                "run_id": run_id,
+                "asset_context_path": args.asset_context,
+            }
+            if args.stage == "stage_b":
+                run_kwargs["heartbeat_cb"] = heartbeat
+                run_kwargs["worker_id"] = worker_id
+            summary, run_root = run_fn(**run_kwargs)
+        except StopRequested as exc:
+            _update_stage_state(
+                REPO_ROOT,
+                args.stage,
+                registry_run_id,
+                "stopped_by_controller",
+                {"reason": str(exc), "limit_chapters": limit, "chapter_offset": args.chapter_offset},
+                state_path=stage_state_path,
             )
+            _registry.unregister_worker(worker_id, status="stopped_by_controller")
+            print(f"translate stopped: {exc}", file=sys.stderr)
+            return 3
         except Exception as exc:
             _update_stage_state(
                 REPO_ROOT,

@@ -42,6 +42,14 @@ profiles:
       - provider: deepseek
         model: deepseek-chat
 
+  draft_translation_nemotron_candidate:
+    provider: openrouter
+    model: nvidia/nemotron-3-ultra-550b-a55b:free
+    temperature: 0.3
+    fallback:
+      - provider: openrouter
+        model: deepseek/deepseek-v4-pro
+
   refinement:
     provider: openrouter
     model: x-ai/grok-4.3

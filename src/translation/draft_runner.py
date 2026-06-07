@@ -22,6 +22,7 @@ from translation.pipeline_events import classify_error, emit_event
 from translation.prompt_builder import build_batch_messages
 from translation.response_extractor import extract_translations
 from translation.run_progress import init_run_metadata, write_run_progress
+from translation.stop_control import StopRequested, check_stop_or_raise
 from translation.validator import validate_draft_items
 
 MAX_CHARS_PER_BATCH = 5_500
@@ -83,6 +84,15 @@ class DraftRunSummary:
     asset_context_path: str = ""
     aborted: bool = False
     abort_reason: str = ""
+
+
+class DraftRunEarlyExit(Exception):
+    """Internal control flow when draft run ends early (failure path)."""
+
+    def __init__(self, summary: DraftRunSummary, run_root: Path) -> None:
+        self.summary = summary
+        self.run_root = run_root
+        super().__init__("draft_run_early_exit")
 
 
 def _utc_now() -> str:
@@ -167,6 +177,7 @@ def run_draft_stage_b(
     provider_factory: Callable[[CostGuard], Any] | None = None,
     asset_context_path: Path | None = None,
     heartbeat_cb: Callable[[], None] | None = None,
+    worker_id: str = "",
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_B_MAX_CHAPTERS:
         raise ValueError(f"Stage B hard limit: max {STAGE_B_MAX_CHAPTERS} chapters")
@@ -180,6 +191,7 @@ def run_draft_stage_b(
         provider_factory=provider_factory,
         asset_context_path=asset_context_path,
         heartbeat_cb=heartbeat_cb,
+        worker_id=worker_id,
     )
 
 
@@ -283,6 +295,7 @@ def run_draft_stage(
     provider_factory: Callable[[CostGuard], Any] | None = None,
     asset_context_path: Path | None = None,
     heartbeat_cb: Callable[[], None] | None = None,
+    worker_id: str = "",
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > spec.limit_chapters:
         raise ValueError(f"{spec.scope} hard limit: max {spec.limit_chapters} chapters")
@@ -357,16 +370,124 @@ def run_draft_stage(
         asset_context_path=asset_context_ref,
     )
 
+    try:
+        _run_chapter_batches(
+            parsed_chapters=parsed_chapters,
+            summary=summary,
+            controlled=controlled,
+            provider=provider,
+            asset_context=asset_context,
+            run_root=run_root,
+            run_id=run_id,
+            spec=spec,
+            chapter_offset=chapter_offset,
+            total_expected=total_expected,
+            draft_dir=draft_dir,
+            heartbeat_cb=heartbeat_cb,
+            worker_id=worker_id,
+            repo_root=repo_root,
+            chapter_paths=chapter_paths,
+            input_dir=input_dir,
+        )
+    except DraftRunEarlyExit as early:
+        return early.summary, early.run_root
+    except StopRequested:
+        summary.aborted = True
+        summary.abort_reason = "stopped_by_controller"
+        summary.translated_segments = _count_translated_segments(parsed_chapters)
+        controlled.abort("stopped_by_controller")
+        write_run_progress(
+            run_root,
+            run_id=run_id,
+            phase="draft",
+            stage=spec.scope,
+            chapter_offset=chapter_offset,
+            status="stopped_by_controller",
+            total_segments=total_expected,
+            completed_segments=summary.translated_segments,
+            last_error_type="stopped_by_controller",
+        )
+        export_segments_doc(parsed_chapters, run_root / "segments.json")
+        _write_run_artifacts(
+            repo_root,
+            run_root,
+            spec,
+            summary,
+            parsed_chapters,
+            chapter_paths,
+            input_dir,
+            chapter_offset=chapter_offset,
+        )
+        raise
+
+    summary.translated_segments = _count_translated_segments(parsed_chapters)
+    if guard:
+        summary.spent_usd = guard.spent_usd
+        summary.spent_tokens = guard.spent_tokens
+    elif controlled.checkpoint.spent_usd:
+        summary.spent_usd = controlled.checkpoint.spent_usd
+        summary.spent_tokens = controlled.checkpoint.spent_tokens
+
+    controlled.complete()
+    final_status = "failed" if summary.aborted else "completed"
+    write_run_progress(
+        run_root,
+        run_id=run_id,
+        phase="draft",
+        stage=spec.scope,
+        chapter_offset=chapter_offset,
+        status=final_status,
+        total_segments=total_expected,
+        completed_segments=summary.translated_segments,
+        last_error_type=classify_error(summary.abort_reason) if summary.aborted else "",
+    )
+    emit_event("draft_complete", run_id=run_id, phase="draft", stage=spec.scope, status=final_status)
+    _write_run_artifacts(
+        repo_root,
+        run_root,
+        spec,
+        summary,
+        parsed_chapters,
+        chapter_paths,
+        input_dir,
+        chapter_offset=chapter_offset,
+    )
+    export_segments_doc(parsed_chapters, run_root / "segments.json")
+    _write_quality_reports(run_root, spec, summary, parsed_chapters)
+    return summary, run_root
+
+
+def _run_chapter_batches(
+    *,
+    parsed_chapters: list[ParsedChapter],
+    summary: DraftRunSummary,
+    controlled: Any,
+    provider: Any,
+    asset_context: str,
+    run_root: Path,
+    run_id: str,
+    spec: DraftStageSpec,
+    chapter_offset: int,
+    total_expected: int,
+    draft_dir: Path,
+    heartbeat_cb: Callable[[], None] | None,
+    worker_id: str,
+    repo_root: Path,
+    chapter_paths: list[Path],
+    input_dir: Path,
+) -> None:
     for chapter in parsed_chapters:
         ch_result = ChapterRunResult(chapter_id=chapter.chapter_id, ok=True, message="ok")
         summary.total_segments += len(chapter.segments)
 
         for batch in _split_batches(chapter):
+            check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
             pending = [s for s in batch if _segment_needs_translation(s)]
             if not pending:
                 continue
             if heartbeat_cb:
                 heartbeat_cb()
+            check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
             messages = build_batch_messages(
                 pending,
                 chapter_label=chapter.chapter_label,
@@ -384,6 +505,7 @@ def run_draft_stage(
             for attempt in range(1, MAX_API_RETRIES + 1):
                 if heartbeat_cb:
                     heartbeat_cb()
+                check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
                 try:
                     result = provider.generate(messages, options)
                     last_exc = None
@@ -430,7 +552,7 @@ def run_draft_stage(
                     input_dir,
                     chapter_offset=chapter_offset,
                 )
-                return summary, run_root
+                raise DraftRunEarlyExit(summary, run_root)
 
             summary.api_calls += 1
             ch_result.api_calls += 1
@@ -451,7 +573,7 @@ def run_draft_stage(
                     input_dir,
                     chapter_offset=chapter_offset,
                 )
-                return summary, run_root
+                raise DraftRunEarlyExit(summary, run_root)
 
             segments_flush_interval = max(
                 1, int(os.environ.get("SEGMENTS_FLUSH_INTERVAL", "10"))
@@ -488,42 +610,6 @@ def run_draft_stage(
 
         export_chapter_markdown(chapter, draft_dir)
         summary.chapters.append(ch_result)
-
-    summary.translated_segments = _count_translated_segments(parsed_chapters)
-    if guard:
-        summary.spent_usd = guard.spent_usd
-        summary.spent_tokens = guard.spent_tokens
-    elif controlled.checkpoint.spent_usd:
-        summary.spent_usd = controlled.checkpoint.spent_usd
-        summary.spent_tokens = controlled.checkpoint.spent_tokens
-
-    controlled.complete()
-    final_status = "failed" if summary.aborted else "completed"
-    write_run_progress(
-        run_root,
-        run_id=run_id,
-        phase="draft",
-        stage=spec.scope,
-        chapter_offset=chapter_offset,
-        status=final_status,
-        total_segments=total_expected,
-        completed_segments=summary.translated_segments,
-        last_error_type=classify_error(summary.abort_reason) if summary.aborted else "",
-    )
-    emit_event("draft_complete", run_id=run_id, phase="draft", stage=spec.scope, status=final_status)
-    _write_run_artifacts(
-        repo_root,
-        run_root,
-        spec,
-        summary,
-        parsed_chapters,
-        chapter_paths,
-        input_dir,
-        chapter_offset=chapter_offset,
-    )
-    export_segments_doc(parsed_chapters, run_root / "segments.json")
-    _write_quality_reports(run_root, spec, summary, parsed_chapters)
-    return summary, run_root
 
 
 def _write_run_artifacts(

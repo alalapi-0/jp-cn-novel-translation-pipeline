@@ -98,37 +98,21 @@ def main() -> int:
         )
         return 0
 
-    resume_cmd = [
+    autopilot_cmd = [
         py,
-        "scripts/resume_production.py",
-        "--chapter-offset",
-        str(offset),
-        "--target-new-chapters",
+        "scripts/translation_autopilot_loop.py",
+        "--phase",
+        "draft",
+        "--round-id",
+        args.round_id,
+        "--round-size",
         str(limit),
+        "--supervised",
+        "--real-api",
     ]
-    if run_id:
-        resume_cmd.extend(["--run-id", run_id, "--hydrate-apply"])
-    else:
-        resume_cmd.append("--new-run")
-
-    env = os.environ.copy()
-    env["REAL_API_TESTS_ENABLED"] = "1"
-    env["CONTROLLED_RUN_ENABLED"] = "1"
-    print("+", " ".join(resume_cmd), flush=True)
-    rc = subprocess.run(resume_cmd, cwd=REPO_ROOT, env=env).returncode
-    if rc != 0:
-        return rc
-
-    report_rc = _run(
-        [
-            py,
-            "scripts/generate_translation_round_report.py",
-            "--round-id",
-            args.round_id,
-            *(["--run-id", run_id] if run_id else []),
-        ]
-    )
-    return 0 if report_rc == 0 else report_rc
+    if args.skip_gate:
+        autopilot_cmd.append("--skip-gate")
+    return _run(autopilot_cmd)
 
 
 if __name__ == "__main__":

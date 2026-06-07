@@ -11,7 +11,7 @@
 | 初翻完成章（全 run 合计） | **190** | `throughput_gate` / `segments.json`（T-001 完成后） |
 | 可导出润色章 | **170** | `throughput_gate` |
 | 当前阶段 | Phase A（恢复初翻） | `workspace/stage_state.json` |
-| 活跃 worker | 无（已 heal stale） | `pipeline_worker_registry --heal` |
+| 活跃 worker | 须 supervised controller 绑定 | `translation_autopilot_loop --supervised` |
 | 可恢复 run | `run_20260607_040204_draft_stage_b_50ch` | offset=170，checkpoint `in_progress` |
 | API Key | 已配置 | `throughput_gate.has_api_key` |
 | Cost guard | `MAX_TEST_COST_USD=5.0` | 环境变量 |

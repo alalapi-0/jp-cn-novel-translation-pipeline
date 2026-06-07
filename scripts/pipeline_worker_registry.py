@@ -145,6 +145,13 @@ def register_worker(
     run_id: str,
     chapter_offset: int = 0,
     pid: int | None = None,
+    controller_pid: int | None = None,
+    controller_run_id: str = "",
+    round_id: str = "",
+    chapter_range: str = "",
+    provider: str = "",
+    model: str = "",
+    stop_policy: str = "stop_when_controller_exits",
     state_path: Path | None = None,
 ) -> tuple[dict[str, Any] | None, str]:
     """Register worker or return (None, reason) if duplicate active worker exists."""
@@ -166,10 +173,17 @@ def register_worker(
     worker = {
         "worker_id": f"{task_type}-{run_id}-{uuid4().hex[:8]}",
         "pid": pid or os.getpid(),
+        "controller_pid": int(controller_pid or 0),
+        "controller_run_id": controller_run_id,
         "task_type": task_type,
         "stage": stage,
         "run_id": run_id,
+        "round_id": round_id,
+        "chapter_range": chapter_range,
         "chapter_offset": chapter_offset,
+        "provider": provider,
+        "model": model,
+        "stop_policy": stop_policy,
         "started_at": now,
         "heartbeat_at": now,
         "status": "in_progress",
@@ -342,17 +356,84 @@ def heal_stale_workers(
     }
 
 
+def find_orphan_api_workers(state_path: Path | None = None) -> list[dict[str, Any]]:
+    """Active real-API workers without a living controller (supervised mode violation)."""
+    state = load_state(state_path)
+    orphans: list[dict[str, Any]] = []
+    for worker in state.get("workers", []):
+        if not isinstance(worker, dict) or not is_worker_active(worker):
+            continue
+        task = str(worker.get("task_type") or "")
+        if task not in {"translate", "refine"}:
+            continue
+        ctrl_pid = int(worker.get("controller_pid") or 0)
+        if ctrl_pid <= 0:
+            orphans.append({**worker, "orphan_reason": "missing_controller_pid"})
+            continue
+        if not pid_alive(ctrl_pid):
+            orphans.append({**worker, "orphan_reason": "dead_controller_pid"})
+    return orphans
+
+
+def request_worker_stop(
+    *,
+    run_id: str = "",
+    worker_id: str = "",
+    reason: str = "controller_exit",
+    requested_by: str = "pipeline_worker_registry",
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    sys.path.insert(0, str((repo_root or REPO_ROOT) / "src"))
+    from translation.stop_control import request_stop  # noqa: WPS433
+
+    payload = request_stop(
+        reason=reason,
+        requested_by=requested_by,
+        target_worker_id=worker_id,
+        target_run_id=run_id,
+        repo_root=repo_root or REPO_ROOT,
+    )
+    import signal
+
+    state = load_state()
+    stopped: list[dict[str, Any]] = []
+    for worker in state.get("workers", []):
+        if not isinstance(worker, dict) or not is_worker_active(worker):
+            continue
+        if worker_id and worker.get("worker_id") != worker_id:
+            continue
+        if run_id and worker.get("run_id") != run_id:
+            continue
+        pid = int(worker.get("pid") or 0)
+        if pid > 0 and pid_alive(pid):
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+        stopped.append(
+            {
+                "worker_id": worker.get("worker_id"),
+                "pid": pid,
+                "run_id": worker.get("run_id"),
+            }
+        )
+    return {"stop_request": payload, "signaled_workers": stopped}
+
+
 def summarize_registry(state_path: Path | None = None) -> dict[str, Any]:
     state = load_state(state_path)
     workers = [w for w in state.get("workers", []) if isinstance(w, dict)]
     active = [w for w in workers if is_worker_active(w)]
     stale = [w for w in workers if is_worker_stale(w)]
+    orphans = find_orphan_api_workers(state_path)
     return {
         "total_workers": len(workers),
         "active_workers": active,
         "active_count": len(active),
         "stale_workers": stale,
         "stale_count": len(stale),
+        "orphan_workers": orphans,
+        "orphan_count": len(orphans),
     }
 
 
@@ -371,7 +452,21 @@ def main() -> int:
         type=int,
         default=DEFAULT_HEARTBEAT_TIMEOUT_SEC,
     )
+    parser.add_argument("--request-stop", action="store_true", help="Write stop file and SIGTERM workers")
+    parser.add_argument("--run-id", default="", help="Target run_id for --request-stop")
+    parser.add_argument("--worker-id", default="", help="Target worker_id for --request-stop")
     args = parser.parse_args()
+    if args.request_stop:
+        result = request_worker_stop(
+            run_id=args.run_id.strip(),
+            worker_id=args.worker_id.strip(),
+            reason="manual_request_stop",
+        )
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"stop requested; signaled={len(result.get('signaled_workers', []))}")
+        return 0
     if args.heal:
         result = heal_stale_workers(heartbeat_timeout_sec=args.heartbeat_timeout_sec)
         if args.json:

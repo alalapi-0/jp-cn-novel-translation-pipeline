@@ -8,9 +8,11 @@
 - **refinement completed chapters**: 170（全段 draft + refined，可导出）
 - **current stage**: Phase A — 恢复初翻（T-001 完成，待启动 T-002）
 - **active worker**: 无
-- **latest run**: `run_20260607_040204_draft_stage_b_50ch`（171–190，3353/3353 段，`status=completed`）
+- **latest run**: `run_20260607_095821_draft_stage_b_50ch`（T-002 191–210，**588/2229** 段，`stopped_by_controller` 续跑中）
 - **known blockers**:
-  - 润色落后初翻 20 章（171–190 新 draft）— **非阻塞**，初翻优先
+  - ~~orphan API worker（PID 8411 无 controller）~~ → 已 `--request-stop` + supervised 机制上线
+  - Nemotron A/B 本轮未完成（超时）→ **保持 DeepSeek primary**
+  - 润色落后初翻 — **非阻塞**，初翻优先
   - 部分必读文档缺失：`docs/priority_matrix.md`、`docs/roadmap_converged_core_first.md`（已记录）
   - 轮次报告 `source_residual` 启发式含汉字误判 — 记入 Phase B 一致性检查
 

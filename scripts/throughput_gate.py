@@ -182,6 +182,14 @@ def _build_fix_paths(
         steps.append(
             "孤立 completed checkpoint（如 round_50_e2e）可移至 workspace/checkpoints/archive/ 或忽略（诊断 run）"
         )
+    if any("orphan_api_worker" in w for w in warnings + blocks):
+        steps.append(
+            "停止 orphan worker: python3 scripts/pipeline_worker_registry.py "
+            "--request-stop --run-id <run_id> --json"
+        )
+        steps.append(
+            "受控续跑: python3 scripts/translation_autopilot_loop.py --round-id T-00X --supervised"
+        )
     if any("stale_lock" in w for w in warnings):
         steps.append(
             "清理过期 worker 锁（推荐）：python3 scripts/pipeline_worker_registry.py --heal --json"
@@ -207,10 +215,18 @@ def evaluate_gate(*, allow_diagnostic: bool = False) -> dict[str, Any]:
 
     registry = _registry.summarize_registry()
     active_workers = registry.get("active_workers") or []
+    orphan_workers = registry.get("orphan_workers") or _registry.find_orphan_api_workers()
     soft_blocks: list[str] = []
+    if orphan_workers:
+        for ow in orphan_workers:
+            warnings.append(
+                f"orphan_api_worker: pid={ow.get('pid')} run_id={ow.get('run_id')} "
+                f"reason={ow.get('orphan_reason')}"
+            )
+        blocks.append(f"orphan_api_worker_count: {len(orphan_workers)}")
     if len(active_workers) > 1:
         soft_blocks.append(f"duplicate_worker: {len(active_workers)} active workers")
-    elif len(active_workers) == 1:
+    elif len(active_workers) == 1 and not orphan_workers:
         w = active_workers[0]
         warnings.append(
             f"active_worker: pid={w.get('pid')} task={w.get('task_type')} run_id={w.get('run_id')}"
@@ -349,6 +365,8 @@ def evaluate_gate(*, allow_diagnostic: bool = False) -> dict[str, Any]:
         "hard_blocks": blocks,
         "active_workers": active_workers,
         "active_worker_count": len(active_workers),
+        "orphan_workers": orphan_workers,
+        "orphan_worker_count": len(orphan_workers),
         "run_analysis": run_rows,
         "exportable_chapters": exportable,
         "draft_completed_chapters": draft_completed,

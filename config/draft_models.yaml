@@ -1,0 +1,37 @@
+# Draft translation model policy (candidate vs production primary).
+# Do not commit API keys. Enable Nemotron only after model_ab_test passes.
+
+schema_version: 1
+
+models:
+  draft_translation_primary:
+    provider: model_router
+    profile: draft_translation
+    model: deepseek/deepseek-v4-pro
+    enabled: true
+    role: draft_translation_primary
+    notes: "Current production primary after T-001/T-002 baseline."
+
+  draft_translation_fallback:
+    provider: model_router
+    profile: draft_translation
+    model: deepseek/deepseek-v4-pro
+    enabled: true
+    role: draft_translation_fallback
+    notes: "Always keep DeepSeek as fallback."
+
+  draft_translation_candidate:
+    provider: model_router
+    profile: draft_translation_nemotron_candidate
+    model: nvidia/nemotron-3-ultra-550b-a55b:free
+    enabled: false
+    role: draft_translation_candidate
+    notes: >
+      Candidate model for controlled A/B translation test.
+      Do not enable for production until quality gate passes.
+
+switching_rules:
+  - Do not mix models mid-run without per-segment metadata.
+  - Run model_ab_test.py before enabling candidate as primary.
+  - T-002 on DeepSeek must complete before Nemotron production switch.
+  - Fallback must remain deepseek/deepseek-v4-pro.

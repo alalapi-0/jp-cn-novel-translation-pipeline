@@ -2,6 +2,29 @@
 
 未来所有推进轮 Agent 的工作手册。与 `AGENTS.md` 互补：AGENTS.md 为入口清单，本手册为操作细则。
 
+## MCP / Browser Tools Runbook
+
+当前项目的 MCP / 浏览器工具使用规则以以下文件为准：
+
+- `docs/runbooks/mcp_browser_tools_runbook.md`
+
+后续 Agent 在涉及工具、前端、浏览器、MCP、Playwright、Chrome DevTools 时必须先读取该 Runbook。
+
+## 真实 API 翻译：Supervised Autopilot（强制）
+
+1. 真实 API 初翻/润色 **必须** 使用 `scripts/translation_autopilot_loop.py --supervised`。
+2. **禁止** `nohup` / 裸后台 `&` 启动无人监管翻译；Agent 停止时 worker 必须停止。
+3. Worker 须绑定 `controller_pid`；`throughput_gate` 对 orphan worker 返回 BLOCK。
+4. 详见 `docs/continuous_translation_autopilot_rules.md`、`docs/model_switching_policy.md`。
+
+## 工具隔离原则
+
+1. Playwright 是默认浏览器自动化工具。
+2. chrome-devtools 需要项目独立 profile 后再作为补充工具。
+3. chrome-devtools profile 冲突时不得阻塞任务，应 fallback 到 Playwright。
+4. 端口冲突时自动换端口，不 kill 其他项目进程。
+5. 多 Agent 并行时不得共享默认 Chrome profile。
+
 ---
 
 ## 5.1 Agent 类型
@@ -127,7 +150,7 @@
 9. 检查 `.env` 是否被 Git 跟踪
 10. 检查是否存在未提交的重要变更
 11. 运行 `scripts/agent_gate.py`（Round 41 起）
-12. UI / 浏览器轮：运行 `python3 scripts/check_mcp_health.py`（MCP 隔离检查）
+12. UI / 浏览器 / 工具链轮：读取 `docs/runbooks/mcp_browser_tools_runbook.md` 并运行 `python3 scripts/check_mcp_health.py`
 
 ---
 

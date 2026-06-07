@@ -70,6 +70,13 @@ git commit -m "docs: describe change"
 
 如果当前目录不是 Git 仓库，不得强行初始化 Git，应在报告中记录原因。如果 push 失败，记录原因，不反复尝试。
 
+## 真实 API Worker 生命周期
+
+1. Agent 停止 → 翻译 worker 必须停止（`workspace/control/stop_requested.json` + SIGTERM）。
+2. 禁止无人监管后台真实 API worker（禁止对生产翻译使用 `nohup`）。
+3. 生产续跑入口：`scripts/translation_autopilot_loop.py --supervised`。
+4. 模型切换须先 A/B（`scripts/model_ab_test.py`）；DeepSeek 保留 fallback。
+
 ## 工具链规则
 
 1. 治理轮不默认安装大型工具（Playwright、向量库、重型 MCP 等）。
@@ -82,6 +89,22 @@ git commit -m "docs: describe change"
 8. 向量库轮必须先有 metadata 和过滤设计（Round 48）。
 9. Review Workbench 不能只看代码；Round 46 起必须浏览器验证。
 10. 每个工具都必须有 fallback 或硬阻塞判断（见 `docs/agent_tooling_strategy.md`）。
+
+## MCP / Browser Tools Runbook
+
+当前项目的 MCP / 浏览器工具使用规则以以下文件为准：
+
+- `docs/runbooks/mcp_browser_tools_runbook.md`
+
+后续 Agent 在涉及工具、前端、浏览器、MCP、Playwright、Chrome DevTools 时必须先读取该 Runbook。
+
+## 工具隔离原则
+
+1. Playwright 是默认浏览器自动化工具。
+2. chrome-devtools 需要项目独立 profile 后再作为补充工具。
+3. chrome-devtools profile 冲突时不得阻塞任务，应 fallback 到 Playwright。
+4. 端口冲突时自动换端口，不 kill 其他项目进程。
+5. 多 Agent 并行时不得共享默认 Chrome profile。
 
 ## MCP 浏览器工具隔离规则
 
