@@ -50,6 +50,8 @@ def is_diagnostic_run_id(run_id: str) -> bool:
         return True
     if "realapi_diagnostic" in rid or "diagnostic_translate" in rid:
         return True
+    if rid.startswith("micro_validate"):
+        return True
     return False
 
 
