@@ -17,6 +17,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from local_env import apply_local_env  # noqa: E402
+from micro_round_plan import LEGACY_ROUND_PLAN, next_draft_mr_id, resolve_round_plan  # noqa: E402
 from translation.run_progress import safe_load_json  # noqa: E402
 
 # Reuse gate metrics
@@ -27,11 +28,7 @@ assert _gate_spec and _gate_spec.loader
 _gate = importlib.util.module_from_spec(_gate_spec)
 _gate_spec.loader.exec_module(_gate)
 
-ROUND_PLAN: dict[str, dict[str, Any]] = {
-    "T-001": {"phase": "draft", "chapter_start": 171, "chapter_end": 190, "offset": 170, "limit": 20},
-    "T-002": {"phase": "draft", "chapter_start": 191, "chapter_end": 210, "offset": 190, "limit": 20},
-    "T-003": {"phase": "draft", "chapter_start": 211, "chapter_end": 230, "offset": 210, "limit": 20},
-}
+ROUND_PLAN: dict[str, dict[str, Any]] = dict(LEGACY_ROUND_PLAN)
 
 
 def _utc_now() -> str:
@@ -106,8 +103,13 @@ def _find_run_for_round(round_id: str, plan: dict[str, Any]) -> Path | None:
     return best
 
 
-def build_report(round_id: str, *, run_id: str | None = None) -> dict[str, Any]:
-    plan = ROUND_PLAN.get(round_id, {})
+def build_report(
+    round_id: str,
+    *,
+    run_id: str | None = None,
+    chapter_range: str = "",
+) -> dict[str, Any]:
+    plan = resolve_round_plan(round_id, chapter_range=chapter_range) or ROUND_PLAN.get(round_id, {})
     phase = plan.get("phase", "draft")
     ch_start = int(plan.get("chapter_start", 0))
     ch_end = int(plan.get("chapter_end", 0))
@@ -214,7 +216,15 @@ def build_report(round_id: str, *, run_id: str | None = None) -> dict[str, Any]:
         "git_commit": "",
         "continue_decision": continue_decision if round_done else ("in_progress" if run_root else continue_decision),
         "blockers": blockers,
-        "next_round": f"T-{int(round_id.split('-')[1]) + 1:03d}" if round_id.startswith("T-") and round_done else round_id,
+        "next_round": (
+            next_draft_mr_id(round_id)
+            if round_id.startswith("D-MR-") and round_done
+            else (
+                f"T-{int(round_id.split('-')[1]) + 1:03d}"
+                if round_id.startswith("T-") and round_done
+                else round_id
+            )
+        ),
         "gate_decision": gate.get("decision"),
     }
 
@@ -270,11 +280,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate translation recovery round report")
     parser.add_argument("--round-id", required=True)
     parser.add_argument("--run-id", default="")
+    parser.add_argument("--chapter-range", default="", help="Override e.g. 203-205")
     parser.add_argument("--json-only", action="store_true")
     args = parser.parse_args()
     apply_local_env(REPO_ROOT)
 
-    report = build_report(args.round_id, run_id=args.run_id.strip() or None)
+    report = build_report(
+        args.round_id,
+        run_id=args.run_id.strip() or None,
+        chapter_range=args.chapter_range.strip(),
+    )
     out_dir = REPO_ROOT / "workspace" / "round_reports" / args.round_id
     out_dir.mkdir(parents=True, exist_ok=True)
 

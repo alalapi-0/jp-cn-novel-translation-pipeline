@@ -84,6 +84,7 @@ class DraftRunSummary:
     asset_context_path: str = ""
     aborted: bool = False
     abort_reason: str = ""
+    tick_paused: bool = False
 
 
 class DraftRunEarlyExit(Exception):
@@ -93,6 +94,15 @@ class DraftRunEarlyExit(Exception):
         self.summary = summary
         self.run_root = run_root
         super().__init__("draft_run_early_exit")
+
+
+class DraftRunTickExit(Exception):
+    """Supervised tick budget exhausted; checkpoint saved, resume on next tick."""
+
+    def __init__(self, summary: DraftRunSummary, run_root: Path) -> None:
+        self.summary = summary
+        self.run_root = run_root
+        super().__init__("draft_run_tick_exit")
 
 
 def _utc_now() -> str:
@@ -178,6 +188,8 @@ def run_draft_stage_b(
     asset_context_path: Path | None = None,
     heartbeat_cb: Callable[[], None] | None = None,
     worker_id: str = "",
+    tick_max_segments: int = 0,
+    tick_max_wall_seconds: float = 0,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_B_MAX_CHAPTERS:
         raise ValueError(f"Stage B hard limit: max {STAGE_B_MAX_CHAPTERS} chapters")
@@ -192,6 +204,8 @@ def run_draft_stage_b(
         asset_context_path=asset_context_path,
         heartbeat_cb=heartbeat_cb,
         worker_id=worker_id,
+        tick_max_segments=tick_max_segments,
+        tick_max_wall_seconds=tick_max_wall_seconds,
     )
 
 
@@ -296,6 +310,8 @@ def run_draft_stage(
     asset_context_path: Path | None = None,
     heartbeat_cb: Callable[[], None] | None = None,
     worker_id: str = "",
+    tick_max_segments: int = 0,
+    tick_max_wall_seconds: float = 0,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > spec.limit_chapters:
         raise ValueError(f"{spec.scope} hard limit: max {spec.limit_chapters} chapters")
@@ -388,7 +404,39 @@ def run_draft_stage(
             repo_root=repo_root,
             chapter_paths=chapter_paths,
             input_dir=input_dir,
+            tick_max_segments=tick_max_segments,
+            tick_max_wall_seconds=tick_max_wall_seconds,
         )
+    except DraftRunTickExit as tick_exit:
+        tick_exit.summary.tick_paused = True
+        tick_exit.summary.translated_segments = _count_translated_segments(parsed_chapters)
+        if guard:
+            tick_exit.summary.spent_usd = guard.spent_usd
+            tick_exit.summary.spent_tokens = guard.spent_tokens
+        controlled.checkpoint.status = "in_progress"
+        controlled.save()
+        write_run_progress(
+            run_root,
+            run_id=run_id,
+            phase="draft",
+            stage=spec.scope,
+            chapter_offset=chapter_offset,
+            status="in_progress",
+            total_segments=total_expected,
+            completed_segments=tick_exit.summary.translated_segments,
+        )
+        export_segments_doc(parsed_chapters, run_root / "segments.json")
+        _write_run_artifacts(
+            repo_root,
+            run_root,
+            spec,
+            tick_exit.summary,
+            parsed_chapters,
+            chapter_paths,
+            input_dir,
+            chapter_offset=chapter_offset,
+        )
+        return tick_exit.summary, tick_exit.run_root
     except DraftRunEarlyExit as early:
         return early.summary, early.run_root
     except StopRequested:
@@ -457,6 +505,20 @@ def run_draft_stage(
     return summary, run_root
 
 
+def _tick_budget_exhausted(
+    *,
+    tick_start: float,
+    segments_this_tick: int,
+    tick_max_segments: int,
+    tick_max_wall_seconds: float,
+) -> bool:
+    if tick_max_segments > 0 and segments_this_tick >= tick_max_segments:
+        return True
+    if tick_max_wall_seconds > 0 and (time.monotonic() - tick_start) >= tick_max_wall_seconds:
+        return True
+    return False
+
+
 def _run_chapter_batches(
     *,
     parsed_chapters: list[ParsedChapter],
@@ -475,12 +537,25 @@ def _run_chapter_batches(
     repo_root: Path,
     chapter_paths: list[Path],
     input_dir: Path,
+    tick_max_segments: int = 0,
+    tick_max_wall_seconds: float = 0,
 ) -> None:
+    tick_start = time.monotonic()
+    segments_this_tick = 0
+    tick_limited = tick_max_segments > 0 or tick_max_wall_seconds > 0
+
     for chapter in parsed_chapters:
         ch_result = ChapterRunResult(chapter_id=chapter.chapter_id, ok=True, message="ok")
         summary.total_segments += len(chapter.segments)
 
         for batch in _split_batches(chapter):
+            if tick_limited and _tick_budget_exhausted(
+                tick_start=tick_start,
+                segments_this_tick=segments_this_tick,
+                tick_max_segments=tick_max_segments,
+                tick_max_wall_seconds=tick_max_wall_seconds,
+            ):
+                raise DraftRunTickExit(summary, run_root)
             check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
             pending = [s for s in batch if _segment_needs_translation(s)]
             if not pending:
@@ -590,6 +665,15 @@ def _run_chapter_batches(
                     summary.translated_segments += 1
                     ch_result.segments_translated += 1
                     segments_since_flush += 1
+                    segments_this_tick += 1
+                    if tick_limited and _tick_budget_exhausted(
+                        tick_start=tick_start,
+                        segments_this_tick=segments_this_tick,
+                        tick_max_segments=tick_max_segments,
+                        tick_max_wall_seconds=tick_max_wall_seconds,
+                    ):
+                        export_segments_doc(parsed_chapters, run_root / "segments.json")
+                        raise DraftRunTickExit(summary, run_root)
                     write_run_progress(
                         run_root,
                         run_id=run_id,

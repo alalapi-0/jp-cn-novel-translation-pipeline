@@ -66,6 +66,29 @@ def _filter_completed_segments(
     return kept, dropped
 
 
+def _hydrate_from_segments_json(run_root: Path, chapters: list[ParsedChapter]) -> int:
+    path = run_root / "segments.json"
+    if not path.is_file():
+        return 0
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    by_id: dict[str, dict] = {}
+    for ch in doc.get("chapters", []):
+        for seg in ch.get("segments", []):
+            sid = seg.get("segment_id")
+            if sid and (seg.get("draft_text") or "").strip():
+                by_id[sid] = seg
+    hydrated = 0
+    for chapter in chapters:
+        for seg in chapter.segments:
+            saved = by_id.get(seg.segment_id)
+            if not saved:
+                continue
+            seg.draft_text = saved.get("draft_text", "")
+            seg.status = saved.get("status") or "machine_translated"
+            hydrated += 1
+    return hydrated
+
+
 def _hydrate_from_draft_md(run_root: Path, chapters: list[ParsedChapter]) -> int:
     draft_dir = run_root / "draft"
     if not draft_dir.is_dir():
@@ -134,6 +157,7 @@ def plan_hydrate(
 
     chapters = [parse_chapter_file(p) for p in chapter_paths]
     completed_ids, dropped_completed = _filter_completed_segments(raw_completed_ids, chapters)
+    from_segments = _hydrate_from_segments_json(run_root, chapters)
     from_draft = _hydrate_from_draft_md(run_root, chapters)
     completed_set = set(completed_ids)
     for ch in chapters:
@@ -143,8 +167,12 @@ def plan_hydrate(
 
     total_segments = sum(len(ch.segments) for ch in chapters)
     translated = _count_translated(chapters)
-    cp_status = str(checkpoint.get("status") or "in_progress").split(":", 1)[0]
-    progress_status = "in_progress" if cp_status == "in_progress" else cp_status
+    cp_status = str(checkpoint.get("status") or "in_progress")
+    cp_base = cp_status.split(":", 1)[0]
+    if cp_base in {"in_progress", "completed"}:
+        progress_status = cp_base
+    else:
+        progress_status = "in_progress"
 
     meta = {
         "run_id": run_id,
@@ -191,6 +219,7 @@ def plan_hydrate(
         "completed_checkpoint_segments": len(completed_ids),
         "dropped_checkpoint_segments": len(dropped_completed),
         "dropped_segment_ids_sample": dropped_completed[:5],
+        "segments_json_hydrated_segments": from_segments,
         "draft_md_hydrated_segments": from_draft,
         "progress_status": progress_status,
         "existing_artifacts": existing,

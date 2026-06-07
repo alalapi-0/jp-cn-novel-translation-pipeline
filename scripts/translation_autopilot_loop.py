@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Supervised translation autopilot — worker lifecycle bound to controller process."""
+"""Supervised translation autopilot — one short tick per invocation, returns control to Agent."""
 
 from __future__ import annotations
 
 import argparse
-import atexit
+import importlib.util
 import json
 import os
-import signal
+import re
 import subprocess
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -20,9 +20,10 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from local_env import apply_local_env  # noqa: E402
-from translation.stop_control import clear_stop_request, request_stop  # noqa: E402
+from translation.stop_control import clear_stop_request  # noqa: E402
+from translation.run_progress import safe_load_json  # noqa: E402
 
-import importlib.util
+from micro_round_plan import resolve_round_plan  # noqa: E402
 
 _registry_spec = importlib.util.spec_from_file_location(
     "pipeline_worker_registry", REPO_ROOT / "scripts" / "pipeline_worker_registry.py"
@@ -32,18 +33,8 @@ _registry = importlib.util.module_from_spec(_registry_spec)
 _registry_spec.loader.exec_module(_registry)
 
 DEFAULT_DRAFT_MODEL = "deepseek/deepseek-v4-pro"
-
-ROUND_PLAN: dict[str, dict[str, object]] = {
-    "T-002": {
-        "offset": 190,
-        "limit": 20,
-        "resume_run_id": "run_20260607_095821_draft_stage_b_50ch",
-    },
-    "T-003": {"offset": 210, "limit": 20, "resume_run_id": ""},
-}
-
-_child_proc: subprocess.Popen[str] | None = None
-_controller_run_id = ""
+DEFAULT_TICK_MAX_SEGMENTS = 80
+DEFAULT_TICK_MAX_WALL_SECONDS = 180.0
 
 
 def _python() -> str:
@@ -67,33 +58,7 @@ def _production_env(controller_run_id: str, round_id: str, draft_model: str) -> 
     return env
 
 
-def _graceful_stop_child(*, reason: str = "controller_exit") -> None:
-    global _child_proc
-    if _child_proc is None or _child_proc.poll() is not None:
-        return
-    request_stop(
-        reason=reason,
-        requested_by="translation_autopilot_loop",
-        target_run_id=os.environ.get("TRANSLATION_ACTIVE_RUN_ID", ""),
-        repo_root=REPO_ROOT,
-    )
-    try:
-        _child_proc.send_signal(signal.SIGTERM)
-    except OSError:
-        pass
-    try:
-        _child_proc.wait(timeout=120)
-    except subprocess.TimeoutExpired:
-        _child_proc.kill()
-        _child_proc.wait(timeout=10)
-    _child_proc = None
-
-
-def _on_exit() -> None:
-    _graceful_stop_child(reason="controller_atexit")
-
-
-def _run_gate(py: str) -> dict:
+def _run_gate(py: str) -> dict[str, Any]:
     proc = subprocess.run(
         [py, "scripts/throughput_gate.py", "--json"],
         cwd=REPO_ROOT,
@@ -105,19 +70,106 @@ def _run_gate(py: str) -> dict:
     return json.loads(proc.stdout)
 
 
-def run_supervised_round(
+def _chapter_quality(doc: dict[str, Any], ch_start: int, ch_end: int) -> dict[str, Any]:
+    completed: list[int] = []
+    failed: list[int] = []
+    validation_failed = 0
+    jp_re = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
+
+    for ch in doc.get("chapters", []):
+        ch_id = str(ch.get("chapter_id") or "")
+        m = re.search(r"(\d+)", ch_id)
+        if not m:
+            continue
+        num = int(m.group(1))
+        if num < ch_start or num > ch_end:
+            continue
+        segs = ch.get("segments", [])
+        if not segs:
+            failed.append(num)
+            continue
+        all_draft = True
+        ch_fail = False
+        for s in segs:
+            status = str(s.get("status") or "")
+            if status in {"validation_failed", "failed"}:
+                validation_failed += 1
+                ch_fail = True
+            if not (s.get("draft_text") or "").strip():
+                all_draft = False
+        if all_draft and not ch_fail:
+            completed.append(num)
+        else:
+            failed.append(num)
+
+    target = ch_end - ch_start + 1
+    return {
+        "completed_chapters": sorted(set(completed)),
+        "failed_chapters": sorted(set(failed)),
+        "validation_failed": validation_failed,
+        "round_done": len(set(completed)) >= target and not failed,
+    }
+
+
+def _current_chapter_from_progress(progress: dict[str, Any]) -> str:
+    last = str(progress.get("last_completed_segment_id") or "")
+    m = re.match(r"ch-(\d+)-", last)
+    if m:
+        return f"ch-{int(m.group(1)):03d}"
+    return ""
+
+
+def _tick_feedback(
+    *,
+    round_id: str,
+    plan: dict[str, Any],
+    run_id: str,
+    progress: dict[str, Any],
+    checkpoint: dict[str, Any],
+    segments_before: int,
+    status: str,
+    next_action: str,
+) -> dict[str, Any]:
+    completed = int(progress.get("completed_segments") or 0)
+    total = int(progress.get("total_segments") or 0)
+    return {
+        "round_id": round_id,
+        "run_id": run_id,
+        "chapter_range": f"{plan['chapter_start']}-{plan['chapter_end']}",
+        "progress": f"{completed}/{total}",
+        "current_chapter": _current_chapter_from_progress(progress),
+        "segments_advanced": max(0, completed - segments_before),
+        "api_calls": int(checkpoint.get("api_calls") or 0),
+        "cost_usd": float(checkpoint.get("spent_usd") or 0),
+        "status": status,
+        "next_action": next_action,
+        "tick_at": _utc_now(),
+    }
+
+
+def run_supervised_tick(
     *,
     round_id: str,
     phase: str = "draft",
-    round_size: int = 20,
+    round_size: int = 3,
+    run_id_override: str = "",
+    chapter_range: str = "",
     draft_model: str = "",
+    model_profile: str = "",
     skip_gate: bool = False,
-    poll_sec: float = 15.0,
+    tick_max_segments: int = DEFAULT_TICK_MAX_SEGMENTS,
+    tick_max_wall_seconds: float = DEFAULT_TICK_MAX_WALL_SECONDS,
+    auto_report_on_complete: bool = False,
 ) -> int:
-    global _child_proc, _controller_run_id
     apply_local_env(REPO_ROOT)
     py = _python()
-    plan = ROUND_PLAN.get(round_id)
+
+    plan = resolve_round_plan(
+        round_id,
+        round_size=round_size,
+        run_id=run_id_override,
+        chapter_range=chapter_range,
+    )
     if not plan:
         print(f"unknown round_id={round_id}", file=sys.stderr)
         return 2
@@ -125,15 +177,8 @@ def run_supervised_round(
     _registry.heal_stale_workers()
     orphans = _registry.find_orphan_api_workers()
     if orphans:
-        print(f"stopping {len(orphans)} orphan worker(s) before supervised start", flush=True)
-        for o in orphans:
-            _registry.request_worker_stop(
-                run_id=str(o.get("run_id") or ""),
-                worker_id=str(o.get("worker_id") or ""),
-                reason="orphan_reclaim",
-            )
-        time.sleep(5)
-        _registry.heal_stale_workers()
+        print(f"BLOCK: {len(orphans)} orphan worker(s) before tick", file=sys.stderr)
+        return 2
 
     if not skip_gate:
         gate = _run_gate(py)
@@ -146,15 +191,32 @@ def run_supervised_round(
 
     offset = int(plan["offset"])
     limit = int(plan.get("limit") or round_size)
-    run_id = str(plan.get("resume_run_id") or "").strip()
-    _controller_run_id = f"autopilot_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
+    run_id = (run_id_override or str(plan.get("resume_run_id") or "")).strip()
+    ch_start = int(plan["chapter_start"])
+    ch_end = int(plan["chapter_end"])
+    controller_run_id = (
+        f"autopilot_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
+    )
     clear_stop_request(REPO_ROOT)
 
-    signal.signal(signal.SIGINT, lambda *_: (_graceful_stop_child(reason="sigint"), sys.exit(130)))
-    signal.signal(signal.SIGTERM, lambda *_: (_graceful_stop_child(reason="sigterm"), sys.exit(143)))
-    atexit.register(_on_exit)
+    segments_before = 0
+    progress_path = REPO_ROOT / "workspace" / "runs" / run_id / "run_progress.json"
+    if run_id and progress_path.is_file():
+        prev = safe_load_json(progress_path) or {}
+        segments_before = int(prev.get("completed_segments") or 0)
 
+    env = _production_env(controller_run_id, round_id, draft_model)
+    os.environ["TRANSLATION_ACTIVE_RUN_ID"] = run_id or f"stage_b_offset_{offset}"
+
+    should_hydrate = False
     if run_id:
+        prev_prog = safe_load_json(progress_path) or {}
+        prev_offset = int(prev_prog.get("chapter_offset") or -1)
+        prev_status = str(prev_prog.get("status") or "")
+        if prev_offset != offset or prev_status in {"aborted", "pending", ""}:
+            should_hydrate = True
+
+    if run_id and should_hydrate:
         hydrate = subprocess.run(
             [
                 py,
@@ -169,7 +231,7 @@ def run_supervised_round(
                 "--apply",
             ],
             cwd=REPO_ROOT,
-            env=_production_env(_controller_run_id, round_id, draft_model),
+            env=env,
         )
         if hydrate.returncode != 0:
             return hydrate.returncode
@@ -192,83 +254,138 @@ def run_supervised_round(
         "--controller-pid",
         str(os.getpid()),
         "--controller-run-id",
-        _controller_run_id,
+        controller_run_id,
         "--round-id",
         round_id,
+        "--tick-max-segments",
+        str(tick_max_segments),
+        "--tick-max-wall-time-seconds",
+        str(tick_max_wall_seconds),
     ]
     if run_id:
         cmd.extend(["--run-id", run_id])
 
-    os.environ["TRANSLATION_ACTIVE_RUN_ID"] = run_id or f"stage_b_offset_{offset}"
-    print("+", " ".join(cmd), flush=True)
-    _child_proc = subprocess.Popen(
-        cmd,
-        cwd=REPO_ROOT,
-        env=_production_env(_controller_run_id, round_id, draft_model),
+    profile_note = model_profile or plan.get("model_profile") or "draft_translation_primary"
+    print(
+        f"[autopilot tick] round={round_id} model={draft_model or DEFAULT_DRAFT_MODEL} "
+        f"profile={profile_note} chapters={ch_start}-{ch_end} run_id={run_id or '(new)'}",
+        flush=True,
     )
+    print("+", " ".join(cmd), flush=True)
+    proc = subprocess.run(cmd, cwd=REPO_ROOT, env=env)
+    if proc.returncode not in {0, 3}:
+        feedback = _tick_feedback(
+            round_id=round_id,
+            plan=plan,
+            run_id=run_id,
+            progress=safe_load_json(progress_path) or {},
+            checkpoint={},
+            segments_before=segments_before,
+            status="failed",
+            next_action="diagnose_and_retry",
+        )
+        print(json.dumps(feedback, ensure_ascii=False, indent=2))
+        return proc.returncode
 
-    while _child_proc.poll() is None:
-        time.sleep(poll_sec)
-        progress_path = REPO_ROOT / "workspace" / "runs" / (run_id or "") / "run_progress.json"
-        if run_id and progress_path.is_file():
-            try:
-                prog = json.loads(progress_path.read_text(encoding="utf-8"))
-                print(
-                    f"[supervised] {run_id} {prog.get('completed_segments')}/{prog.get('total_segments')} "
-                    f"status={prog.get('status')}",
-                    flush=True,
-                )
-            except (OSError, json.JSONDecodeError):
-                pass
+    if not run_id:
+        run_id = _find_run_id_for_offset(offset) or ""
+        progress_path = REPO_ROOT / "workspace" / "runs" / run_id / "run_progress.json"
 
-    rc = int(_child_proc.returncode or 0)
-    _child_proc = None
-    clear_stop_request(REPO_ROOT)
+    progress = safe_load_json(progress_path) or {}
+    cp_path = REPO_ROOT / "workspace" / "checkpoints" / f"{run_id}.json"
+    checkpoint = safe_load_json(cp_path) or {}
+    seg_doc = safe_load_json(REPO_ROOT / "workspace" / "runs" / run_id / "segments.json") or {}
+    quality = _chapter_quality(seg_doc, ch_start, ch_end)
 
-    report_cmd = [
-        py,
-        "scripts/generate_translation_round_report.py",
-        "--round-id",
-        round_id,
-    ]
-    if run_id:
-        report_cmd.extend(["--run-id", run_id])
-    subprocess.run(report_cmd, cwd=REPO_ROOT)
+    if quality["round_done"]:
+        status = "completed"
+        next_action = "generate_report"
+    elif progress.get("status") in {"in_progress", "stopped_by_controller"} or proc.returncode == 0:
+        status = "in_progress"
+        next_action = "continue_next_tick"
+    else:
+        status = "failed"
+        next_action = "diagnose_and_retry"
+
+    feedback = _tick_feedback(
+        round_id=round_id,
+        plan=plan,
+        run_id=run_id,
+        progress=progress,
+        checkpoint=checkpoint,
+        segments_before=segments_before,
+        status=status,
+        next_action=next_action,
+    )
+    print(json.dumps(feedback, ensure_ascii=False, indent=2))
 
     remaining = _registry.find_orphan_api_workers()
     if remaining:
-        print(f"WARN: orphan workers after round: {len(remaining)}", file=sys.stderr)
-        return 2 if rc == 0 else rc
-    return rc
+        print(f"BLOCK: orphan workers after tick: {len(remaining)}", file=sys.stderr)
+        return 2
+
+    if status == "completed" and auto_report_on_complete:
+        report_cmd = [
+            py,
+            "scripts/generate_translation_round_report.py",
+            "--round-id",
+            round_id,
+            "--run-id",
+            run_id,
+            "--chapter-range",
+            f"{ch_start}-{ch_end}",
+        ]
+        subprocess.run(report_cmd, cwd=REPO_ROOT)
+
+    return 0
+
+
+def _find_run_id_for_offset(offset: int) -> str | None:
+    runs_root = REPO_ROOT / "workspace" / "runs"
+    if not runs_root.is_dir():
+        return None
+    for meta_path in sorted(runs_root.glob("run_*_draft_stage_b_50ch/run_metadata.json"), reverse=True):
+        meta = safe_load_json(meta_path) or {}
+        if int(meta.get("chapter_offset") or -1) == offset:
+            return meta_path.parent.name
+    return None
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Supervised translation autopilot")
+    parser = argparse.ArgumentParser(description="Supervised translation autopilot (one tick per run)")
     parser.add_argument("--phase", choices=["draft"], default="draft")
-    parser.add_argument("--round-id", default="T-002")
-    parser.add_argument("--round-size", type=int, default=20)
+    parser.add_argument("--round-id", default="D-MR-001")
+    parser.add_argument("--round-size", type=int, default=3)
+    parser.add_argument("--run-id", default="", help="Override resume run_id")
+    parser.add_argument("--chapter-range", default="", help="Override chapter range e.g. 203-205")
+    parser.add_argument("--model-profile", default="draft_translation_primary")
     parser.add_argument("--real-api", action="store_true", default=True)
     parser.add_argument("--supervised", action="store_true", default=True)
-    parser.add_argument("--auto-start-next", action="store_true")
-    parser.add_argument("--continue-until", default="round-complete")
-    parser.add_argument("--draft-model", default=DEFAULT_DRAFT_MODEL, help="DRAFT_MODEL (default DeepSeek)")
-    parser.add_argument("--progress-interval-seconds", type=float, default=30.0)
-    parser.add_argument("--foreground", action="store_true", default=True, help="Run in foreground (required)")
-    parser.add_argument("--no-detach", action="store_true", default=True, help="Do not detach child process")
+    parser.add_argument("--auto-resume", action="store_true", default=True)
+    parser.add_argument("--auto-report-on-complete", action="store_true")
+    parser.add_argument("--draft-model", default=DEFAULT_DRAFT_MODEL)
+    parser.add_argument("--tick-max-segments", type=int, default=DEFAULT_TICK_MAX_SEGMENTS)
+    parser.add_argument("--tick-max-wall-time-seconds", type=float, default=DEFAULT_TICK_MAX_WALL_SECONDS)
     parser.add_argument("--skip-gate", action="store_true")
     args = parser.parse_args()
+
     if not args.supervised:
         print("ERROR: --supervised is required for real API production", file=sys.stderr)
         return 2
+
     draft_model = (args.draft_model or DEFAULT_DRAFT_MODEL).strip()
-    print(f"[autopilot] model={draft_model} round={args.round_id} poll={args.progress_interval_seconds}s", flush=True)
-    return run_supervised_round(
+    return run_supervised_tick(
         round_id=args.round_id,
         phase=args.phase,
         round_size=args.round_size,
+        run_id_override=args.run_id.strip(),
+        chapter_range=args.chapter_range.strip(),
         draft_model=draft_model,
+        model_profile=args.model_profile,
         skip_gate=args.skip_gate,
-        poll_sec=args.progress_interval_seconds,
+        tick_max_segments=args.tick_max_segments,
+        tick_max_wall_seconds=args.tick_max_wall_time_seconds,
+        auto_report_on_complete=args.auto_report_on_complete,
     )
 
 

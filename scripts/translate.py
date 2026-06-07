@@ -120,6 +120,18 @@ def main() -> int:
     parser.add_argument("--controller-pid", type=int, default=0)
     parser.add_argument("--controller-run-id", default="")
     parser.add_argument("--round-id", default="")
+    parser.add_argument(
+        "--tick-max-segments",
+        type=int,
+        default=0,
+        help="Supervised tick: stop after translating this many segments (0=unlimited).",
+    )
+    parser.add_argument(
+        "--tick-max-wall-time-seconds",
+        type=float,
+        default=0,
+        help="Supervised tick: stop after this many wall-clock seconds (0=unlimited).",
+    )
     args = parser.parse_args()
     apply_local_env(REPO_ROOT)
     install_signal_handlers()
@@ -200,6 +212,10 @@ def main() -> int:
             if args.stage == "stage_b":
                 run_kwargs["heartbeat_cb"] = heartbeat
                 run_kwargs["worker_id"] = worker_id
+                run_kwargs["tick_max_segments"] = max(0, int(args.tick_max_segments or 0))
+                run_kwargs["tick_max_wall_seconds"] = max(
+                    0.0, float(args.tick_max_wall_time_seconds or 0)
+                )
             summary, run_root = run_fn(**run_kwargs)
         except StopRequested as exc:
             _update_stage_state(
@@ -227,6 +243,15 @@ def main() -> int:
             return 2
 
         ok = not summary.aborted and all(c.ok for c in summary.chapters)
+        if getattr(summary, "tick_paused", False):
+            status = "in_progress"
+            _registry.unregister_worker(worker_id, status="tick_paused")
+            print(
+                f"run_id={summary.run_id} status=tick_paused "
+                f"segments={summary.translated_segments}/{summary.total_segments} "
+                f"api_calls={summary.api_calls} cost_usd={summary.spent_usd:.6f}"
+            )
+            return 0
         status = "completed" if ok else "failed"
         _update_stage_state(
             REPO_ROOT,

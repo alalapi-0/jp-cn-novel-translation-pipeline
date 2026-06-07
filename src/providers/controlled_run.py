@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -91,5 +91,11 @@ class ControlledRunManager:
         path = self.checkpoint_path
         if path.is_file():
             data = json.loads(path.read_text(encoding="utf-8"))
-            return ControlledRunCheckpoint(**data)
+            known = {f.name for f in fields(ControlledRunCheckpoint)}
+            filtered = {k: v for k, v in data.items() if k in known}
+            extra = {k: v for k, v in data.items() if k not in known}
+            cp = ControlledRunCheckpoint(**filtered)
+            if extra:
+                cp.metadata.update(extra)
+            return cp
         return ControlledRunCheckpoint(run_id=self.config.run_id)
