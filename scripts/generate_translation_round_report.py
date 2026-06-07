@@ -30,6 +30,7 @@ _gate_spec.loader.exec_module(_gate)
 ROUND_PLAN: dict[str, dict[str, Any]] = {
     "T-001": {"phase": "draft", "chapter_start": 171, "chapter_end": 190, "offset": 170, "limit": 20},
     "T-002": {"phase": "draft", "chapter_start": 191, "chapter_end": 210, "offset": 190, "limit": 20},
+    "T-003": {"phase": "draft", "chapter_start": 211, "chapter_end": 230, "offset": 210, "limit": 20},
 }
 
 

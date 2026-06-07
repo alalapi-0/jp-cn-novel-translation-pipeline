@@ -93,7 +93,12 @@ def main() -> int:
 环境要求: .env 中 OPENROUTER_API_KEY 非空、REAL_API_TESTS_ENABLED=true、MAX_TEST_COST_USD>0
         """,
     )
-    parser.add_argument("--run-id", default=DEFAULT_RESUME_RUN)
+    parser.add_argument("--run-id", default=DEFAULT_RESUME_RUN, help="Resume existing run (omit with --new-run)")
+    parser.add_argument(
+        "--new-run",
+        action="store_true",
+        help="Start a fresh run_id at --chapter-offset (do not pass --run-id to translate)",
+    )
     parser.add_argument("--chapter-offset", type=int, default=DEFAULT_OFFSET)
     parser.add_argument(
         "--target-new-chapters",
@@ -130,7 +135,7 @@ def main() -> int:
                 print(f"  → {step}")
             return 2
 
-    if not args.no_hydrate:
+    if not args.no_hydrate and not args.new_run:
         hydrate_cmd = [
             py,
             "scripts/hydrate_checkpoint.py",
@@ -178,13 +183,13 @@ def main() -> int:
         str(args.chapter_offset),
         "--limit-chapters",
         str(args.target_new_chapters),
-        "--run-id",
-        args.run_id,
         "--asset-context",
         str(asset),
         "--stage-state-path",
         PRODUCTION_STAGE_STATE_REL,
     ]
+    if not args.new_run:
+        translate_cmd.extend(["--run-id", args.run_id])
     return _run(translate_cmd, with_production_env=True).returncode
 
 

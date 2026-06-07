@@ -21,7 +21,11 @@ ROUND_PLAN: dict[str, dict[str, object]] = {
         "limit": 20,
         "resume_run_id": "run_20260607_040204_draft_stage_b_50ch",
     },
-    "T-002": {"offset": 190, "limit": 20, "resume_run_id": ""},
+    "T-002": {
+        "offset": 190,
+        "limit": 20,
+        "resume_run_id": "",
+    },
 }
 
 DEFAULT_ASSET = "workspace/assets/translation_memory/pw-user-assets-flow.json"
@@ -101,10 +105,11 @@ def main() -> int:
         str(offset),
         "--target-new-chapters",
         str(limit),
-        "--hydrate-apply",
     ]
     if run_id:
-        resume_cmd.extend(["--run-id", run_id])
+        resume_cmd.extend(["--run-id", run_id, "--hydrate-apply"])
+    else:
+        resume_cmd.append("--new-run")
 
     env = os.environ.copy()
     env["REAL_API_TESTS_ENABLED"] = "1"
