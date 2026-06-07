@@ -27,21 +27,37 @@ def _python() -> str:
     return str(venv) if venv.is_file() else sys.executable
 
 
-def _run(cmd: list[str], *, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess[str]:
+def _run(
+    cmd: list[str],
+    *,
+    check: bool = True,
+    capture: bool = False,
+    with_production_env: bool = False,
+) -> subprocess.CompletedProcess[str]:
     print("+", " ".join(cmd), flush=True)
-    return subprocess.run(
-        cmd,
-        cwd=REPO_ROOT,
-        check=check,
-        text=True,
-        capture_output=capture,
-    )
+    kwargs: dict = {
+        "cwd": REPO_ROOT,
+        "check": check,
+        "text": True,
+        "capture_output": capture,
+    }
+    if with_production_env:
+        kwargs["env"] = _production_env()
+    return subprocess.run(cmd, **kwargs)
+
+
+def _production_env() -> dict[str, str]:
+    """Align with production_pipeline.sh for controlled real-API resume."""
+    env = os.environ.copy()
+    env["REAL_API_TESTS_ENABLED"] = "1"
+    env["CONTROLLED_RUN_ENABLED"] = "1"
+    return env
 
 
 def _ensure_production_env() -> None:
-    """Align with production_pipeline.sh for controlled real-API resume."""
-    os.environ.setdefault("REAL_API_TESTS_ENABLED", "1")
-    os.environ.setdefault("CONTROLLED_RUN_ENABLED", "1")
+    for key, value in _production_env().items():
+        if key in ("REAL_API_TESTS_ENABLED", "CONTROLLED_RUN_ENABLED"):
+            os.environ[key] = value
 
 
 def _run_gate_json(py: str) -> dict:
@@ -82,8 +98,8 @@ def main() -> int:
     parser.add_argument(
         "--target-new-chapters",
         type=int,
-        default=50,
-        help="Chapter batch size for this resume (maps to translate --limit-chapters; Stage B 默认 50 章批次)",
+        default=20,
+        help="Chapter batch size for this resume (maps to translate --limit-chapters; 恢复推进默认 20 章/轮)",
     )
     parser.add_argument("--asset-context", type=Path, default=Path(DEFAULT_ASSET_CONTEXT))
     parser.add_argument("--no-hydrate", action="store_true", help="Skip hydrate_checkpoint (default: run hydrate)")
@@ -128,7 +144,7 @@ def main() -> int:
         ]
         if args.hydrate_apply:
             hydrate_cmd.append("--apply")
-        _run(hydrate_cmd)
+        _run(hydrate_cmd, with_production_env=True)
 
     if args.refine:
         refine_cmd = [
@@ -141,7 +157,7 @@ def main() -> int:
         ]
         if args.dry_run:
             refine_cmd.append("--dry-run")
-        return _run(refine_cmd).returncode
+        return _run(refine_cmd, with_production_env=True).returncode
 
     if args.dry_run:
         print("resume_production: dry-run complete (no translate/refine)")
@@ -169,7 +185,7 @@ def main() -> int:
         "--stage-state-path",
         PRODUCTION_STAGE_STATE_REL,
     ]
-    return _run(translate_cmd).returncode
+    return _run(translate_cmd, with_production_env=True).returncode
 
 
 if __name__ == "__main__":
