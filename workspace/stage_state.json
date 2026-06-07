@@ -1,13 +1,18 @@
 {
-  "phase": "refine",
-  "stage": "refine_stage_c_pilot",
-  "status": "in_progress",
-  "run_id": "run_20260602_203645_draft_stage_b_50ch",
-  "updated_at": "2026-06-04T12:54:41.858133+00:00",
+  "phase": "draft",
+  "stage": "draft_stage_a_5ch",
+  "status": "failed",
+  "run_id": "asset-context-user-verify-2",
+  "updated_at": "2026-06-06T14:10:18.101989+00:00",
   "refine_blocked": true,
-  "pilot": true,
   "summary": {
-    "limit_segments": 30,
-    "dry_run": false
+    "translated_segments": 0,
+    "total_segments": 1,
+    "provider_mode": "fake",
+    "model_name": "fake-model-v1",
+    "run_root": "workspace/runs/asset-context-user-verify-2",
+    "asset_context_path": "workspace/assets/translation_memory/pw-user-assets-flow.json",
+    "api_calls": 0,
+    "spent_usd": 0.0
   }
 }
