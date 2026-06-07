@@ -425,3 +425,59 @@ def render_translation_asset_context(path: Path) -> str:
     data = load_translation_asset_context(path)
     prompt = str(data.get("context_prompt") or "").strip()
     return prompt or _render_context_prompt(data)
+
+
+def select_batch_context_hits(
+    path: Path,
+    batch_source_texts: list[str],
+    *,
+    max_terms: int = 8,
+    max_pairs: int = 6,
+    max_character_notes: int = 4,
+) -> str:
+    """Return compact glossary/character hits for one batch (no full asset dump)."""
+    if not batch_source_texts:
+        return ""
+    data = load_translation_asset_context(path)
+    haystack = "\n".join(batch_source_texts)
+
+    lines: list[str] = []
+
+    for term in data.get("term_candidates", []):
+        source = str(term.get("source") or "").strip()
+        if not source or source not in haystack:
+            continue
+        target = term.get("target") or term.get("target_hint") or ""
+        if target:
+            lines.append(f"- Term: {source} => {target}")
+        else:
+            lines.append(f"- Term: {source}")
+        if len(lines) >= max_terms:
+            break
+
+    for term in data.get("proper_noun_candidates", []):
+        if len(lines) >= max_terms + max_character_notes:
+            break
+        source = str(term.get("source") or "").strip()
+        if not source or source not in haystack:
+            continue
+        hint = term.get("target_hint") or ""
+        lines.append(
+            f"- Name: {source}{' => ' + hint if hint else ''}"
+        )
+
+    pair_hits = 0
+    for pair in data.get("approved_pairs", []):
+        if pair_hits >= max_pairs:
+            break
+        source = str(pair.get("source_text") or "").strip()
+        if not source or len(source) < 4 or source not in haystack:
+            continue
+        target = str(pair.get("target_text") or "").strip()
+        if target:
+            lines.append(f"- Phrase: {source[:40]} => {target[:60]}")
+            pair_hits += 1
+
+    if not lines:
+        return ""
+    return "Relevant translation memory (use only when applicable):\n" + "\n".join(lines)

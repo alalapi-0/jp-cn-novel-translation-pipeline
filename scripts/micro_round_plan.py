@@ -99,7 +99,7 @@ def resolve_round_plan(
 
     if run_id:
         plan["resume_run_id"] = run_id
-    elif chapter_range:
+    if chapter_range:
         m = re.match(r"^(\d+)-(\d+)$", chapter_range.strip())
         if m:
             plan["chapter_start"] = int(m.group(1))

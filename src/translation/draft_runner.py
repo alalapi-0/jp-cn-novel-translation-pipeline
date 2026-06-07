@@ -5,12 +5,19 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
+
+REPO_SCRIPTS = Path(__file__).resolve().parent.parent.parent / "scripts"
+if str(REPO_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(REPO_SCRIPTS))
+
+from plan_translation_batches import plan_batches, split_failed_batch  # noqa: E402
 
 from providers.controlled_run import ControlledRunConfig, ControlledRunManager
 from providers.cost_guard import CostGuard, CostGuardConfig, CostGuardError
@@ -30,6 +37,38 @@ MAX_SEGMENTS_PER_BATCH = 8
 MAX_API_RETRIES = 3
 STAGE_A_MAX_CHAPTERS = 5
 STAGE_B_MAX_CHAPTERS = 50
+DEFAULT_BATCH_TOKEN_BUDGET = 12_000
+DEFAULT_MAX_SEGMENTS_PER_CALL = 30
+
+
+@dataclass
+class RunBudget:
+    max_api_calls: int = 0
+    max_segments: int = 0
+    max_wall_seconds: float = 0.0
+    progress_interval_seconds: float = 30.0
+    api_calls_used: int = 0
+    segments_used: int = 0
+    started_at: float = field(default_factory=time.monotonic)
+    last_progress_at: float = 0.0
+
+    def exhausted(self) -> bool:
+        if self.max_api_calls > 0 and self.api_calls_used >= self.max_api_calls:
+            return True
+        if self.max_segments > 0 and self.segments_used >= self.max_segments:
+            return True
+        if self.max_wall_seconds > 0 and (time.monotonic() - self.started_at) >= self.max_wall_seconds:
+            return True
+        return False
+
+    def should_write_progress(self) -> bool:
+        if self.progress_interval_seconds <= 0:
+            return False
+        now = time.monotonic()
+        if now - self.last_progress_at >= self.progress_interval_seconds:
+            self.last_progress_at = now
+            return True
+        return False
 
 
 @dataclass(frozen=True)
@@ -129,6 +168,26 @@ def _split_batches(chapter: ParsedChapter) -> list[list[Segment]]:
     return batches
 
 
+def _split_batches_planned(
+    chapter: ParsedChapter,
+    *,
+    batch_token_budget: int,
+    max_segments_per_call: int,
+) -> list[list[Segment]]:
+    plan = plan_batches(
+        chapter.segments,
+        token_budget=batch_token_budget,
+        max_segments_per_call=max_segments_per_call,
+    )
+    by_id = {s.segment_id: s for s in chapter.segments}
+    batches: list[list[Segment]] = []
+    for planned in plan.batches:
+        batch = [by_id[sid] for sid in planned.segment_ids if sid in by_id]
+        if batch:
+            batches.append(batch)
+    return batches
+
+
 def _apply_items(chapter: ParsedChapter, batch: list[Segment], raw_output: str) -> tuple[bool, str]:
     expected = [s.segment_id for s in batch]
     source_lengths = {s.segment_id: len(s.source_text) for s in batch}
@@ -190,6 +249,11 @@ def run_draft_stage_b(
     worker_id: str = "",
     tick_max_segments: int = 0,
     tick_max_wall_seconds: float = 0,
+    batch_token_budget: int = 0,
+    max_segments_per_call: int = 0,
+    compact_context: bool = False,
+    asset_context_path_resolved: Path | None = None,
+    run_budget: RunBudget | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_B_MAX_CHAPTERS:
         raise ValueError(f"Stage B hard limit: max {STAGE_B_MAX_CHAPTERS} chapters")
@@ -206,6 +270,11 @@ def run_draft_stage_b(
         worker_id=worker_id,
         tick_max_segments=tick_max_segments,
         tick_max_wall_seconds=tick_max_wall_seconds,
+        batch_token_budget=batch_token_budget,
+        max_segments_per_call=max_segments_per_call,
+        compact_context=compact_context,
+        asset_context_path_resolved=asset_context_path_resolved,
+        run_budget=run_budget,
     )
 
 
@@ -312,6 +381,11 @@ def run_draft_stage(
     worker_id: str = "",
     tick_max_segments: int = 0,
     tick_max_wall_seconds: float = 0,
+    batch_token_budget: int = 0,
+    max_segments_per_call: int = 0,
+    compact_context: bool = False,
+    asset_context_path_resolved: Path | None = None,
+    run_budget: RunBudget | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > spec.limit_chapters:
         raise ValueError(f"{spec.scope} hard limit: max {spec.limit_chapters} chapters")
@@ -357,6 +431,26 @@ def run_draft_stage(
 
     parsed_chapters = [parse_chapter_file(p) for p in chapter_paths]
     asset_context, asset_context_ref = _load_asset_context(repo_root, asset_context_path)
+    asset_resolved = asset_context_path
+    if asset_resolved is not None and not asset_resolved.is_absolute():
+        asset_resolved = repo_root / asset_resolved
+    use_planner = batch_token_budget > 0 or max_segments_per_call > 0
+    if use_planner and batch_token_budget <= 0:
+        batch_token_budget = DEFAULT_BATCH_TOKEN_BUDGET
+    if use_planner and max_segments_per_call <= 0:
+        max_segments_per_call = DEFAULT_MAX_SEGMENTS_PER_CALL
+    if run_budget is None and (
+        os.environ.get("MICRO_ROUND_MAX_API_CALLS")
+        or os.environ.get("MICRO_ROUND_MAX_SEGMENTS")
+    ):
+        run_budget = RunBudget(
+            max_api_calls=int(os.environ.get("MICRO_ROUND_MAX_API_CALLS", "0") or 0),
+            max_segments=int(os.environ.get("MICRO_ROUND_MAX_SEGMENTS", "0") or 0),
+            max_wall_seconds=float(os.environ.get("MICRO_ROUND_MAX_WALL_SECONDS", "0") or 0),
+            progress_interval_seconds=float(
+                os.environ.get("MICRO_ROUND_PROGRESS_INTERVAL", "30") or 30
+            ),
+        )
     _hydrate_from_segments_json(run_root, parsed_chapters)
     _hydrate_from_draft_md(run_root, parsed_chapters)
     total_expected = sum(len(ch.segments) for ch in parsed_chapters)
@@ -406,6 +500,11 @@ def run_draft_stage(
             input_dir=input_dir,
             tick_max_segments=tick_max_segments,
             tick_max_wall_seconds=tick_max_wall_seconds,
+            batch_token_budget=batch_token_budget if use_planner else 0,
+            max_segments_per_call=max_segments_per_call if use_planner else 0,
+            compact_context=compact_context or use_planner,
+            asset_resolved=asset_resolved,
+            run_budget=run_budget,
         )
     except DraftRunTickExit as tick_exit:
         tick_exit.summary.tick_paused = True
@@ -519,6 +618,41 @@ def _tick_budget_exhausted(
     return False
 
 
+def _write_compact_progress(
+    run_root: Path,
+    *,
+    run_id: str,
+    round_id: str,
+    summary: DraftRunSummary,
+    chapter_offset: int,
+    total_expected: int,
+    completed: int,
+    run_budget: RunBudget | None,
+    status: str = "in_progress",
+) -> None:
+    payload = {
+        "schema_version": 1,
+        "run_id": run_id,
+        "round_id": round_id,
+        "status": status,
+        "progress": f"{completed}/{total_expected}",
+        "api_calls": summary.api_calls,
+        "cost_usd": round(summary.spent_usd, 6),
+        "segments_per_call": round(summary.api_calls and (completed / summary.api_calls) or 0, 2),
+        "updated_at": _utc_now(),
+    }
+    if run_budget:
+        payload["budget"] = {
+            "max_api_calls": run_budget.max_api_calls,
+            "max_segments": run_budget.max_segments,
+            "api_calls_used": run_budget.api_calls_used,
+            "segments_used": run_budget.segments_used,
+        }
+    path = run_root / "micro_round_progress.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def _run_chapter_batches(
     *,
     parsed_chapters: list[ParsedChapter],
@@ -539,16 +673,38 @@ def _run_chapter_batches(
     input_dir: Path,
     tick_max_segments: int = 0,
     tick_max_wall_seconds: float = 0,
+    batch_token_budget: int = 0,
+    max_segments_per_call: int = 0,
+    compact_context: bool = False,
+    asset_resolved: Path | None = None,
+    run_budget: RunBudget | None = None,
 ) -> None:
     tick_start = time.monotonic()
     segments_this_tick = 0
     tick_limited = tick_max_segments > 0 or tick_max_wall_seconds > 0
+    use_planner = batch_token_budget > 0 or max_segments_per_call > 0
+    round_id = os.environ.get("TRANSLATION_ROUND_ID", "")
+
+    if run_budget and run_budget.last_progress_at <= 0:
+        run_budget.last_progress_at = time.monotonic()
 
     for chapter in parsed_chapters:
         ch_result = ChapterRunResult(chapter_id=chapter.chapter_id, ok=True, message="ok")
         summary.total_segments += len(chapter.segments)
 
-        for batch in _split_batches(chapter):
+        if use_planner:
+            batch_list = _split_batches_planned(
+                chapter,
+                batch_token_budget=batch_token_budget,
+                max_segments_per_call=max_segments_per_call,
+            )
+        else:
+            batch_list = _split_batches(chapter)
+
+        batch_queue: list[list[Segment]] = list(batch_list)
+
+        while batch_queue:
+            batch = batch_queue.pop(0)
             if tick_limited and _tick_budget_exhausted(
                 tick_start=tick_start,
                 segments_this_tick=segments_this_tick,
@@ -556,6 +712,11 @@ def _run_chapter_batches(
                 tick_max_wall_seconds=tick_max_wall_seconds,
             ):
                 raise DraftRunTickExit(summary, run_root)
+            if run_budget and run_budget.exhausted():
+                export_segments_doc(parsed_chapters, run_root / "segments.json")
+                controlled.save()
+                raise DraftRunTickExit(summary, run_root)
+
             check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
             pending = [s for s in batch if _segment_needs_translation(s)]
             if not pending:
@@ -563,10 +724,22 @@ def _run_chapter_batches(
             if heartbeat_cb:
                 heartbeat_cb()
             check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
+
+            glossary_hits = ""
+            if compact_context and asset_resolved and asset_resolved.is_file():
+                from assets.translation_memory import select_batch_context_hits
+
+                glossary_hits = select_batch_context_hits(
+                    asset_resolved,
+                    [s.source_text for s in pending],
+                )
+
             messages = build_batch_messages(
                 pending,
                 chapter_label=chapter.chapter_label,
-                asset_context=asset_context,
+                asset_context=asset_context if not compact_context else None,
+                compact_context=compact_context,
+                glossary_hits=glossary_hits,
             )
             options = GenerateOptions(
                 project_id="light-novel-jp-cn",
@@ -598,6 +771,7 @@ def _run_chapter_batches(
                 if attempt >= MAX_API_RETRIES:
                     break
                 time.sleep(min(30, 5 * attempt))
+
             if last_exc is not None or result is None:
                 exc = last_exc or RuntimeError(msg or "provider returned no result")
                 summary.aborted = True
@@ -629,9 +803,11 @@ def _run_chapter_batches(
                 )
                 raise DraftRunEarlyExit(summary, run_root)
 
-            summary.api_calls += 1
-            ch_result.api_calls += 1
             if not ok:
+                if len(pending) > 1 and use_planner:
+                    for part in reversed(split_failed_batch(pending)):
+                        batch_queue.insert(0, part)
+                    continue
                 ch_result.ok = False
                 ch_result.message = msg
                 summary.aborted = True
@@ -650,6 +826,11 @@ def _run_chapter_batches(
                 )
                 raise DraftRunEarlyExit(summary, run_root)
 
+            summary.api_calls += 1
+            ch_result.api_calls += 1
+            if run_budget:
+                run_budget.api_calls_used += 1
+
             segments_flush_interval = max(
                 1, int(os.environ.get("SEGMENTS_FLUSH_INTERVAL", "10"))
             )
@@ -666,6 +847,8 @@ def _run_chapter_batches(
                     ch_result.segments_translated += 1
                     segments_since_flush += 1
                     segments_this_tick += 1
+                    if run_budget:
+                        run_budget.segments_used += 1
                     if tick_limited and _tick_budget_exhausted(
                         tick_start=tick_start,
                         segments_this_tick=segments_this_tick,
@@ -673,6 +856,11 @@ def _run_chapter_batches(
                         tick_max_wall_seconds=tick_max_wall_seconds,
                     ):
                         export_segments_doc(parsed_chapters, run_root / "segments.json")
+                        controlled.save()
+                        raise DraftRunTickExit(summary, run_root)
+                    if run_budget and run_budget.exhausted():
+                        export_segments_doc(parsed_chapters, run_root / "segments.json")
+                        controlled.save()
                         raise DraftRunTickExit(summary, run_root)
                     write_run_progress(
                         run_root,
@@ -689,6 +877,19 @@ def _run_chapter_batches(
                         export_segments_doc(parsed_chapters, run_root / "segments.json")
                         segments_since_flush = 0
             export_segments_doc(parsed_chapters, run_root / "segments.json")
+            controlled.save()
+            if run_budget and run_budget.should_write_progress():
+                completed = _count_translated_segments(parsed_chapters)
+                _write_compact_progress(
+                    run_root,
+                    run_id=run_id,
+                    round_id=round_id,
+                    summary=summary,
+                    chapter_offset=chapter_offset,
+                    total_expected=total_expected,
+                    completed=completed,
+                    run_budget=run_budget,
+                )
             if heartbeat_cb:
                 heartbeat_cb()
 
