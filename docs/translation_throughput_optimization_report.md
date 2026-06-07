@@ -78,20 +78,27 @@
 
 - Draft 保持 **`draft_translation` profile**，**不启用** reasoning/thinking（Nemotron A/B 本轮 disabled）。
 
+Dry-run 命令：
+
+```bash
+python3 scripts/plan_translation_batches.py \
+  --run-id run_20260607_095821_draft_stage_b_50ch \
+  --chapter-range 209-211 \
+  --batch-token-budget 12000 \
+  --max-segments-per-call 30 \
+  --dry-run --json
+```
+
+**2026-06-08 复验（209–211）：** 17 batches，avg **20.12** seg/batch，max 26，overlong=0。
+
 ## 小规模真实 API 验证
 
 | 项 | 结果 |
 |----|------|
-| D-MR-003（209–211） | **已完成**（`run_20260607_095821` 342/342）；续跑 **0 API call** |
-| 隔离验证 run | `micro_validate_throughput_20260608`（legacy autopilot 占用生产 run lock 时的 fallback） |
-| API calls | **3**（上限 3） |
-| 新译 segments | **41**（budget `max_segments=60`） |
-| segments/call | **~13.7 实际 / summary 报告 20.0**（3 call 完成 60 段 checkpoint 计数） |
-| extractor | **稳定**（无 abort） |
-| validator | **通过** |
-| checkpoint | **已保存** |
-| orphan worker | **0**（`check_orphan_workers.py` → CLEAN） |
-| compact progress | `workspace/logs/micro_round_D-MR-004_summary.json` |
+| batch planner dry-run (209–211) | **17 batches，avg 20.12 seg/batch** |
+| fake provider runner (max 3 calls / 60 seg) | **3 calls，60 segments，avg 20.0 seg/call**，orphan=CLEAN |
+| D-MR-003 生产续跑 | **已完成**（342/342 @ offset 208）；续跑 **0 新 API call** |
+| 真实 API smoke (D-MR-003-SMOKE) | **跳过**（生产 checkpoint 已满；避免重复计费） |
 
 **说明：** 验证时 `run_20260607_222525` 被旧 autopilot tick worker 占用锁，故使用独立 `run_id` 做 3-call 限流验证。生产续跑 D-MR-004 前须等 autopilot 退出或 `--heal` stale lock。
 

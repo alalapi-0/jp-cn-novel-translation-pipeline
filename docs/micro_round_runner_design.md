@@ -54,9 +54,13 @@ python3 scripts/run_micro_round.py \
 
 | 参数 | 用途 |
 |------|------|
+| `--dry-run` | 仅 batch plan，不注册 worker / 不调 API |
+| `--fake-provider` / `--no-real-api` | fake provider 流程验证 |
+| `--diagnostic-only` | 隔离 `micro_validate_*` run_id，跳过 gate |
 | `--max-api-calls` | 小规模验证上限（如 3） |
 | `--max-segments` | 单次 runner 最多新译段数 |
 | `--max-wall-time-minutes` | 墙钟预算 |
+| `--stop-on-round-complete` | 3 章完成即停（默认开启） |
 | `--skip-gate` | 仅诊断；生产默认跑 gate |
 
 ## 4. Batch Planner
@@ -107,13 +111,13 @@ Compact summary 字段：`progress`, `api_calls`, `segments_per_call_avg`, `cost
 
 ## 9. 验收清单
 
-- [ ] checkpoint 续跑跳过已完成 segment
-- [ ] 每 call segment ≥15（短章；末批可 <15）
-- [ ] extractor 稳定；失败 batch 二分不 abort 全书
-- [ ] validator 通过
-- [ ] stop signal 后无新 API call
-- [ ] exit 无 orphan worker
-- [ ] compact progress 可供 Agent 读取
+- [x] checkpoint 续跑跳过已完成 segment
+- [x] 每 call segment ≥15（短章；末批可 <15）
+- [x] extractor 稳定；失败 batch 二分不 abort 全书
+- [x] validator 通过（fake provider）
+- [x] stop signal 后无新 API call
+- [x] exit 无 orphan worker
+- [x] compact progress 可供 Agent 读取
 
 ## 10. Safe Resume 命令
 

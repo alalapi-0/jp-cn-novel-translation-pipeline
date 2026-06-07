@@ -8,6 +8,7 @@ import fcntl
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from local_env import apply_local_env  # noqa: E402
 from micro_round_plan import resolve_round_plan  # noqa: E402
+from plan_translation_batches import plan_batches, resolve_plan_segments  # noqa: E402
 from translation.draft_runner import (  # noqa: E402
     DraftRunTickExit,
     RunBudget,
@@ -87,9 +89,18 @@ def _release_translate_lock(fd: int) -> None:
         os.close(fd)
 
 
-def _production_env(controller_run_id: str, round_id: str, draft_model: str) -> dict[str, str]:
+def _production_env(
+    controller_run_id: str,
+    round_id: str,
+    draft_model: str,
+    *,
+    real_api: bool = True,
+) -> dict[str, str]:
     env = os.environ.copy()
-    env["REAL_API_TESTS_ENABLED"] = "1"
+    if real_api:
+        env["REAL_API_TESTS_ENABLED"] = "1"
+    else:
+        env.pop("REAL_API_TESTS_ENABLED", None)
     env["CONTROLLED_RUN_ENABLED"] = "1"
     env["TRANSLATION_CONTROLLER_PID"] = str(os.getpid())
     env["TRANSLATION_CONTROLLER_RUN_ID"] = controller_run_id
@@ -159,6 +170,41 @@ def _chapter_quality(doc: dict[str, Any], ch_start: int, ch_end: int) -> dict[st
     }
 
 
+def _write_metrics(round_id: str, payload: dict[str, Any]) -> Path:
+    metrics_dir = REPO_ROOT / "workspace" / "diagnostics" / "micro_round_metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    safe_id = re.sub(r"[^\w\-]+", "_", round_id)
+    path = metrics_dir / f"{safe_id}.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _dry_run_plan(
+    *,
+    round_id: str,
+    run_id: str,
+    chapter_range: str,
+    batch_token_budget: int,
+    max_segments_per_call: int,
+) -> dict[str, Any]:
+    segments, meta = resolve_plan_segments(
+        run_id=run_id,
+        round_id=round_id,
+        chapter_range=chapter_range,
+        pending_only=bool(run_id),
+    )
+    plan = plan_batches(
+        segments,
+        token_budget=batch_token_budget,
+        max_segments_per_call=max_segments_per_call,
+    )
+    payload = plan.to_dict(segments=segments)
+    payload.update(meta)
+    payload["round_id"] = round_id
+    payload["mode"] = "dry_run"
+    return payload
+
+
 def build_compact_summary(
     *,
     round_id: str,
@@ -214,6 +260,10 @@ def run_micro_round(
     progress_interval_seconds: float = 30,
     resume_from_checkpoint: bool = True,
     real_api: bool = True,
+    fake_provider: bool = False,
+    dry_run: bool = False,
+    diagnostic_only: bool = False,
+    stop_on_round_complete: bool = True,
     supervised: bool = True,
     skip_gate: bool = False,
     draft_model: str = DEFAULT_DRAFT_MODEL,
@@ -224,6 +274,20 @@ def run_micro_round(
         return 2, {"error": "--supervised required"}
 
     apply_local_env(REPO_ROOT)
+
+    if dry_run:
+        payload = _dry_run_plan(
+            round_id=round_id,
+            run_id=run_id.strip(),
+            chapter_range=chapter_range.strip(),
+            batch_token_budget=batch_token_budget,
+            max_segments_per_call=max_segments_per_call,
+        )
+        metrics_path = _write_metrics(round_id, payload)
+        payload["metrics_path"] = str(metrics_path.relative_to(REPO_ROOT))
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0, payload
+
     install_signal_handlers()
     clear_stop_request(REPO_ROOT)
 
@@ -235,7 +299,10 @@ def run_micro_round(
     if _registry.find_orphan_api_workers():
         return 2, {"error": "orphan workers present"}
 
-    if not skip_gate and real_api:
+    use_real_api = real_api and not fake_provider
+    if diagnostic_only:
+        skip_gate = True
+    if not skip_gate and use_real_api:
         gate = _run_gate()
         if gate.get("decision") == "BLOCK":
             return 2, {"error": "throughput_gate BLOCK", "gate": gate}
@@ -244,17 +311,23 @@ def run_micro_round(
     limit = int(plan.get("limit") or 3)
     ch_start = int(plan["chapter_start"])
     ch_end = int(plan["chapter_end"])
-    run_id = (run_id or str(plan.get("resume_run_id") or "")).strip()
-    if not run_id:
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    explicit_run_id = run_id.strip()
+    run_id = explicit_run_id or str(plan.get("resume_run_id") or "").strip()
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    if fake_provider or diagnostic_only:
+        if not explicit_run_id or not explicit_run_id.startswith("micro_validate"):
+            run_id = f"micro_validate_{ts}"
+    elif not run_id:
         run_id = f"run_{ts}_draft_stage_b_50ch"
 
     controller_run_id = f"micro_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
-    env = _production_env(controller_run_id, round_id, draft_model)
+    env = _production_env(controller_run_id, round_id, draft_model, real_api=use_real_api)
     for key, val in env.items():
         os.environ[key] = val
+    if fake_provider:
+        os.environ.pop("REAL_API_TESTS_ENABLED", None)
 
-    if resume_from_checkpoint and run_id:
+    if resume_from_checkpoint and run_id and not diagnostic_only and not fake_provider:
         rc = _hydrate_if_needed(run_id, offset, limit, env)
         if rc != 0:
             return rc, {"error": "hydrate_checkpoint failed", "run_id": run_id}
@@ -287,8 +360,8 @@ def run_micro_round(
         controller_run_id=controller_run_id,
         round_id=round_id,
         chapter_range=f"{ch_start}-{ch_end}",
-        provider="model_router",
-        model=draft_model,
+        provider="fake" if fake_provider else "model_router",
+        model=draft_model if use_real_api else "fake-model-v1",
         stop_policy="stop_when_controller_exits",
     )
     if worker is None:
@@ -307,20 +380,21 @@ def run_micro_round(
     summary_api_calls = 0
 
     try:
-        update_stage_state_if_newer(
-            REPO_ROOT,
-            {
-                "phase": "draft",
-                "stage": "draft_stage_b_50ch",
-                "status": "in_progress",
-                "run_id": run_id,
-                "updated_at": _utc_now(),
-                "refine_blocked": True,
-                "summary": {"chapter_offset": offset, "limit_chapters": limit},
-            },
-            run_id=run_id,
-            state_path=STAGE_STATE_PRODUCTION,
-        )
+        if use_real_api and not diagnostic_only:
+            update_stage_state_if_newer(
+                REPO_ROOT,
+                {
+                    "phase": "draft",
+                    "stage": "draft_stage_b_50ch",
+                    "status": "in_progress",
+                    "run_id": run_id,
+                    "updated_at": _utc_now(),
+                    "refine_blocked": True,
+                    "summary": {"chapter_offset": offset, "limit_chapters": limit},
+                },
+                run_id=run_id,
+                state_path=STAGE_STATE_PRODUCTION,
+            )
 
         while True:
             heartbeat()
@@ -342,6 +416,9 @@ def run_micro_round(
                     run_budget=run_budget,
                 )
                 summary_api_calls = summary.api_calls
+                if summary.aborted:
+                    status = "failed"
+                    break
                 status = "completed"
                 break
             except DraftRunTickExit as tick_exit:
@@ -350,7 +427,7 @@ def run_micro_round(
                 progress = safe_load_json(progress_path) or {}
                 seg_doc = safe_load_json(tick_exit.run_root / "segments.json") or {}
                 quality = _chapter_quality(seg_doc, ch_start, ch_end)
-                if quality["round_done"]:
+                if stop_on_round_complete and quality["round_done"]:
                     status = "completed"
                     break
                 if run_budget.exhausted():
@@ -382,6 +459,8 @@ def run_micro_round(
     quality = _chapter_quality(seg_doc, ch_start, ch_end)
     if quality["round_done"]:
         status = "completed"
+    elif progress.get("status") == "failed" and status == "completed":
+        status = "failed"
 
     compact = build_compact_summary(
         round_id=round_id,
@@ -394,6 +473,17 @@ def run_micro_round(
         run_budget=run_budget,
         log_path=str(log_path.relative_to(REPO_ROOT)),
     )
+    if fake_provider:
+        compact["provider_mode"] = "fake"
+    if diagnostic_only:
+        compact["diagnostic_only"] = True
+    avg_batch = round(
+        int(progress.get("completed_segments") or 0) / max(summary_api_calls, 1),
+        2,
+    ) if summary_api_calls else 0
+    compact["avg_segments_per_batch"] = avg_batch
+    metrics_path = _write_metrics(round_id, compact)
+    compact["metrics_path"] = str(metrics_path.relative_to(REPO_ROOT))
     summary_path = REPO_ROOT / "workspace" / "logs" / f"micro_round_{round_id}_summary.json"
     summary_path.write_text(json.dumps(compact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     compact["summary_path"] = str(summary_path.relative_to(REPO_ROOT))
@@ -417,6 +507,12 @@ def main() -> int:
     parser.add_argument("--run-id", default="")
     parser.add_argument("--model-profile", default="draft_translation_primary")
     parser.add_argument("--real-api", action="store_true", default=True)
+    parser.add_argument("--no-real-api", action="store_false", dest="real_api")
+    parser.add_argument("--fake-provider", action="store_true", help="Use fake provider (no network)")
+    parser.add_argument("--dry-run", action="store_true", help="Batch plan only; no worker/API")
+    parser.add_argument("--diagnostic-only", action="store_true", help="Isolated validate run_id; skip gate")
+    parser.add_argument("--stop-on-round-complete", action="store_true", default=True)
+    parser.add_argument("--no-stop-on-round-complete", action="store_false", dest="stop_on_round_complete")
     parser.add_argument("--supervised", action="store_true", default=True)
     parser.add_argument("--batch-token-budget", type=int, default=12_000)
     parser.add_argument("--max-segments-per-call", type=int, default=30)
@@ -444,6 +540,10 @@ def main() -> int:
         progress_interval_seconds=args.progress_interval_seconds,
         resume_from_checkpoint=args.resume_from_checkpoint,
         real_api=args.real_api,
+        fake_provider=args.fake_provider,
+        dry_run=args.dry_run,
+        diagnostic_only=args.diagnostic_only,
+        stop_on_round_complete=args.stop_on_round_complete,
         supervised=args.supervised,
         skip_gate=args.skip_gate,
         draft_model=args.draft_model.strip() or DEFAULT_DRAFT_MODEL,
