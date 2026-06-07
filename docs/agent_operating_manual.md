@@ -13,9 +13,12 @@
 ## 真实 API 翻译：Supervised Autopilot（强制）
 
 1. 真实 API 初翻/润色 **必须** 使用 `scripts/translation_autopilot_loop.py --supervised`。
-2. **禁止** `nohup` / 裸后台 `&` 启动无人监管翻译；Agent 停止时 worker 必须停止。
-3. Worker 须绑定 `controller_pid`；`throughput_gate` 对 orphan worker 返回 BLOCK。
-4. 详见 `docs/continuous_translation_autopilot_rules.md`、`docs/model_switching_policy.md`。
+2. **执行单位 = 3 章 micro round**（`--round-size 3`）；20 章/轮已废弃。见 `docs/translation_recovery_3ch_roadmap.md`。
+3. **supervised tick loop**：每个 tick 必须返回控制权给 Agent；长 foreground worker 已废弃。
+4. **禁止** `nohup` / 裸后台 `&` / detached background worker 启动无人监管翻译；Agent 停止时 worker 必须停止。
+5. Worker 须绑定 `controller_pid`；`throughput_gate` 对 orphan worker 返回 BLOCK。
+6. 每个 micro round 完成后：报告 → 修复 → gate →（授权时）commit → 下一 MR，无硬阻塞自动衔接。
+7. 详见 `docs/continuous_translation_autopilot_rules.md`、`docs/model_switching_policy.md`。
 
 ## 工具隔离原则
 

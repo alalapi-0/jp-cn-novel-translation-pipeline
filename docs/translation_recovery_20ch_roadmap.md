@@ -1,7 +1,11 @@
 # Translation Recovery 20-Chapter Roadmap
 
-> 主路线图：在现有仓库成果上恢复真实 API 初翻，按 **20 章/轮** 稳定推进至全书初翻完成 → 一致性检查 → 润色 → 最终候选质量检查。  
-> 生成时间：2026-06-07（恢复 Agent 首轮）
+> **Deprecated: 20-chapter execution rounds are replaced by 3-chapter micro rounds.**  
+> **See `docs/translation_recovery_3ch_roadmap.md`.**
+
+> 主路线图（历史）：在现有仓库成果上恢复真实 API 初翻，按 **20 章/轮** 稳定推进至全书初翻完成 → 一致性检查 → 润色 → 最终候选质量检查。  
+> 生成时间：2026-06-07（恢复 Agent 首轮）  
+> **自 2026-06-07 治理轮起，执行单位已改为 3 章 micro round；本文档仅保留历史记录。**
 
 ## 当前快照（只读统计，不含正文）
 

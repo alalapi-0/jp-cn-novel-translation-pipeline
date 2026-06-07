@@ -72,10 +72,14 @@ git commit -m "docs: describe change"
 
 ## 真实 API Worker 生命周期
 
-1. Agent 停止 → 翻译 worker 必须停止（`workspace/control/stop_requested.json` + SIGTERM）。
-2. 禁止无人监管后台真实 API worker（禁止对生产翻译使用 `nohup`）。
-3. 生产续跑入口：`scripts/translation_autopilot_loop.py --supervised`。
-4. 模型切换须先 A/B（`scripts/model_ab_test.py`）；DeepSeek 保留 fallback。
+1. **执行单位 = 3 章 micro round**（D-MR / R-MR）；20 章/轮已废弃。主路线：`docs/translation_recovery_3ch_roadmap.md`。
+2. 真实 API 必须使用 **supervised tick loop**；每个 tick 归还 Agent 控制权；长 foreground worker 已废弃。
+3. Agent 停止 → 翻译 worker 必须停止（`workspace/control/stop_requested.json` + SIGTERM）。
+4. 禁止无人监管后台真实 API worker（禁止对生产翻译使用 `nohup` / detached background worker）。
+5. 生产续跑入口：`scripts/translation_autopilot_loop.py --supervised --round-size 3`。
+6. 每个 micro round 完成后自动生成报告、修复、测试、提交（授权时）并进入下一 micro round。
+7. 全书一致性/润色质量检查采用 **渐进式披露**，不得全文硬扫。见 roadmap Phase B / Phase E。
+8. 模型切换须先 A/B（`scripts/model_ab_test.py`）；DeepSeek 保留 fallback。
 
 ## 工具链规则
 

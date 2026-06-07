@@ -1,6 +1,10 @@
 # Translation Recovery Task List
 
-> 基于 2026-06-07 仓库只读诊断生成；章节数为统计值，不含正文。
+> **Deprecated: 20-chapter execution rounds are replaced by 3-chapter micro rounds.**  
+> **See `docs/translation_recovery_3ch_roadmap.md` and `docs/translation_recovery_3ch_task_list.md`.**
+
+> 基于 2026-06-07 仓库只读诊断生成；章节数为统计值，不含正文。  
+> **自 2026-06-07 治理轮起，任务清单已迁移至 3 章 micro round 体系；本文档仅保留历史记录。**
 
 ## 当前状态
 
