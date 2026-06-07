@@ -9,6 +9,7 @@
     "agent:real-api": "python3 scripts/run_real_api_smoke.py",
     "agent:real-api:real": "python3 scripts/run_real_api_smoke.py --real",
     "agent:browser": "python3 scripts/run_browser_inspection.py",
+    "check:cursor-mcp": "bash scripts/check_cursor_mcp_status.sh",
     "check:mcp": "node scripts/check_mcp_config.js",
     "check:stitch": "node scripts/check_stitch_config.js",
     "check:tooling": "sh scripts/run_tooling_checks.sh",

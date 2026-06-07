@@ -1,0 +1,25 @@
+---
+description: Cursor 浏览器 UI 优化任务规则（真实页面检查、Stitch、测试）
+alwaysApply: true
+---
+
+# Cursor Browser UI
+
+## UI 优化规则
+
+1. **任何 UI 优化任务必须先打开真实页面检查。** 启动 dev server 后用 chrome-devtools、playwright 或 Cursor 内置 browser 打开目标 URL。
+2. **不允许只凭代码判断 UI 已完成。** 不得仅 Read/Grep 源码后宣称验收通过。
+3. **使用 Stitch 只能作为设计输入，不能无审查覆盖代码。** 导出物入 `docs/design/stitch/`，实现须拆分审查后落地 `frontend/`。
+4. **实现后必须再次使用浏览器检查。** 修改代码后重新打开页面，确认变更可见。
+5. **必须检查 console 和 network。** 记录未解释的严重错误与关键 API 请求路径。
+6. **必须保存 before / after 观察记录。** 截图或文字记录写入 `artifacts/` 或 `docs/design/stitch/reviews/`（不提交敏感内容）。
+7. **必须运行可用测试。** 至少 `npm run test:ui` 相关用例或项目规定的低成本测试。
+8. **如果浏览器工具没有暴露，必须停止并报告 BLOCKED。** 输出 `BLOCKED: MISSING_FROM_THREAD_TOOL_REGISTRY`，见 `docs/cursor_tool_registry_check.md`。
+9. **UI 改造每轮只改一个主要切片。** 避免单轮大范围重构。
+10. **不允许为了美观破坏业务功能。** 保持 API 契约、审核状态与模式标记（REAL_API / MOCK / DRY_RUN）不变。
+
+## 参考
+
+- `docs/cursor_browser_ui_runbook.md`
+- `docs/testing/BROWSER_TESTING.md`
+- `docs/design/stitch/STITCH_WORKFLOW.md`

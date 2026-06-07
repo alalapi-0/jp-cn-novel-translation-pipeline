@@ -148,3 +148,26 @@ python3 scripts/run_browser_inspection.py
 - `quality_gate.md`
 
 生成质量差时写入 `quality_optimization` 队列；流程 bug 时写入 `bugfix` 队列；页面显示问题写入 `browser_inspection` 或 `bugfix`。无硬阻塞时继续下一轮。
+
+## Cursor Browser UI Workflow
+
+浏览器 UI 推进须遵守 `docs/cursor_browser_ui_runbook.md` 与 `docs/cursor_tool_registry_check.md`。
+
+1. Cursor 做 UI 优化时必须使用 **普通前台 Agent**。
+2. **禁止 Multitask** 控制浏览器（子 Agent 通常不继承 Workspace MCP）。
+3. 每轮 UI 实现必须先检查 **真实页面**（启动 dev server 后打开 URL）。
+4. 每轮 UI 实现必须使用 **before / after** 浏览器检查（截图、console、network）。
+5. **Stitch** 用作设计输入；导出物入 `docs/design/stitch/`，不得无审查覆盖业务代码。
+6. **chrome-devtools** 用作页面调试（console、network、截图）。
+7. **playwright** 用作回归测试（`npm run test:ui` 或 MCP）。
+8. **filesystem** 用作文件真值检查（确认写入磁盘）。
+9. **context7** 用作文档查询。
+10. **github** 用作提交和远程状态（无 token 时降级 git/gh CLI）。
+11. 微信已登录页面只允许 **wechat-chrome-session**（本项目通常不适用）。
+12. 如果当前线程缺工具，输出 **`BLOCKED: MISSING_FROM_THREAD_TOOL_REGISTRY`**，不要继续假装执行。
+
+**检查命令：** `npm run check:cursor-mcp`、`npm run check:mcp`、`npm run check:stitch`
+
+**UI 轮 Prompt 模板：** `docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`
+
+**Cursor Rules：** `.cursor/rules/cursor-browser-ui.mdc`、`.cursor/rules/no-multitask-for-browser.mdc`

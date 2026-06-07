@@ -1,0 +1,20 @@
+---
+description: 禁止 Multitask 执行浏览器控制；微信与普通 Web 工具隔离
+alwaysApply: true
+---
+
+# No Multitask for Browser
+
+## 规则
+
+1. **涉及 browser / chrome-devtools / playwright / wechat-chrome-session 的任务禁止使用 Multitask。** 不得通过 Task 工具或后台子 Agent 执行浏览器控制。
+2. **浏览器控制任务必须使用普通前台 Agent。** 在主 Chat/Agent 线程中完成打开页面、截图、点击等操作。
+3. **如果当前处于 Multitask 或后台子 Agent，必须停止并要求切换普通 Agent。** 输出 BLOCKED 并指引用户新建普通前台对话。
+4. **微信已登录页面操作必须只使用 wechat-chrome-session。** 禁止 playwright、chrome-devtools 等会新开未登录会话的工具。
+5. **普通本地 Web UI 优化不得使用 wechat-chrome-session。** 本项目 Workbench 使用 chrome-devtools / playwright / Cursor 内置 browser。
+
+## 参考
+
+- `docs/cursor_browser_ui_runbook.md`
+- `docs/cursor_tool_registry_check.md`
+- `.cursor/rules/cursor-browser-ui.mdc`

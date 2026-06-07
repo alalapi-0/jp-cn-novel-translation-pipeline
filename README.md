@@ -210,6 +210,49 @@ Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
 
 仓库采用可移植治理标准 `governance/repo_protocol_standard.yaml`（v0.3.0）。对齐情况、冲突与迁移计划见 `docs/repo_protocol_alignment.md`。项目差异写入 `project.yaml` 与 `governance/novel_pipeline_contract.yaml`，不擅自改写协议正文。
 
+## Cursor Browser UI Workflow
+
+Cursor Agent 做 UI 优化、浏览器验收时须使用 **普通前台 Agent**（禁用 Multitask）。详见 `docs/cursor_browser_ui_runbook.md`。
+
+### 1. 如何检查 MCP
+
+```bash
+npm run check:cursor-mcp
+# 或
+bash scripts/check_cursor_mcp_status.sh
+npm run check:mcp
+npm run check:stitch
+```
+
+**注意：** CLI 检查通过 ≠ 当前 Agent 对话已暴露工具；见 `docs/cursor_tool_registry_check.md`。
+
+### 2. 为什么需要重启 Cursor
+
+- 批准 MCP 后，**旧对话线程**可能仍看不到工具
+- **Multitask 子 Agent** 可能不继承 Workspace MCP
+- **新建普通 Agent 对话**最稳定；必要时 **完全退出 Cursor** 后重开仓库
+
+### 3. UI 优化标准流程
+
+1. 启动项目（`npm run dev:frontend`）
+2. 打开页面并截图（before）
+3. Stitch 设计或读取 `docs/design/stitch/`
+4. 修改代码（每轮一个 UI 切片）
+5. 再打开页面并截图（after）
+6. console / network 检查
+7. 运行测试（`npm run test:ui` 等）
+8. commit / push（用户授权后）
+
+Prompt 模板：`docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`
+
+### 4. 微信页面特殊说明
+
+本项目为本地 Web Workbench，**通常不涉及**微信公众号页面。若未来有微信任务：
+
+- 已登录页面操作必须使用 **wechat-chrome-session**
+- 不允许用 Playwright 新开页面替代
+- 遇到扫码 / 风控停止，等待用户手动处理
+
 ## Stitch Design MCP
 
 [Google Stitch](https://stitch.withgoogle.com/) 为本项目提供 **UI 设计能力**：生成 Dashboard、审核台、导出页、Debug 面板等原型，供 Cursor 实现时参考。

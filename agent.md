@@ -32,4 +32,13 @@ npm run check:stitch
 - 真实 API：`docs/testing/REAL_API_TESTING.md`
 - 用户视角：`docs/testing/USER_PERSPECTIVE_TESTING.md`
 
+## Cursor Browser UI Workflow
+
+1. 使用 **普通前台 Agent**；禁止 Multitask 控制浏览器。
+2. 开始前确认当前线程暴露 chrome-devtools / playwright / browser 工具；缺失则 `BLOCKED: MISSING_FROM_THREAD_TOOL_REGISTRY`。
+3. before/after 真实页面检查 + console/network + 测试。
+4. Stitch → 设计；chrome-devtools → 调试；playwright → 回归。
+5. Runbook：`docs/cursor_browser_ui_runbook.md`；Prompt：`docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`。
+6. 检查：`npm run check:cursor-mcp`。
+
 完整 Agent 协议见 **`AGENTS.md`**。
