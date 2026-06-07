@@ -258,6 +258,14 @@ button {
   font-size: 0.875rem;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
@@ -553,6 +561,30 @@ button:disabled {
 
 .review-meta-section:last-child {
   margin-bottom: 0;
+}
+
+.review-shortcuts {
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+}
+
+.review-shortcuts p {
+  margin: 0.35rem 0;
+}
+
+kbd {
+  display: inline-flex;
+  min-width: 1.65rem;
+  justify-content: center;
+  padding: 0.08rem 0.35rem;
+  border: 1px solid var(--border);
+  border-bottom-color: #3c4a63;
+  border-radius: 5px;
+  background: #121820;
+  color: var(--text);
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .review-mobile-bar {

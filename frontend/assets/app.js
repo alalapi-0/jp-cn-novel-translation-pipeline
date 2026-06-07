@@ -332,6 +332,30 @@
     );
   }
 
+  function reviewSegmentIds() {
+    return (reviewData?.segments || []).map((seg) => seg.id || seg.segment_id).filter(Boolean);
+  }
+
+  function focusSelectedSegmentButton() {
+    if (!reviewSelectedSegmentId) return;
+    const el = document.getElementById(`seg-${reviewSelectedSegmentId}`);
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function selectReviewSegmentByOffset(offset) {
+    const ids = reviewSegmentIds();
+    if (!ids.length) return false;
+    const currentIndex = Math.max(0, ids.indexOf(reviewSelectedSegmentId));
+    const nextIndex = Math.min(ids.length - 1, Math.max(0, currentIndex + offset));
+    reviewSelectedSegmentId = ids[nextIndex];
+    bindReviewPage(reviewData);
+    focusSelectedSegmentButton();
+    log(`review shortcut: selected ${reviewSelectedSegmentId}`);
+    return true;
+  }
+
   function segmentStatusBadgeClass(status) {
     if (status === "approved") return "badge-success";
     if (status === "rejected") return "badge-danger";
@@ -1452,6 +1476,13 @@
               ${autoBtnHtml}
             </div>
           </div>
+          <div class="review-meta-section review-shortcuts" aria-label="审核快捷键">
+            <div class="panel-title">快捷键</div>
+            <p class="meta"><kbd>J</kbd> / <kbd>↓</kbd> 下一段</p>
+            <p class="meta"><kbd>K</kbd> / <kbd>↑</kbd> 上一段</p>
+            <p class="meta"><kbd>A</kbd> 通过当前段</p>
+            <p class="meta"><kbd>R</kbd> 驳回当前段</p>
+          </div>
         </aside>
       </div>`;
 
@@ -1795,13 +1826,11 @@
     });
   }
 
-  async function handleReviewSegmentAction(btn, projectId) {
-    if (!btn || !reviewData) return;
-    const id = btn.dataset.id;
+  async function applyReviewSegmentAction(id, action, projectId) {
+    if (!id || !reviewData) return;
     const seg = reviewData.segments.find((s) => (s.id || s.segment_id) === id);
     if (!seg) return;
     const cfg = getConfig();
-    const action = btn.dataset.action;
     let entry;
     if (action === "approve" || action === "auto") {
       entry = {
@@ -1819,6 +1848,42 @@
     const activeProjectId = workbenchContext?.activeProjectId || projectId;
     await patchReviewState(activeProjectId, { segments: { [id]: entry } });
     bindReviewPage(reviewData);
+  }
+
+  async function handleReviewSegmentAction(btn, projectId) {
+    if (!btn || !reviewData) return;
+    await applyReviewSegmentAction(btn.dataset.id, btn.dataset.action, projectId);
+  }
+
+  function setupReviewKeyboardHandler(projectId) {
+    if (document.body.dataset.reviewKeyboardBound === "1") return;
+    document.body.dataset.reviewKeyboardBound = "1";
+    document.addEventListener("keydown", async (ev) => {
+      if (!document.getElementById("review-root") || !reviewData?.segments?.length) return;
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      const target = ev.target;
+      const tag = target?.tagName?.toLowerCase();
+      if (target?.isContentEditable || ["input", "textarea", "select"].includes(tag)) {
+        return;
+      }
+      const key = ev.key.toLowerCase();
+      if (key === "j" || ev.key === "ArrowDown") {
+        ev.preventDefault();
+        selectReviewSegmentByOffset(1);
+        return;
+      }
+      if (key === "k" || ev.key === "ArrowUp") {
+        ev.preventDefault();
+        selectReviewSegmentByOffset(-1);
+        return;
+      }
+      if (key === "a" || key === "r") {
+        ev.preventDefault();
+        const action = key === "a" ? "approve" : "reject";
+        await applyReviewSegmentAction(reviewSelectedSegmentId, action, projectId);
+        log(`review shortcut: ${action} ${reviewSelectedSegmentId}`);
+      }
+    });
   }
 
   function setupReviewClickHandler(projectId) {
@@ -2284,6 +2349,7 @@
       setupProjectSwitchHandler(workbenchContext);
       setupReviewProjectSelector(workbenchContext);
       setupReviewClickHandler(workbenchContext.activeProjectId);
+      setupReviewKeyboardHandler(workbenchContext.activeProjectId);
       bindReviewPage({ segments: workbenchContext.segments });
       await runAutoApproveIfEnabled(
         { segments: workbenchContext.segments },

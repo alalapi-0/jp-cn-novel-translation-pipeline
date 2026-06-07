@@ -43,6 +43,30 @@ test("review state persists after reload", async ({ page, request }) => {
   await expect(page.locator(".badge[data-status='approved']").first()).toBeVisible();
 });
 
+test("review page supports keyboard shortcuts for segment triage", async ({ page, request }) => {
+  const projectId = `pw-keys-${Date.now()}`;
+  await request.post("/api/projects", {
+    data: { project_id: projectId, name: "Keyboard", language_direction: "JP_TO_CN" },
+  });
+  await request.post(`/api/projects/${projectId}/dry-run-generate`, {
+    data: { sample_text: "第一段落。\n\n第二段落。" },
+  });
+
+  await page.goto(`/review.html?project=${projectId}`);
+  await expect(page.locator(".review-shortcuts")).toContainText("J");
+  await expect(page.locator("#seg-seg-001")).toHaveClass(/is-active/);
+
+  await page.keyboard.press("j");
+  await expect(page.locator("#seg-seg-002")).toHaveClass(/is-active/);
+  await page.keyboard.press("a");
+  await expect(page.locator(".review-meta .badge[data-status='approved']")).toBeVisible();
+
+  await page.keyboard.press("k");
+  await expect(page.locator("#seg-seg-001")).toHaveClass(/is-active/);
+  await page.keyboard.press("r");
+  await expect(page.locator(".review-meta .badge[data-status='rejected']")).toBeVisible();
+});
+
 test("export manifest fails for unknown project", async ({ page }) => {
   await page.goto("/export.html");
   await page.locator("#export-project-id").fill("missing-project-xyz");

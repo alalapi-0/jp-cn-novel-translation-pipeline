@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review Workbench Shortcut Slice</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1419;
+        --panel: #1a2332;
+        --text: #e7ecf3;
+        --muted: #8b9bb4;
+        --accent: #3d8bfd;
+        --ok: #3dd68c;
+        --warn: #f5a524;
+        --danger: #f2555a;
+        --border: #2a3548;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 220px 1fr 260px;
+        gap: 16px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .segment {
+        display: block;
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 10px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text);
+        text-align: left;
+      }
+      .segment.active {
+        border-color: var(--accent);
+        background: rgba(61, 139, 253, 0.12);
+      }
+      .reading {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        line-height: 1.65;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: #2a2208;
+        color: var(--warn);
+      }
+      kbd {
+        display: inline-flex;
+        min-width: 26px;
+        justify-content: center;
+        padding: 1px 6px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        background: #121820;
+        color: var(--text);
+        font-family: ui-monospace, monospace;
+      }
+      @media (max-width: 900px) {
+        .layout,
+        .reading {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>对照审核 · 快捷键切片</h1>
+      <p>Fallback 参考稿：未由 Stitch 生成，仅用于记录本轮设计意图。</p>
+      <div class="layout">
+        <aside class="panel">
+          <h2>段落队列</h2>
+          <button class="segment active">seg-001 <span class="badge">待审核</span></button>
+          <button class="segment">seg-002 <span class="badge">待审核</span></button>
+        </aside>
+        <section class="panel">
+          <h2>对照阅读</h2>
+          <div class="reading">
+            <p>原文 segment 显示在左侧，保持长文本阅读行高。</p>
+            <p>译文 segment 显示在右侧，保留 mock / dry-run / real API 标记。</p>
+          </div>
+        </section>
+        <aside class="panel">
+          <h2>状态与操作</h2>
+          <p><span class="badge">待审核</span> mock</p>
+          <button>通过</button>
+          <button>驳回</button>
+          <h3>快捷键</h3>
+          <p><kbd>J</kbd> 下一段</p>
+          <p><kbd>K</kbd> 上一段</p>
+          <p><kbd>A</kbd> 通过当前段</p>
+          <p><kbd>R</kbd> 驳回当前段</p>
+        </aside>
+      </div>
+    </main>
+  </body>
+</html>
