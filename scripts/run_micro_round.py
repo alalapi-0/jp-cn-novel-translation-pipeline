@@ -80,13 +80,18 @@ def _acquire_translate_lock(stage: str, run_id: str) -> int:
     return fd
 
 
-def _release_translate_lock(fd: int) -> None:
+def _release_translate_lock(fd: int) -> int:
     if fd < 0:
-        return
+        return -1
     try:
         fcntl.flock(fd, fcntl.LOCK_UN)
-    finally:
+    except OSError:
+        pass
+    try:
         os.close(fd)
+    except OSError:
+        pass
+    return -1
 
 
 def _production_env(
@@ -118,10 +123,14 @@ def _hydrate_if_needed(
     env: dict[str, str],
 ) -> int:
     progress_path = REPO_ROOT / "workspace" / "runs" / run_id / "run_progress.json"
+    checkpoint_path = REPO_ROOT / "workspace" / "checkpoints" / f"{run_id}.json"
     prev = safe_load_json(progress_path) or {}
     prev_offset = int(prev.get("chapter_offset") or -1)
     prev_status = str(prev.get("status") or "")
     if prev_offset == offset and prev_status not in {"aborted", "pending", ""}:
+        return 0
+    # Fresh micro-round run: no prior checkpoint/progress — draft_runner initializes artifacts.
+    if not checkpoint_path.is_file() and not progress_path.is_file():
         return 0
     proc = __import__("subprocess").run(
         [
@@ -446,10 +455,9 @@ def run_micro_round(
                 return exit_code, {"error": str(exc), "run_id": run_id}
     except Exception as exc:
         _registry.unregister_worker(worker_id, status="failed")
-        _release_translate_lock(lock_fd)
         return 2, {"error": str(exc), "run_id": run_id}
     finally:
-        _release_translate_lock(lock_fd)
+        lock_fd = _release_translate_lock(lock_fd)
 
     progress_path = REPO_ROOT / "workspace" / "runs" / run_id / "run_progress.json"
     cp_path = REPO_ROOT / "workspace" / "checkpoints" / f"{run_id}.json"
