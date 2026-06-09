@@ -49,3 +49,12 @@ Search capability: available (WebSearch + Context7 configured)
 - Relevance: Cost guard and smoke scripts must not hardcode model prices; fetch catalog or document refresh cadence.
 - Risk / uncertainty: Model IDs and $/M change frequently; third-party aggregators (costgoat, apicents) are hints only — use OpenRouter API as source of truth.
 - Action to encode into repo: `docs/api_provider_strategy.md` OpenRouter section, `docs/RESEARCH_NOTES.md` (this entry)
+
+## Query 6 — Playwright test vs MCP version alignment (AL-007)
+
+- Query: @playwright/mcp @playwright/test version pin alignment official 2026
+- Source type: official docs (playwright.dev MCP getting started) + GitHub issues (microsoft/playwright-mcp #1091, #917)
+- Key finding: `@playwright/mcp` and `@playwright/test` are versioned independently; official MCP config uses `@playwright/mcp@latest`; MCP may bundle alpha playwright-core while repo pins stable `@playwright/test` for CI; browser mismatch fixed via `npx playwright install` from workspace CLI version.
+- Relevance: Agents must not assume MCP semver equals test semver; E2E gate uses `npm run test:ui`; MCP is interactive fallback.
+- Risk / uncertainty: `@playwright/mcp` npm version (e.g. 0.0.x) ≠ Playwright 1.x; `npx playwright run-mcp-server` mentioned for 1.56+ but not stable replacement for separate package as of 1.60.
+- Action to encode into repo: `docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md`, cross-links in TOOL_INVENTORY and USER_VIEW_TESTING

@@ -44,8 +44,13 @@ npm run dev:frontend
 - **bugfix_agent**：修复检查发现的流程/显示 bug
 - 见 `docs/agent_workflow/browser_inspector_agent.md`
 
+## 版本对齐
+
+`@playwright/test`（CLI E2E）与 `@playwright/mcp`（Agent MCP）**独立版本** — 详见 [`PLAYWRIGHT_VERSION_ALIGNMENT.md`](PLAYWRIGHT_VERSION_ALIGNMENT.md)。
+
 ## 参考
 
 - `tests/ui/workbench.spec.ts`
 - `docs/mcp_playwright_setup_plan.md`
+- `docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md`
 - `.cursor/rules/mcp-agent-tools.mdc`

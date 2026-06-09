@@ -216,6 +216,19 @@ Round 46 Prompt：`prompts/round_46_frontend_review_workbench_visual_verificatio
 
 ---
 
+## Playwright 版本对齐（AL-007）
+
+本仓库 **E2E** 与 **MCP** 采用双轨版本策略：
+
+| 用途 | 包 | 策略 |
+|------|-----|------|
+| `npm run test:ui` | `@playwright/test` | pin 于 `package.json`（当前 ^1.60.0） |
+| Cursor MCP | `@playwright/mcp` | `@latest` via `npx`（`.cursor/mcp.json`） |
+
+二者 **不要求相同 semver**；浏览器二进制以工作区 `npx playwright install` 为准。升级与 troubleshooting 见 [`docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md`](testing/PLAYWRIGHT_VERSION_ALIGNMENT.md)。
+
+---
+
 ## MCP 浏览器工具隔离规则
 
 1. light_novel 项目不得依赖全局共享 chrome-devtools profile。

@@ -15,7 +15,7 @@ Machine report: `reports/tool_probe_report.json`
 | Java / Maven / Docker | Unavailable | Not required for current pipeline |
 | gh CLI | Available | v2.92.0 |
 | ffmpeg | Available | v8.0.1 |
-| Playwright | Available | npx v1.60.0; `@playwright/test` in package.json |
+| Playwright | Available | npx v1.60.0; `@playwright/test` in package.json; MCP `@latest` — see `docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md` |
 | Web search | Available | Cursor `WebSearch` in this thread |
 | Codex | Manual | Protocol compatible; not verified in-thread |
 
@@ -39,7 +39,7 @@ Machine report: `reports/tool_probe_report.json`
 | make | yes | `make --version` | GNU Make 3.81 |
 | gh | yes | `gh --version` | 2.92.0 |
 | ffmpeg | yes | `ffmpeg -version` | 8.0.1 |
-| playwright | yes | `npx playwright --version` | 1.60.0 |
+| playwright | yes | `npx playwright --version` | 1.60.0 (`@playwright/test` pin; MCP independent — AL-007) |
 
 ## B. Cursor Capabilities
 

@@ -63,10 +63,17 @@ Store notes under `artifacts/` (gitignored): screenshot paths, console summary, 
 
 - Dev server down → start server, retry
 - Browser MCP missing → `BLOCKED: MISSING_FROM_THREAD_TOOL_REGISTRY`
-- Playwright browsers missing → `npx playwright install`
+- Playwright browsers missing → `npx playwright install`（版本须与工作区 `@playwright/test` 一致，见下方对齐说明）
+
+## Playwright 版本对齐
+
+- E2E CLI：`@playwright/test` pin 于 `package.json`（当前 1.60.0）
+- MCP：`.cursor/mcp.json` 使用 `@playwright/mcp@latest`（独立 semver）
+- 升级 / 浏览器不匹配 → `docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md`
 
 ## Related
 
 - `docs/cursor_browser_ui_runbook.md`
 - `docs/testing/BROWSER_TESTING.md`
+- `docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md`
 - `.cursor/rules/user-view-testing.mdc`
