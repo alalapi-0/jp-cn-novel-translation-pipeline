@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-06-09T13:18:35Z",
+  "base_url": "http://127.0.0.1:5174/",
+  "status": "partial",
+  "passed_count": 4,
+  "failed": [
+    "dev_server_port"
+  ],
+  "checks": [
+    {
+      "name": "static_file_index.html",
+      "passed": true,
+      "detail": "frontend/index.html"
+    },
+    {
+      "name": "static_file_review.html",
+      "passed": true,
+      "detail": "frontend/review.html"
+    },
+    {
+      "name": "static_file_issues.html",
+      "passed": true,
+      "detail": "frontend/issues.html"
+    },
+    {
+      "name": "dev_server_port",
+      "passed": false,
+      "detail": "127.0.0.1:5174 closed — run npm run dev:frontend"
+    },
+    {
+      "name": "homepage_http",
+      "passed": false,
+      "skipped": true,
+      "detail": "dev server not running"
+    },
+    {
+      "name": "playwright_config",
+      "passed": true,
+      "detail": "playwright.config.ts"
+    }
+  ],
+  "next_steps": [
+    "Start dev server: npm run dev:frontend",
+    "Run browser MCP or npm run test:ui for full user-view validation"
+  ]
+}

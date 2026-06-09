@@ -1,0 +1,193 @@
+version: 1
+updated_at: "2026-06-09T00:00:00Z"
+repo_name: light_novel
+
+agent_surfaces:
+  cursor:
+    primary: true
+    available: true
+    recommended_use:
+      - local editing
+      - UI debugging
+      - browser-based user-view testing
+      - repo rule enforcement
+      - MCP-assisted workflows
+      - small incremental rounds
+    notes: "Default primary surface for this repo; MCP loaded via .cursor/mcp.json"
+  codex:
+    primary: false
+    available: manual
+    recommended_use:
+      - long-horizon implementation
+      - code review
+      - refactor
+      - cloud/background tasks
+      - worktree-based parallel tasks
+    notes: "Read docs/CODEX_USAGE.md; quota-limited — high-value tasks only"
+  local_scripts:
+    primary: true
+    available: true
+    recommended_use:
+      - deterministic gates
+      - reports
+      - smoke tests
+      - artifact checks
+
+tools:
+  shell:
+    available: true
+    safe_probe: pwd
+    probe_result: "/Users/alalapi/PycharmProjects/light_novel"
+    use_for:
+      - run gates
+      - inspect repo
+      - run tests
+    never_use_for:
+      - destructive deletion
+      - printing secrets
+  git:
+    available: true
+    safe_probe: git status --short
+    use_for:
+      - inspect changes
+      - branch workflow
+      - commit if allowed
+    never_use_for:
+      - reset hard without explicit approval
+      - force push
+  node_npm:
+    available: true
+    safe_probe: node -v && npm -v
+    use_for:
+      - check:mcp
+      - test:ui
+      - dev:frontend
+  python:
+    available: true
+    safe_probe: python3 --version
+    use_for:
+      - pytest
+      - agent_gate
+      - pipeline scripts
+  web_search:
+    available: true
+    use_for:
+      - latest official docs
+      - current platform rules
+      - dependency API changes
+      - model/tool capability changes
+    fallback:
+      - ask user to provide docs
+      - use local docs
+      - context7
+  context7:
+    available: true
+    configured: true
+    callable_now: true
+    safe_probe: resolve-library-id + query-docs
+    use_for:
+      - library docs
+      - API usage
+      - version-specific examples
+    recommended_docs:
+      - playwright
+      - pytest
+      - modelcontextprotocol
+  browser:
+    available: true
+    use_for:
+      - UI smoke tests
+      - layout verification
+      - accessibility checks
+      - screenshots
+    fallback: npm run test:ui
+  playwright:
+    available: true
+    safe_probe: npx playwright --version
+    use_for:
+      - e2e tests
+      - user-view flows
+      - regression tests
+  chrome_devtools:
+    available: true
+    configured: true
+    use_for:
+      - inspect DOM
+      - console errors
+      - network failures
+    fallback: playwright MCP
+  filesystem_mcp:
+    available: true
+    configured: true
+    callable_now: true
+    allowed_scope: "${workspaceFolder}"
+    use_for:
+      - safe file inspection
+      - project file operations within allowed dirs
+  github_mcp:
+    available: true
+    configured: true
+    callable_now: true
+    use_for:
+      - issues
+      - PRs
+      - remote repo inspection
+    fallback: gh CLI
+  stitch_mcp:
+    available: true
+    configured: true
+    callable_now: true
+    use_for:
+      - UI design prototypes
+      - design input to docs/design/stitch/
+    risks:
+      - requires STITCH_API_KEY
+      - must not overwrite frontend/ without review
+  cursor_ide_browser:
+    available: true
+    use_for:
+      - interactive UI verification in Cursor thread
+    notes: "Prefer over multitask subagents for browser control"
+  gh_cli:
+    available: true
+    use_for:
+      - PR/issue inspection
+      - remote status
+  ffmpeg:
+    available: true
+    use_for:
+      - media pipeline checks when enabled
+  docker:
+    available: false
+    fallback: local python/node only
+  java_maven:
+    available: false
+
+policies:
+  default_real_api: false
+  default_real_publish: false
+  require_dry_run: true
+  require_report: true
+  require_gate_before_commit: true
+  require_tool_usage_log: true
+  require_tool_probe_before_plan: true
+
+task_stage_mapping:
+  repo_onboarding:
+    required: [shell, git, filesystem_mcp]
+    read_first: [AGENTS.md, agent_layer.yaml, agent_tools.yaml]
+  code_change:
+    required: [shell, git]
+    optional: [context7, web_search]
+  ui_verification:
+    required: [browser, playwright]
+    optional: [chrome_devtools]
+  external_docs:
+    required: [web_search]
+    optional: [context7]
+  github_ops:
+    required: [git]
+    optional: [github_mcp, gh_cli]
+  gate_and_report:
+    required: [shell]
+    commands: [python3 scripts/agent_gate.py, python3 scripts/tool_probe.py]

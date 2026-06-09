@@ -1,0 +1,32 @@
+---
+description: Tool selection and MCP utilization policy
+alwaysApply: true
+---
+
+# Tool Usage
+
+Follow `docs/TOOL_USAGE_POLICY.md`.
+
+## Must use when applicable
+
+| Situation | Tool |
+|-----------|------|
+| Fresh library/API facts | WebSearch or Context7 |
+| UI verification | Browser MCP / Playwright / chrome-devtools |
+| File ground truth | filesystem MCP or Read |
+| GitHub remote state | GitHub MCP or `gh` |
+| Deterministic validation | `scripts/agent_gate.py`, `npm run check:tooling` |
+
+## MCP configured but unused
+
+If MCP was available and relevant, explain in `reports/latest-agent-report.json` → `tools_not_used`.
+
+## Fallbacks
+
+Record `TOOL_UNAVAILABLE` or `BLOCKED_ENV`; never invent probe results.
+
+## Forbidden
+
+Real API, real publish, `.env` reads, force push, browser via Multitask subagent.
+
+Complements: `.cursor/rules/mcp-required.mdc`, `mcp-agent-tools.mdc`.

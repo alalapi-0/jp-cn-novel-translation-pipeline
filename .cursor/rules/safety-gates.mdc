@@ -1,0 +1,35 @@
+---
+description: Gate-driven safety — no fake passes, no real API/publish by default
+alwaysApply: true
+---
+
+# Safety Gates
+
+Follow `docs/AGENT_SAFETY.md` and `docs/COST_CONTROL.md`.
+
+## Defaults
+
+- `allow_real_api: false`, `allow_real_publish: false` (`agent_layer.yaml`)
+- Dry-run smokes only in agent governance rounds
+
+## Every implementation round
+
+```bash
+python3 scripts/agent_gate.py --json
+```
+
+Run `npm run check:tooling` when code/tests change.
+
+## Never
+
+- Delete or skip failing tests to pass gate
+- Claim tests passed without running them
+- Commit secrets, `.env`, raw novel input/output
+- Auto push
+
+## Gate outputs
+
+- `docs/reports/agent_gate_report.md`
+- `reports/gate_result.json`
+
+Exit 2 = BLOCKED — stop and report P0.

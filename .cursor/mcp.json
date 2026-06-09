@@ -37,6 +37,10 @@
       "env": {
         "STITCH_API_KEY": "${env:STITCH_API_KEY}"
       }
+    },
+    "Prisma-Local": {
+      "command": "npx",
+      "args": ["-y", "prisma", "mcp"]
     }
   }
 }

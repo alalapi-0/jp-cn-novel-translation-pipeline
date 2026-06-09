@@ -1,0 +1,100 @@
+version: 2
+updated_at: "2026-06-09T00:00:00Z"
+
+repo:
+  name: light_novel
+  type: ai_novel_translation_pipeline
+  primary_language: python
+  package_manager: npm_and_pip
+  entrypoints:
+    - README.md
+    - AGENTS.md
+    - npm run dev:frontend
+    - python3 scripts/agent_gate.py
+  core_user_flows:
+    - workbench_review_and_quality_check
+    - translation_pipeline_dry_run
+    - multi_project_manifest_switch
+    - real_api_smoke_gated
+
+docs:
+  read_first:
+    - AGENTS.md
+    - agent_tools.yaml
+    - agent_layer.yaml
+    - docs/TOOL_USAGE_POLICY.md
+    - docs/AGENT_RUNBOOK.md
+    - docs/AGENT_ROADMAP.md
+    - reports/latest-agent-report.json
+  research_notes: docs/RESEARCH_NOTES.md
+  tool_inventory: docs/TOOL_INVENTORY.md
+  search_policy: docs/SEARCH_POLICY.md
+  codex_usage: docs/CODEX_USAGE.md
+
+commands:
+  install:
+    - npm ci
+    - python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+  dev:
+    - npm run dev:frontend
+  build: []
+  lint:
+    - npm run check:tooling
+  test:
+    - npm run test:py
+    - npm run test:ui
+  e2e:
+    - npm run test:ui
+    - python3 scripts/run_round_50_e2e_trial.py
+  typecheck: []
+  format_check: []
+  dry_run:
+    - python3 scripts/run_real_api_smoke.py
+    - python3 scripts/run_openrouter_smoke.py --dry-run
+  agent_gate:
+    - python3 scripts/agent_gate.py --json
+    - python3 scripts/tool_probe.py
+  user_view_test:
+    - python3 scripts/user_view_test.py
+    - python3 scripts/run_browser_inspection.py
+
+paths:
+  docs: docs
+  reports: reports
+  scripts: scripts
+  tests: tests
+  artifacts: artifacts
+  fixtures: data/examples
+  schemas: schemas
+
+agent_policy:
+  primary_agent_surface: cursor
+  secondary_agent_surface: codex
+  default_mode: safe
+  allow_real_api: false
+  allow_real_publish: false
+  require_web_search_for_fresh_info: true
+  require_tool_probe_before_tool_plan: true
+  require_tool_usage_log: true
+  require_report: true
+  require_gate_before_commit: true
+  max_scope_per_round: small
+  prefer_incremental_changes: true
+
+severity:
+  p0: "data loss, secret leak, app cannot start, build completely broken, destructive behavior, real publish/API misfire"
+  p1: "core user flow broken, main feature unusable, core tests failing, user cannot complete main task"
+  p2: "non-critical feature issue, UI/UX defect, partial degradation"
+  p3: "docs, refactor, polish, non-blocking improvement"
+
+round:
+  report_schema: schemas/agent_round_report.schema.json
+  latest_report: reports/latest-agent-report.json
+  audit_log: reports/agent_audit_log.jsonl
+  roadmap: docs/AGENT_ROADMAP.md
+  tool_probe_report: reports/tool_probe_report.json
+  gate_result: reports/gate_result.json
+
+legacy_governance:
+  note: "Existing governance/*.yaml and docs/roadmap_rounds_* remain authoritative for pipeline rounds"
+  merge_strategy: "Agent Layer 2.0 extends, does not replace, Round 41+ tooling docs"

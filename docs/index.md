@@ -16,6 +16,7 @@
 - `docs/shared_core_design.md`
 - `docs/governance_rules.md`
 - `docs/agent_operating_manual.md`
+- **Tool-aware Agent Layer 2.0：** `agent_layer.yaml`、`agent_tools.yaml`、`docs/AGENT_RUNBOOK.md`、`docs/TOOL_USAGE_POLICY.md`、`docs/AGENT_ROADMAP.md`、`reports/latest-agent-report.json`
 - `docs/roadmap_rounds_00_40.md`
 - `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
 - `docs/roadmap_phase2_rounds_51_plus.md`

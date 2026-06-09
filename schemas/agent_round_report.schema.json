@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://light-novel.local/schemas/agent_round_report.schema.json",
+  "title": "AgentRoundReport",
+  "type": "object",
+  "required": [
+    "round_id",
+    "timestamp",
+    "agent",
+    "agent_surface",
+    "mode",
+    "goal",
+    "tool_probe_status",
+    "gate_status",
+    "severity_summary"
+  ],
+  "properties": {
+    "round_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "agent": { "type": "string" },
+    "agent_surface": { "enum": ["cursor", "codex", "other"] },
+    "mode": {
+      "enum": ["audit", "plan", "implement", "test", "fix", "review", "tool-probe"]
+    },
+    "goal": { "type": "string" },
+    "scope": { "type": "array", "items": { "type": "string" } },
+    "repo_status_before": { "type": "string" },
+    "tool_probe_status": {
+      "enum": ["passed", "failed", "partial", "not_run"]
+    },
+    "tools_available": { "type": "array", "items": { "type": "string" } },
+    "tools_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool", "purpose", "result"],
+        "properties": {
+          "tool": { "type": "string" },
+          "purpose": { "type": "string" },
+          "result": { "type": "string" },
+          "fallback_used": { "type": "boolean", "default": false }
+        }
+      }
+    },
+    "tools_not_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool", "reason"],
+        "properties": {
+          "tool": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "web_research": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "source_type": { "type": "string" },
+          "finding": { "type": "string" },
+          "encoded_into_repo": { "type": "string" }
+        }
+      }
+    },
+    "changed_files": { "type": "array", "items": { "type": "string" } },
+    "commands_run": { "type": "array", "items": { "type": "string" } },
+    "test_results": { "type": "array", "items": { "type": "object" } },
+    "issues_found": { "type": "array", "items": { "type": "string" } },
+    "issues_fixed": { "type": "array", "items": { "type": "string" } },
+    "remaining_issues": { "type": "array", "items": { "type": "string" } },
+    "severity_summary": {
+      "type": "object",
+      "required": ["p0", "p1", "p2", "p3"],
+      "properties": {
+        "p0": { "type": "integer", "minimum": 0 },
+        "p1": { "type": "integer", "minimum": 0 },
+        "p2": { "type": "integer", "minimum": 0 },
+        "p3": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "gate_status": {
+      "enum": ["passed", "failed", "blocked", "not_run", "warning"]
+    },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "next_recommended_round": { "type": "string" },
+    "human_decisions_required": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

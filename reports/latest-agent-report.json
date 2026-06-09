@@ -1,0 +1,134 @@
+{
+  "round_id": "AL-003",
+  "timestamp": "2026-06-09T14:30:00Z",
+  "agent": "cursor-composer",
+  "agent_surface": "cursor",
+  "mode": "tool-probe",
+  "goal": "Extend tool_probe.py with read-only MCP safe probes; sync callable_now to inventory and agent_tools.yaml",
+  "scope": [
+    "scripts/tool_probe.py",
+    "reports/tool_probe_report.json",
+    "docs/TOOL_INVENTORY.md",
+    "agent_tools.yaml"
+  ],
+  "repo_status_before": "main branch, dirty working tree (Layer 2.0 bootstrap uncommitted)",
+  "tool_probe_status": "passed",
+  "tools_available": [
+    "shell",
+    "git",
+    "node_npm",
+    "python",
+    "filesystem_mcp",
+    "github_mcp",
+    "context7",
+    "playwright",
+    "stitch_mcp",
+    "cursor_ide_browser"
+  ],
+  "tools_used": [
+    {
+      "tool": "shell",
+      "purpose": "run tool_probe.py, agent_gate.py, check_mcp_config.js",
+      "result": "ok",
+      "fallback_used": false
+    },
+    {
+      "tool": "filesystem_mcp",
+      "purpose": "safe probe list_allowed_directories",
+      "result": "scope=workspace root only",
+      "fallback_used": false
+    },
+    {
+      "tool": "github_mcp",
+      "purpose": "safe probe list_commits (read-only, 1 commit)",
+      "result": "ok",
+      "fallback_used": false
+    },
+    {
+      "tool": "context7",
+      "purpose": "safe probe resolve-library-id for playwright",
+      "result": "ok /microsoft/playwright",
+      "fallback_used": false
+    },
+    {
+      "tool": "Read/Write",
+      "purpose": "extend tool_probe.py, sync TOOL_INVENTORY and reports",
+      "result": "ok",
+      "fallback_used": false
+    }
+  ],
+  "tools_not_used": [
+    {
+      "tool": "playwright",
+      "reason": "offline npx version probe sufficient; no dev server UI task this round"
+    },
+    {
+      "tool": "chrome_devtools",
+      "reason": "config_only — not loaded in Cursor thread; launcher script verified offline"
+    },
+    {
+      "tool": "stitch_mcp",
+      "reason": "avoid paid list_projects API; offline env+proxy probe only"
+    },
+    {
+      "tool": "web_search",
+      "reason": "AL-003 web_search_needed=false per roadmap"
+    },
+    {
+      "tool": "codex",
+      "reason": "Cursor primary; small scoped probe round"
+    }
+  ],
+  "web_research": [],
+  "changed_files": [
+    "scripts/tool_probe.py",
+    "reports/tool_probe_report.json",
+    "docs/TOOL_INVENTORY.md",
+    "agent_tools.yaml",
+    "reports/latest-agent-report.json",
+    "reports/agent_audit_log.jsonl",
+    "reports/gate_result.json"
+  ],
+  "commands_run": [
+    "python3 scripts/tool_probe.py --sync-docs",
+    "python3 scripts/agent_gate.py --json"
+  ],
+  "test_results": [
+    {
+      "name": "tool_probe",
+      "status": "passed",
+      "detail": "5/7 callable true, 2 config_only, 0 deferred probe_result"
+    },
+    {
+      "name": "agent_gate",
+      "status": "warning",
+      "detail": "exit 1 — dirty working tree expected"
+    }
+  ],
+  "issues_found": [
+    "chrome-devtools and Prisma-Local not loaded in Cursor thread (config_only)",
+    "GITHUB_TOKEN not in shell env for Python subprocess; gh auth ok as fallback signal"
+  ],
+  "issues_fixed": [
+    "MCP probe_result was deferred_to_agent_thread for all servers",
+    "callable_now unknown/stale in TOOL_INVENTORY.md"
+  ],
+  "remaining_issues": [
+    "AL-004: sync agent_tools.yaml from probe script",
+    "AL-005: wire tool_probe into check:tooling",
+    "chrome-devtools MCP reload needed for thread_tools"
+  ],
+  "severity_summary": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 1,
+    "p3": 1
+  },
+  "gate_status": "warning",
+  "blockers": [],
+  "risks": [
+    "Cursor thread MCP load state may differ from offline probe on other machines"
+  ],
+  "next_recommended_round": "AL-004",
+  "human_decisions_required": []
+}

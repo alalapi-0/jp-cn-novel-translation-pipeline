@@ -1,0 +1,39 @@
+---
+description: Tool-aware Agent Layer 2.0 — read-first and round lifecycle
+alwaysApply: true
+---
+
+# Agent Layer 2.0
+
+Cursor is the **primary** agent surface for this repo.
+
+## Every round start
+
+1. Read `AGENTS.md`, `agent_tools.yaml`, `agent_layer.yaml`
+2. Read `reports/latest-agent-report.json` if present
+3. Read or run `scripts/tool_probe.py` → `reports/tool_probe_report.json`
+4. Read `docs/TOOL_USAGE_POLICY.md` and `docs/AGENT_RUNBOOK.md`
+
+## Tool planning
+
+- Map task stage to tools in `agent_tools.yaml` (`task_stage_mapping`)
+- If tool availability unknown → light read-only probe first
+- Log `tools_used` / `tools_not_used` in round report
+
+## Incremental scope
+
+- One small AL round from `docs/AGENT_ROADMAP.md` per session when possible
+- P0/P1 before P2/P3 optimizations
+
+## End of round
+
+- Run `python3 scripts/agent_gate.py`
+- Write `reports/latest-agent-report.json`
+- Append `reports/agent_audit_log.jsonl`
+- Do not auto commit/push
+
+## Cross-agent
+
+Same files work for Codex — see `docs/CODEX_USAGE.md`.
+
+Legacy governance (`governance/*.yaml`, Round 41+ docs) remains authoritative for pipeline rounds.

@@ -1,0 +1,31 @@
+---
+description: User-view testing required for UI and workbench changes
+alwaysApply: false
+globs:
+  - frontend/**
+  - docs/design/**
+  - playwright.config.ts
+  - tests/**/*.ts
+---
+
+# User-View Testing
+
+Follow `docs/USER_VIEW_TESTING.md` and `.cursor/rules/cursor-browser-ui.mdc`.
+
+## UI tasks
+
+1. `npm run dev:frontend` → http://127.0.0.1:5174/
+2. Real browser check (cursor-ide-browser, playwright, or chrome-devtools)
+3. Console + network for API errors
+4. `python3 scripts/user_view_test.py` and/or `npm run test:ui`
+
+## Translation pipeline UI
+
+- Verify REAL_API / MOCK / DRY_RUN indicators visible
+- Quality review and issues pages on synthetic fixtures
+
+## No Multitask browser
+
+Use foreground Agent only for browser MCP.
+
+Before/after notes → `artifacts/` (not committed).

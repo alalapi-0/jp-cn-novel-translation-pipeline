@@ -1,0 +1,11 @@
+# Reports directory
+
+Machine-readable agent layer outputs live here:
+
+- `latest-agent-report.json` — last round structured report
+- `tool_probe_report.json` — tool capability probe
+- `gate_result.json` — agent gate summary
+- `user_view_test.json` — user-view smoke results
+- `agent_audit_log.jsonl` — append-only audit trail
+
+Do not commit sensitive API outputs or real translation content.

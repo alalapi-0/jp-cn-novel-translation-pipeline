@@ -1,8 +1,24 @@
 # Agent 入口说明
 
-本文件告诉 Agent 如何阅读、行动和避免风险。权威顺序以 `governance/repo_protocol_standard.yaml` 为准；本仓库追加文档见文末。
+本文件告诉 Agent 如何阅读、行动和避免风险。**Cursor 与 Codex 共用本文件。** 权威顺序以 `governance/repo_protocol_standard.yaml` 为准；Tool-aware Agent Layer 2.0 机器配置见 `agent_layer.yaml`。
 
-## 默认阅读顺序
+## Repo Mission
+
+中日文小说互译生产流水线：双向翻译、术语/角色一致性、批量初翻、润色、审核与前端 Workbench。当前阶段以治理、工具链与 pilot 为主，默认非生产发布。
+
+## Tool-aware 每轮必读（Layer 2.0）
+
+在下方治理顺序之前或并行读取：
+
+1. `AGENTS.md`（本文件）
+2. `agent_layer.yaml`
+3. `agent_tools.yaml`
+4. `docs/TOOL_USAGE_POLICY.md`
+5. `docs/AGENT_RUNBOOK.md`
+6. `reports/latest-agent-report.json`
+7. `docs/TOOL_INVENTORY.md` 或 `reports/tool_probe_report.json`
+
+## Read First（治理顺序）
 
 1. `governance/repo_protocol_standard.yaml`
 2. `project.yaml`
@@ -170,4 +186,118 @@ python3 scripts/run_browser_inspection.py
 
 **UI 轮 Prompt 模板：** `docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`
 
-**Cursor Rules：** `.cursor/rules/cursor-browser-ui.mdc`、`.cursor/rules/no-multitask-for-browser.mdc`
+**Cursor Rules：** `.cursor/rules/cursor-browser-ui.mdc`、`.cursor/rules/no-multitask-for-browser.mdc`、`.cursor/rules/agent-layer.mdc`、`.cursor/rules/tool-usage.mdc`
+
+---
+
+## Tool-aware Agent Layer 2.0（Cursor + Codex）
+
+### Tool Inventory
+
+- 人类可读：`docs/TOOL_INVENTORY.md`
+- 机器可读：`agent_tools.yaml`、`reports/tool_probe_report.json`
+- 探针：`python3 scripts/tool_probe.py`
+
+### Tool Usage Policy
+
+`docs/TOOL_USAGE_POLICY.md` — 任务阶段 → 工具映射、禁止项、fallback。
+
+### Search Policy
+
+`docs/SEARCH_POLICY.md` — 何时必须搜索；结果写入 `docs/RESEARCH_NOTES.md`。
+
+### Safe Operating Rules
+
+- 默认禁止真实付费 API 与真实发布（见 `agent_layer.yaml`）
+- 不读、不打印 `.env`
+- 工具未知 → 只读探针；不可用 → 记录 `TOOL_UNAVAILABLE` / `BLOCKED_ENV`
+- 详见 `docs/AGENT_SAFETY.md`、`docs/COST_CONTROL.md`
+
+### Round Lifecycle
+
+1. 读 Layer 2.0 必读文件 + `git status`
+2. 工具探针 / 工具计划
+3. 小范围实现（`docs/AGENT_ROADMAP.md` 中一条 AL-xxx）
+4. 门禁：`python3 scripts/agent_gate.py --json`；必要时 `npm run check:tooling`
+5. 报告：`reports/latest-agent-report.json` + `reports/agent_audit_log.jsonl`
+
+### Common Commands
+
+```bash
+python3 scripts/tool_probe.py
+python3 scripts/agent_gate.py --json
+python3 scripts/user_view_test.py
+npm run dev:frontend
+npm run check:tooling
+npm run test:py
+npm run test:ui
+python3 scripts/agent.py status
+```
+
+### Gate Commands
+
+| 命令 | 输出 |
+|------|------|
+| `python3 scripts/agent_gate.py` | exit 0/1/2；`docs/reports/agent_gate_report.md` |
+| `python3 scripts/agent_gate.py --json` | stdout JSON |
+| — | `reports/gate_result.json` |
+
+### Severity Rules
+
+| 级别 | 含义 |
+|------|------|
+| P0 | 数据丢失、密钥泄露、无法启动、误触发真实 API/发布 |
+| P1 | 主流程不可用、核心测试失败 |
+| P2 | 非核心缺陷、UI 问题 |
+| P3 | 文档、抛光 |
+
+P0/P1 未清零不做 P2/P3。
+
+### Report Format
+
+Schema：`schemas/agent_round_report.schema.json`  
+最新：`reports/latest-agent-report.json`  
+说明：`docs/AGENT_REPORTING.md`
+
+### Cursor-specific Notes
+
+- 主力 Agent；MCP 见 `.cursor/mcp.json`
+- UI 必须真实浏览器检查；禁止 Multitask 控浏览器
+- Cloud Agent 额外依赖本文件中的命令与环境说明
+
+### Codex-specific Notes
+
+- 高价值、长程、审查任务；额度有限时见 `docs/CODEX_USAGE.md`
+- 启动前读 `docs/CODEX_HANDOFF.md`（若 Cursor 已填写）
+- 同一 `AGENTS.md` + `agent_layer.yaml`
+
+### MCP-specific Notes
+
+见上文 MCP Tools 与 `docs/runbooks/mcp_browser_tools_runbook.md`。配置了就要在报告中说明是否使用。
+
+### Browser / Playwright Notes
+
+`docs/USER_VIEW_TESTING.md`、`docs/cursor_browser_ui_runbook.md`
+
+### Real API / Real Publish Rules
+
+仅当用户与环境变量显式允许且仓库协议允许。Agent Layer 轮默认 dry-run。
+
+### Commit / Push Policy
+
+用户或轮次 Prompt 明确要求才 commit；push 需用户授权；commit 前 `git diff` 查密钥与原文。
+
+### Next Round Policy
+
+读 `reports/latest-agent-report.json` 的 `next_recommended_round` 与 `docs/AGENT_ROADMAP.md`。
+
+### Human Required Decisions
+
+- 是否 push / 开 PR
+- 是否启用真实 API 与成本上限
+- 是否提交含 workspace 运行产物
+- Codex 额度分配
+
+### Prompt 模板
+
+`docs/PROMPTS.md`

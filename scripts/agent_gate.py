@@ -43,6 +43,19 @@ class CheckResult:
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT_PATH = REPO_ROOT / "docs" / "reports" / "agent_gate_report.md"
+GATE_RESULT_PATH = REPO_ROOT / "reports" / "gate_result.json"
+
+AGENT_LAYER_FILES: Sequence[tuple[str, Path]] = (
+    ("agent_layer_yaml", REPO_ROOT / "agent_layer.yaml"),
+    ("agent_tools_yaml", REPO_ROOT / "agent_tools.yaml"),
+    ("tool_usage_policy", REPO_ROOT / "docs" / "TOOL_USAGE_POLICY.md"),
+    ("agent_runbook", REPO_ROOT / "docs" / "AGENT_RUNBOOK.md"),
+    ("agent_roadmap", REPO_ROOT / "docs" / "AGENT_ROADMAP.md"),
+    ("search_policy", REPO_ROOT / "docs" / "SEARCH_POLICY.md"),
+    ("tool_inventory", REPO_ROOT / "docs" / "TOOL_INVENTORY.md"),
+    ("latest_agent_report", REPO_ROOT / "reports" / "latest-agent-report.json"),
+    ("round_report_schema", REPO_ROOT / "schemas" / "agent_round_report.schema.json"),
+)
 
 REQUIRED_DOCS: Sequence[tuple[str, Path]] = (
     ("docs_exist_readme", REPO_ROOT / "README.md"),
@@ -1057,6 +1070,46 @@ def check_round_55_ci_tooling_integration() -> list[CheckResult]:
     return results
 
 
+def check_agent_layer_v2() -> list[CheckResult]:
+    """Tool-aware Agent Layer 2.0 required artifacts."""
+    results: list[CheckResult] = []
+    for cid, path in AGENT_LAYER_FILES:
+        if path.is_file():
+            results.append(
+                CheckResult(
+                    f"agent_layer_{cid}",
+                    Severity.PASS,
+                    f"found: {_rel_path(path)}",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    f"agent_layer_{cid}",
+                    Severity.WARN,
+                    f"missing Agent Layer 2.0 file: {_rel_path(path)}",
+                )
+            )
+    probe_script = REPO_ROOT / "scripts" / "tool_probe.py"
+    if probe_script.is_file():
+        results.append(
+            CheckResult(
+                "agent_layer_tool_probe_script",
+                Severity.PASS,
+                "found scripts/tool_probe.py",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "agent_layer_tool_probe_script",
+                Severity.WARN,
+                "missing scripts/tool_probe.py",
+            )
+        )
+    return results
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -1108,6 +1161,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_round_53_multi_project_manifest())
     results.extend(check_round_54_semantic_checker_mvp())
     results.extend(check_round_55_ci_tooling_integration())
+    results.extend(check_agent_layer_v2())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())
@@ -1122,6 +1176,44 @@ def aggregate_exit_code(results: Iterable[CheckResult]) -> int:
     if Severity.WARN in severities:
         return 1
     return 0
+
+
+def write_gate_result_json(
+    results: Sequence[CheckResult],
+    exit_code: int,
+    *,
+    tool_usage: Sequence[dict] | None = None,
+) -> None:
+    """Write machine-readable gate summary for Agent Layer 2.0."""
+    GATE_RESULT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    passed = [r.check_id for r in results if r.severity == Severity.PASS]
+    failed = [r.check_id for r in results if r.severity == Severity.FAIL]
+    skipped: list[str] = []
+    blocked = failed.copy()
+    status_map = {0: "passed", 1: "warning", 2: "failed"}
+    payload = {
+        "status": status_map.get(exit_code, "failed"),
+        "timestamp": now,
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "blocked": blocked,
+        "commands": [
+            {
+                "name": "agent_gate",
+                "command": "python3 scripts/agent_gate.py",
+                "exit_code": exit_code,
+                "summary": status_map.get(exit_code, "unknown"),
+            }
+        ],
+        "tool_usage": list(tool_usage or []),
+        "next_action": "fix_failed_checks" if failed else "continue_next_round",
+    }
+    GATE_RESULT_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def write_report(results: Sequence[CheckResult], exit_code: int, strict: bool) -> None:
@@ -1162,6 +1254,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     results = run_all_checks(strict=args.strict)
     exit_code = aggregate_exit_code(results)
     write_report(results, exit_code, args.strict)
+    write_gate_result_json(
+        results,
+        exit_code,
+        tool_usage=[
+            {"tool": "shell", "used": True, "purpose": "run agent_gate checks"},
+            {"tool": "web_search", "used": False, "reason": "gate does not require fresh external info"},
+        ],
+    )
 
     payload = {
         "exit_code": exit_code,

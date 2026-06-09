@@ -1,0 +1,28 @@
+---
+description: When and how agents must search for fresh information
+alwaysApply: true
+---
+
+# Search Policy
+
+Follow `docs/SEARCH_POLICY.md`.
+
+## Must search before acting when
+
+- Tool/platform capability may have changed (Cursor, Codex, MCP, Playwright)
+- Library API, config, or version behavior is uncertain
+- AI provider pricing, limits, or auth changed
+- Platform publish rules involved
+- User asks for latest / official behavior
+
+## Process
+
+1. Prefer official docs → changelog → official GitHub
+2. Log in `docs/RESEARCH_NOTES.md` with date and uncertainty
+3. Encode actionable findings into repo docs
+
+## If search unavailable
+
+Record `TOOL_UNAVAILABLE_WEB_SEARCH` in round report; ask user or use Context7.
+
+Do not fabricate API versions, prices, or platform rules.
