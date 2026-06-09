@@ -1,5 +1,5 @@
 version: 1
-updated_at: '2026-06-09T13:31:39Z'
+updated_at: '2026-06-09T13:51:32Z'
 repo_name: light_novel
 agent_surfaces:
   cursor:
@@ -53,7 +53,7 @@ tools:
     never_use_for:
     - reset hard without explicit approval
     - force push
-    probe_result: M scripts/tool_probe.py ?? scripts/sync_agent_tools_from_probe.py ?? workspace/archived_runs/
+    probe_result: M docs/RESEARCH_NOTES.md M docs/TOOL_INVENTORY.md M scripts/tool_probe.py ?? workspace/archived_runs/
   node_npm:
     available: true
     safe_probe: node -v && npm -v
@@ -122,9 +122,9 @@ tools:
     - console errors
     - network failures
     fallback: playwright MCP
-    callable_now: config_only
-    probe_result: config=PASS; launcher=bash (ok); wrapper=scripts/chrome_devtools_mcp_light_novel.sh (exec); thread_loaded=false;
-      safe...
+    callable_now: true
+    probe_result: config=PASS; launcher=bash (ok); wrapper=scripts/chrome_devtools_mcp_light_novel.sh (exec); thread_tools=29;
+      safe_too...
   filesystem_mcp:
     available: true
     configured: true
@@ -144,7 +144,7 @@ tools:
     - remote repo inspection
     fallback: gh CLI
     probe_result: config=PASS; launcher=npx (ok); thread_tools=26; safe_tool=list_commits; GITHUB_TOKEN=unset; token_env=no;
-      gh_auth=ok...
+      gh_auth=no...
   stitch_mcp:
     available: true
     configured: true
@@ -229,7 +229,7 @@ task_stage_mapping:
     - python3 scripts/tool_probe.py
 probe_sync:
   source: reports/tool_probe_report.json
-  probe_timestamp: '2026-06-09T13:31:39Z'
-  synced_at: '2026-06-09T13:31:45Z'
+  probe_timestamp: '2026-06-09T13:51:32Z'
+  synced_at: '2026-06-09T13:51:41Z'
   probe_status: passed
-  changes_count: 2
+  changes_count: 3

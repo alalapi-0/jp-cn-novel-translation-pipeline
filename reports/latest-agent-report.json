@@ -1,36 +1,35 @@
 {
-  "round_id": "AL-007",
-  "timestamp": "2026-06-09T16:00:00Z",
+  "round_id": "AL-008",
+  "timestamp": "2026-06-09T16:30:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
-  "mode": "research-doc",
-  "goal": "Document @playwright/test vs @playwright/mcp version alignment policy",
+  "mode": "implement",
+  "goal": "Document cursor-agent install probe in TOOL_INVENTORY and tool_probe.py",
   "scope": [
-    "docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md",
-    "docs/RESEARCH_NOTES.md",
+    "scripts/tool_probe.py",
     "docs/TOOL_INVENTORY.md",
-    "docs/USER_VIEW_TESTING.md",
-    "docs/testing/BROWSER_TESTING.md",
-    "docs/mcp_playwright_setup_plan.md"
+    "docs/RESEARCH_NOTES.md",
+    "reports/tool_probe_report.json",
+    "agent_tools.yaml"
   ],
-  "repo_status_before": "main at 15b2ee6 after AL-006 and test fix",
+  "repo_status_before": "main at d69c7e7 after AL-007",
   "tool_probe_status": "passed",
   "tools_used": [
     {
       "tool": "web_search",
-      "purpose": "Official Playwright MCP versioning and browser mismatch guidance",
-      "result": "logged Query 6 in RESEARCH_NOTES",
+      "purpose": "Cursor CLI official install and subcommands",
+      "result": "logged Query 7 in RESEARCH_NOTES",
       "fallback_used": false
     },
     {
       "tool": "shell",
-      "purpose": "verify npx playwright --version and @playwright/mcp npm version",
-      "result": "CLI 1.60.0; MCP npm 0.0.75",
+      "purpose": "probe cursor-agent --version and npm run check:cursor-mcp",
+      "result": "cursor-agent 2026.05.28-a70ca7c; PATH agent is Grok shim",
       "fallback_used": false
     },
     {
       "tool": "Read/Write",
-      "purpose": "create PLAYWRIGHT_VERSION_ALIGNMENT.md and cross-links",
+      "purpose": "probe_cursor_cli() + TOOL_INVENTORY § I",
       "result": "ok",
       "fallback_used": false
     }
@@ -38,55 +37,61 @@
   "tools_not_used": [
     {
       "tool": "context7",
-      "reason": "Playwright MCP versioning covered by official docs + GitHub issues"
+      "reason": "Cursor CLI covered by official cursor.com docs"
     },
     {
       "tool": "playwright",
-      "reason": "doc-only round; no UI code changed"
+      "reason": "no UI code changed"
     },
     {
       "tool": "github_mcp",
-      "reason": "doc-only round; push via git CLI"
+      "reason": "push via git CLI"
     }
   ],
   "web_research": [
     {
-      "query": "@playwright/mcp @playwright/test version alignment",
-      "source_type": "official docs + GitHub issues",
-      "finding": "Independent semver; MCP @latest; E2E pin @playwright/test; browser install from workspace CLI",
-      "encoded_into_repo": "docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md"
+      "query": "Cursor CLI cursor-agent installation mcp list",
+      "source_type": "official docs",
+      "finding": "Install curl script; verify agent/cursor-agent --version; mcp subcommands; CLI ≠ IDE thread registry",
+      "encoded_into_repo": "docs/TOOL_INVENTORY.md § I, tool_probe cursor_cli"
     }
   ],
   "changed_files": [
-    "docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md",
-    "docs/RESEARCH_NOTES.md",
+    "scripts/tool_probe.py",
     "docs/TOOL_INVENTORY.md",
-    "docs/USER_VIEW_TESTING.md",
-    "docs/testing/BROWSER_TESTING.md",
-    "docs/mcp_playwright_setup_plan.md",
+    "docs/RESEARCH_NOTES.md",
+    "reports/tool_probe_report.json",
+    "agent_tools.yaml",
     "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl"
+    "reports/agent_audit_log.jsonl",
+    "reports/gate_result.json"
   ],
   "commands_run": [
-    "npx playwright --version",
-    "npm view @playwright/mcp version",
-    "python3 scripts/agent_gate.py --json"
+    "python3 scripts/tool_probe.py --sync-docs",
+    "python3 scripts/agent_gate.py --json",
+    "npm run check:tooling"
   ],
   "test_results": [
     {
       "command": "python3 scripts/agent_gate.py --json",
       "exit_code": 1,
-      "status": "warning",
-      "note": "git_status_dirty expected before commit"
+      "status": "warning"
+    },
+    {
+      "command": "npm run check:tooling",
+      "exit_code": 0,
+      "status": "pass",
+      "note": "185 pytest passed"
     }
   ],
   "issues_found": [],
   "issues_fixed": [
-    "Missing documented policy for @playwright/test pin vs @playwright/mcp@latest"
+    "TOOL_INVENTORY listed Cursor CLI as manual only with no install/probe guidance",
+    "tool_probe had no machine-readable cursor_cli section"
   ],
   "remaining_issues": [
-    "AL-008: Cursor CLI capability note in TOOL_INVENTORY",
-    "Pre-existing pytest failures in check:tooling if run without venv"
+    "AL-009: Validate .cursor/rules coverage vs TOOL_USAGE_POLICY",
+    "cursor-agent mcp list shows needs approval in CLI context (expected; IDE thread may differ)"
   ],
   "severity_summary": {
     "p0": 0,
@@ -97,8 +102,8 @@
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "MCP bundled playwright-core may drift from pinned @playwright/test; use CLI E2E as source of truth for CI"
+    "PATH `agent` may alias non-Cursor CLIs; scripts must use cursor-agent explicitly"
   ],
-  "next_recommended_round": "AL-008",
+  "next_recommended_round": "AL-009",
   "human_decisions_required": []
 }

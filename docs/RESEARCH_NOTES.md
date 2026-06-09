@@ -58,3 +58,12 @@ Search capability: available (WebSearch + Context7 configured)
 - Relevance: Agents must not assume MCP semver equals test semver; E2E gate uses `npm run test:ui`; MCP is interactive fallback.
 - Risk / uncertainty: `@playwright/mcp` npm version (e.g. 0.0.x) ≠ Playwright 1.x; `npx playwright run-mcp-server` mentioned for 1.56+ but not stable replacement for separate package as of 1.60.
 - Action to encode into repo: `docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md`, cross-links in TOOL_INVENTORY and USER_VIEW_TESTING
+
+## Query 7 — Cursor CLI / cursor-agent install probe (AL-008)
+
+- Query: Cursor CLI cursor-agent installation official docs mcp list 2026
+- Source type: official docs (cursor.com/docs/cli/installation, cli/overview, cli/reference/parameters)
+- Key finding: Install via `curl https://cursor.com/install -fsS | bash`; verify with `agent --version` (official) or `cursor-agent --version` (this repo); subcommands include `mcp list`, `mcp list-tools`, `status`, `update`; CLI MCP state is separate from IDE Agent thread tool registry.
+- Relevance: `npm run check:cursor-mcp` and `tool_probe.py` → `cursor_cli` for machine-readable availability; PATH `agent` may alias non-Cursor products — prefer `cursor-agent` in scripts.
+- Risk / uncertainty: Account/plan features (Cloud Agent, sandbox) vary; CLI `mcp list` may show needs approval even when IDE thread has tools loaded.
+- Action to encode into repo: `docs/TOOL_INVENTORY.md` § I, `scripts/tool_probe.py` probe_cursor_cli(), `reports/tool_probe_report.json`

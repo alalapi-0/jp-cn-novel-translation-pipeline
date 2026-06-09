@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-09T13:39:25Z",
+  "timestamp": "2026-06-09T13:51:55Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M reports/gate_result.json\n M scripts/run_tooling_checks.sh\n?? workspace/archived_runs/",
+      "output": "M agent_tools.yaml\n M docs/RESEARCH_NOTES.md\n M docs/TOOL_INVENTORY.md\n M reports/gate_result.json\n M reports/tool_probe_report.json\n M scripts/tool_probe.py\n?? workspace/archived_runs/",
       "available": true
     },
     "git_branch": {
@@ -109,6 +109,7 @@
       "cursor-app-control",
       "cursor-ide-browser",
       "plugin-supabase-supabase",
+      "project-0-light_novel-chrome-devtools",
       "project-0-light_novel-context7",
       "project-0-light_novel-filesystem",
       "project-0-light_novel-github",
@@ -123,6 +124,33 @@
       "Cloud Agent / Subagents / Hooks / Skills per account plan"
     ]
   },
+  "cursor_cli": {
+    "binary": "cursor-agent",
+    "on_path": true,
+    "path": "/Users/alalapi/.local/bin/cursor-agent",
+    "version": "2026.05.28-a70ca7c",
+    "version_probe": {
+      "exit_code": 0,
+      "output": "2026.05.28-a70ca7c",
+      "available": true
+    },
+    "agent_shim_on_path": "/Users/alalapi/.grok/bin/agent",
+    "agent_shim_note": "PATH `agent` -> /Users/alalapi/.grok/bin/agent (grok 0.2.16 (f7c09b8d8a2)); may not be Cursor CLI — use `cursor-agent` for this repo's checks",
+    "mcp_list_probe": {
+      "exit_code": 0,
+      "output": "chrome-devtools: not loaded (needs approval)\ncontext7: not loaded (needs approval)\nplaywright: not loaded (needs approval)\nfilesystem: not loaded (needs approval)\ngithub: not loaded (needs approval)\nstitch: not loaded (needs approval)\nPrisma-Local: not loaded (needs approval)",
+      "available": true
+    },
+    "check_script": "npm run check:cursor-mcp",
+    "install_command": "curl https://cursor.com/install -fsS | bash",
+    "verify_command": "cursor-agent --version",
+    "official_docs": "https://cursor.com/docs/cli/installation",
+    "limitations": [
+      "CLI `mcp list` checks server config/approval — not current Chat thread tool registry",
+      "Servers may show 'not loaded (needs approval)' until approved in Cursor Settings",
+      "Official docs use `agent`; this machine may alias `agent` to another product — prefer cursor-agent"
+    ]
+  },
   "codex": {
     "CODEX_AVAILABLE": "manual",
     "agents_md_at_repo_root": true,
@@ -134,10 +162,10 @@
     {
       "name": "chrome-devtools",
       "configured": true,
-      "callable_now": "config_only",
+      "callable_now": "true",
       "command_hint": "bash",
       "safe_probe_command": "navigate local workbench + console check",
-      "probe_result": "config=PASS; launcher=bash (ok); wrapper=scripts/chrome_devtools_mcp_light_novel.sh (exec); thread_loaded=false; safe_tool=list_pages; note=configured but not loaded in Cursor thread",
+      "probe_result": "config=PASS; launcher=bash (ok); wrapper=scripts/chrome_devtools_mcp_light_novel.sh (exec); thread_tools=29; safe_tool=list_pages",
       "probe_checks": {
         "config_check": {
           "available": true,
@@ -154,9 +182,9 @@
           "executable": true,
           "path": "scripts/chrome_devtools_mcp_light_novel.sh"
         },
-        "thread_loaded": false,
-        "thread_tool_count": 0,
-        "thread_mcp_dir": null,
+        "thread_loaded": true,
+        "thread_tool_count": 29,
+        "thread_mcp_dir": "/Users/alalapi/.cursor/projects/Users-alalapi-PycharmProjects-light-novel/mcps/project-0-light_novel-chrome-devtools",
         "safe_tool": "list_pages",
         "env": {},
         "offline": {}
@@ -430,8 +458,8 @@
   ],
   "mcp_probe_summary": {
     "total_configured": 7,
-    "callable_true": 5,
-    "callable_config_only": 2,
+    "callable_true": 6,
+    "callable_config_only": 1,
     "callable_false": 0,
     "deferred_probe_results": []
   },

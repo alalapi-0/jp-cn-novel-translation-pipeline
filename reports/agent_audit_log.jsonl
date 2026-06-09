@@ -4,3 +4,4 @@
 {"timestamp":"2026-06-09T15:00:00Z","round_id":"AL-005","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"tool_probe --sync-docs wired into run_tooling_checks.sh / check:tooling"}
 {"timestamp":"2026-06-09T15:15:00Z","round_id":"AL-006","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"OpenRouter pricing pointers in RESEARCH_NOTES + api_provider_strategy; use Models API"}
 {"timestamp":"2026-06-09T16:00:00Z","round_id":"AL-007","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"PLAYWRIGHT_VERSION_ALIGNMENT.md: pin @playwright/test 1.60, MCP @latest; upgrade checklist"}
+{"timestamp":"2026-06-09T16:30:00Z","round_id":"AL-008","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"cursor_cli probe in tool_probe.py; TOOL_INVENTORY § I; prefer cursor-agent over PATH agent shim"}

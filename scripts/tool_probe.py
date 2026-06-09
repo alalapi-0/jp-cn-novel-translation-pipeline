@@ -429,6 +429,50 @@ def probe_local_tools() -> dict[str, Any]:
     return probes
 
 
+def probe_cursor_cli() -> dict[str, Any]:
+    """Read-only Cursor CLI probe via cursor-agent binary (no auth, no paid API)."""
+    path = shutil.which("cursor-agent")
+    version = (
+        _run(["cursor-agent", "--version"], timeout=10)
+        if path
+        else {"exit_code": 127, "output": "cursor-agent not on PATH", "available": False}
+    )
+    agent_shim = shutil.which("agent")
+    agent_shim_note: str | None = None
+    if agent_shim and path and os.path.realpath(agent_shim) != os.path.realpath(path):
+        agent_ver = _run(["agent", "--version"], timeout=10)
+        agent_shim_note = (
+            f"PATH `agent` -> {agent_shim} ({agent_ver.get('output', '')[:60]}); "
+            "may not be Cursor CLI — use `cursor-agent` for this repo's checks"
+        )
+    mcp_list: dict[str, Any] = {
+        "exit_code": 0,
+        "output": "skipped (cursor-agent missing)",
+        "available": False,
+    }
+    if path:
+        mcp_list = _run(["cursor-agent", "mcp", "list"], timeout=45)
+    return {
+        "binary": "cursor-agent",
+        "on_path": bool(path),
+        "path": path,
+        "version": version.get("output", "")[:120] if version.get("available") else None,
+        "version_probe": version,
+        "agent_shim_on_path": agent_shim,
+        "agent_shim_note": agent_shim_note,
+        "mcp_list_probe": mcp_list,
+        "check_script": "npm run check:cursor-mcp",
+        "install_command": "curl https://cursor.com/install -fsS | bash",
+        "verify_command": "cursor-agent --version",
+        "official_docs": "https://cursor.com/docs/cli/installation",
+        "limitations": [
+            "CLI `mcp list` checks server config/approval — not current Chat thread tool registry",
+            "Servers may show 'not loaded (needs approval)' until approved in Cursor Settings",
+            "Official docs use `agent`; this machine may alias `agent` to another product — prefer cursor-agent",
+        ],
+    }
+
+
 def probe_cursor_artifacts() -> dict[str, Any]:
     rules_dir = REPO_ROOT / ".cursor" / "rules"
     rule_files = sorted(p.name for p in rules_dir.glob("*")) if rules_dir.is_dir() else []
@@ -579,6 +623,7 @@ def build_report(agent_surface: str = "cursor") -> dict[str, Any]:
         "status": "partial",
         "local_tools": local,
         "cursor": probe_cursor_artifacts(),
+        "cursor_cli": probe_cursor_cli(),
         "codex": probe_codex_compat(),
         "mcp_servers": mcp,
         "mcp_probe_summary": {
