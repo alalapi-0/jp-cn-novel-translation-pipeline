@@ -22,7 +22,9 @@ def _long_messages(count: int = 50) -> list[Message]:
     return [Message(role="user", content="x" * 500) for _ in range(count)]
 
 
-def test_default_guard_blocks_real_api():
+def test_default_guard_blocks_real_api(monkeypatch):
+    monkeypatch.delenv("REAL_API_TESTS_ENABLED", raising=False)
+    monkeypatch.setenv("REAL_API_TESTS_ENABLED", "false")
     guard = CostGuard(CostGuardConfig.from_env())
     assert guard.allow_real_network() is False
     with pytest.raises(RuntimeError, match="REAL_API_TESTS_ENABLED"):

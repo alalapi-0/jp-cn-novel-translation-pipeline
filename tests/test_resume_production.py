@@ -27,7 +27,7 @@ def test_run_gate_json_parses_captured_stdout(monkeypatch: pytest.MonkeyPatch) -
     resume = _load_resume()
     gate_doc = {"decision": "ALLOW", "fix_paths": []}
 
-    def fake_run(cmd, *, check=True, capture=False):
+    def fake_run(cmd, *, check=True, capture=False, with_production_env=False):
         assert capture is True
         assert "throughput_gate.py" in " ".join(cmd)
         return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(gate_doc), stderr="")
@@ -39,7 +39,7 @@ def test_run_gate_json_parses_captured_stdout(monkeypatch: pytest.MonkeyPatch) -
 def test_run_gate_json_raises_on_empty_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
     resume = _load_resume()
 
-    def fake_run(cmd, *, check=True, capture=False):
+    def fake_run(cmd, *, check=True, capture=False, with_production_env=False):
         return subprocess.CompletedProcess(cmd, 2, stdout=None, stderr="gate failed")
 
     monkeypatch.setattr(resume, "_run", fake_run)
@@ -60,7 +60,7 @@ def test_refine_dry_run_skips_translate_exit(monkeypatch: pytest.MonkeyPatch) ->
     resume = _load_resume()
     calls: list[list[str]] = []
 
-    def fake_run(cmd, *, check=True, capture=False):
+    def fake_run(cmd, *, check=True, capture=False, with_production_env=False):
         calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, stdout="refined=1\n", stderr="")
 
