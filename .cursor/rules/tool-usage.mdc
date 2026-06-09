@@ -25,6 +25,15 @@ If MCP was available and relevant, explain in `reports/latest-agent-report.json`
 
 Record `TOOL_UNAVAILABLE` or `BLOCKED_ENV`; never invent probe results.
 
+| Unavailable | Fallback |
+|-------------|----------|
+| Stitch MCP | `docs/design/stitch/` templates |
+| Codex | Cursor small rounds + `docs/CODEX_HANDOFF.md` |
+
+## Translation pipeline (summary)
+
+Full mapping: `docs/TOOL_USAGE_POLICY.md` §11. Use local scripts + dry-run by default; quality/workbench via `run_quality_review.py` and UI rules above.
+
 ## Forbidden
 
 Real API, real publish, `.env` reads, force push, browser via Multitask subagent.

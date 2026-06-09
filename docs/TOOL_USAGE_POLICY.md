@@ -109,3 +109,5 @@ Append summary line to `reports/agent_audit_log.jsonl` each round.
 | Continuous run | `scripts/agent.py`, `.agent_runtime/` |
 
 Legacy tooling docs remain valid: `docs/agent_tooling_strategy.md`, `docs/runbooks/mcp_browser_tools_runbook.md`.
+
+Rules coverage audit (AL-009): `docs/AGENT_RULES_COVERAGE_AUDIT.md`.

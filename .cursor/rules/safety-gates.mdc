@@ -10,6 +10,7 @@ Follow `docs/AGENT_SAFETY.md` and `docs/COST_CONTROL.md`.
 ## Defaults
 
 - `allow_real_api: false`, `allow_real_publish: false` (`agent_layer.yaml`)
+- Env guards: `REAL_API_TESTS_ENABLED`, `MAX_TEST_COST_USD` — see README / `docs/AGENT_SAFETY.md`
 - Dry-run smokes only in agent governance rounds
 
 ## Every implementation round

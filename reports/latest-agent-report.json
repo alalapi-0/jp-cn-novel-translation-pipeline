@@ -1,73 +1,59 @@
 {
-  "round_id": "AL-008",
-  "timestamp": "2026-06-09T16:30:00Z",
+  "round_id": "AL-009",
+  "timestamp": "2026-06-09T17:00:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
-  "mode": "implement",
-  "goal": "Document cursor-agent install probe in TOOL_INVENTORY and tool_probe.py",
+  "mode": "audit",
+  "goal": "Audit .cursor/rules coverage vs TOOL_USAGE_POLICY gaps",
   "scope": [
-    "scripts/tool_probe.py",
-    "docs/TOOL_INVENTORY.md",
-    "docs/RESEARCH_NOTES.md",
-    "reports/tool_probe_report.json",
-    "agent_tools.yaml"
+    "docs/AGENT_RULES_COVERAGE_AUDIT.md",
+    ".cursor/rules/tool-usage.mdc",
+    ".cursor/rules/safety-gates.mdc",
+    "docs/TOOL_USAGE_POLICY.md",
+    "docs/AGENT_LAYER_AUDIT.md"
   ],
-  "repo_status_before": "main at d69c7e7 after AL-007",
+  "repo_status_before": "main at 6ead4db after AL-008",
   "tool_probe_status": "passed",
   "tools_used": [
     {
-      "tool": "web_search",
-      "purpose": "Cursor CLI official install and subcommands",
-      "result": "logged Query 7 in RESEARCH_NOTES",
+      "tool": "Grep/Read",
+      "purpose": "map 10 .mdc rules against TOOL_USAGE_POLICY 11 areas",
+      "result": "8 covered, 2 partial, 1 gap (translation table P3)",
       "fallback_used": false
     },
     {
-      "tool": "shell",
-      "purpose": "probe cursor-agent --version and npm run check:cursor-mcp",
-      "result": "cursor-agent 2026.05.28-a70ca7c; PATH agent is Grok shim",
-      "fallback_used": false
-    },
-    {
-      "tool": "Read/Write",
-      "purpose": "probe_cursor_cli() + TOOL_INVENTORY § I",
+      "tool": "Write",
+      "purpose": "AGENT_RULES_COVERAGE_AUDIT.md + small rule patches",
       "result": "ok",
       "fallback_used": false
     }
   ],
   "tools_not_used": [
     {
-      "tool": "context7",
-      "reason": "Cursor CLI covered by official cursor.com docs"
+      "tool": "web_search",
+      "reason": "audit uses in-repo policy and rules only"
     },
     {
       "tool": "playwright",
-      "reason": "no UI code changed"
+      "reason": "no UI changes"
     },
     {
-      "tool": "github_mcp",
-      "reason": "push via git CLI"
+      "tool": "tool_probe",
+      "reason": "probe still valid from AL-008; no env change"
     }
   ],
-  "web_research": [
-    {
-      "query": "Cursor CLI cursor-agent installation mcp list",
-      "source_type": "official docs",
-      "finding": "Install curl script; verify agent/cursor-agent --version; mcp subcommands; CLI ≠ IDE thread registry",
-      "encoded_into_repo": "docs/TOOL_INVENTORY.md § I, tool_probe cursor_cli"
-    }
-  ],
+  "web_research": [],
   "changed_files": [
-    "scripts/tool_probe.py",
-    "docs/TOOL_INVENTORY.md",
-    "docs/RESEARCH_NOTES.md",
-    "reports/tool_probe_report.json",
-    "agent_tools.yaml",
+    "docs/AGENT_RULES_COVERAGE_AUDIT.md",
+    ".cursor/rules/tool-usage.mdc",
+    ".cursor/rules/safety-gates.mdc",
+    "docs/TOOL_USAGE_POLICY.md",
+    "docs/AGENT_LAYER_AUDIT.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl",
     "reports/gate_result.json"
   ],
   "commands_run": [
-    "python3 scripts/tool_probe.py --sync-docs",
     "python3 scripts/agent_gate.py --json",
     "npm run check:tooling"
   ],
@@ -84,26 +70,29 @@
       "note": "185 pytest passed"
     }
   ],
-  "issues_found": [],
+  "issues_found": [
+    "Translation pipeline §11 had no rule pointer (P3)",
+    "REAL_API env var names missing from safety-gates rule (P3)",
+    "Stitch/Codex fallbacks not in tool-usage rule table (P3)"
+  ],
   "issues_fixed": [
-    "TOOL_INVENTORY listed Cursor CLI as manual only with no install/probe guidance",
-    "tool_probe had no machine-readable cursor_cli section"
+    "Published AGENT_RULES_COVERAGE_AUDIT.md with full section matrix",
+    "Added fallbacks + translation summary to tool-usage.mdc",
+    "Added REAL_API_TESTS_ENABLED / MAX_TEST_COST_USD to safety-gates.mdc"
   ],
   "remaining_issues": [
-    "AL-009: Validate .cursor/rules coverage vs TOOL_USAGE_POLICY",
-    "cursor-agent mcp list shows needs approval in CLI context (expected; IDE thread may differ)"
+    "AL-010: Agent skills stub for translation QA",
+    "G-02: Codex handoff depth still docs-only (AL-027)"
   ],
   "severity_summary": {
     "p0": 0,
     "p1": 0,
     "p2": 0,
-    "p3": 1
+    "p3": 3
   },
   "gate_status": "warning",
   "blockers": [],
-  "risks": [
-    "PATH `agent` may alias non-Cursor CLIs; scripts must use cursor-agent explicitly"
-  ],
-  "next_recommended_round": "AL-009",
+  "risks": [],
+  "next_recommended_round": "AL-010",
   "human_decisions_required": []
 }

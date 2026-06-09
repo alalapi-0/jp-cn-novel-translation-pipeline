@@ -38,6 +38,7 @@ Integrate Tool-aware Agent Layer without replacing governance Round 41–57 arti
 ## Gaps / next
 
 - Wire `check:tooling` to include `tool_probe.py` — **done (AL-005)**
+- Rules vs TOOL_USAGE_POLICY coverage audit — **done (AL-009)** → `docs/AGENT_RULES_COVERAGE_AUDIT.md`
 - Populate `.agents/skills/` if Codex skills needed (AL-028)
 - CI publish `reports/gate_result.json` as artifact optional (AL-030)
 
