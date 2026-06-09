@@ -7,3 +7,4 @@
 {"timestamp":"2026-06-09T16:30:00Z","round_id":"AL-008","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"cursor_cli probe in tool_probe.py; TOOL_INVENTORY § I; prefer cursor-agent over PATH agent shim"}
 {"timestamp":"2026-06-09T17:00:00Z","round_id":"AL-009","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"AGENT_RULES_COVERAGE_AUDIT: 10 rules vs policy; patched tool-usage + safety-gates P3 gaps"}
 {"timestamp":"2026-06-09T17:30:00Z","round_id":"AL-010","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"translation-qa skill: .cursor/skills + docs/agent_skills + .agents/skills Codex stub"}
+{"timestamp":"2026-06-09T18:00:00Z","round_id":"AL-011","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"agent_gate --strict-layer: Layer 2.0 missing files FAIL; default still WARN"}

@@ -41,6 +41,46 @@ def test_strict_mode_still_runs(gate):
     assert code in (0, 1, 2)
 
 
+def test_agent_layer_missing_fails_under_strict_layer(gate, tmp_path, monkeypatch):
+    fake_path = tmp_path / "missing_agent_layer.yaml"
+
+    def fake_check(*, strict_layer: bool = False):
+        severity = gate.Severity.FAIL if strict_layer else gate.Severity.WARN
+        return [
+            gate.CheckResult(
+                "agent_layer_agent_layer_yaml",
+                severity,
+                f"missing Agent Layer 2.0 file: {fake_path}",
+            )
+        ]
+
+    monkeypatch.setattr(gate, "check_agent_layer_v2", fake_check)
+    results = gate.run_all_checks(strict_layer=True)
+    layer = [r for r in results if r.check_id == "agent_layer_agent_layer_yaml"]
+    assert layer
+    assert layer[0].severity == gate.Severity.FAIL
+    assert gate.aggregate_exit_code(layer) == 2
+
+
+def test_check_agent_layer_v2_strict_layer_unit(gate, tmp_path):
+    missing = tmp_path / "nope.yaml"
+    original = gate.AGENT_LAYER_FILES
+    try:
+        gate.AGENT_LAYER_FILES = (("agent_layer_yaml", missing),)
+        warn_results = gate.check_agent_layer_v2(strict_layer=False)
+        fail_results = gate.check_agent_layer_v2(strict_layer=True)
+    finally:
+        gate.AGENT_LAYER_FILES = original
+
+    assert warn_results[0].severity == gate.Severity.WARN
+    assert fail_results[0].severity == gate.Severity.FAIL
+
+
+def test_main_json_includes_strict_layer(gate):
+    code = gate.main(["--json", "--strict-layer"])
+    assert code in (0, 1, 2)
+
+
 def test_env_tracked_is_blocked(gate, monkeypatch):
     def fake_git(args, cwd):
         class Proc:

@@ -123,6 +123,7 @@ Round 41 已实现 MVP（`scripts/agent_gate.py`）。
 | `env_not_tracked` | PASS/FAIL — `.env` 被跟踪时为 BLOCKED |
 | `input_sources_ignored` / `outputs_ignored` | PASS/WARN — `git check-ignore` 探测 |
 | `git_status_*` | PASS/WARN — 工作区与分支摘要 |
+| `agent_layer_*` | PASS/WARN — Layer 2.0 文件缺失默认 WARN；`--strict-layer` 时 FAIL |
 | `vector_inspect_script_exists` / `vector_metadata_schema_exists` | PASS/WARN — Round 48 inspect 脚本与 schema |
 | `vector_index_present` / `vector_index_health` | PASS/WARN — 无 index 时 soft fallback；有 index 时 metadata/orphan 漂移为 WARNING，不 BLOCKED |
 
@@ -132,6 +133,8 @@ Round 41 已实现 MVP（`scripts/agent_gate.py`）。
 python3 scripts/agent_gate.py
 python3 scripts/agent_gate.py --json
 python3 scripts/agent_gate.py --strict
+python3 scripts/agent_gate.py --strict-layer
+python3 scripts/agent_gate.py --json --strict-layer
 pytest tests/test_agent_gate.py -q
 ```
 

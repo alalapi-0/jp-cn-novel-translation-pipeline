@@ -1,104 +1,93 @@
 {
-  "round_id": "AL-010",
-  "timestamp": "2026-06-09T17:30:00Z",
+  "round_id": "AL-011",
+  "timestamp": "2026-06-09T18:00:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Agent skills stub for translation QA",
+  "goal": "agent_gate --strict-layer FAIL when Layer 2.0 files missing",
   "scope": [
-    ".cursor/skills/translation-qa/SKILL.md",
-    ".agents/skills/translation-qa/SKILL.md",
-    "docs/agent_skills/translation_qa_skill.md",
-    "AGENTS.md",
-    "docs/index.md",
-    ".cursor/rules/tool-usage.mdc"
+    "scripts/agent_gate.py",
+    "tests/test_agent_gate.py",
+    "docs/agent_gate_and_protocol_check.md",
+    "docs/AGENT_RULES_COVERAGE_AUDIT.md"
   ],
-  "repo_status_before": "main at 6db3d3c after AL-009",
+  "repo_status_before": "main at 2297579 after AL-010",
   "tool_probe_status": "passed",
   "tools_used": [
     {
-      "tool": "Read/Grep",
-      "purpose": "align skill with quality_review_workflow and existing polish skill pattern",
-      "result": "ok",
-      "fallback_used": false
-    },
-    {
-      "tool": "Write",
-      "purpose": "Cursor + Codex stub skills and docs index",
+      "tool": "Read/Write",
+      "purpose": "add --strict-layer to check_agent_layer_v2 and CLI",
       "result": "ok",
       "fallback_used": false
     },
     {
       "tool": "shell",
-      "purpose": "smoke run_quality_review.py",
-      "result": "ok",
+      "purpose": "pytest test_agent_gate + gate --strict-layer smoke",
+      "result": "9 passed; strict-layer exit 1 (warn only, 0 layer fails)",
       "fallback_used": false
     }
   ],
   "tools_not_used": [
     {
       "tool": "web_search",
-      "reason": "repo-local QA workflow already documented"
+      "reason": "repo-local gate semantics"
     },
     {
       "tool": "playwright",
-      "reason": "no UI code changed"
+      "reason": "no UI changes"
     }
   ],
   "web_research": [],
   "changed_files": [
-    ".cursor/skills/translation-qa/SKILL.md",
-    ".agents/skills/translation-qa/SKILL.md",
-    "docs/agent_skills/translation_qa_skill.md",
-    "AGENTS.md",
-    "docs/index.md",
+    "scripts/agent_gate.py",
+    "tests/test_agent_gate.py",
+    "docs/agent_gate_and_protocol_check.md",
     "docs/AGENT_RULES_COVERAGE_AUDIT.md",
-    "docs/AGENT_LAYER_AUDIT.md",
-    ".cursor/rules/tool-usage.mdc",
     "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl"
+    "reports/agent_audit_log.jsonl",
+    "reports/gate_result.json"
   ],
   "commands_run": [
-    "python3 scripts/run_quality_review.py",
-    "python3 scripts/agent_gate.py --json",
+    "sh scripts/run_python_tests.sh tests/test_agent_gate.py -q",
+    "python3 scripts/agent_gate.py --json --strict-layer",
     "npm run check:tooling"
   ],
   "test_results": [
     {
-      "command": "python3 scripts/run_quality_review.py",
+      "command": "tests/test_agent_gate.py",
       "exit_code": 0,
       "status": "pass",
-      "note": "issues found on fixtures (expected)"
+      "note": "9 passed (3 new strict-layer tests)"
     },
     {
-      "command": "python3 scripts/agent_gate.py --json",
+      "command": "python3 scripts/agent_gate.py --json --strict-layer",
       "exit_code": 1,
-      "status": "warning"
+      "status": "warning",
+      "note": "all agent_layer_* pass on current repo"
     },
     {
       "command": "npm run check:tooling",
       "exit_code": 0,
       "status": "pass",
-      "note": "185 pytest passed"
+      "note": "188 pytest passed"
     }
   ],
   "issues_found": [],
   "issues_fixed": [
-    "No project-scoped translation QA skill for agents (AL-009 gap G-01 partial)"
+    "Missing --strict-layer flag; Layer 2.0 file gaps only WARNed"
   ],
   "remaining_issues": [
-    "AL-011: agent_gate strict mode for Layer files",
-    "AL-028: expand Codex .agents/skills beyond pointer stub if needed"
+    "AL-012: JSON schema validate latest report script"
   ],
   "severity_summary": {
     "p0": 0,
     "p1": 0,
     "p2": 0,
-    "p3": 1
+    "p3": 0
   },
   "gate_status": "warning",
   "blockers": [],
   "risks": [],
-  "next_recommended_round": "AL-011",
+  "next_recommended_round": "AL-012",
   "human_decisions_required": []
 }

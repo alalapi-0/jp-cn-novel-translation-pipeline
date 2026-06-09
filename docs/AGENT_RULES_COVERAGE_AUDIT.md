@@ -160,7 +160,7 @@ Machine refresh: re-run this audit when `TOOL_USAGE_POLICY.md` or `.cursor/rules
 |----|----------|-----|--------|
 | G-01 | P3 | Translation pipeline stage table not duplicated in rules | Pointer in `tool-usage.mdc`; full table stays in policy |
 | G-02 | P3 | Codex handoff workflow not in rules | `docs/CODEX_HANDOFF.md` + AL-027 |
-| G-03 | P3 | Optional gate: fail if rules stale vs policy | AL-011 `--strict-layer` |
+| G-03 | P3 | Optional gate: fail if Layer 2.0 files missing | **done** — `agent_gate.py --strict-layer` (AL-011) |
 | G-04 | P3 | No rule for `cursor-agent` CLI vs IDE thread | Documented in TOOL_INVENTORY § I (AL-008); not a Cursor rule |
 
 ---
@@ -168,7 +168,7 @@ Machine refresh: re-run this audit when `TOOL_USAGE_POLICY.md` or `.cursor/rules
 ## Recommendations
 
 1. **AL-010** — Translation QA skill stub — **done** → `.cursor/skills/translation-qa/`, `docs/agent_skills/translation_qa_skill.md`
-2. **AL-011** — Optional `agent_gate.py --strict-layer` to require this audit file freshness.
+2. **AL-011** — `agent_gate.py --strict-layer` — **done**
 3. Re-run this audit when adding MCP servers or new forbidden actions to policy.
 
 ---

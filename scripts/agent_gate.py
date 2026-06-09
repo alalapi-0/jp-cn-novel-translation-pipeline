@@ -1070,8 +1070,13 @@ def check_round_55_ci_tooling_integration() -> list[CheckResult]:
     return results
 
 
-def check_agent_layer_v2() -> list[CheckResult]:
-    """Tool-aware Agent Layer 2.0 required artifacts."""
+def check_agent_layer_v2(*, strict_layer: bool = False) -> list[CheckResult]:
+    """Tool-aware Agent Layer 2.0 required artifacts.
+
+    Default: missing files → WARN (non-blocking for legacy pipeline rounds).
+    ``--strict-layer``: missing files → FAIL (exit 2).
+    """
+    missing_severity = Severity.FAIL if strict_layer else Severity.WARN
     results: list[CheckResult] = []
     for cid, path in AGENT_LAYER_FILES:
         if path.is_file():
@@ -1086,7 +1091,7 @@ def check_agent_layer_v2() -> list[CheckResult]:
             results.append(
                 CheckResult(
                     f"agent_layer_{cid}",
-                    Severity.WARN,
+                    missing_severity,
                     f"missing Agent Layer 2.0 file: {_rel_path(path)}",
                 )
             )
@@ -1103,7 +1108,7 @@ def check_agent_layer_v2() -> list[CheckResult]:
         results.append(
             CheckResult(
                 "agent_layer_tool_probe_script",
-                Severity.WARN,
+                missing_severity,
                 "missing scripts/tool_probe.py",
             )
         )
@@ -1142,7 +1147,7 @@ def check_git_status_summary() -> list[CheckResult]:
     return results
 
 
-def run_all_checks(strict: bool) -> list[CheckResult]:
+def run_all_checks(*, strict: bool = False, strict_layer: bool = False) -> list[CheckResult]:
     results: list[CheckResult] = []
     results.extend(check_docs_exist())
     results.extend(check_roadmaps(strict))
@@ -1161,7 +1166,7 @@ def run_all_checks(strict: bool) -> list[CheckResult]:
     results.extend(check_round_53_multi_project_manifest())
     results.extend(check_round_54_semantic_checker_mvp())
     results.extend(check_round_55_ci_tooling_integration())
-    results.extend(check_agent_layer_v2())
+    results.extend(check_agent_layer_v2(strict_layer=strict_layer))
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())
@@ -1216,7 +1221,13 @@ def write_gate_result_json(
     )
 
 
-def write_report(results: Sequence[CheckResult], exit_code: int, strict: bool) -> None:
+def write_report(
+    results: Sequence[CheckResult],
+    exit_code: int,
+    *,
+    strict: bool,
+    strict_layer: bool,
+) -> None:
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     lines = [
@@ -1224,6 +1235,7 @@ def write_report(results: Sequence[CheckResult], exit_code: int, strict: bool) -
         "",
         f"- Generated: {now}",
         f"- Strict mode: {strict}",
+        f"- Strict Layer 2.0 mode: {strict_layer}",
         f"- Exit code: {exit_code}",
         "",
         "## Checks",
@@ -1249,11 +1261,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Treat missing roadmap 41-50 and doc gaps as BLOCKED where applicable",
     )
+    parser.add_argument(
+        "--strict-layer",
+        action="store_true",
+        help="FAIL (exit 2) if Agent Layer 2.0 files in AGENT_LAYER_FILES are missing",
+    )
     args = parser.parse_args(argv)
 
-    results = run_all_checks(strict=args.strict)
+    results = run_all_checks(strict=args.strict, strict_layer=args.strict_layer)
     exit_code = aggregate_exit_code(results)
-    write_report(results, exit_code, args.strict)
+    write_report(results, exit_code, strict=args.strict, strict_layer=args.strict_layer)
     write_gate_result_json(
         results,
         exit_code,
@@ -1266,6 +1283,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload = {
         "exit_code": exit_code,
         "strict": args.strict,
+        "strict_layer": args.strict_layer,
         "report_path": str(REPORT_PATH.relative_to(REPO_ROOT)),
         "checks": [r.to_dict() for r in results],
     }
