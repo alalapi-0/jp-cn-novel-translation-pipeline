@@ -40,3 +40,12 @@ Search capability: available (WebSearch + Context7 configured)
 - Key finding: Project `.cursor/mcp.json` for team sharing; reload Cursor after edits.
 - Relevance: Matches `npm run check:mcp`.
 - Action to encode into repo: `scripts/tool_probe.py`, `docs/TOOL_INVENTORY.md`
+
+## Query 5 — OpenRouter pricing (AL-006)
+
+- Query: OpenRouter API pricing official per million tokens 2026
+- Source type: official docs (openrouter.ai/docs/faq, openrouter.ai/pricing, GET /api/v1/models)
+- Key finding: No flat rate — per-model input/output $/M tokens; OpenRouter passes through provider list prices (no inference markup); credit purchase has ~5.5% platform fee on pay-as-you-go tier; live prices in Models API `pricing` object.
+- Relevance: Cost guard and smoke scripts must not hardcode model prices; fetch catalog or document refresh cadence.
+- Risk / uncertainty: Model IDs and $/M change frequently; third-party aggregators (costgoat, apicents) are hints only — use OpenRouter API as source of truth.
+- Action to encode into repo: `docs/api_provider_strategy.md` OpenRouter section, `docs/RESEARCH_NOTES.md` (this entry)

@@ -2,3 +2,4 @@
 {"timestamp":"2026-06-09T14:30:00Z","round_id":"AL-003","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"MCP live safe probes in tool_probe.py; callable_now synced; 5/7 MCP true, 0 deferred"}
 {"timestamp":"2026-06-09T14:45:00Z","round_id":"AL-004","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"sync_agent_tools_from_probe.py syncs probe→agent_tools.yaml; 13 entries; idempotent"}
 {"timestamp":"2026-06-09T15:00:00Z","round_id":"AL-005","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"tool_probe --sync-docs wired into run_tooling_checks.sh / check:tooling"}
+{"timestamp":"2026-06-09T15:15:00Z","round_id":"AL-006","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"OpenRouter pricing pointers in RESEARCH_NOTES + api_provider_strategy; use Models API"}

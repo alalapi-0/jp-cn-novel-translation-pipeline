@@ -119,3 +119,26 @@ Abort 日志写入 `workspace/model_runs/cost_guard_abort_*.json`（gitignore）
 6. checkpoint 与 model run log 不含完整 Key 或长正文。
 
 Round 50 默认仍使用 fake/dry-run；真实调用仅在用户授权且 guard 通过时进行。
+
+## OpenRouter 定价与成本估算（AL-006）
+
+OpenRouter **无统一单价**；按模型分别标价（input / output 通常分开，单位 USD per 1M tokens）。官方说明：
+
+- 定价页：https://openrouter.ai/pricing
+- FAQ（计费、无 inference markup）：https://openrouter.ai/docs/faq
+- **实时目录**：`GET https://openrouter.ai/api/v1/models` → 各模型 `pricing` 字段（Agent/脚本应用此 API 或 dry-run，勿硬编码长期价格）
+
+### 本项目约定
+
+1. **禁止**在治理文档或代码中写死具体模型 $/M（易过期）；`COST_PER_MILLION_TOKENS` 仅用于 dry-run 粗算。
+2. 选型 draft/refine/embedding 时查阅 Models API 或 OpenRouter 模型页；记录 `model_name` + 探测日期于 `docs/RESEARCH_NOTES.md`。
+3. 真实 smoke / E2E：遵守 `REAL_API_TESTS_ENABLED`、`MAX_TEST_COST_USD`；见 `docs/COST_CONTROL.md`、`docs/openrouter_api_test_plan.md`。
+4. 购买 credits 的平台费（pay-as-you-go ~5.5%）与 token 推理费分开；成本 guard 默认只约束推理侧估算。
+
+### 相关脚本
+
+| 脚本 | 用途 |
+|------|------|
+| `scripts/run_openrouter_smoke.py --dry-run` | 默认 dry-run |
+| `scripts/run_openrouter_test.py` | 受控模型试验（见 openrouter_api_test_plan.md） |
+| `src/providers/cost_guard.py` | 预算硬停 |

@@ -1,90 +1,75 @@
 {
-  "round_id": "AL-005",
-  "timestamp": "2026-06-09T15:00:00Z",
+  "round_id": "AL-006",
+  "timestamp": "2026-06-09T15:15:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
-  "mode": "implement",
-  "goal": "Wire tool_probe into npm run check:tooling via run_tooling_checks.sh",
+  "mode": "research-doc",
+  "goal": "Refresh OpenRouter pricing pointers in RESEARCH_NOTES and api_provider_strategy",
   "scope": [
-    "scripts/run_tooling_checks.sh"
+    "docs/RESEARCH_NOTES.md",
+    "docs/api_provider_strategy.md"
   ],
-  "repo_status_before": "main at 849f749 after AL-004 push",
+  "repo_status_before": "main at 2d3e33a after AL-005 push",
   "tool_probe_status": "passed",
-  "tools_available": [
-    "shell",
-    "node_npm"
-  ],
   "tools_used": [
     {
-      "tool": "shell",
-      "purpose": "edit run_tooling_checks.sh, npm run check:tooling, agent_gate",
-      "result": "tool_probe ran in chain; 2 pre-existing pytest failures",
+      "tool": "web_search",
+      "purpose": "OpenRouter official pricing FAQ and models API",
+      "result": "logged Query 5 in RESEARCH_NOTES",
+      "fallback_used": false
+    },
+    {
+      "tool": "Read/Write",
+      "purpose": "update api_provider_strategy OpenRouter section",
+      "result": "ok",
       "fallback_used": false
     }
   ],
   "tools_not_used": [
     {
+      "tool": "context7",
+      "reason": "OpenRouter pricing is platform-specific; official web sources sufficient"
+    },
+    {
       "tool": "github_mcp",
-      "reason": "local script change only"
-    },
-    {
-      "tool": "web_search",
-      "reason": "AL-005 web_search_needed=false"
-    },
-    {
-      "tool": "playwright",
-      "reason": "no UI changes"
+      "reason": "doc-only round"
     }
   ],
-  "web_research": [],
+  "web_research": [
+    {
+      "query": "OpenRouter API pricing official per million tokens",
+      "source_type": "official docs",
+      "finding": "Per-model $/M via Models API; no inference markup; credit purchase fee separate",
+      "encoded_into_repo": "docs/RESEARCH_NOTES.md, docs/api_provider_strategy.md"
+    }
+  ],
   "changed_files": [
-    "scripts/run_tooling_checks.sh",
-    "reports/tool_probe_report.json",
-    "reports/gate_result.json",
+    "docs/RESEARCH_NOTES.md",
+    "docs/api_provider_strategy.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
-  "commands_run": [
-    "npm run check:tooling",
-    "python3 scripts/agent_gate.py --json"
-  ],
-  "test_results": [
-    {
-      "name": "check:tooling tool_probe step",
-      "status": "passed",
-      "detail": "tool_probe passed in run_tooling_checks.sh after agent_gate"
-    },
-    {
-      "name": "pytest via check:tooling",
-      "status": "failed",
-      "detail": "2 pre-existing failures: test_cost_guard, test_resume_production (unrelated to AL-005)"
-    },
-    {
-      "name": "agent_gate",
-      "status": "warning",
-      "detail": "dirty working tree"
-    }
-  ],
-  "issues_found": [
-    "test_cost_guard fails when REAL_API_TESTS_ENABLED=true in env",
-    "test_resume_production fake_run missing with_production_env kwarg"
-  ],
+  "commands_run": [],
+  "test_results": [],
+  "issues_found": [],
   "issues_fixed": [
-    "check:tooling did not run tool_probe (AL-005 gap)"
+    "Missing live OpenRouter pricing source-of-truth pointer in provider strategy"
   ],
   "remaining_issues": [
-    "Pre-existing pytest failures in cost_guard and resume_production",
-    "AL-006: OpenRouter pricing refresh"
+    "AL-007: Playwright version pin doc",
+    "Pre-existing pytest failures in check:tooling"
   ],
   "severity_summary": {
     "p0": 0,
     "p1": 0,
-    "p2": 2,
-    "p3": 0
+    "p2": 0,
+    "p3": 1
   },
   "gate_status": "warning",
   "blockers": [],
-  "risks": [],
-  "next_recommended_round": "AL-006",
+  "risks": [
+    "Model prices change; agents must re-query Models API before cost-sensitive runs"
+  ],
+  "next_recommended_round": "AL-007",
   "human_decisions_required": []
 }
