@@ -57,3 +57,28 @@ python3 scripts/validate_agent_report.py --json
 ```
 
 Also runs in `npm run check:tooling` after `agent_gate.py`. Exit 0 = valid; 1 = schema errors; 2 = missing file or parse error.
+
+## Write / update report
+
+```bash
+# Print template JSON (stdout)
+python3 scripts/write_agent_report.py --round-id AL-013 --goal "My round goal"
+
+# Write latest-agent-report.json + append audit log (validates first)
+python3 scripts/write_agent_report.py \
+  --round-id AL-013 \
+  --goal "My round goal" \
+  --mode implement \
+  --next AL-014 \
+  --write \
+  --append-audit "one-line summary"
+
+# Merge extra fields from JSON patch file
+python3 scripts/write_agent_report.py \
+  --round-id AL-013 \
+  --goal "..." \
+  --merge reports/round_patch.json \
+  --write
+```
+
+Auto-fills `tool_probe_status` and `gate_status` from `reports/tool_probe_report.json` and `reports/gate_result.json` when omitted.
