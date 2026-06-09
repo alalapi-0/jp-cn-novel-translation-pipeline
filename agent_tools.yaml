@@ -1,168 +1,184 @@
 version: 1
-updated_at: "2026-06-09T00:00:00Z"
+updated_at: '2026-06-09T13:31:39Z'
 repo_name: light_novel
-
 agent_surfaces:
   cursor:
     primary: true
     available: true
     recommended_use:
-      - local editing
-      - UI debugging
-      - browser-based user-view testing
-      - repo rule enforcement
-      - MCP-assisted workflows
-      - small incremental rounds
-    notes: "Default primary surface for this repo; MCP loaded via .cursor/mcp.json"
+    - local editing
+    - UI debugging
+    - browser-based user-view testing
+    - repo rule enforcement
+    - MCP-assisted workflows
+    - small incremental rounds
+    notes: Default primary surface for this repo; MCP loaded via .cursor/mcp.json
   codex:
     primary: false
     available: manual
     recommended_use:
-      - long-horizon implementation
-      - code review
-      - refactor
-      - cloud/background tasks
-      - worktree-based parallel tasks
-    notes: "Read docs/CODEX_USAGE.md; quota-limited — high-value tasks only"
+    - long-horizon implementation
+    - code review
+    - refactor
+    - cloud/background tasks
+    - worktree-based parallel tasks
+    notes: Read docs/CODEX_USAGE.md; quota-limited — high-value tasks only
   local_scripts:
     primary: true
     available: true
     recommended_use:
-      - deterministic gates
-      - reports
-      - smoke tests
-      - artifact checks
-
+    - deterministic gates
+    - reports
+    - smoke tests
+    - artifact checks
 tools:
   shell:
     available: true
     safe_probe: pwd
-    probe_result: "/Users/alalapi/PycharmProjects/light_novel"
+    probe_result: /Users/alalapi/PycharmProjects/light_novel
     use_for:
-      - run gates
-      - inspect repo
-      - run tests
+    - run gates
+    - inspect repo
+    - run tests
     never_use_for:
-      - destructive deletion
-      - printing secrets
+    - destructive deletion
+    - printing secrets
   git:
     available: true
     safe_probe: git status --short
     use_for:
-      - inspect changes
-      - branch workflow
-      - commit if allowed
+    - inspect changes
+    - branch workflow
+    - commit if allowed
     never_use_for:
-      - reset hard without explicit approval
-      - force push
+    - reset hard without explicit approval
+    - force push
+    probe_result: M scripts/tool_probe.py ?? scripts/sync_agent_tools_from_probe.py ?? workspace/archived_runs/
   node_npm:
     available: true
     safe_probe: node -v && npm -v
     use_for:
-      - check:mcp
-      - test:ui
-      - dev:frontend
+    - check:mcp
+    - test:ui
+    - dev:frontend
+    probe_result: v26.0.0; 11.12.1
   python:
     available: true
     safe_probe: python3 --version
     use_for:
-      - pytest
-      - agent_gate
-      - pipeline scripts
+    - pytest
+    - agent_gate
+    - pipeline scripts
+    probe_result: Python 3.14.5
   web_search:
     available: true
     use_for:
-      - latest official docs
-      - current platform rules
-      - dependency API changes
-      - model/tool capability changes
+    - latest official docs
+    - current platform rules
+    - dependency API changes
+    - model/tool capability changes
     fallback:
-      - ask user to provide docs
-      - use local docs
-      - context7
+    - ask user to provide docs
+    - use local docs
+    - context7
   context7:
     available: true
     configured: true
     callable_now: true
     safe_probe: resolve-library-id + query-docs
     use_for:
-      - library docs
-      - API usage
-      - version-specific examples
+    - library docs
+    - API usage
+    - version-specific examples
     recommended_docs:
-      - playwright
-      - pytest
-      - modelcontextprotocol
+    - playwright
+    - pytest
+    - modelcontextprotocol
+    probe_result: config=PASS; launcher=npx (ok); thread_tools=2; safe_tool=resolve-library-id
   browser:
     available: true
     use_for:
-      - UI smoke tests
-      - layout verification
-      - accessibility checks
-      - screenshots
+    - UI smoke tests
+    - layout verification
+    - accessibility checks
+    - screenshots
     fallback: npm run test:ui
   playwright:
     available: true
     safe_probe: npx playwright --version
     use_for:
-      - e2e tests
-      - user-view flows
-      - regression tests
+    - e2e tests
+    - user-view flows
+    - regression tests
+    probe_result: config=PASS; launcher=npx (ok); thread_tools=23; safe_tool=browser_snapshot; npx_playwright=ok; version=Version
+      1.60.0
+    configured: true
+    callable_now: true
   chrome_devtools:
     available: true
     configured: true
     use_for:
-      - inspect DOM
-      - console errors
-      - network failures
+    - inspect DOM
+    - console errors
+    - network failures
     fallback: playwright MCP
+    callable_now: config_only
+    probe_result: config=PASS; launcher=bash (ok); wrapper=scripts/chrome_devtools_mcp_light_novel.sh (exec); thread_loaded=false;
+      safe...
   filesystem_mcp:
     available: true
     configured: true
     callable_now: true
-    allowed_scope: "${workspaceFolder}"
+    allowed_scope: ${workspaceFolder}
     use_for:
-      - safe file inspection
-      - project file operations within allowed dirs
+    - safe file inspection
+    - project file operations within allowed dirs
+    probe_result: config=PASS; launcher=npx (ok); thread_tools=14; safe_tool=list_allowed_directories; scope=${workspaceFolder}
   github_mcp:
     available: true
     configured: true
     callable_now: true
     use_for:
-      - issues
-      - PRs
-      - remote repo inspection
+    - issues
+    - PRs
+    - remote repo inspection
     fallback: gh CLI
+    probe_result: config=PASS; launcher=npx (ok); thread_tools=26; safe_tool=list_commits; GITHUB_TOKEN=unset; token_env=no;
+      gh_auth=ok...
   stitch_mcp:
     available: true
     configured: true
     callable_now: true
     use_for:
-      - UI design prototypes
-      - design input to docs/design/stitch/
+    - UI design prototypes
+    - design input to docs/design/stitch/
     risks:
-      - requires STITCH_API_KEY
-      - must not overwrite frontend/ without review
+    - requires STITCH_API_KEY
+    - must not overwrite frontend/ without review
+    probe_result: config=PASS; launcher=node (ok); wrapper=scripts/stitch_mcp_proxy.mjs (exec); thread_tools=15; safe_tool=list_project...
   cursor_ide_browser:
     available: true
     use_for:
-      - interactive UI verification in Cursor thread
-    notes: "Prefer over multitask subagents for browser control"
+    - interactive UI verification in Cursor thread
+    notes: Prefer over multitask subagents for browser control
   gh_cli:
     available: true
     use_for:
-      - PR/issue inspection
-      - remote status
+    - PR/issue inspection
+    - remote status
+    probe_result: gh version 2.92.0 (2026-04-28) https://github.com/cli/cli/releases/tag/v2.92.0
   ffmpeg:
     available: true
     use_for:
-      - media pipeline checks when enabled
+    - media pipeline checks when enabled
+    probe_result: ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers built with Apple clang version 17.0.0
+      (clang-1700....
   docker:
     available: false
     fallback: local python/node only
+    probe_result: '/bin/sh: docker: command not found'
   java_maven:
     available: false
-
 policies:
   default_real_api: false
   default_real_publish: false
@@ -171,23 +187,49 @@ policies:
   require_gate_before_commit: true
   require_tool_usage_log: true
   require_tool_probe_before_plan: true
-
 task_stage_mapping:
   repo_onboarding:
-    required: [shell, git, filesystem_mcp]
-    read_first: [AGENTS.md, agent_layer.yaml, agent_tools.yaml]
+    required:
+    - shell
+    - git
+    - filesystem_mcp
+    read_first:
+    - AGENTS.md
+    - agent_layer.yaml
+    - agent_tools.yaml
   code_change:
-    required: [shell, git]
-    optional: [context7, web_search]
+    required:
+    - shell
+    - git
+    optional:
+    - context7
+    - web_search
   ui_verification:
-    required: [browser, playwright]
-    optional: [chrome_devtools]
+    required:
+    - browser
+    - playwright
+    optional:
+    - chrome_devtools
   external_docs:
-    required: [web_search]
-    optional: [context7]
+    required:
+    - web_search
+    optional:
+    - context7
   github_ops:
-    required: [git]
-    optional: [github_mcp, gh_cli]
+    required:
+    - git
+    optional:
+    - github_mcp
+    - gh_cli
   gate_and_report:
-    required: [shell]
-    commands: [python3 scripts/agent_gate.py, python3 scripts/tool_probe.py]
+    required:
+    - shell
+    commands:
+    - python3 scripts/agent_gate.py
+    - python3 scripts/tool_probe.py
+probe_sync:
+  source: reports/tool_probe_report.json
+  probe_timestamp: '2026-06-09T13:31:39Z'
+  synced_at: '2026-06-09T13:31:45Z'
+  probe_status: passed
+  changes_count: 2

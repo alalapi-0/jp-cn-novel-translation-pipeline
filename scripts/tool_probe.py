@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -568,38 +567,6 @@ def _sync_tool_inventory(mcp_servers: list[dict[str, Any]]) -> bool:
     return False
 
 
-def _sync_agent_tools_yaml(mcp_servers: list[dict[str, Any]]) -> bool:
-    """Patch callable_now hints in agent_tools.yaml for known MCP keys."""
-    yaml_path = REPO_ROOT / "agent_tools.yaml"
-    if not yaml_path.is_file():
-        return False
-    key_map = {
-        "filesystem": "filesystem_mcp",
-        "github": "github_mcp",
-        "stitch": "stitch_mcp",
-        "context7": "context7",
-        "playwright": "playwright",
-        "chrome-devtools": "chrome_devtools",
-    }
-    text = yaml_path.read_text(encoding="utf-8")
-    changed = False
-    for server in mcp_servers:
-        yaml_key = key_map.get(server["name"])
-        if not yaml_key:
-            continue
-        val = server.get("callable_now", "unknown")
-        if val == "config_only":
-            val = "config_only"
-        pattern = rf"(^  {re.escape(yaml_key)}:[\s\S]*?callable_now:\s*)([^\n]+)"
-        match = re.search(pattern, text, re.MULTILINE)
-        if match and match.group(2).strip() != val:
-            text = text[: match.start(2)] + val + text[match.end(2) :]
-            changed = True
-    if changed:
-        yaml_path.write_text(text, encoding="utf-8")
-    return changed
-
-
 def build_report(agent_surface: str = "cursor") -> dict[str, Any]:
     local = probe_local_tools()
     mcp = probe_mcp_configured()
@@ -655,11 +622,19 @@ def main() -> int:
 
     if sync_docs or "--sync-docs" in sys.argv:
         inv = _sync_tool_inventory(report["mcp_servers"])
-        yaml = _sync_agent_tools_yaml(report["mcp_servers"])
         if inv:
             print(f"tool_probe: updated {INVENTORY_PATH.relative_to(REPO_ROOT)}")
-        if yaml:
-            print("tool_probe: updated agent_tools.yaml callable_now hints")
+        try:
+            from sync_agent_tools_from_probe import sync_agent_tools_from_probe
+
+            sync_result = sync_agent_tools_from_probe(REPORT_PATH, REPO_ROOT / "agent_tools.yaml")
+            if sync_result.get("changed"):
+                print(
+                    f"tool_probe: synced agent_tools.yaml "
+                    f"({len(sync_result.get('changes', []))} tool entries)"
+                )
+        except Exception as exc:
+            print(f"tool_probe: agent_tools sync skipped ({exc})")
 
     summary = report.get("mcp_probe_summary", {})
     print(

@@ -12,8 +12,9 @@ Operational steps for every Tool-aware Agent round (Cursor primary, Codex compat
    - `docs/TOOL_USAGE_POLICY.md`
    - `reports/latest-agent-report.json`
 3. `git status --short`
-4. `python3 scripts/tool_probe.py` (if probe older than 24h or environment changed)
-5. Decide: need web search? → `docs/SEARCH_POLICY.md`
+4. `python3 scripts/tool_probe.py --sync-docs` (if probe older than 24h or environment changed)
+5. Or sync yaml only: `python3 scripts/sync_agent_tools_from_probe.py`
+6. Decide: need web search? → `docs/SEARCH_POLICY.md`
 
 ## During implementation
 
@@ -74,5 +75,6 @@ npm run check:mcp
 python3 scripts/run_real_api_smoke.py          # dry-run default
 python3 scripts/run_browser_inspection.py
 python3 scripts/agent_gate.py
-python3 scripts/tool_probe.py
+python3 scripts/tool_probe.py --sync-docs
+python3 scripts/sync_agent_tools_from_probe.py
 ```

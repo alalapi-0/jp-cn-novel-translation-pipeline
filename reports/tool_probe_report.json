@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-09T13:28:16Z",
+  "timestamp": "2026-06-09T13:31:39Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M .cursor/mcp.json\n M AGENTS.md\n M docs/index.md\n M scripts/agent_gate.py\n?? .cursor/rules/agent-layer.mdc\n?? .cursor/rules/safety-gates.mdc\n?? .cursor/rules/search-policy.mdc\n?? .cursor/rules/tool-usage.mdc\n?? .cursor/rules/user-view-testing.mdc\n?? agent_layer.yaml\n?? agent_tools.yaml\n?? docs/AGENT_LAYER_AUDIT.md\n?? docs/AGENT_REPORTING.md\n?? docs/AGENT_ROADMAP.md\n?? docs/AGENT_RUNBOOK.md\n?? docs/AGENT_SAFETY.md\n?? docs/CODEX_HANDOFF.md\n?? docs/CODEX_USAGE.md\n?? docs/COST_CONTROL.md\n?? docs/PRO",
+      "output": "M scripts/tool_probe.py\n?? scripts/sync_agent_tools_from_probe.py\n?? workspace/archived_runs/",
       "available": true
     },
     "git_branch": {
