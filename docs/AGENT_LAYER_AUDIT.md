@@ -37,7 +37,7 @@ Integrate Tool-aware Agent Layer without replacing governance Round 41–57 arti
 
 ## Gaps / next
 
-- Wire `check:tooling` to include `tool_probe.py` (AL-005)
+- Wire `check:tooling` to include `tool_probe.py` — **done (AL-005)**
 - Populate `.agents/skills/` if Codex skills needed (AL-028)
 - CI publish `reports/gate_result.json` as artifact optional (AL-030)
 

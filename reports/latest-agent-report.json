@@ -1,103 +1,90 @@
 {
-  "round_id": "AL-004",
-  "timestamp": "2026-06-09T14:45:00Z",
+  "round_id": "AL-005",
+  "timestamp": "2026-06-09T15:00:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Script sync probe report → agent_tools.yaml available/configured/callable_now/probe_result fields",
+  "goal": "Wire tool_probe into npm run check:tooling via run_tooling_checks.sh",
   "scope": [
-    "scripts/sync_agent_tools_from_probe.py",
-    "scripts/tool_probe.py",
-    "agent_tools.yaml",
-    "docs/AGENT_RUNBOOK.md"
+    "scripts/run_tooling_checks.sh"
   ],
-  "repo_status_before": "main branch, 5 uncommitted changes after AL-003 push",
+  "repo_status_before": "main at 849f749 after AL-004 push",
   "tool_probe_status": "passed",
   "tools_available": [
     "shell",
-    "git",
-    "python"
+    "node_npm"
   ],
   "tools_used": [
     {
       "tool": "shell",
-      "purpose": "run tool_probe --sync-docs, sync_agent_tools_from_probe.py, agent_gate",
-      "result": "ok",
-      "fallback_used": false
-    },
-    {
-      "tool": "Read/Write",
-      "purpose": "create sync script, refactor tool_probe, update runbook",
-      "result": "ok",
+      "purpose": "edit run_tooling_checks.sh, npm run check:tooling, agent_gate",
+      "result": "tool_probe ran in chain; 2 pre-existing pytest failures",
       "fallback_used": false
     }
   ],
   "tools_not_used": [
     {
       "tool": "github_mcp",
-      "reason": "offline sync from existing probe report; no remote ops"
+      "reason": "local script change only"
     },
     {
       "tool": "web_search",
-      "reason": "AL-004 web_search_needed=false"
+      "reason": "AL-005 web_search_needed=false"
     },
     {
       "tool": "playwright",
       "reason": "no UI changes"
-    },
-    {
-      "tool": "codex",
-      "reason": "small scoped script round"
     }
   ],
   "web_research": [],
   "changed_files": [
-    "scripts/sync_agent_tools_from_probe.py",
-    "scripts/tool_probe.py",
-    "agent_tools.yaml",
+    "scripts/run_tooling_checks.sh",
     "reports/tool_probe_report.json",
-    "docs/AGENT_RUNBOOK.md",
+    "reports/gate_result.json",
     "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl",
-    "reports/gate_result.json"
+    "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "python3 scripts/tool_probe.py --sync-docs",
-    "python3 scripts/sync_agent_tools_from_probe.py --json",
+    "npm run check:tooling",
     "python3 scripts/agent_gate.py --json"
   ],
   "test_results": [
     {
-      "name": "sync_agent_tools_from_probe",
+      "name": "check:tooling tool_probe step",
       "status": "passed",
-      "detail": "13 tool entries synced; second run idempotent (changed=false)"
+      "detail": "tool_probe passed in run_tooling_checks.sh after agent_gate"
+    },
+    {
+      "name": "pytest via check:tooling",
+      "status": "failed",
+      "detail": "2 pre-existing failures: test_cost_guard, test_resume_production (unrelated to AL-005)"
     },
     {
       "name": "agent_gate",
       "status": "warning",
-      "detail": "exit 1 — dirty working tree"
+      "detail": "dirty working tree"
     }
   ],
-  "issues_found": [],
+  "issues_found": [
+    "test_cost_guard fails when REAL_API_TESTS_ENABLED=true in env",
+    "test_resume_production fake_run missing with_production_env kwarg"
+  ],
   "issues_fixed": [
-    "agent_tools.yaml callable_now/probe_result maintained manually via regex in tool_probe",
-    "No dedicated probe→yaml sync entrypoint"
+    "check:tooling did not run tool_probe (AL-005 gap)"
   ],
   "remaining_issues": [
-    "AL-005: wire tool_probe into check:tooling",
-    "PyYAML reformats agent_tools.yaml quotes/flow (cosmetic)"
+    "Pre-existing pytest failures in cost_guard and resume_production",
+    "AL-006: OpenRouter pricing refresh"
   ],
   "severity_summary": {
     "p0": 0,
     "p1": 0,
-    "p2": 0,
-    "p3": 1
+    "p2": 2,
+    "p3": 0
   },
   "gate_status": "warning",
   "blockers": [],
-  "risks": [
-    "probe_sync block in agent_tools.yaml is machine-written; do not hand-edit"
-  ],
-  "next_recommended_round": "AL-005",
+  "risks": [],
+  "next_recommended_round": "AL-006",
   "human_decisions_required": []
 }

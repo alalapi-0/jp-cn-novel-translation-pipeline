@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-09T13:31:39Z",
+  "timestamp": "2026-06-09T13:39:25Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M scripts/tool_probe.py\n?? scripts/sync_agent_tools_from_probe.py\n?? workspace/archived_runs/",
+      "output": "M reports/gate_result.json\n M scripts/run_tooling_checks.sh\n?? workspace/archived_runs/",
       "available": true
     },
     "git_branch": {

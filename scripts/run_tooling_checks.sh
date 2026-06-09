@@ -18,6 +18,7 @@ run_py() {
 }
 
 run_py scripts/agent_gate.py
+run_py scripts/tool_probe.py --sync-docs
 run_py scripts/check_protocol_standard.py
 run_py scripts/scan_repo_inventory.py
 PYTEST="${PYTEST:-pytest}"
