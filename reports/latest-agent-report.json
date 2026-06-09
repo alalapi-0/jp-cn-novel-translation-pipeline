@@ -1,36 +1,38 @@
 {
-  "round_id": "AL-011",
-  "timestamp": "2026-06-09T18:00:00Z",
+  "round_id": "AL-012",
+  "timestamp": "2026-06-09T18:30:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "agent_gate --strict-layer FAIL when Layer 2.0 files missing",
+  "goal": "JSON schema validate latest agent report via validate_agent_report.py",
   "scope": [
-    "scripts/agent_gate.py",
-    "tests/test_agent_gate.py",
-    "docs/agent_gate_and_protocol_check.md",
-    "docs/AGENT_RULES_COVERAGE_AUDIT.md"
+    "scripts/validate_agent_report.py",
+    "tests/test_validate_agent_report.py",
+    "schemas/agent_round_report.schema.json",
+    "scripts/run_tooling_checks.sh",
+    "requirements-dev.txt",
+    "docs/AGENT_REPORTING.md"
   ],
-  "repo_status_before": "main at 2297579 after AL-010",
+  "repo_status_before": "main at 36655f5 after AL-011",
   "tool_probe_status": "passed",
   "tools_used": [
     {
       "tool": "Read/Write",
-      "purpose": "add --strict-layer to check_agent_layer_v2 and CLI",
+      "purpose": "validate_agent_report.py + tests + tooling wire-up",
       "result": "ok",
       "fallback_used": false
     },
     {
       "tool": "shell",
-      "purpose": "pytest test_agent_gate + gate --strict-layer smoke",
-      "result": "9 passed; strict-layer exit 1 (warn only, 0 layer fails)",
+      "purpose": "validate latest report + check:tooling",
+      "result": "192 pytest passed",
       "fallback_used": false
     }
   ],
   "tools_not_used": [
     {
       "tool": "web_search",
-      "reason": "repo-local gate semantics"
+      "reason": "jsonschema draft-07 standard usage"
     },
     {
       "tool": "playwright",
@@ -39,45 +41,38 @@
   ],
   "web_research": [],
   "changed_files": [
-    "scripts/agent_gate.py",
-    "tests/test_agent_gate.py",
-    "docs/agent_gate_and_protocol_check.md",
-    "docs/AGENT_RULES_COVERAGE_AUDIT.md",
+    "scripts/validate_agent_report.py",
+    "tests/test_validate_agent_report.py",
+    "schemas/agent_round_report.schema.json",
+    "scripts/run_tooling_checks.sh",
+    "requirements-dev.txt",
+    "docs/AGENT_REPORTING.md",
     "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl",
-    "reports/gate_result.json"
+    "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "sh scripts/run_python_tests.sh tests/test_agent_gate.py -q",
-    "python3 scripts/agent_gate.py --json --strict-layer",
+    "python3 scripts/validate_agent_report.py --json",
     "npm run check:tooling"
   ],
   "test_results": [
     {
-      "command": "tests/test_agent_gate.py",
+      "command": "python3 scripts/validate_agent_report.py --json",
       "exit_code": 0,
-      "status": "pass",
-      "note": "9 passed (3 new strict-layer tests)"
-    },
-    {
-      "command": "python3 scripts/agent_gate.py --json --strict-layer",
-      "exit_code": 1,
-      "status": "warning",
-      "note": "all agent_layer_* pass on current repo"
+      "status": "pass"
     },
     {
       "command": "npm run check:tooling",
       "exit_code": 0,
       "status": "pass",
-      "note": "188 pytest passed"
+      "note": "192 pytest passed"
     }
   ],
   "issues_found": [],
   "issues_fixed": [
-    "Missing --strict-layer flag; Layer 2.0 file gaps only WARNed"
+    "No automated schema validation for reports/latest-agent-report.json"
   ],
   "remaining_issues": [
-    "AL-012: JSON schema validate latest report script"
+    "AL-013: report writer helper script"
   ],
   "severity_summary": {
     "p0": 0,
@@ -88,6 +83,6 @@
   "gate_status": "warning",
   "blockers": [],
   "risks": [],
-  "next_recommended_round": "AL-012",
+  "next_recommended_round": "AL-013",
   "human_decisions_required": []
 }

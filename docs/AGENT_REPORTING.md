@@ -48,3 +48,12 @@ One JSON object per line in `reports/agent_audit_log.jsonl`:
 Legacy human report: `docs/reports/agent_gate_report.md` (from `agent_gate.py`).
 
 Do not commit sensitive content in any report path.
+
+## Validate latest report
+
+```bash
+python3 scripts/validate_agent_report.py
+python3 scripts/validate_agent_report.py --json
+```
+
+Also runs in `npm run check:tooling` after `agent_gate.py`. Exit 0 = valid; 1 = schema errors; 2 = missing file or parse error.

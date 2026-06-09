@@ -20,7 +20,7 @@
     "agent": { "type": "string" },
     "agent_surface": { "enum": ["cursor", "codex", "other"] },
     "mode": {
-      "enum": ["audit", "plan", "implement", "test", "fix", "review", "tool-probe"]
+      "enum": ["audit", "plan", "implement", "test", "fix", "review", "tool-probe", "research-doc"]
     },
     "goal": { "type": "string" },
     "scope": { "type": "array", "items": { "type": "string" } },
