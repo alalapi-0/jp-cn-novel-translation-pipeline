@@ -32,7 +32,7 @@ Record `TOOL_UNAVAILABLE` or `BLOCKED_ENV`; never invent probe results.
 
 ## Translation pipeline (summary)
 
-Full mapping: `docs/TOOL_USAGE_POLICY.md` §11. Use local scripts + dry-run by default; quality/workbench via `run_quality_review.py` and UI rules above.
+Full mapping: `docs/TOOL_USAGE_POLICY.md` §11. Use local scripts + dry-run by default; quality/workbench via `run_quality_review.py` and UI rules above. Skill: `docs/agent_skills/translation_qa_skill.md`.
 
 ## Forbidden
 

@@ -167,7 +167,7 @@ Machine refresh: re-run this audit when `TOOL_USAGE_POLICY.md` or `.cursor/rules
 
 ## Recommendations
 
-1. **AL-010** — Optional translation QA skill stub (`.cursor/skills/` or docs pointer).
+1. **AL-010** — Translation QA skill stub — **done** → `.cursor/skills/translation-qa/`, `docs/agent_skills/translation_qa_skill.md`
 2. **AL-011** — Optional `agent_gate.py --strict-layer` to require this audit file freshness.
 3. Re-run this audit when adding MCP servers or new forbidden actions to policy.
 

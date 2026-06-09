@@ -15,6 +15,8 @@ node_modules/
 !.cursor/mcp.json
 !.cursor/rules/
 !.cursor/rules/**
+!.cursor/skills/
+!.cursor/skills/**
 
 # Python cache
 __pycache__/

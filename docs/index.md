@@ -40,6 +40,7 @@
 - `docs/mcp_playwright_setup_plan.md`
 - `docs/mcp_verification_checklist.md`
 - `docs/agent_skills/mcp_usage_skill.md`
+- `docs/agent_skills/translation_qa_skill.md`（AL-010；Cursor skill: `.cursor/skills/translation-qa/`）
 - `docs/testing/BROWSER_TESTING.md`
 - `docs/testing/REAL_API_TESTING.md`
 - `docs/testing/USER_PERSPECTIVE_TESTING.md`

@@ -62,7 +62,7 @@
 
 ## 工具链
 
-见 `docs/agent_tooling_strategy.md`、`docs/mcp_playwright_setup_plan.md`、`docs/agent_skills/mcp_usage_skill.md`。
+见 `docs/agent_tooling_strategy.md`、`docs/mcp_playwright_setup_plan.md`、`docs/agent_skills/mcp_usage_skill.md`、`docs/agent_skills/translation_qa_skill.md`。
 
 ## MCP Tools
 

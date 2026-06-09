@@ -39,7 +39,8 @@ Integrate Tool-aware Agent Layer without replacing governance Round 41–57 arti
 
 - Wire `check:tooling` to include `tool_probe.py` — **done (AL-005)**
 - Rules vs TOOL_USAGE_POLICY coverage audit — **done (AL-009)** → `docs/AGENT_RULES_COVERAGE_AUDIT.md`
-- Populate `.agents/skills/` if Codex skills needed (AL-028)
+- Translation QA skill stub — **done (AL-010)** → `.cursor/skills/translation-qa/`, `docs/agent_skills/translation_qa_skill.md`
+- Populate `.agents/skills/` if Codex skills needed — **partial (AL-028 stub at `.agents/skills/translation-qa/`)**
 - CI publish `reports/gate_result.json` as artifact optional (AL-030)
 
 ## Conflicts avoided
