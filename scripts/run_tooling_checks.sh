@@ -19,6 +19,7 @@ run_py() {
 
 run_py scripts/agent_gate.py
 run_py scripts/validate_agent_report.py
+run_py scripts/check_prompts_refs.py
 run_py scripts/tool_probe.py --sync-docs
 run_py scripts/check_protocol_standard.py
 run_py scripts/scan_repo_inventory.py

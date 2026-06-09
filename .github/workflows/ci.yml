@@ -51,6 +51,14 @@ jobs:
       - name: Run tooling checks
         run: npm run check:tooling
 
+      - name: Upload gate result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-result
+          path: reports/gate_result.json
+          if-no-files-found: warn
+
   ui:
     name: test:ui (optional)
     needs: tooling

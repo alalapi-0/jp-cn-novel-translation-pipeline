@@ -11,3 +11,24 @@
 {"timestamp":"2026-06-09T18:30:00Z","round_id":"AL-012","agent":"cursor-composer","agent_surface":"cursor","gate_status":"warning","summary":"validate_agent_report.py + jsonschema; wired into check:tooling"}
 {"timestamp": "2026-06-09T14:55:41Z", "round_id": "AL-013", "agent": "cursor-composer", "agent_surface": "cursor", "gate_status": "warning", "summary": "test audit line"}
 {"timestamp": "2026-06-09T14:56:46Z", "round_id": "AL-013", "agent": "cursor-composer", "agent_surface": "cursor", "gate_status": "warning", "summary": "write_agent_report.py: template, merge, validate, audit append"}
+{"timestamp": "2026-06-09T15:23:52Z", "round_id": "AL-T05", "agent": "cursor-composer", "agent_surface": "cursor", "gate_status": "warning", "summary": "AL-014–AL-T05 batch: gate triage, user-view spawn, browser merge, pytest helpers, bugfix enqueue, suggest-next, env audit, cost ledger, translation scripts, CI artifact"}
+{"round_id": "AL-014", "timestamp": "2026-06-09T15:23:56Z", "summary": "Audit log retention policy in AGENT_REPORTING"}
+{"round_id": "AL-015", "timestamp": "2026-06-09T15:23:56Z", "summary": "user_view_test --spawn-dev-server"}
+{"round_id": "AL-016", "timestamp": "2026-06-09T15:23:56Z", "summary": "run_browser_inspection merges user_view report"}
+{"round_id": "AL-017", "timestamp": "2026-06-09T15:23:56Z", "summary": "issues.spec.ts Playwright smoke"}
+{"round_id": "AL-018", "timestamp": "2026-06-09T15:23:56Z", "summary": "gate_triage.py P0-P3 mapping"}
+{"round_id": "AL-019", "timestamp": "2026-06-09T15:23:56Z", "summary": "test_al_tooling_helpers.py pytest coverage"}
+{"round_id": "AL-020", "timestamp": "2026-06-09T15:23:56Z", "summary": "agent_gate --enqueue-failures bugfix queue"}
+{"round_id": "AL-021", "timestamp": "2026-06-09T15:23:56Z", "summary": "suggest_next_al_round + write_agent_report --suggest-next"}
+{"round_id": "AL-022", "timestamp": "2026-06-09T15:23:56Z", "summary": "USER_VIEW_TESTING review.html checklist"}
+{"round_id": "AL-023", "timestamp": "2026-06-09T15:23:56Z", "summary": "BROWSER_TESTING issues.spec.ts regression doc"}
+{"round_id": "AL-024", "timestamp": "2026-06-09T15:23:56Z", "summary": "ENV_FLAGS_AUDIT.md"}
+{"round_id": "AL-025", "timestamp": "2026-06-09T15:23:56Z", "summary": "agent_gate REAL_API env guard"}
+{"round_id": "AL-026", "timestamp": "2026-06-09T15:23:56Z", "summary": "inspect_cost_ledger.py dry-run"}
+{"round_id": "AL-027", "timestamp": "2026-06-09T15:23:56Z", "summary": "CODEX_HANDOFF.example.md"}
+{"round_id": "AL-029", "timestamp": "2026-06-09T15:23:56Z", "summary": "check_prompts_refs.py in check:tooling"}
+{"round_id": "AL-030", "timestamp": "2026-06-09T15:23:56Z", "summary": "CI upload gate_result.json artifact"}
+{"round_id": "AL-T01", "timestamp": "2026-06-09T15:23:56Z", "summary": "check_chapter_integrity.py"}
+{"round_id": "AL-T02", "timestamp": "2026-06-09T15:23:56Z", "summary": "terminology_consistency_report.py"}
+{"round_id": "AL-T03", "timestamp": "2026-06-09T15:23:56Z", "summary": "validate_micro_round_progress.py"}
+{"round_id": "AL-T04", "timestamp": "2026-06-09T15:23:56Z", "summary": "review_operator_sampling.md"}

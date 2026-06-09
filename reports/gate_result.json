@@ -1,6 +1,6 @@
 {
   "status": "warning",
-  "timestamp": "2026-06-09T14:56:13Z",
+  "timestamp": "2026-06-09T15:23:44Z",
   "passed": [
     "docs_exist_readme",
     "docs_exist_agents",
@@ -65,6 +65,7 @@
     "agent_layer_latest_agent_report",
     "agent_layer_round_report_schema",
     "agent_layer_tool_probe_script",
+    "real_api_env_guard",
     "env_not_tracked",
     "input_sources_ignored",
     "input_sources_ignored",
@@ -74,6 +75,363 @@
   "failed": [],
   "skipped": [],
   "blocked": [],
+  "checks": [
+    {
+      "id": "docs_exist_readme",
+      "severity": "pass",
+      "message": "found: README.md"
+    },
+    {
+      "id": "docs_exist_agents",
+      "severity": "pass",
+      "message": "found: AGENTS.md"
+    },
+    {
+      "id": "docs_exist_project_yaml",
+      "severity": "pass",
+      "message": "found: project.yaml"
+    },
+    {
+      "id": "docs_exist_vision",
+      "severity": "pass",
+      "message": "found: docs/project_vision.md"
+    },
+    {
+      "id": "docs_exist_architecture",
+      "severity": "pass",
+      "message": "found: docs/architecture_overview.md"
+    },
+    {
+      "id": "docs_exist_governance_rules",
+      "severity": "pass",
+      "message": "found: docs/governance_rules.md"
+    },
+    {
+      "id": "docs_exist_index",
+      "severity": "pass",
+      "message": "found: docs/index.md"
+    },
+    {
+      "id": "roadmap_exists_00_40",
+      "severity": "pass",
+      "message": "found: roadmap_rounds_00_40.md"
+    },
+    {
+      "id": "roadmap_exists_41_50",
+      "severity": "pass",
+      "message": "found: roadmap_rounds_41_50_tooling_and_workbench.md"
+    },
+    {
+      "id": "protocol_exists",
+      "severity": "pass",
+      "message": "found: governance/repo_protocol_standard.yaml"
+    },
+    {
+      "id": "protocol_alignment_exists",
+      "severity": "pass",
+      "message": "found: docs/repo_protocol_alignment.md"
+    },
+    {
+      "id": "tooling_strategy_exists",
+      "severity": "pass",
+      "message": "found: docs/agent_tooling_strategy.md"
+    },
+    {
+      "id": "mcp_plan_exists",
+      "severity": "pass",
+      "message": "found: docs/mcp_playwright_setup_plan.md"
+    },
+    {
+      "id": "frontend_plan_exists",
+      "severity": "pass",
+      "message": "found: docs/frontend_workbench_plan.md"
+    },
+    {
+      "id": "api_provider_strategy_exists",
+      "severity": "pass",
+      "message": "found: docs/api_provider_strategy.md"
+    },
+    {
+      "id": "reference_method_docs_exist",
+      "severity": "pass",
+      "message": "found: docs/reference_repo_methodology_integration.md"
+    },
+    {
+      "id": "stable_id_jsonl_doc_exists",
+      "severity": "pass",
+      "message": "found: docs/stable_id_and_jsonl_design.md"
+    },
+    {
+      "id": "extractor_validator_doc_exists",
+      "severity": "pass",
+      "message": "found: docs/extractor_validator_reference_inspired.md"
+    },
+    {
+      "id": "provider_adapter_doc_exists",
+      "severity": "pass",
+      "message": "found: docs/provider_adapter_reference_inspired.md"
+    },
+    {
+      "id": "exporter_principle_doc_exists",
+      "severity": "pass",
+      "message": "found: docs/exporter_reference_inspired_design.md"
+    },
+    {
+      "id": "prompt_templates_exist",
+      "severity": "pass",
+      "message": "found 11 prompt templates under prompts/"
+    },
+    {
+      "id": "direction_dirs_exist",
+      "severity": "pass",
+      "message": "found directions/jp_to_cn/"
+    },
+    {
+      "id": "direction_dirs_exist",
+      "severity": "pass",
+      "message": "found directions/cn_to_jp/"
+    },
+    {
+      "id": "gitignore_safe",
+      "severity": "pass",
+      "message": "required ignore rules present"
+    },
+    {
+      "id": "frontend_mvp_exists",
+      "severity": "pass",
+      "message": "frontend index/review pages and config present"
+    },
+    {
+      "id": "vector_inspect_script_exists",
+      "severity": "pass",
+      "message": "found scripts/vector_db_inspect.py"
+    },
+    {
+      "id": "vector_metadata_schema_exists",
+      "severity": "pass",
+      "message": "found data/schemas/vector_index_metadata.schema.json"
+    },
+    {
+      "id": "vector_index_health",
+      "severity": "warn",
+      "message": "index present with 3 vector(s); inspect warnings: manifest_empty_segments, orphan_vectors"
+    },
+    {
+      "id": "quality_review_script_exists",
+      "severity": "pass",
+      "message": "found: scripts/run_quality_review.py"
+    },
+    {
+      "id": "review_issue_schema_exists",
+      "severity": "pass",
+      "message": "found: data/schemas/review_issue.schema.json"
+    },
+    {
+      "id": "review_issue_example_exists",
+      "severity": "pass",
+      "message": "found: data/examples/review_issue_report.example.json"
+    },
+    {
+      "id": "frontend_issues_page_exists",
+      "severity": "pass",
+      "message": "found: frontend/issues.html"
+    },
+    {
+      "id": "quality_review_runner",
+      "severity": "pass",
+      "message": "deterministic review runner OK on synthetic fixture"
+    },
+    {
+      "id": "e2e_trial_script_exists",
+      "severity": "pass",
+      "message": "found: scripts/run_round_50_e2e_trial.py"
+    },
+    {
+      "id": "e2e_synthetic_source_exists",
+      "severity": "pass",
+      "message": "found: data/examples/e2e_trial_chapter.md"
+    },
+    {
+      "id": "round_50_e2e_trial",
+      "severity": "pass",
+      "message": "controlled E2E trial script OK on synthetic sample"
+    },
+    {
+      "id": "round_51_smoke_script_exists",
+      "severity": "pass",
+      "message": "found: scripts/run_openrouter_smoke.py"
+    },
+    {
+      "id": "round_51_openrouter_smoke",
+      "severity": "pass",
+      "message": "dry-run smoke script OK"
+    },
+    {
+      "id": "round_52_refine_script_exists",
+      "severity": "pass",
+      "message": "found: scripts/refine_stage_c.py"
+    },
+    {
+      "id": "round_52_refine_dry_run",
+      "severity": "pass",
+      "message": "Stage C refine dry-run OK"
+    },
+    {
+      "id": "round_53_registry_module_exists",
+      "severity": "pass",
+      "message": "found: src/workbench/project_registry.py"
+    },
+    {
+      "id": "round_53_serve_frontend_exists",
+      "severity": "pass",
+      "message": "found: scripts/serve_frontend.py"
+    },
+    {
+      "id": "round_53_example_manifests_exist",
+      "severity": "pass",
+      "message": "found committed workbench_project.*.example.json fixtures"
+    },
+    {
+      "id": "round_53_manifest_count",
+      "severity": "pass",
+      "message": "394 project manifest(s) under workspace/manifests"
+    },
+    {
+      "id": "round_53_active_project_switch",
+      "severity": "pass",
+      "message": "active project switch persisted in workspace/workbench_state.json"
+    },
+    {
+      "id": "round_54_checkers_module",
+      "severity": "pass",
+      "message": "found: src/quality_review/checkers.py"
+    },
+    {
+      "id": "round_54_workbench_adapter",
+      "severity": "pass",
+      "message": "found: src/quality_review/workbench_adapter.py"
+    },
+    {
+      "id": "round_54_fixture_semantic_cases",
+      "severity": "pass",
+      "message": "fixture emits MISTRANSLATION and PLACEHOLDER_LOST"
+    },
+    {
+      "id": "round_54_quality_review_api_route",
+      "severity": "pass",
+      "message": "workbench server exposes /quality-review"
+    },
+    {
+      "id": "round_54_checker_functions",
+      "severity": "pass",
+      "message": "placeholder=3 mistranslation=1"
+    },
+    {
+      "id": "round_55_package_scripts",
+      "severity": "pass",
+      "message": "package.json defines check:tooling and test:ui"
+    },
+    {
+      "id": "round_55_tooling_script_exists",
+      "severity": "pass",
+      "message": "found: scripts/run_tooling_checks.sh"
+    },
+    {
+      "id": "round_55_ci_workflow_exists",
+      "severity": "pass",
+      "message": "workflow invokes check:tooling (1 file(s))"
+    },
+    {
+      "id": "round_55_ci_ui_optional",
+      "severity": "pass",
+      "message": "workflow references test:ui (optional job)"
+    },
+    {
+      "id": "agent_layer_agent_layer_yaml",
+      "severity": "pass",
+      "message": "found: agent_layer.yaml"
+    },
+    {
+      "id": "agent_layer_agent_tools_yaml",
+      "severity": "pass",
+      "message": "found: agent_tools.yaml"
+    },
+    {
+      "id": "agent_layer_tool_usage_policy",
+      "severity": "pass",
+      "message": "found: docs/TOOL_USAGE_POLICY.md"
+    },
+    {
+      "id": "agent_layer_agent_runbook",
+      "severity": "pass",
+      "message": "found: docs/AGENT_RUNBOOK.md"
+    },
+    {
+      "id": "agent_layer_agent_roadmap",
+      "severity": "pass",
+      "message": "found: docs/AGENT_ROADMAP.md"
+    },
+    {
+      "id": "agent_layer_search_policy",
+      "severity": "pass",
+      "message": "found: docs/SEARCH_POLICY.md"
+    },
+    {
+      "id": "agent_layer_tool_inventory",
+      "severity": "pass",
+      "message": "found: docs/TOOL_INVENTORY.md"
+    },
+    {
+      "id": "agent_layer_latest_agent_report",
+      "severity": "pass",
+      "message": "found: reports/latest-agent-report.json"
+    },
+    {
+      "id": "agent_layer_round_report_schema",
+      "severity": "pass",
+      "message": "found: schemas/agent_round_report.schema.json"
+    },
+    {
+      "id": "agent_layer_tool_probe_script",
+      "severity": "pass",
+      "message": "found scripts/tool_probe.py"
+    },
+    {
+      "id": "real_api_env_guard",
+      "severity": "pass",
+      "message": "REAL_API_TESTS_ENABLED not enabled in environment"
+    },
+    {
+      "id": "env_not_tracked",
+      "severity": "pass",
+      "message": ".env not tracked"
+    },
+    {
+      "id": "input_sources_ignored",
+      "severity": "pass",
+      "message": "git ignores synthetic path input_jp/sample.txt"
+    },
+    {
+      "id": "input_sources_ignored",
+      "severity": "pass",
+      "message": "git ignores synthetic path input_cn/sample.txt"
+    },
+    {
+      "id": "outputs_ignored",
+      "severity": "pass",
+      "message": "git ignores synthetic path output_cn/translated/out.txt"
+    },
+    {
+      "id": "outputs_ignored",
+      "severity": "pass",
+      "message": "git ignores synthetic path output_jp/translated/out.txt"
+    },
+    {
+      "id": "git_status_dirty",
+      "severity": "warn",
+      "message": "working tree has 26 uncommitted change(s) on branch main"
+    }
+  ],
   "commands": [
     {
       "name": "agent_gate",

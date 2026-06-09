@@ -213,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write", action="store_true", help="Write output file (default: stdout only)")
     parser.add_argument("--append-audit", metavar="SUMMARY", help="Append audit log line with summary")
     parser.add_argument("--skip-validate", action="store_true", help="Skip schema validation before write")
+    parser.add_argument("--suggest-next", action="store_true", help="Fill next_recommended_round from roadmap graph")
     parser.add_argument("--json", action="store_true", help="Print report JSON to stdout")
     args = parser.parse_args(argv)
 
@@ -262,6 +263,29 @@ def main(argv: list[str] | None = None) -> int:
         report["next_recommended_round"] = args.next_round
     if merge_path and merge_path.is_file():
         report = merge_report(report, _load_json(merge_path))
+
+    if args.suggest_next and not report.get("next_recommended_round"):
+        scripts_dir = REPO_ROOT / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from suggest_next_al_round import suggest_next
+
+        nxt = suggest_next()
+        if nxt:
+            report["next_recommended_round"] = nxt
+
+    gate_result_path = REPO_ROOT / "reports" / "gate_result.json"
+    if gate_result_path.is_file():
+        if str(REPO_ROOT / "scripts") not in sys.path:
+            sys.path.insert(0, str(REPO_ROOT / "scripts"))
+        try:
+            from gate_triage import load_gate_result, triage_gate_result
+
+            triage = triage_gate_result(load_gate_result())
+            if triage.get("severity_summary"):
+                report = merge_report(report, {"severity_summary": triage["severity_summary"]})
+        except Exception:
+            pass
 
     if not args.skip_validate:
         ok, errors = validate_report_dict(report)

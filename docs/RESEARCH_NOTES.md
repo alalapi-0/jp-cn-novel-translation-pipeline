@@ -67,3 +67,11 @@ Search capability: available (WebSearch + Context7 configured)
 - Relevance: `npm run check:cursor-mcp` and `tool_probe.py` → `cursor_cli` for machine-readable availability; PATH `agent` may alias non-Cursor products — prefer `cursor-agent` in scripts.
 - Risk / uncertainty: Account/plan features (Cloud Agent, sandbox) vary; CLI `mcp list` may show needs approval even when IDE thread has tools loaded.
 - Action to encode into repo: `docs/TOOL_INVENTORY.md` § I, `scripts/tool_probe.py` probe_cursor_cli(), `reports/tool_probe_report.json`
+
+## Query 8 — Model provider fallback matrix (AL-T05)
+
+- Query: OpenRouter model fallback routing official 2026
+- Source type: official docs (openrouter.ai/docs) + `docs/api_provider_strategy.md`
+- Key finding: Prefer OpenRouter `models` catalog + per-run router in repo; fallback order should be documented not hardcoded prices; on provider error use alternate model ID from same tier in dry-run first.
+- Relevance: Smoke scripts and autopilot should log chosen model + fallback reason without enabling real API in agent rounds.
+- Action: extend `docs/api_provider_strategy.md` fallback section; cost-sensitive runs re-query Models API

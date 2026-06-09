@@ -1115,6 +1115,46 @@ def check_agent_layer_v2(*, strict_layer: bool = False) -> list[CheckResult]:
     return results
 
 
+def check_real_api_env_guard() -> CheckResult:
+    """Agent Layer rounds default dry-run; REAL_API in env is a governance violation."""
+    raw = os.environ.get("REAL_API_TESTS_ENABLED", "")
+    enabled = raw.strip().lower() in ("1", "true", "yes", "on")
+    if enabled:
+        return CheckResult(
+            "real_api_env_guard",
+            Severity.FAIL,
+            "REAL_API_TESTS_ENABLED is set; agent rounds must stay dry-run (unset or use explicit human-approved real API script)",
+        )
+    return CheckResult(
+        "real_api_env_guard",
+        Severity.PASS,
+        "REAL_API_TESTS_ENABLED not enabled in environment",
+    )
+
+
+def enqueue_gate_failures(results: Sequence[CheckResult]) -> None:
+    """Append bugfix tasks for FAIL checks (AL-020). Best-effort; never raises."""
+    failed = [r for r in results if r.severity == Severity.FAIL]
+    if not failed:
+        return
+    agent_script = REPO_ROOT / "scripts" / "agent.py"
+    if not agent_script.is_file():
+        return
+    for item in failed[:5]:
+        reason = f"agent_gate FAIL: {item.check_id} — {item.message[:120]}"
+        try:
+            subprocess.run(
+                [sys.executable, str(agent_script), "enqueue", "--type", "bugfix", "--reason", reason],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=15,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            break
+
+
 def check_git_status_summary() -> list[CheckResult]:
     results: list[CheckResult] = []
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], REPO_ROOT).stdout.strip() or "unknown"
@@ -1167,6 +1207,7 @@ def run_all_checks(*, strict: bool = False, strict_layer: bool = False) -> list[
     results.extend(check_round_54_semantic_checker_mvp())
     results.extend(check_round_55_ci_tooling_integration())
     results.extend(check_agent_layer_v2(strict_layer=strict_layer))
+    results.append(check_real_api_env_guard())
     results.append(check_env_not_tracked())
     results.extend(check_input_sources_ignored())
     results.extend(check_outputs_ignored())
@@ -1204,6 +1245,7 @@ def write_gate_result_json(
         "failed": failed,
         "skipped": skipped,
         "blocked": blocked,
+        "checks": [r.to_dict() for r in results],
         "commands": [
             {
                 "name": "agent_gate",
@@ -1266,10 +1308,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="FAIL (exit 2) if Agent Layer 2.0 files in AGENT_LAYER_FILES are missing",
     )
+    parser.add_argument(
+        "--enqueue-failures",
+        action="store_true",
+        help="On BLOCKED (exit 2), enqueue bugfix tasks via scripts/agent.py (AL-020)",
+    )
     args = parser.parse_args(argv)
 
     results = run_all_checks(strict=args.strict, strict_layer=args.strict_layer)
     exit_code = aggregate_exit_code(results)
+    if args.enqueue_failures and exit_code == 2:
+        enqueue_gate_failures(results)
     write_report(results, exit_code, strict=args.strict, strict_layer=args.strict_layer)
     write_gate_result_json(
         results,

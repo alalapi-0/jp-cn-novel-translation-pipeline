@@ -244,4 +244,4 @@ Incremental Tool-aware rounds (AL-xxx). Complements `docs/roadmap_rounds_41_50_t
 
 ## Recommended next round
 
-**AL-002** (index navigation) or **AL-003** (live MCP probes) after AL-001 acceptance.
+All AL-001–AL-030 and AL-T01–T05 items addressed as of 2026-06-09 autonomous push. Re-run `python3 scripts/suggest_next_al_round.py` after roadmap updates.

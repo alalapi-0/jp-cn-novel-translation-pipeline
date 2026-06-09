@@ -16,6 +16,16 @@ Verifies frontend files exist, playwright config, optional HTTP if port 5174 ope
 
 ## Full UI flow
 
+### Review workbench checklist (AL-022)
+
+1. `npm run dev:frontend` → `http://127.0.0.1:5174/review.html`
+2. Confirm project selector / chapter context visible
+3. Side-by-side source/target columns render
+4. Issue badges or review status indicators present
+5. REAL_API / MOCK / DRY_RUN badge visible when API strip loaded
+6. Console: no uncaught errors on load
+7. Optional: `npm run test:ui` → `workbench.spec.ts` review flows
+
 ### 1. Start server
 
 ```bash

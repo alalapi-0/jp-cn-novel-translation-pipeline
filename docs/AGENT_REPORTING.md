@@ -58,6 +58,19 @@ python3 scripts/validate_agent_report.py --json
 
 Also runs in `npm run check:tooling` after `agent_gate.py`. Exit 0 = valid; 1 = schema errors; 2 = missing file or parse error.
 
+## Audit log retention (AL-014)
+
+| Artifact | Retention | Rotation |
+|----------|-----------|----------|
+| `reports/agent_audit_log.jsonl` | Keep in repo; append-only | No auto-truncate; archive to `reports/archives/agent_audit_YYYY.jsonl` when >500 lines or quarterly |
+| `reports/latest-agent-report.json` | Single file; overwritten each round | Previous content recoverable from git history |
+| `reports/gate_result.json` | Overwritten each gate run | CI may upload artifact (AL-030) |
+| `reports/tool_probe_report.json` | Overwritten on probe | — |
+| `reports/user_view_test.json` | Overwritten on user_view_test | — |
+| `.agent_runtime/inspection_reports/` | Local only; gitignored | Manual cleanup after 30 days |
+
+Agents must not commit secrets, raw novel text, or `.env` in any report path. Large audit archives stay local unless user opts in.
+
 ## Write / update report
 
 ```bash

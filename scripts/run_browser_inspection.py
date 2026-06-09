@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_DIR = REPO_ROOT / ".agent_runtime"
 REPORT_DIR = RUNTIME_DIR / "inspection_reports"
 STATUS_PATH = RUNTIME_DIR / "status.json"
+USER_VIEW_REPORT = REPO_ROOT / "reports" / "user_view_test.json"
 
 
 def iso_now() -> str:
@@ -126,6 +127,26 @@ def detect_dev_server_command(package: dict[str, Any]) -> str | None:
     return None
 
 
+def merge_user_view_report(report: dict) -> dict:
+    if not USER_VIEW_REPORT.is_file():
+        report["user_view_test"] = {"merged": False, "reason": "reports/user_view_test.json missing"}
+        return report
+    try:
+        uv = json.loads(USER_VIEW_REPORT.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        report["user_view_test"] = {"merged": False, "reason": "invalid user_view_test.json"}
+        return report
+    report["user_view_test"] = {
+        "merged": True,
+        "path": str(USER_VIEW_REPORT.relative_to(REPO_ROOT)),
+        "status": uv.get("status"),
+        "passed_count": uv.get("passed_count"),
+        "failed": uv.get("failed", []),
+        "timestamp": uv.get("timestamp"),
+    }
+    return report
+
+
 def write_report(report: dict) -> Path:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -146,6 +167,13 @@ def update_status(*, checked_at: str) -> None:
     status["last_browser_check_at"] = checked_at
     status["updated_at"] = checked_at
     STATUS_PATH.write_text(json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _finish_inspection(report: dict, created_at: str) -> tuple[dict, Path]:
+    report = merge_user_view_report(report)
+    path = write_report(report)
+    update_status(checked_at=created_at)
+    return report, path
 
 
 def run_inspection(args: argparse.Namespace) -> tuple[dict, Path]:
@@ -181,17 +209,13 @@ def run_inspection(args: argparse.Namespace) -> tuple[dict, Path]:
     if not playwright_available:
         report["error_summary"] = "browser_inspection_unavailable"
         report["suggested_next_action"] = "Add Playwright or a browser inspection script in a later frontend/tooling round."
-        path = write_report(report)
-        update_status(checked_at=created_at)
-        return report, path
+        return _finish_inspection(report, created_at)
 
     if not has_existing_script:
         report["mode"] = "playwright_detected_no_command"
         report["error_summary"] = "No npm run test:e2e or npm run test:ui command was found."
         report["suggested_next_action"] = "Add package.json script test:e2e or test:ui that runs Playwright."
-        path = write_report(report)
-        update_status(checked_at=created_at)
-        return report, path
+        return _finish_inspection(report, created_at)
 
     report["mode"] = "playwright_command"
     env = dict(os.environ)
@@ -220,9 +244,7 @@ def run_inspection(args: argparse.Namespace) -> tuple[dict, Path]:
         report["error_summary"] = redact_text(f"browser inspection timed out after {args.timeout_sec}s: {exc}")
         report["suggested_next_action"] = "Reduce browser smoke scope or check whether the dev server can start cleanly."
 
-    path = write_report(report)
-    update_status(checked_at=created_at)
-    return report, path
+    return _finish_inspection(report, created_at)
 
 
 def build_parser() -> argparse.ArgumentParser:

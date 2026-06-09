@@ -7,6 +7,7 @@ import json
 import socket
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -41,7 +42,31 @@ def _http_get(url: str) -> tuple[int, str]:
         return 0, str(exc)
 
 
-def run_checks(base_url: str = DEFAULT_URL) -> dict:
+def _spawn_dev_server(timeout_sec: int = 45) -> subprocess.Popen[str] | None:
+    """Start serve_frontend.py in background; caller must terminate."""
+    cmd = [sys.executable, str(REPO_ROOT / "scripts" / "serve_frontend.py"), "--port", "5174"]
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=REPO_ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except OSError:
+        return None
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            return None
+        if _port_open("127.0.0.1", 5174):
+            return proc
+        time.sleep(0.3)
+    proc.terminate()
+    return None
+
+
+def run_checks(base_url: str = DEFAULT_URL, *, spawned_server: bool = False) -> dict:
     checks: list[dict] = []
     for path in FRONTEND_FILES:
         ok = path.is_file()
@@ -104,6 +129,7 @@ def run_checks(base_url: str = DEFAULT_URL) -> dict:
     return {
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "base_url": base_url,
+        "spawned_dev_server": spawned_server,
         "status": "passed" if not failed else "partial",
         "passed_count": passed,
         "failed": failed,
@@ -123,7 +149,28 @@ def _rel(p: Path) -> str:
 
 
 def main() -> int:
-    report = run_checks()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="User-view smoke checks")
+    parser.add_argument("--spawn-dev-server", action="store_true", help="Start dev server (bounded wait)")
+    parser.add_argument("--spawn-timeout", type=int, default=45)
+    args = parser.parse_args()
+
+    proc: subprocess.Popen[str] | None = None
+    spawned = False
+    try:
+        if args.spawn_dev_server and not _port_open("127.0.0.1", 5174):
+            proc = _spawn_dev_server(timeout_sec=args.spawn_timeout)
+            spawned = proc is not None
+        report = run_checks(spawned_server=spawned)
+    finally:
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"user_view_test: {report['status']} ({report['passed_count']} checks OK)")

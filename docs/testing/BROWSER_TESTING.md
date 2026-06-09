@@ -48,9 +48,16 @@ npm run dev:frontend
 
 `@playwright/test`（CLI E2E）与 `@playwright/mcp`（Agent MCP）**独立版本** — 详见 [`PLAYWRIGHT_VERSION_ALIGNMENT.md`](PLAYWRIGHT_VERSION_ALIGNMENT.md)。
 
+## Issues 页回归 (AL-017 / AL-023)
+
+- Spec: `tests/ui/issues.spec.ts`（fixture 报告、console 无错误）
+- 一并覆盖：`workbench.spec.ts` 中 issues 相关用例
+- 运行：`npm run test:ui -- tests/ui/issues.spec.ts`
+
 ## 参考
 
 - `tests/ui/workbench.spec.ts`
+- `tests/ui/issues.spec.ts`
 - `docs/mcp_playwright_setup_plan.md`
 - `docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md`
 - `.cursor/rules/mcp-agent-tools.mdc`
