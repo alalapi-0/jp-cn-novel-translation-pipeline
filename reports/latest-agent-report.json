@@ -1,66 +1,77 @@
 {
-  "round_id": "FS-002",
-  "timestamp": "2026-06-10T20:25:00Z",
+  "round_id": "FS-003",
+  "timestamp": "2026-06-10T20:52:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "FS-002: local_scheduler_status.py aggregating all 13 spec §9.2 fields from metadata/progress files only",
+  "goal": "FS-003: local_scheduler_tick.py dry-run skeleton (pause gate -> lock -> next-task decision -> placeholder execution -> tick state/report -> lock release -> clean exit)",
   "scope": [
-    "src/scheduler/status.py",
-    "scripts/local_scheduler_status.py",
-    "tests/test_local_scheduler_status.py",
+    "src/scheduler/tick.py",
+    "scripts/local_scheduler_tick.py",
+    "tests/test_local_scheduler_tick.py",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at d178865 feat(scheduler): FS-001 pause/lock 控制协议内核",
+  "repo_status_before": "main at fb4932a docs(prompts): continuous FS advance prompt",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "read/grep", "purpose": "study throughput_gate, worker registry, run_progress/run_metadata structures", "result": "identified metadata-only progress sources incl. legacy summary fallback"},
-    {"tool": "write", "purpose": "implement status module + CLI + tests", "result": "created"},
-    {"tool": "shell:pytest", "purpose": "fixture tests and full suite", "result": "19 passed / 239 passed"},
-    {"tool": "shell:python", "purpose": "real-repo cross-validation of chapter counting vs content-level throughput_gate", "result": "both 223 chapters — consistent"}
+    {"tool": "read/grep", "purpose": "study FS-001 control + FS-002 status contracts and test conventions", "result": "reused is_paused/acquire_lock/collect_status; kept tick_state field names FS-002 already consumes"},
+    {"tool": "write", "purpose": "implement tick module + CLI + tests", "result": "created"},
+    {"tool": "shell:pytest", "purpose": "tick tests and full suite", "result": "18 passed / full 257 passed"},
+    {"tool": "shell:python", "purpose": "real-repo acceptance: dry-run tick, paused tick, 3x concurrent mutual exclusion, orphan check", "result": "all pass; race false-stale fixed via re-probe"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "FS-002 has no UI per task list"},
-    {"tool": "real API", "reason": "not allowed in FS-002"},
-    {"tool": "context7", "reason": "no third-party library uncertainty"}
+    {"tool": "playwright/browser MCP", "reason": "FS-003 has no UI per task list"},
+    {"tool": "real API", "reason": "forbidden in FS-003 (dry-run only; module rejects dry_run=False)"},
+    {"tool": "context7", "reason": "stdlib only, no third-party uncertainty"}
   ],
   "web_research": [],
+  "real_api_used": {"used": false, "api_calls": 0, "cost_usd": 0.0},
+  "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
-    "src/scheduler/status.py",
-    "scripts/local_scheduler_status.py",
-    "tests/test_local_scheduler_status.py",
+    "src/scheduler/tick.py",
+    "scripts/local_scheduler_tick.py",
+    "tests/test_local_scheduler_tick.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "python3 scripts/local_scheduler_status.py --json (13 fields, safe_to_run=true)",
-    ".venv/bin/python -m pytest tests/test_local_scheduler_status.py (19 passed)",
-    "npm run test:py (239 passed)",
-    "cross-check: metadata count == throughput_gate content count == 223 chapters"
+    "python3 scripts/local_scheduler_tick.py --dry-run (exit 0, status=completed, next=draft_gap_backfill 191-202)",
+    "paused tick: exit 0, status=skipped_paused, executor not invoked",
+    "3x concurrent double-invocation: always ['completed','skipped_lock_held'], lock released",
+    "python3 scripts/check_orphan_workers.py --json (CLEAN after ticks)",
+    ".venv/bin/python -m pytest tests/test_local_scheduler_tick.py (18 passed)",
+    "npm run test:py (257 passed)",
+    "python3 scripts/agent_gate.py --json (warn-only: vector_index_health pre-existing, git_status_dirty pre-commit)"
   ],
   "test_results": [
-    {"suite": "tests/test_local_scheduler_status.py", "result": "19 passed"},
-    {"suite": "full python suite (npm run test:py)", "result": "239 passed"}
+    {"suite": "tests/test_local_scheduler_tick.py", "result": "18 passed"},
+    {"suite": "full python suite (npm run test:py)", "result": "257 passed"}
+  ],
+  "acceptance_result": [
+    {"criterion": "dry-run exit code 0", "pass": true, "evidence": "real-repo run exit 0, status=completed"},
+    {"criterion": "paused: exits without executing task", "pass": true, "evidence": "skipped_paused, execution=null, executor-not-called test + real-repo check"},
+    {"criterion": "lock held: immediate exit", "pass": true, "evidence": "skipped_lock_held exit 0; foreign lock payload untouched (test)"},
+    {"criterion": "orphan check CLEAN after tick", "pass": true, "evidence": "check_orphan_workers.py decision=CLEAN; placeholder executor spawns nothing"},
+    {"criterion": "tick report written to workspace/control/tick_reports/ (gitignored)", "pass": true, "evidence": "reports written; workspace/control/ in .gitignore line 88"}
   ],
   "issues_found": [
-    "P1 data finding: chapters 191-208 have no completed run records in workspace/runs or archived_runs; run_20260607_095821 (legacy T-002, originally ch191-210) was reused by D-MR-003 and now only holds ch209-211. Both metadata-level and content-level counts agree on 223 completed chapters (1-190 + 209-241). Roadmap snapshot claim of 202-through-ch202 is stale; ch191-208 must be backfilled before/at FS-008 batch resume. Status correctly reports next_task=draft_gap_backfill range=191-202."
+    "race: acquire-time FileExistsError against a mid-write/mid-release tick produced false blocked_stale_lock (exit 2) in concurrent smoke"
   ],
-  "issues_fixed": [],
+  "issues_fixed": [
+    "tick re-probes lock once after 100ms before declaring stale: vanished/alive lock -> skipped_lock_held(lock_race) exit 0; genuinely dead pid still blocked_stale_lock exit 2 (FS-006 owns cleanup)"
+  ],
   "remaining_issues": [
-    "ch191-208 draft backfill required (tracked for FS-008 batch start; scheduler task planner FS-004 must handle gap_below_anchor branch)"
+    "ch191-208 draft backfill required before FS-008 batch resume (tracked since FS-002)",
+    "stale lock refine_stage_c_run_20260602_203645.lock + stage_state_stale warns -> FS-006",
+    "pre-existing gate warn vector_index_health (manifest_empty_segments, orphan_vectors) - not scheduler related"
   ],
-  "severity_summary": {
-    "p0": 0,
-    "p1": 1,
-    "p2": 0,
-    "p3": 0
-  },
+  "severity_summary": {"p0": 0, "p1": 1, "p2": 0, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "run-directory reuse can silently drop historical coverage; FS-003 tick should never reuse an existing run dir (note for implementation)"
+    "tick never reclaims stale locks by design; FS-006 must ship heal path before unattended launchd operation"
   ],
-  "next_recommended_round": "FS-003: local_scheduler_tick.py dry-run skeleton (pause check -> lock -> next task -> placeholder execute -> tick state/report -> clean exit)",
+  "next_recommended_round": "FS-004: task planner decision table (5 phases) + D-MR branch wiring run_micro_round.py command line in dry-run",
   "human_decisions_required": []
 }

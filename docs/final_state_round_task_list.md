@@ -109,6 +109,8 @@ tick 骨架 + 测试。
 ### 下一轮衔接
 FS-004 接入真实任务决策表。
 
+> ✅ 完成于 2026-06-11（`src/scheduler/tick.py` + CLI + 18 用例；真实仓库 dry-run exit 0 / paused skip / 3 次并发互斥 `['completed','skipped_lock_held']` / orphan CLEAN / report 落 `workspace/control/tick_reports/`；修复 acquire 竞态误报 stale；全套 257 passed）
+
 ## Round FS-004：tick 任务决策表与 run_micro_round 集成
 
 ### 目标
@@ -1419,7 +1421,8 @@ FS-070。
 | FS-000 | S0 治理 | completed（2026-06-10） |
 | FS-001 | S1 调度器 | completed（2026-06-11） |
 | FS-002 | S1 调度器 | completed（2026-06-11） |
-| FS-003…FS-007 | S1 调度器 | not_started |
+| FS-003 | S1 调度器 | completed（2026-06-11） |
+| FS-004…FS-007 | S1 调度器 | not_started |
 | FS-008…FS-010 | S2 Phase A | not_started（D-MR-008 进行中） |
 | FS-011…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
