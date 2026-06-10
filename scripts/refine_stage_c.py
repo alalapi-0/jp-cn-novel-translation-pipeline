@@ -35,10 +35,13 @@ _registry = importlib.util.module_from_spec(_registry_spec)
 _registry_spec.loader.exec_module(_registry)
 
 
+def _refine_lock_path(run_id: str) -> Path:
+    return REPO_ROOT / "workspace" / ".locks" / f"refine_stage_c_{run_id}.lock"
+
+
 def _acquire_refine_lock(run_id: str) -> int:
-    lock_dir = REPO_ROOT / "workspace" / ".locks"
-    lock_dir.mkdir(parents=True, exist_ok=True)
-    lock_path = lock_dir / f"refine_stage_c_{run_id}.lock"
+    lock_path = _refine_lock_path(run_id)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -51,13 +54,19 @@ def _acquire_refine_lock(run_id: str) -> int:
     return fd
 
 
-def _release_lock(fd: int) -> None:
+def _release_lock(fd: int, run_id: str = "") -> None:
     if fd < 0:
         return
     try:
         fcntl.flock(fd, fcntl.LOCK_UN)
     finally:
         os.close(fd)
+        # Remove the residue file so monitoring never sees a dead-pid lock
+        # (FS-006). flock dies with the process, so the file is only
+        # informational; refine runs are single-operator so the classic
+        # flock/unlink race is acceptable here.
+        if run_id:
+            _refine_lock_path(run_id).unlink(missing_ok=True)
 
 
 def _default_run_id() -> str:
@@ -162,7 +171,7 @@ def main() -> int:
     )
     if worker is None:
         print(reason, file=sys.stderr)
-        _release_lock(lock_fd)
+        _release_lock(lock_fd, run_id)
         return 2
 
     worker_id = worker["worker_id"]
@@ -230,7 +239,7 @@ def main() -> int:
             )
         return 0 if ok else 1
     finally:
-        _release_lock(lock_fd)
+        _release_lock(lock_fd, run_id)
 
 
 if __name__ == "__main__":

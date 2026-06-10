@@ -190,6 +190,8 @@ runbook + 干净的 gate 状态。
 ### 下一轮衔接
 FS-007 真实 smoke。
 
+> ✅ 完成于 2026-06-11（`docs/local_scheduler_runbook.md` 9 节全覆盖验收清单；`scripts/heal_stale_locks.py`（dry-run 默认、活 pid 拒删、unknown_pid 仅报告）+ 7 用例；**根因修复**：stale lock 由 `tests/test_refine_stage_c.py` 子进程残留所致 → `refine_stage_c.py` 释放锁时 unlink；stage_state_production 对齐 run 真值（run_20260608_013940 实为 487/487 completed）；gate 不再报 stale_lock / stage_state_stale，仅剩 refine_pending + diagnostic checkpoint 等预期诊断；全套 284 passed）
+
 ## Round FS-007：调度器真实 API smoke tick
 
 ### 目标
@@ -1428,7 +1430,8 @@ FS-070。
 | FS-003 | S1 调度器 | completed（2026-06-11） |
 | FS-004 | S1 调度器 | completed（2026-06-11） |
 | FS-005 | S1 调度器 | completed（2026-06-11） |
-| FS-006…FS-007 | S1 调度器 | not_started |
+| FS-006 | S1 调度器 | completed（2026-06-11） |
+| FS-007 | S1 调度器 | not_started |
 | FS-008…FS-010 | S2 Phase A | not_started（D-MR-008 进行中） |
 | FS-011…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |

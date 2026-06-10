@@ -1,69 +1,80 @@
 {
-  "round_id": "FS-005",
-  "timestamp": "2026-06-10T21:08:00Z",
+  "round_id": "FS-006",
+  "timestamp": "2026-06-10T21:25:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "FS-005: launchd integration for periodic dry-run scheduler ticks (install/uninstall/status + plist template + readable logs)",
+  "goal": "FS-006: local_scheduler_runbook.md + stale lock healing (root cause fixed) + stage_state reconciliation",
   "scope": [
-    "scripts/local_scheduler_launchd.sh",
-    "scripts/launchd/com.lightnovel.translation.scheduler.plist.template",
+    "docs/local_scheduler_runbook.md",
+    "scripts/heal_stale_locks.py",
+    "scripts/refine_stage_c.py",
+    "tests/test_heal_stale_locks.py",
+    "workspace/stage_state_production.json (untracked state, reconciled)",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at df32eef feat(scheduler): FS-004 task planner + run_micro_round integration",
+  "repo_status_before": "main at 00fd16a feat(scheduler): FS-005 launchd integration",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "write", "purpose": "launchd management script + plist template", "result": "created"},
-    {"tool": "shell:launchctl", "purpose": "real install -> status -> kickstart -> idempotency -> uninstall acceptance", "result": "all pass; agent left uninstalled by design"},
-    {"tool": "read/grep", "purpose": "confirm workspace/logs/ gitignored", "result": ".gitignore line 92"}
+    {"tool": "shell:throughput_gate/ps/cat", "purpose": "evidence: stale lock pid 46623 dead; lock mtime fresh -> traced to tests/test_refine_stage_c.py subprocess writing real workspace/.locks", "result": "root cause identified"},
+    {"tool": "read/grep", "purpose": "verify run_20260608_013940 truth: run_progress 487/487 completed, metadata not aborted", "result": "stage_state_production in_progress was stale startup state"},
+    {"tool": "write", "purpose": "heal script + runbook + refine lock unlink fix + tests", "result": "created/updated"},
+    {"tool": "shell:pytest", "purpose": "heal tests + refine tests + full suite", "result": "10 scoped / full 284 passed; no lock residue after suite"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in FS-005"},
-    {"tool": "real API", "reason": "forbidden in FS-005; plist pins --dry-run"},
-    {"tool": "pytest", "reason": "shell+plist only round, no python changes; full suite green at FS-004 (277 passed)"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in FS-006"},
+    {"tool": "real API", "reason": "forbidden in FS-006"},
+    {"tool": "context7", "reason": "stdlib/fcntl semantics only"}
   ],
   "web_research": [],
   "real_api_used": {"used": false, "api_calls": 0, "cost_usd": 0.0},
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
-    "scripts/local_scheduler_launchd.sh",
-    "scripts/launchd/com.lightnovel.translation.scheduler.plist.template",
+    "docs/local_scheduler_runbook.md",
+    "scripts/heal_stale_locks.py",
+    "scripts/refine_stage_c.py",
+    "tests/test_heal_stale_locks.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "bash scripts/local_scheduler_launchd.sh install --dry-run (renders plist, no side effects)",
-    "bash scripts/local_scheduler_launchd.sh install (bootstrap gui/501)",
-    "launchctl kickstart gui/501/com.lightnovel.translation.scheduler (tick log: start ts, full tick output, exit code=0)",
-    "install again / uninstall twice (idempotent)",
-    "bash scripts/local_scheduler_launchd.sh status (loaded and not-loaded paths)",
-    "python3 scripts/check_orphan_workers.py --json (CLEAN)",
-    "python3 scripts/agent_gate.py --json (warn-only, pre-existing)"
+    "ps -p 46623 (dead) -> stale confirmed before any cleanup",
+    "stage_state_production reconciled to completed per run_progress truth (487/487, atomic write, no run data touched)",
+    "python3 scripts/heal_stale_locks.py --json (locks dir empty after root-cause fix)",
+    "npm run test:py (284 passed; workspace/.locks empty after suite)",
+    "python3 scripts/throughput_gate.py --json (no stale_lock, no stage_state_stale; remaining: refine_pending + 3 diagnostic_completed_checkpoint, both expected diagnostics)"
   ],
   "test_results": [
-    {"suite": "manual launchd acceptance (install/kickstart/status/uninstall)", "result": "pass"},
-    {"suite": "full python suite", "result": "277 passed at FS-004; no python changes in FS-005"}
+    {"suite": "tests/test_heal_stale_locks.py", "result": "7 passed"},
+    {"suite": "tests/test_refine_stage_c.py", "result": "3 passed (lock no longer leaks)"},
+    {"suite": "full python suite (npm run test:py)", "result": "284 passed"}
   ],
   "acceptance_result": [
-    {"criterion": "install/uninstall/status idempotent", "pass": true, "evidence": "double install ok (bootout+bootstrap), double uninstall ok, status works loaded and unloaded"},
-    {"criterion": "kickstart writes tick log with timestamp and exit code", "pass": true, "evidence": "workspace/logs/scheduler/scheduler_tick.log: [2026-06-10T21:03:47Z] tick start ... [2026-06-10T21:03:48Z] tick exit code=0"},
-    {"criterion": "plist template carries no user-specific secrets", "pass": true, "evidence": "placeholders only; comment forbids embedding keys; rendered plist lives outside repo"},
-    {"criterion": "not installed in real-API mode by default", "pass": true, "evidence": "run-tick pins --dry-run; real mode requires manual runbook edit (FS-006/FS-007)"}
+    {"criterion": "runbook covers install/pause/resume/single tick/real-mode switch/stale lock/troubleshooting", "pass": true, "evidence": "docs/local_scheduler_runbook.md §2-§8 + safety §9"},
+    {"criterion": "throughput_gate no longer reports stale_lock", "pass": true, "evidence": "gate warnings now only refine_pending + diagnostic_completed_checkpoint (expected diagnostics); verified after full test suite too"},
+    {"criterion": "pid confirmed dead before any lock cleanup", "pass": true, "evidence": "ps -p 46623 dead; heal script refuses live pids by construction (tested)"},
+    {"criterion": "no run data deleted", "pass": true, "evidence": "only lock residue files and stage_state status field touched; run dirs/checkpoints untouched"}
   ],
-  "issues_found": [],
-  "issues_fixed": [],
+  "issues_found": [
+    "root cause of recurring stale lock: tests/test_refine_stage_c.py CLI test runs refine_stage_c.py against real repo, leaving dead-pid lock residue after every test run",
+    "stage_state_production.json frozen at startup state (in_progress) while run_20260608_013940 actually completed 487/487"
+  ],
+  "issues_fixed": [
+    "refine_stage_c.py now unlinks its lock file on release (acceptable flock/unlink race documented for single-operator refine)",
+    "stage_state_production reconciled to completed with reconciliation marker",
+    "heal_stale_locks.py provides ongoing dry-run-first healing for both lock families"
+  ],
   "remaining_issues": [
     "ch191-208 draft backfill before FS-008 batch resume",
-    "stale lock refine_stage_c_run_20260602_203645.lock + stage_state_stale warns -> FS-006 (next round)",
-    "pre-existing gate warn vector_index_health"
+    "pre-existing gate warn vector_index_health (agent_gate, not throughput_gate)"
   ],
   "severity_summary": {"p0": 0, "p1": 1, "p2": 0, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "agent intentionally left uninstalled until FS-007 smoke passes; unattended operation also needs FS-006 stale-lock heal path"
+    "refine_pending warn will persist until Phase D starts - documented as expected in runbook §8"
   ],
-  "next_recommended_round": "FS-006: local_scheduler_runbook.md + stale lock healing (refine_stage_c_run_20260602_203645.lock, stage_state_stale)",
+  "next_recommended_round": "FS-007: real-API smoke tick (enable real mode in tick with --max-api-calls 5, full pre/post orphan+status checks)",
   "human_decisions_required": []
 }
