@@ -8,9 +8,11 @@ One tick is one supervised pass:
 
 Dispatch is synchronous and attached: an implemented plan's command runs as
 a supervised child process and the tick waits for it; nothing is ever
-detached. Until FS-007 the tick only supports dry-run mode, where the draft
-branch invokes ``run_micro_round.py --dry-run --no-real-api`` (batch plan
-only, no worker, no API). Not-implemented branches are reported explicitly
+detached. In dry-run mode the draft branch invokes
+``run_micro_round.py --dry-run --no-real-api`` (batch plan only, no worker,
+no API). Real mode (FS-007) arms ``--real-api`` and demands a positive
+``max_api_calls`` budget; cost guard and throughput gate still apply inside
+``run_micro_round``. Not-implemented branches are reported explicitly
 (``not_implemented``) instead of silently skipping.
 
 Exit codes:
@@ -65,6 +67,9 @@ TaskExecutor = Callable[[dict[str, Any]], dict[str, Any]]
 
 # A dispatched dry-run plan is a local batch computation; it must not hang.
 DISPATCH_TIMEOUT_SECONDS = 900
+# A real micro-round slice is bounded by --max-api-calls / wall-time budgets,
+# but model latency varies; give the supervised child a generous ceiling.
+REAL_DISPATCH_TIMEOUT_SECONDS = 3600
 
 
 def _repo_root() -> Path:
@@ -102,7 +107,7 @@ def _tail(text: str, lines: int) -> str:
     return "\n".join((text or "").strip().splitlines()[-lines:])
 
 
-def make_dispatcher(root: Path) -> TaskExecutor:
+def make_dispatcher(root: Path, *, timeout_seconds: int = DISPATCH_TIMEOUT_SECONDS) -> TaskExecutor:
     """Default executor: run an implemented plan's command synchronously.
 
     The child is supervised (attached, awaited); not-implemented plans are
@@ -122,7 +127,7 @@ def make_dispatcher(root: Path) -> TaskExecutor:
             cwd=root,
             capture_output=True,
             text=True,
-            timeout=DISPATCH_TIMEOUT_SECONDS,
+            timeout=timeout_seconds,
         )
         return {
             "executed": True,
@@ -201,16 +206,21 @@ def run_tick(
     the lock is always released on exit when this tick acquired it.
     ``budgets`` (max_api_calls etc.) are passed through to the planned
     command line.
+
+    Real mode (``dry_run=False``, FS-007) additionally requires a positive
+    ``max_api_calls`` budget — an unbounded real tick is never allowed.
     """
-    if not dry_run:
+    budgets = dict(budgets or {})
+    mode = "dry_run" if dry_run else "real"
+    if not dry_run and int(budgets.get("max_api_calls") or 0) <= 0:
         raise ValueError(
-            "tick only supports dry_run=True until FS-007 enables the "
-            "real-API smoke path"
+            "real-mode tick requires a positive max_api_calls budget "
+            "(unbounded real API ticks are forbidden)"
         )
     root = repo_root or _repo_root()
     result: dict[str, Any] = {
         "tick_id": _new_tick_id(),
-        "mode": "dry_run",
+        "mode": mode,
         "owner": owner,
         "started_at": _utc_now(),
         "status": "error",
@@ -245,7 +255,7 @@ def run_tick(
     }
     plan = plan_next_task(
         status,
-        mode="dry_run",
+        mode=mode,
         budgets=budgets,
         repo_root=root,
         python_executable=_python(root),
@@ -272,7 +282,8 @@ def run_tick(
         if is_paused(root):
             return _finish(root, result, "skipped_paused", reason="paused")
 
-        run_executor = executor or make_dispatcher(root)
+        timeout = DISPATCH_TIMEOUT_SECONDS if dry_run else REAL_DISPATCH_TIMEOUT_SECONDS
+        run_executor = executor or make_dispatcher(root, timeout_seconds=timeout)
         try:
             result["execution"] = run_executor(result["plan"])
         except Exception as exc:  # noqa: BLE001 — tick must still release the lock

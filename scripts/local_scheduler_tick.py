@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Local scheduler single-tick CLI (FS-003, spec §9.1).
+"""Local scheduler single-tick CLI (FS-003/FS-004/FS-007, spec §9.1).
 
 Usage:
-    python3 scripts/local_scheduler_tick.py --dry-run          # human summary
-    python3 scripts/local_scheduler_tick.py --dry-run --json   # full JSON
+    python3 scripts/local_scheduler_tick.py --dry-run            # default mode
+    python3 scripts/local_scheduler_tick.py --dry-run --json     # full JSON
+    python3 scripts/local_scheduler_tick.py --real-api --max-api-calls 5
 
-FS-003 ships the dry-run skeleton only; there is intentionally no real-API
-flag yet (task planner: FS-004, real smoke: FS-007).
+Real mode requires an explicit positive --max-api-calls budget; pause file,
+lock, orphan checks, throughput gate and cost guard all still apply.
 
 Exit codes: 0 completed or politely skipped, 1 error, 2 blocked.
 """
@@ -57,11 +58,17 @@ def _human(result: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run one local scheduler tick")
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--dry-run",
         action="store_true",
         default=True,
-        help="dry-run mode (the only mode until FS-007; always on)",
+        help="dry-run mode (default): plan + run_micro_round --dry-run, no API",
+    )
+    mode_group.add_argument(
+        "--real-api",
+        action="store_true",
+        help="real mode (FS-007): requires --max-api-calls > 0",
     )
     parser.add_argument("--json", action="store_true", help="emit JSON")
     # Budget pass-through to the planned task command line.
@@ -85,7 +92,10 @@ def main() -> int:
         }.items()
         if value is not None
     }
-    result = run_tick(args.repo_root, dry_run=True, budgets=budgets)
+    dry_run = not args.real_api
+    if not dry_run and int(budgets.get("max_api_calls") or 0) <= 0:
+        parser.error("--real-api requires --max-api-calls > 0")
+    result = run_tick(args.repo_root, dry_run=dry_run, budgets=budgets)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:

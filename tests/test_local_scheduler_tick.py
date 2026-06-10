@@ -147,14 +147,34 @@ def test_lock_released_after_tick_and_rerunnable(tmp_path: Path) -> None:
     assert len(tick_reports(repo)) == 2
 
 
-def test_real_mode_refused_before_fs007(tmp_path: Path) -> None:
+def test_real_mode_without_budget_refused(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     try:
         run_tick(repo, dry_run=False)
     except ValueError as exc:
-        assert "dry_run" in str(exc)
+        assert "max_api_calls" in str(exc)
     else:  # pragma: no cover
-        raise AssertionError("dry_run=False must be rejected until FS-007")
+        raise AssertionError("unbounded real tick must be rejected")
+
+
+def test_real_mode_with_budget_arms_real_api(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    calls: list[dict] = []
+    result = run_tick(
+        repo,
+        dry_run=False,
+        budgets={"max_api_calls": 5},
+        executor=fake_executor(calls),
+    )
+    assert result["status"] == "completed"
+    assert result["mode"] == "real"
+    plan = calls[0]
+    assert plan["mode"] == "real"
+    cmd = plan["command"]
+    assert "--real-api" in cmd
+    assert "--dry-run" not in cmd
+    assert "--no-real-api" not in cmd
+    assert cmd[cmd.index("--max-api-calls") + 1] == "5"
 
 
 # ---------------------------------------------------------------------------

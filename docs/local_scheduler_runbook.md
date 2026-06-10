@@ -135,11 +135,13 @@ bash scripts/local_scheduler_launchd.sh status     # launchd 视角
 5. 显式 budget：`--max-api-calls` 或等效限制**必须**给出；
 6. cost guard 生效（`MAX_TEST_COST_USD` / `agent_layer.yaml`）。
 
-手动单次真实 tick（FS-007 验收后可用）：
+手动单次真实 tick（FS-007 已验收：2026-06-11 smoke 5 calls / 81 segs / $0.0079，GAP-191-193 起步）：
 
 ```bash
 python3 scripts/local_scheduler_tick.py --real-api --max-api-calls 5
 ```
+
+真实模式强制约束（代码层）：`--real-api` 不带正数 `--max-api-calls` 会被 CLI 与模块双层拒绝。
 
 launchd 周期真实模式：**不要**直接改已安装的 plist；流程是
 编辑 `scripts/local_scheduler_launchd.sh` 的 `cmd_run_tick`（把 `--dry-run` 换成 `--real-api --max-api-calls N`）→ `install`（重装）→ 严密观察首个周期日志。

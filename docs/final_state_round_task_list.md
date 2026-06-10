@@ -217,6 +217,8 @@ tick 正常完成或安全中断；checkpoint / progress / report 落盘；无 o
 ### 下一轮衔接
 FS-008 启动 Phase A 批量推进。
 
+> ✅ 完成于 2026-06-11（`local_scheduler_tick.py --real-api --max-api-calls 5` 端到端成功：plan GAP-191-193 → run_micro_round 真实执行 → **新 run 目录** run_20260610_212507（不重用）→ 5/5 calls、100/307 segments、$0.0079、checkpoint+progress+log+metrics 落盘；前后 orphan CLEAN、lock 干净释放、status last_tick 更新；real 模式强制正数 max-api-calls（CLI+模块双层）；GAP round 接入 `micro_round_plan.gap_backfill_plan`（resume_run_id 恒空防目录重用）；全套 289 passed。**S1 本地调度器主线完成**）
+
 ---
 
 # Stage S2：Phase A 初翻完成
@@ -1431,7 +1433,7 @@ FS-070。
 | FS-004 | S1 调度器 | completed（2026-06-11） |
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
-| FS-007 | S1 调度器 | not_started |
+| FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
 | FS-008…FS-010 | S2 Phase A | not_started（D-MR-008 进行中） |
 | FS-011…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |

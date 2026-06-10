@@ -79,6 +79,33 @@ def next_draft_mr_id(round_id: str) -> str | None:
     return f"D-MR-{nxt:03d}"
 
 
+def gap_backfill_plan(round_id: str) -> dict[str, Any] | None:
+    """Resolve GAP-<start>-<end> backfill rounds (FS-007).
+
+    Gap rounds cover chapters below the D-MR anchor that lost their run
+    records (e.g. ch191-208, found in FS-002). They never resume a legacy
+    run directory: reusing run dirs is the data-loss root cause documented
+    in the FS-002 report.
+    """
+    m = re.match(r"^GAP-(\d+)-(\d+)$", round_id)
+    if not m:
+        return None
+    start, end = int(m.group(1)), int(m.group(2))
+    if start < 1 or end < start or end > TOTAL_CHAPTERS:
+        return None
+    return {
+        "round_id": round_id,
+        "phase": "draft",
+        "chapter_start": start,
+        "chapter_end": end,
+        "offset": start - 1,
+        "limit": end - start + 1,
+        "round_size": end - start + 1,
+        "resume_run_id": "",
+        "model_profile": "draft_translation_primary",
+    }
+
+
 def resolve_round_plan(
     round_id: str,
     *,
@@ -93,7 +120,7 @@ def resolve_round_plan(
             plan["resume_run_id"] = run_id
         return plan
 
-    plan = draft_mr_plan(round_id, round_size=round_size)
+    plan = gap_backfill_plan(round_id) or draft_mr_plan(round_id, round_size=round_size)
     if plan is None:
         return None
 

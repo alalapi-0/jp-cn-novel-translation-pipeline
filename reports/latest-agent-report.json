@@ -1,80 +1,83 @@
 {
-  "round_id": "FS-006",
-  "timestamp": "2026-06-10T21:25:00Z",
+  "round_id": "FS-007",
+  "timestamp": "2026-06-10T21:35:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "FS-006: local_scheduler_runbook.md + stale lock healing (root cause fixed) + stage_state reconciliation",
+  "goal": "FS-007: real-API smoke tick end-to-end (scheduler S1 final round)",
   "scope": [
+    "src/scheduler/tick.py (real mode)",
+    "scripts/local_scheduler_tick.py (--real-api)",
+    "scripts/micro_round_plan.py (GAP rounds)",
+    "tests/test_micro_round_plan_gap.py",
+    "tests/test_local_scheduler_tick.py",
     "docs/local_scheduler_runbook.md",
-    "scripts/heal_stale_locks.py",
-    "scripts/refine_stage_c.py",
-    "tests/test_heal_stale_locks.py",
-    "workspace/stage_state_production.json (untracked state, reconciled)",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 00fd16a feat(scheduler): FS-005 launchd integration",
+  "repo_status_before": "main at 04727bf feat(scheduler): FS-006 runbook + stale lock healing",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "shell:throughput_gate/ps/cat", "purpose": "evidence: stale lock pid 46623 dead; lock mtime fresh -> traced to tests/test_refine_stage_c.py subprocess writing real workspace/.locks", "result": "root cause identified"},
-    {"tool": "read/grep", "purpose": "verify run_20260608_013940 truth: run_progress 487/487 completed, metadata not aborted", "result": "stage_state_production in_progress was stale startup state"},
-    {"tool": "write", "purpose": "heal script + runbook + refine lock unlink fix + tests", "result": "created/updated"},
-    {"tool": "shell:pytest", "purpose": "heal tests + refine tests + full suite", "result": "10 scoped / full 284 passed; no lock residue after suite"}
+    {"tool": "shell:local_env probe", "purpose": "confirm OPENROUTER_API_KEY present via existing env loader (value never printed)", "result": "key available, cost guard env present"},
+    {"tool": "write", "purpose": "real-mode tick path + GAP round resolver + tests", "result": "created/updated"},
+    {"tool": "shell:real API smoke", "purpose": "the FS-007 acceptance itself", "result": "tick exit 0; 5/5 calls; 100/307 segments; $0.00794684"},
+    {"tool": "shell:pytest", "purpose": "scoped + full suite", "result": "43 scoped / full 289 passed"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in FS-006"},
-    {"tool": "real API", "reason": "forbidden in FS-006"},
-    {"tool": "context7", "reason": "stdlib/fcntl semantics only"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in FS-007"},
+    {"tool": "context7", "reason": "internal contracts only"}
   ],
   "web_research": [],
-  "real_api_used": {"used": false, "api_calls": 0, "cost_usd": 0.0},
+  "real_api_used": {
+    "used": true,
+    "api_calls": 5,
+    "cost_usd": 0.00794684,
+    "model": "deepseek/deepseek-v4-pro",
+    "profile": "draft_translation_primary",
+    "scope": "GAP-191-193 first slice via scheduler tick (run_20260610_212507_draft_stage_b_50ch, fresh run dir)"
+  },
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
+    "src/scheduler/tick.py",
+    "scripts/local_scheduler_tick.py",
+    "scripts/micro_round_plan.py",
+    "tests/test_micro_round_plan_gap.py",
+    "tests/test_local_scheduler_tick.py",
     "docs/local_scheduler_runbook.md",
-    "scripts/heal_stale_locks.py",
-    "scripts/refine_stage_c.py",
-    "tests/test_heal_stale_locks.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "ps -p 46623 (dead) -> stale confirmed before any cleanup",
-    "stage_state_production reconciled to completed per run_progress truth (487/487, atomic write, no run data touched)",
-    "python3 scripts/heal_stale_locks.py --json (locks dir empty after root-cause fix)",
-    "npm run test:py (284 passed; workspace/.locks empty after suite)",
-    "python3 scripts/throughput_gate.py --json (no stale_lock, no stage_state_stale; remaining: refine_pending + 3 diagnostic_completed_checkpoint, both expected diagnostics)"
+    "PRE: check_orphan_workers CLEAN 0/0; status safe_to_run=true; pause absent",
+    "python3 scripts/local_scheduler_tick.py --real-api --max-api-calls 5 --json (exit 0, 213s)",
+    "POST: check_orphan_workers CLEAN 0/0; lock absent; last_tick updated",
+    "artifacts: run_20260610_212507 progress 100/307 in_progress; checkpoint exists (resumable)",
+    "npm run test:py (289 passed)"
   ],
   "test_results": [
-    {"suite": "tests/test_heal_stale_locks.py", "result": "7 passed"},
-    {"suite": "tests/test_refine_stage_c.py", "result": "3 passed (lock no longer leaks)"},
-    {"suite": "full python suite (npm run test:py)", "result": "284 passed"}
+    {"suite": "tests/test_micro_round_plan_gap.py", "result": "4 passed"},
+    {"suite": "tick/planner suites", "result": "39 passed"},
+    {"suite": "full python suite (npm run test:py)", "result": "289 passed"}
   ],
   "acceptance_result": [
-    {"criterion": "runbook covers install/pause/resume/single tick/real-mode switch/stale lock/troubleshooting", "pass": true, "evidence": "docs/local_scheduler_runbook.md §2-§8 + safety §9"},
-    {"criterion": "throughput_gate no longer reports stale_lock", "pass": true, "evidence": "gate warnings now only refine_pending + diagnostic_completed_checkpoint (expected diagnostics); verified after full test suite too"},
-    {"criterion": "pid confirmed dead before any lock cleanup", "pass": true, "evidence": "ps -p 46623 dead; heal script refuses live pids by construction (tested)"},
-    {"criterion": "no run data deleted", "pass": true, "evidence": "only lock residue files and stage_state status field touched; run dirs/checkpoints untouched"}
+    {"criterion": "tick completes normally or interrupts safely", "pass": true, "evidence": "exit 0; budget-bounded stop at 5/5 calls; run left resumable in_progress 100/307"},
+    {"criterion": "checkpoint / progress / report persisted", "pass": true, "evidence": "workspace/checkpoints/run_20260610_212507...json exists; run_progress.json 100/307; tick report tick_20260610_212507_58969_1e745a.json"},
+    {"criterion": "no orphan workers", "pass": true, "evidence": "pre+post check_orphan_workers CLEAN 0 active 0 orphan"},
+    {"criterion": "cost recorded in tick report", "pass": true, "evidence": "execution.stdout_tail carries cost_usd 0.00794684, api_calls_used 5, budget block"},
+    {"criterion": "max-api-calls limit not removable", "pass": true, "evidence": "CLI parser.error + module ValueError on real mode without positive budget (tested)"}
   ],
-  "issues_found": [
-    "root cause of recurring stale lock: tests/test_refine_stage_c.py CLI test runs refine_stage_c.py against real repo, leaving dead-pid lock residue after every test run",
-    "stage_state_production.json frozen at startup state (in_progress) while run_20260608_013940 actually completed 487/487"
-  ],
-  "issues_fixed": [
-    "refine_stage_c.py now unlinks its lock file on release (acceptable flock/unlink race documented for single-operator refine)",
-    "stage_state_production reconciled to completed with reconciliation marker",
-    "heal_stale_locks.py provides ongoing dry-run-first healing for both lock families"
-  ],
+  "issues_found": [],
+  "issues_fixed": [],
   "remaining_issues": [
-    "ch191-208 draft backfill before FS-008 batch resume",
-    "pre-existing gate warn vector_index_health (agent_gate, not throughput_gate)"
+    "GAP-191-193 in progress (100/307): subsequent real ticks continue backfill in FS-008",
+    "pre-existing agent_gate warn vector_index_health"
   ],
   "severity_summary": {"p0": 0, "p1": 1, "p2": 0, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "refine_pending warn will persist until Phase D starts - documented as expected in runbook §8"
+    "real ticks resume via checkpoint hydration; FS-008 must verify no re-translation on resume (acceptance criterion there)"
   ],
-  "next_recommended_round": "FS-007: real-API smoke tick (enable real mode in tick with --max-api-calls 5, full pre/post orphan+status checks)",
+  "next_recommended_round": "FS-008: Phase A batch advance kickoff (continue GAP backfill 191-208 then D-MR queue, supervised ticks, milestone health checks)",
   "human_decisions_required": []
 }
