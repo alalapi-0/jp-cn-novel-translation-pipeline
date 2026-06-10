@@ -1,29 +1,49 @@
 {
-  "round_id": "AL-T05",
-  "timestamp": "2026-06-09T15:23:52Z",
+  "round_id": "FS-001",
+  "timestamp": "2026-06-10T20:30:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Complete AL-014–AL-T05: tooling, gate triage, translation QA scripts, docs",
+  "goal": "FS-001: pause / lock control protocol kernel for local scheduler (spec §9.3/§9.4)",
   "scope": [
-    "scripts/gate_triage.py",
-    "scripts/suggest_next_al_round.py",
-    "scripts/check_prompts_refs.py",
-    "scripts/inspect_cost_ledger.py",
-    "scripts/check_chapter_integrity.py",
-    "scripts/terminology_consistency_report.py",
-    "scripts/validate_micro_round_progress.py",
-    "tests/test_al_tooling_helpers.py",
-    "docs/AGENT_ROADMAP.md"
+    "src/scheduler/__init__.py",
+    "src/scheduler/control.py",
+    "tests/test_scheduler_control.py",
+    "docs/examples/scheduler_paused.example.json",
+    "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 0531f44 feat(agent-layer): report writer helper (AL-013)",
+  "repo_status_before": "main at 43bce7c 治理：对齐最终成品规格并重构推进路线（FS-000）",
   "tool_probe_status": "passed",
-  "tools_used": [],
-  "tools_not_used": [],
+  "tools_used": [
+    {"tool": "read/grep", "purpose": "study stop_control.py and pid_alive conventions", "result": "matched repo style"},
+    {"tool": "write", "purpose": "implement src/scheduler/control.py + tests + example", "result": "created"},
+    {"tool": "shell:pytest", "purpose": "run new tests and full suite", "result": "18 passed / 220 passed"},
+    {"tool": "shell:git", "purpose": "status/diff/check before commit", "result": "clean"}
+  ],
+  "tools_not_used": [
+    {"tool": "playwright/browser MCP", "reason": "FS-001 has no UI per task list"},
+    {"tool": "real API", "reason": "not allowed in FS-001"},
+    {"tool": "context7", "reason": "no third-party library uncertainty"}
+  ],
   "web_research": [],
-  "changed_files": [],
-  "commands_run": [],
-  "test_results": [],
+  "changed_files": [
+    "src/scheduler/__init__.py",
+    "src/scheduler/control.py",
+    "tests/test_scheduler_control.py",
+    "docs/examples/scheduler_paused.example.json",
+    "docs/final_state_round_task_list.md",
+    "reports/latest-agent-report.json"
+  ],
+  "commands_run": [
+    ".venv/bin/python -m pytest tests/test_scheduler_control.py -v (18 passed)",
+    "npm run test:py (220 passed)",
+    "import smoke at real repo root: is_paused=False, lock absent, safe=True",
+    "python3 scripts/agent_gate.py --json"
+  ],
+  "test_results": [
+    {"suite": "tests/test_scheduler_control.py", "result": "18 passed"},
+    {"suite": "full python suite (npm run test:py)", "result": "220 passed"}
+  ],
   "issues_found": [],
   "issues_fixed": [],
   "remaining_issues": [],
@@ -35,7 +55,9 @@
   },
   "gate_status": "warning",
   "blockers": [],
-  "risks": [],
-  "next_recommended_round": "NONE — all AL rounds complete",
+  "risks": [
+    "pid reuse could theoretically make a stale lock look alive; acceptable for single-host local scheduler, revisit if observed"
+  ],
+  "next_recommended_round": "FS-002: local_scheduler_status.py (aggregate spec §9.2 fields, consume scheduler.control)",
   "human_decisions_required": []
 }

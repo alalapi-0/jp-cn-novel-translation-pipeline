@@ -32,3 +32,4 @@
 {"round_id": "AL-T02", "timestamp": "2026-06-09T15:23:56Z", "summary": "terminology_consistency_report.py"}
 {"round_id": "AL-T03", "timestamp": "2026-06-09T15:23:56Z", "summary": "validate_micro_round_progress.py"}
 {"round_id": "AL-T04", "timestamp": "2026-06-09T15:23:56Z", "summary": "review_operator_sampling.md"}
+{"round_id": "FS-001", "timestamp": "2026-06-10T20:30:00Z", "summary": "scheduler pause/lock control protocol kernel (src/scheduler/control.py) + 18 tests; full suite 220 passed"}

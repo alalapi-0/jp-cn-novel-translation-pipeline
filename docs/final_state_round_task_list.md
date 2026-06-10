@@ -55,6 +55,8 @@ pause file 含 `{"paused": true}` 时 `is_paused()` 为 True；lock pid 活跃�
 ### 下一轮衔接
 FS-002 status 脚本消费本模块。
 
+> ✅ 完成于 2026-06-11（`src/scheduler/control.py` + `tests/test_scheduler_control.py` 18 用例全过；全套 220 passed；pause fail-safe / lock 互斥 / stale 清理 / 上下文管理器均覆盖）
+
 ## Round FS-002：local_scheduler_status.py
 
 ### 目标
@@ -1412,8 +1414,9 @@ FS-070。
 
 | 轮次 | Stage | 状态 |
 | --- | --- | --- |
-| FS-000 | S0 治理 | in_progress（本轮） |
-| FS-001…FS-007 | S1 调度器 | not_started |
+| FS-000 | S0 治理 | completed（2026-06-10） |
+| FS-001 | S1 调度器 | completed（2026-06-11） |
+| FS-002…FS-007 | S1 调度器 | not_started |
 | FS-008…FS-010 | S2 Phase A | not_started（D-MR-008 进行中） |
 | FS-011…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
