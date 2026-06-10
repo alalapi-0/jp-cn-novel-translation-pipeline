@@ -136,6 +136,8 @@ FS-003 骨架；`scripts/run_micro_round.py --help` 的参数契约。
 ### 下一轮衔接
 FS-005 launchd 化。
 
+> ✅ 完成于 2026-06-11（`src/scheduler/task_planner.py` 决策表覆盖 draft/gap、consistency、baseline_lock、refinement、final_review、production_candidate 全分支；未实现分支显式 `not_implemented`；D-MR/GAP 分支拼出 run_micro_round 命令行并透传 budget（`--max-api-calls` 等 5 项）；dry-run 命令强制 `--dry-run --no-real-api` 双保险；tick dispatcher 同步 supervised 子进程；真实仓库 tick：plan GAP-191-193、rc:0、exit 0；测试 17+21 用例；全套 277 passed）
+
 ## Round FS-005：launchd 集成
 
 ### 目标
@@ -1422,7 +1424,8 @@ FS-070。
 | FS-001 | S1 调度器 | completed（2026-06-11） |
 | FS-002 | S1 调度器 | completed（2026-06-11） |
 | FS-003 | S1 调度器 | completed（2026-06-11） |
-| FS-004…FS-007 | S1 调度器 | not_started |
+| FS-004 | S1 调度器 | completed（2026-06-11） |
+| FS-005…FS-007 | S1 调度器 | not_started |
 | FS-008…FS-010 | S2 Phase A | not_started（D-MR-008 进行中） |
 | FS-011…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |

@@ -1,77 +1,76 @@
 {
-  "round_id": "FS-003",
-  "timestamp": "2026-06-10T20:52:00Z",
+  "round_id": "FS-004",
+  "timestamp": "2026-06-10T21:02:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "FS-003: local_scheduler_tick.py dry-run skeleton (pause gate -> lock -> next-task decision -> placeholder execution -> tick state/report -> lock release -> clean exit)",
+  "goal": "FS-004: phase->next-task decision table (task_planner) + tick dispatch of run_micro_round as supervised subprocess (dry-run)",
   "scope": [
+    "src/scheduler/task_planner.py",
     "src/scheduler/tick.py",
     "scripts/local_scheduler_tick.py",
+    "tests/test_scheduler_task_planner.py",
     "tests/test_local_scheduler_tick.py",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at fb4932a docs(prompts): continuous FS advance prompt",
+  "repo_status_before": "main at 266aade feat(scheduler): FS-003 local_scheduler_tick dry-run skeleton",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "read/grep", "purpose": "study FS-001 control + FS-002 status contracts and test conventions", "result": "reused is_paused/acquire_lock/collect_status; kept tick_state field names FS-002 already consumes"},
-    {"tool": "write", "purpose": "implement tick module + CLI + tests", "result": "created"},
-    {"tool": "shell:pytest", "purpose": "tick tests and full suite", "result": "18 passed / full 257 passed"},
-    {"tool": "shell:python", "purpose": "real-repo acceptance: dry-run tick, paused tick, 3x concurrent mutual exclusion, orphan check", "result": "all pass; race false-stale fixed via re-probe"}
+    {"tool": "shell:run_micro_round --help + source read", "purpose": "confirm CLI contract incl. real-api default=True", "result": "dry-run plans hard-disarm with --dry-run --no-real-api"},
+    {"tool": "shell:run_micro_round dry-run probe", "purpose": "verify GAP-191-193 chapter-range planning works", "result": "exit 0, batch plan with segment ids, metrics to workspace/diagnostics"},
+    {"tool": "write", "purpose": "task_planner + tick dispatcher + CLI budgets + tests", "result": "created/updated"},
+    {"tool": "shell:pytest", "purpose": "planner+tick suites and full suite", "result": "38 passed scoped / full 277 passed"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "FS-003 has no UI per task list"},
-    {"tool": "real API", "reason": "forbidden in FS-003 (dry-run only; module rejects dry_run=False)"},
-    {"tool": "context7", "reason": "stdlib only, no third-party uncertainty"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in FS-004"},
+    {"tool": "real API", "reason": "forbidden in FS-004; planner real mode exists but tick rejects dry_run=False until FS-007"},
+    {"tool": "context7", "reason": "internal contracts only"}
   ],
   "web_research": [],
   "real_api_used": {"used": false, "api_calls": 0, "cost_usd": 0.0},
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
+    "src/scheduler/task_planner.py",
     "src/scheduler/tick.py",
     "scripts/local_scheduler_tick.py",
+    "tests/test_scheduler_task_planner.py",
     "tests/test_local_scheduler_tick.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "python3 scripts/local_scheduler_tick.py --dry-run (exit 0, status=completed, next=draft_gap_backfill 191-202)",
-    "paused tick: exit 0, status=skipped_paused, executor not invoked",
-    "3x concurrent double-invocation: always ['completed','skipped_lock_held'], lock released",
-    "python3 scripts/check_orphan_workers.py --json (CLEAN after ticks)",
-    ".venv/bin/python -m pytest tests/test_local_scheduler_tick.py (18 passed)",
-    "npm run test:py (257 passed)",
-    "python3 scripts/agent_gate.py --json (warn-only: vector_index_health pre-existing, git_status_dirty pre-commit)"
+    "python3 scripts/run_micro_round.py --round-id GAP-191-193 --chapter-range 191-193 --dry-run --no-real-api (exit 0)",
+    "python3 scripts/local_scheduler_tick.py --dry-run --max-api-calls 5 (plan GAP-191-193, dispatched rc:0, exit 0)",
+    ".venv/bin/python -m pytest tests/test_scheduler_task_planner.py tests/test_local_scheduler_tick.py (38 passed)",
+    "npm run test:py (277 passed)",
+    "python3 scripts/check_orphan_workers.py --json (CLEAN)",
+    "python3 scripts/agent_gate.py --json (warn-only, same pre-existing warns)"
   ],
   "test_results": [
-    {"suite": "tests/test_local_scheduler_tick.py", "result": "18 passed"},
-    {"suite": "full python suite (npm run test:py)", "result": "257 passed"}
+    {"suite": "tests/test_scheduler_task_planner.py", "result": "17 passed"},
+    {"suite": "tests/test_local_scheduler_tick.py", "result": "21 passed"},
+    {"suite": "full python suite (npm run test:py)", "result": "277 passed"}
   ],
   "acceptance_result": [
-    {"criterion": "dry-run exit code 0", "pass": true, "evidence": "real-repo run exit 0, status=completed"},
-    {"criterion": "paused: exits without executing task", "pass": true, "evidence": "skipped_paused, execution=null, executor-not-called test + real-repo check"},
-    {"criterion": "lock held: immediate exit", "pass": true, "evidence": "skipped_lock_held exit 0; foreign lock payload untouched (test)"},
-    {"criterion": "orphan check CLEAN after tick", "pass": true, "evidence": "check_orphan_workers.py decision=CLEAN; placeholder executor spawns nothing"},
-    {"criterion": "tick report written to workspace/control/tick_reports/ (gitignored)", "pass": true, "evidence": "reports written; workspace/control/ in .gitignore line 88"}
+    {"criterion": "decision table gives correct next task for 5 phase fixtures", "pass": true, "evidence": "draft micro-round / gap backfill, consistency, baseline_lock, refinement, final_review, production_candidate + unknown all covered by tests"},
+    {"criterion": "D-MR branch dry-run renders run_micro_round command line with budget pass-through", "pass": true, "evidence": "command includes --round-id/--chapter-range/--supervised/--dry-run/--no-real-api + 5 budget flags; real-repo tick shows full command"},
+    {"criterion": "unimplemented branches report not_implemented explicitly, never silently skip", "pass": true, "evidence": "plan.reason carries not_implemented:...; tick execution carries not_implemented=true; test_tick_reports_not_implemented_explicitly"},
+    {"criterion": "tick never runs tasks concurrently", "pass": true, "evidence": "single plan per tick by construction; lock mutex tests still green"}
   ],
-  "issues_found": [
-    "race: acquire-time FileExistsError against a mid-write/mid-release tick produced false blocked_stale_lock (exit 2) in concurrent smoke"
-  ],
-  "issues_fixed": [
-    "tick re-probes lock once after 100ms before declaring stale: vanished/alive lock -> skipped_lock_held(lock_race) exit 0; genuinely dead pid still blocked_stale_lock exit 2 (FS-006 owns cleanup)"
-  ],
+  "issues_found": [],
+  "issues_fixed": [],
   "remaining_issues": [
-    "ch191-208 draft backfill required before FS-008 batch resume (tracked since FS-002)",
+    "ch191-208 draft backfill required before FS-008 batch resume (planner now maps it to GAP-191-193 first block)",
     "stale lock refine_stage_c_run_20260602_203645.lock + stage_state_stale warns -> FS-006",
-    "pre-existing gate warn vector_index_health (manifest_empty_segments, orphan_vectors) - not scheduler related"
+    "pre-existing gate warn vector_index_health - not scheduler related"
   ],
   "severity_summary": {"p0": 0, "p1": 1, "p2": 0, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "tick never reclaims stale locks by design; FS-006 must ship heal path before unattended launchd operation"
+    "real mode rendering exists in planner but is unreachable from tick until FS-007 flips the switch with budget guards"
   ],
-  "next_recommended_round": "FS-004: task planner decision table (5 phases) + D-MR branch wiring run_micro_round.py command line in dry-run",
+  "next_recommended_round": "FS-005: launchd integration (local_scheduler_launchd.sh install/uninstall/status + plist template, logs to workspace/logs/scheduler/)",
   "human_decisions_required": []
 }

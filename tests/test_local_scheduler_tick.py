@@ -35,6 +35,14 @@ def make_repo(tmp_path: Path, chapters: int = 9) -> Path:
         json.dumps({"dmr_anchor_chapter": 1, "chapters_per_round": 3}),
         encoding="utf-8",
     )
+    # Stub run_micro_round so the default dispatcher has something safe to
+    # exec inside the fixture repo (prints its argv, exits 0).
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(exist_ok=True)
+    (scripts_dir / "run_micro_round.py").write_text(
+        "import json, sys\nprint(json.dumps({'stub': True, 'argv': sys.argv[1:]}))\n",
+        encoding="utf-8",
+    )
     return tmp_path
 
 
@@ -82,21 +90,35 @@ def read_tick_state(repo: Path) -> dict:
 # Happy path: dry-run completes cleanly
 # ---------------------------------------------------------------------------
 
+def fake_executor(calls: list[dict]):
+    """Test executor: records the plan it was handed, performs nothing."""
+
+    def execute(plan: dict) -> dict:
+        calls.append(plan)
+        return {"executed": False, "fake": True, "task_type": plan.get("task_type")}
+
+    return execute
+
+
 def test_dry_run_tick_completes_with_exit_0(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
-    result = run_tick(repo)
+    calls: list[dict] = []
+    result = run_tick(repo, executor=fake_executor(calls))
     assert result["status"] == "completed"
     assert result["exit_code"] == EXIT_OK
     assert result["mode"] == "dry_run"
     assert result["next_task"]["task"] == "draft_micro_round"
     assert result["next_task"]["round_id"] == "D-MR-001"
-    assert result["execution"]["executed"] is False
-    assert result["execution"]["planned_task"] == result["next_task"]
+    # The executor receives the FS-004 plan for the same round.
+    assert len(calls) == 1
+    assert calls[0]["task_type"] == "draft_micro_round"
+    assert calls[0]["round_id"] == "D-MR-001"
+    assert calls[0]["implemented"] is True
 
 
 def test_tick_report_written_to_tick_reports_dir(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
-    result = run_tick(repo)
+    result = run_tick(repo, executor=fake_executor([]))
     reports = tick_reports(repo)
     assert len(reports) == 1
     assert result["report_path"] == str(reports[0])
@@ -104,11 +126,12 @@ def test_tick_report_written_to_tick_reports_dir(tmp_path: Path) -> None:
     assert doc["tick_id"] == result["tick_id"]
     assert doc["status"] == "completed"
     assert doc["mode"] == "dry_run"
+    assert doc["plan"]["task_type"] == "draft_micro_round"
 
 
 def test_completed_tick_updates_tick_state(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
-    result = run_tick(repo)
+    result = run_tick(repo, executor=fake_executor([]))
     state = read_tick_state(repo)
     assert state["last_successful_tick"] == result["finished_at"]
     assert state["last_blocked_reason"] is None
@@ -117,21 +140,72 @@ def test_completed_tick_updates_tick_state(tmp_path: Path) -> None:
 
 def test_lock_released_after_tick_and_rerunnable(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
-    first = run_tick(repo)
+    first = run_tick(repo, executor=fake_executor([]))
     assert not lock_path(repo).exists()
-    second = run_tick(repo)
+    second = run_tick(repo, executor=fake_executor([]))
     assert first["status"] == second["status"] == "completed"
     assert len(tick_reports(repo)) == 2
 
 
-def test_real_mode_refused_in_fs003(tmp_path: Path) -> None:
+def test_real_mode_refused_before_fs007(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     try:
         run_tick(repo, dry_run=False)
     except ValueError as exc:
         assert "dry_run" in str(exc)
     else:  # pragma: no cover
-        raise AssertionError("dry_run=False must be rejected in FS-003")
+        raise AssertionError("dry_run=False must be rejected until FS-007")
+
+
+# ---------------------------------------------------------------------------
+# FS-004: planner wiring inside the tick
+# ---------------------------------------------------------------------------
+
+def test_tick_plan_carries_run_micro_round_command(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    result = run_tick(repo, executor=fake_executor([]), budgets={"max_api_calls": 5})
+    plan = result["plan"]
+    assert plan["implemented"] is True
+    cmd = plan["command"]
+    assert cmd[1].endswith("run_micro_round.py")
+    assert "--dry-run" in cmd
+    assert "--no-real-api" in cmd
+    assert cmd[cmd.index("--max-api-calls") + 1] == "5"
+
+
+def test_tick_reports_not_implemented_explicitly(tmp_path: Path) -> None:
+    """All chapters done -> consistency phase -> explicit not_implemented."""
+    repo = make_repo(tmp_path, chapters=3)
+    root = repo / "workspace" / "runs" / "run_all"
+    root.mkdir(parents=True, exist_ok=True)
+    meta = {
+        "run_id": "run_all",
+        "phase": "draft",
+        "chapter_files": [f"input_jp/{c}-ch.md" for c in (1, 2, 3)],
+    }
+    (root / "run_metadata.json").write_text(json.dumps(meta), encoding="utf-8")
+    progress = {"run_id": "run_all", "total_segments": 30, "completed_segments": 30}
+    (root / "run_progress.json").write_text(json.dumps(progress), encoding="utf-8")
+
+    result = run_tick(repo)  # default dispatcher: must not run anything
+    assert result["status"] == "completed"
+    assert result["plan"]["implemented"] is False
+    assert result["plan"]["task_type"] == "consistency_audit"
+    assert result["execution"]["not_implemented"] is True
+    assert result["execution"]["executed"] is False
+
+
+def test_dispatched_command_failure_is_tick_error(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+
+    def failing_dispatch(plan: dict) -> dict:
+        return {"executed": True, "returncode": 3, "stdout_tail": "", "stderr_tail": "boom"}
+
+    result = run_tick(repo, executor=failing_dispatch)
+    assert result["status"] == "error"
+    assert result["exit_code"] == EXIT_ERROR
+    assert result["blocked_reason"] == "dispatched_command_failed"
+    assert not lock_path(repo).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -154,12 +228,25 @@ def test_paused_skips_without_executing(tmp_path: Path) -> None:
 
 def test_paused_preserves_last_successful_tick(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
-    ok = run_tick(repo)
+    ok = run_tick(repo, executor=fake_executor([]))
     request_pause(reason="test", repo_root=repo)
     run_tick(repo)
     state = read_tick_state(repo)
     assert state["last_successful_tick"] == ok["finished_at"]
     assert state["last_blocked_reason"] == "paused"
+
+
+def test_default_dispatcher_runs_stub_subprocess(tmp_path: Path) -> None:
+    """End-to-end inside the fixture: the default dispatcher execs the
+    planned command (stubbed run_micro_round) and records its outcome."""
+    repo = make_repo(tmp_path)
+    result = run_tick(repo, budgets={"max_api_calls": 2})
+    assert result["status"] == "completed"
+    execution = result["execution"]
+    assert execution["executed"] is True
+    assert execution["returncode"] == 0
+    assert '"stub": true' in execution["stdout_tail"]
+    assert "--max-api-calls" in execution["stdout_tail"]
 
 
 def test_pause_rechecked_after_lock_acquired(tmp_path: Path, monkeypatch) -> None:

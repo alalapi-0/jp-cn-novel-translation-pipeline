@@ -1,20 +1,22 @@
-"""Single-tick skeleton for the local scheduler (FS-003, spec §9.1).
+"""Single-tick runner for the local scheduler (FS-003 skeleton + FS-004 planner).
 
 One tick is one supervised pass:
 
     pause check -> pre-flight status -> lock acquire -> pause re-check
-    -> next-task snapshot -> placeholder dry-run execution
+    -> task plan (FS-004 decision table) -> dispatch exactly one task
     -> tick state + tick report persisted -> lock release -> clean exit
 
-FS-003 deliberately dispatches no real work: the placeholder executor only
-records what *would* run. The task decision table arrives with FS-004 and
-the first real-API smoke with FS-007. The tick never spawns detached
-background workers and never calls a provider.
+Dispatch is synchronous and attached: an implemented plan's command runs as
+a supervised child process and the tick waits for it; nothing is ever
+detached. Until FS-007 the tick only supports dry-run mode, where the draft
+branch invokes ``run_micro_round.py --dry-run --no-real-api`` (batch plan
+only, no worker, no API). Not-implemented branches are reported explicitly
+(``not_implemented``) instead of silently skipping.
 
 Exit codes:
     0  completed, or politely skipped (paused / lock busy / active workers)
        — periodic launchd invocations must not register these as failures;
-    1  unexpected executor error;
+    1  executor / dispatched-command error;
     2  blocked state needing human / FS-006 attention (stale lock, orphans).
 """
 
@@ -22,6 +24,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import time
 import traceback
@@ -38,6 +42,7 @@ from scheduler.control import (
     release_lock,
 )
 from scheduler.status import collect_status
+from scheduler.task_planner import plan_next_task
 
 TICK_STATE_REL = "workspace/control/scheduler_tick_state.json"
 TICK_REPORTS_REL = "workspace/control/tick_reports"
@@ -58,9 +63,17 @@ _STATUS_EXIT_CODE = {
 
 TaskExecutor = Callable[[dict[str, Any]], dict[str, Any]]
 
+# A dispatched dry-run plan is a local batch computation; it must not hang.
+DISPATCH_TIMEOUT_SECONDS = 900
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
+
+
+def _python(root: Path) -> str:
+    venv = root / ".venv" / "bin" / "python"
+    return str(venv) if venv.is_file() else sys.executable
 
 
 def _utc_now() -> str:
@@ -85,14 +98,43 @@ def _new_tick_id() -> str:
     return f"tick_{stamp}_{os.getpid()}_{uuid.uuid4().hex[:6]}"
 
 
-def execute_task_dry_run(task: dict[str, Any]) -> dict[str, Any]:
-    """FS-003 placeholder executor: record what would run, perform nothing."""
-    return {
-        "executed": False,
-        "mode": "dry_run",
-        "planned_task": task,
-        "note": "FS-003 skeleton placeholder; task dispatch arrives with FS-004",
-    }
+def _tail(text: str, lines: int) -> str:
+    return "\n".join((text or "").strip().splitlines()[-lines:])
+
+
+def make_dispatcher(root: Path) -> TaskExecutor:
+    """Default executor: run an implemented plan's command synchronously.
+
+    The child is supervised (attached, awaited); not-implemented plans are
+    reported explicitly so the tick never pretends to have done work.
+    """
+
+    def dispatch(plan: dict[str, Any]) -> dict[str, Any]:
+        if not plan.get("implemented"):
+            return {
+                "executed": False,
+                "not_implemented": True,
+                "task_type": plan.get("task_type"),
+                "reason": plan.get("reason"),
+            }
+        proc = subprocess.run(
+            plan["command"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=DISPATCH_TIMEOUT_SECONDS,
+        )
+        return {
+            "executed": True,
+            "mode": plan.get("mode"),
+            "task_type": plan.get("task_type"),
+            "command": plan["command"],
+            "returncode": proc.returncode,
+            "stdout_tail": _tail(proc.stdout, 15),
+            "stderr_tail": _tail(proc.stderr, 10),
+        }
+
+    return dispatch
 
 
 def _write_tick_report(root: Path, result: dict[str, Any]) -> Path:
@@ -151,16 +193,19 @@ def run_tick(
     dry_run: bool = True,
     owner: str = "local_scheduler_tick",
     executor: TaskExecutor | None = None,
+    budgets: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run exactly one scheduler tick. Returns the tick result dict.
 
     The result always carries ``status``, ``exit_code`` and ``report_path``;
     the lock is always released on exit when this tick acquired it.
+    ``budgets`` (max_api_calls etc.) are passed through to the planned
+    command line.
     """
     if not dry_run:
         raise ValueError(
-            "FS-003 tick skeleton only supports dry_run=True; "
-            "real execution lands in FS-004 / FS-007"
+            "tick only supports dry_run=True until FS-007 enables the "
+            "real-API smoke path"
         )
     root = repo_root or _repo_root()
     result: dict[str, Any] = {
@@ -171,6 +216,7 @@ def run_tick(
         "status": "error",
         "blocked_reason": None,
         "next_task": None,
+        "plan": None,
         "execution": None,
     }
 
@@ -197,6 +243,14 @@ def run_tick(
         "chapter_range": status["next_chapter_range"],
         "phase": status["current_phase"],
     }
+    plan = plan_next_task(
+        status,
+        mode="dry_run",
+        budgets=budgets,
+        repo_root=root,
+        python_executable=_python(root),
+    )
+    result["plan"] = plan.to_dict()
 
     # 3. Mutual exclusion (spec §9.4); racing ticks lose gracefully.
     try:
@@ -218,9 +272,9 @@ def run_tick(
         if is_paused(root):
             return _finish(root, result, "skipped_paused", reason="paused")
 
-        run_executor = executor or execute_task_dry_run
+        run_executor = executor or make_dispatcher(root)
         try:
-            result["execution"] = run_executor(result["next_task"])
+            result["execution"] = run_executor(result["plan"])
         except Exception as exc:  # noqa: BLE001 — tick must still release the lock
             result["execution"] = {
                 "executed": False,
@@ -228,6 +282,9 @@ def run_tick(
                 "traceback": traceback.format_exc(limit=5),
             }
             return _finish(root, result, "error", reason="executor_error")
+        returncode = result["execution"].get("returncode")
+        if returncode not in (None, 0):
+            return _finish(root, result, "error", reason="dispatched_command_failed")
         return _finish(root, result, "completed", reason=None)
     finally:
         release_lock(repo_root=root, pid=lock["pid"])

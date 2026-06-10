@@ -26,16 +26,32 @@ from scheduler.tick import run_tick  # noqa: E402
 
 def _human(result: dict) -> str:
     task = result.get("next_task") or {}
+    plan = result.get("plan") or {}
+    execution = result.get("execution") or {}
     lines = [
         f"tick={result['tick_id']} mode={result['mode']} status={result['status']}",
         f"task={task.get('task') or '-'}"
         f" round={task.get('round_id') or '-'}"
         f" range={task.get('chapter_range') or '-'}"
         f" phase={task.get('phase') or '-'}",
-        f"blocked_reason={result.get('blocked_reason') or '-'}",
-        f"report={result.get('report_path') or '-'}",
-        f"exit_code={result['exit_code']}",
+        f"plan={plan.get('task_type') or '-'}"
+        f" implemented={plan.get('implemented')}"
+        f" plan_round={plan.get('round_id') or '-'}"
+        f" plan_range={plan.get('chapter_range') or '-'}",
     ]
+    if plan.get("command"):
+        lines.append("command=" + " ".join(plan["command"]))
+    if execution.get("not_implemented"):
+        lines.append(f"execution=not_implemented ({execution.get('reason')})")
+    elif execution:
+        lines.append(f"execution=rc:{execution.get('returncode')}")
+    lines.extend(
+        [
+            f"blocked_reason={result.get('blocked_reason') or '-'}",
+            f"report={result.get('report_path') or '-'}",
+            f"exit_code={result['exit_code']}",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -45,14 +61,31 @@ def main() -> int:
         "--dry-run",
         action="store_true",
         default=True,
-        help="dry-run mode (the only mode in FS-003; always on)",
+        help="dry-run mode (the only mode until FS-007; always on)",
     )
     parser.add_argument("--json", action="store_true", help="emit JSON")
+    # Budget pass-through to the planned task command line.
+    parser.add_argument("--max-api-calls", type=int, default=None)
+    parser.add_argument("--max-segments", type=int, default=None)
+    parser.add_argument("--max-wall-time-minutes", type=float, default=None)
+    parser.add_argument("--batch-token-budget", type=int, default=None)
+    parser.add_argument("--max-segments-per-call", type=int, default=None)
     # Hidden: lets tests point the tick at a fixture repo.
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
-    result = run_tick(args.repo_root, dry_run=True)
+    budgets = {
+        key: value
+        for key, value in {
+            "max_api_calls": args.max_api_calls,
+            "max_segments": args.max_segments,
+            "max_wall_time_minutes": args.max_wall_time_minutes,
+            "batch_token_budget": args.batch_token_budget,
+            "max_segments_per_call": args.max_segments_per_call,
+        }.items()
+        if value is not None
+    }
+    result = run_tick(args.repo_root, dry_run=True, budgets=budgets)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
