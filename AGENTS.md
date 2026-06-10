@@ -2,9 +2,33 @@
 
 本文件告诉 Agent 如何阅读、行动和避免风险。**Cursor 与 Codex 共用本文件。** 权威顺序以 `governance/repo_protocol_standard.yaml` 为准；Tool-aware Agent Layer 2.0 机器配置见 `agent_layer.yaml`。
 
+## 🎯 最终成品规格（最高优先级，2026-06-10 起）
+
+**`docs/product_final_state_spec.md` 是本仓库最高级别目标锚点**，优先级高于普通 Roadmap、Round Report、临时 Prompt 与单轮执行指令。任何冲突以它为准。任何 Agent 不得删除、弱化或绕过该文件。
+
+每轮推进前必读（按序）：
+
+1. `docs/product_final_state_spec.md` —— 最终成品规格 / 防跑偏锚点
+2. `docs/next_agent_execution_protocol.md` —— 每轮标准执行流程
+3. `docs/final_state_implementation_roadmap.md` —— 总路线图（S0–S15 阶段）
+4. `docs/final_state_round_task_list.md` —— 轮次任务（FS-000…FS-070，含状态）
+5. `docs/phase_acceptance_criteria.md` —— 阶段验收（可检查条件）
+6. `docs/definition_of_done.md` —— 各级 Done 定义
+7. `docs/non_goals_and_guardrails.md` —— 非目标与防跑偏约束
+8. `docs/local_scheduler_runbook.md` —— 本地调度（S1 完成后存在）
+
+执行要点：
+
+- **下一轮做什么**：在 `final_state_round_task_list.md` 中找第一个未完成的 FS 轮，按其"输入 / 文件 / 命令 / 验收 / 禁止 / 产物"执行；不重新发明路线。
+- **真实 API 是生产目标的一部分**，按轮次任务的"是否允许真实 API"字段执行（cost guard + 预算限制 + pause file 尊重），不得永久禁用，也不得无限制连续调用。生产模型切换 / 并发 / 提价需用户确认。
+- **Web UI 是主线**而非附属：UI 轮必须真实浏览器 before/after 检查（页面、console、network），中文优先，统一设计系统，危险操作二次确认。
+- **Phase A / D 批量执行**沿用 `docs/translation_recovery_3ch_roadmap.md` 的 D-MR / R-MR 3 章 micro round 体系。
+- **永远不得**：自动标记 human_approved_final、自动发布、覆盖 baseline / production_candidate / 原文、提交真实正文或密钥、`git add .`、留下 orphan worker。
+- P0 / P1 未清零不做 P2 / P3；硬阻塞时停止并输出 BLOCKED（见 `non_goals_and_guardrails.md` §7）。
+
 ## Repo Mission
 
-中日文小说互译生产流水线：双向翻译、术语/角色一致性、批量初翻、润色、审核与前端 Workbench。当前阶段以治理、工具链与 pilot 为主，默认非生产发布。
+中日文小说互译生产流水线：双向翻译、术语/角色一致性、批量初翻、润色、审核与前端 Workbench。最终成品：本地 Web UI 驱动的全书"初翻 → 一致性检查 → baseline → 润色 → 终检 → production_candidate"生产系统（见最终规格）。默认非生产发布。
 
 ## Tool-aware 每轮必读（Layer 2.0）
 
