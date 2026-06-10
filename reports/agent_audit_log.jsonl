@@ -33,3 +33,4 @@
 {"round_id": "AL-T03", "timestamp": "2026-06-09T15:23:56Z", "summary": "validate_micro_round_progress.py"}
 {"round_id": "AL-T04", "timestamp": "2026-06-09T15:23:56Z", "summary": "review_operator_sampling.md"}
 {"round_id": "FS-001", "timestamp": "2026-06-10T20:30:00Z", "summary": "scheduler pause/lock control protocol kernel (src/scheduler/control.py) + 18 tests; full suite 220 passed"}
+{"round_id": "FS-002", "timestamp": "2026-06-10T20:25:00Z", "summary": "local_scheduler_status.py: 13 spec fields from metadata only; 19 tests; found real gap ch191-208 (run reuse data loss), next_task=draft_gap_backfill"}

@@ -1,63 +1,66 @@
 {
-  "round_id": "FS-001",
-  "timestamp": "2026-06-10T20:30:00Z",
+  "round_id": "FS-002",
+  "timestamp": "2026-06-10T20:25:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "FS-001: pause / lock control protocol kernel for local scheduler (spec §9.3/§9.4)",
+  "goal": "FS-002: local_scheduler_status.py aggregating all 13 spec §9.2 fields from metadata/progress files only",
   "scope": [
-    "src/scheduler/__init__.py",
-    "src/scheduler/control.py",
-    "tests/test_scheduler_control.py",
-    "docs/examples/scheduler_paused.example.json",
+    "src/scheduler/status.py",
+    "scripts/local_scheduler_status.py",
+    "tests/test_local_scheduler_status.py",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 43bce7c 治理：对齐最终成品规格并重构推进路线（FS-000）",
+  "repo_status_before": "main at d178865 feat(scheduler): FS-001 pause/lock 控制协议内核",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "read/grep", "purpose": "study stop_control.py and pid_alive conventions", "result": "matched repo style"},
-    {"tool": "write", "purpose": "implement src/scheduler/control.py + tests + example", "result": "created"},
-    {"tool": "shell:pytest", "purpose": "run new tests and full suite", "result": "18 passed / 220 passed"},
-    {"tool": "shell:git", "purpose": "status/diff/check before commit", "result": "clean"}
+    {"tool": "read/grep", "purpose": "study throughput_gate, worker registry, run_progress/run_metadata structures", "result": "identified metadata-only progress sources incl. legacy summary fallback"},
+    {"tool": "write", "purpose": "implement status module + CLI + tests", "result": "created"},
+    {"tool": "shell:pytest", "purpose": "fixture tests and full suite", "result": "19 passed / 239 passed"},
+    {"tool": "shell:python", "purpose": "real-repo cross-validation of chapter counting vs content-level throughput_gate", "result": "both 223 chapters — consistent"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "FS-001 has no UI per task list"},
-    {"tool": "real API", "reason": "not allowed in FS-001"},
+    {"tool": "playwright/browser MCP", "reason": "FS-002 has no UI per task list"},
+    {"tool": "real API", "reason": "not allowed in FS-002"},
     {"tool": "context7", "reason": "no third-party library uncertainty"}
   ],
   "web_research": [],
   "changed_files": [
-    "src/scheduler/__init__.py",
-    "src/scheduler/control.py",
-    "tests/test_scheduler_control.py",
-    "docs/examples/scheduler_paused.example.json",
+    "src/scheduler/status.py",
+    "scripts/local_scheduler_status.py",
+    "tests/test_local_scheduler_status.py",
     "docs/final_state_round_task_list.md",
-    "reports/latest-agent-report.json"
+    "reports/latest-agent-report.json",
+    "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    ".venv/bin/python -m pytest tests/test_scheduler_control.py -v (18 passed)",
-    "npm run test:py (220 passed)",
-    "import smoke at real repo root: is_paused=False, lock absent, safe=True",
-    "python3 scripts/agent_gate.py --json"
+    "python3 scripts/local_scheduler_status.py --json (13 fields, safe_to_run=true)",
+    ".venv/bin/python -m pytest tests/test_local_scheduler_status.py (19 passed)",
+    "npm run test:py (239 passed)",
+    "cross-check: metadata count == throughput_gate content count == 223 chapters"
   ],
   "test_results": [
-    {"suite": "tests/test_scheduler_control.py", "result": "18 passed"},
-    {"suite": "full python suite (npm run test:py)", "result": "220 passed"}
+    {"suite": "tests/test_local_scheduler_status.py", "result": "19 passed"},
+    {"suite": "full python suite (npm run test:py)", "result": "239 passed"}
   ],
-  "issues_found": [],
+  "issues_found": [
+    "P1 data finding: chapters 191-208 have no completed run records in workspace/runs or archived_runs; run_20260607_095821 (legacy T-002, originally ch191-210) was reused by D-MR-003 and now only holds ch209-211. Both metadata-level and content-level counts agree on 223 completed chapters (1-190 + 209-241). Roadmap snapshot claim of 202-through-ch202 is stale; ch191-208 must be backfilled before/at FS-008 batch resume. Status correctly reports next_task=draft_gap_backfill range=191-202."
+  ],
   "issues_fixed": [],
-  "remaining_issues": [],
+  "remaining_issues": [
+    "ch191-208 draft backfill required (tracked for FS-008 batch start; scheduler task planner FS-004 must handle gap_below_anchor branch)"
+  ],
   "severity_summary": {
     "p0": 0,
-    "p1": 0,
+    "p1": 1,
     "p2": 0,
     "p3": 0
   },
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "pid reuse could theoretically make a stale lock look alive; acceptable for single-host local scheduler, revisit if observed"
+    "run-directory reuse can silently drop historical coverage; FS-003 tick should never reuse an existing run dir (note for implementation)"
   ],
-  "next_recommended_round": "FS-002: local_scheduler_status.py (aggregate spec §9.2 fields, consume scheduler.control)",
+  "next_recommended_round": "FS-003: local_scheduler_tick.py dry-run skeleton (pause check -> lock -> next task -> placeholder execute -> tick state/report -> clean exit)",
   "human_decisions_required": []
 }

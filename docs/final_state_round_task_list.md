@@ -82,6 +82,8 @@ status 脚本 + 模块 + 测试。
 ### 下一轮衔接
 FS-003 tick 脚本以 status 为决策输入。
 
+> ✅ 完成于 2026-06-11（`src/scheduler/status.py` + `scripts/local_scheduler_status.py` + 19 用例；13 字段全输出；metadata 统计与 content 层 throughput_gate 双口径一致 = 223 章。**发现真实缺口 ch191-208**：run_20260607_095821 被 D-MR-003 重用导致 T-002 时代 191-208 数据丢失，status 正确输出 next_task=draft_gap_backfill range=191-202；FS-008 启动批量推进前必须先回填 191-208）
+
 ## Round FS-003：local_scheduler_tick.py（dry-run 骨架）
 
 ### 目标
@@ -1416,7 +1418,8 @@ FS-070。
 | --- | --- | --- |
 | FS-000 | S0 治理 | completed（2026-06-10） |
 | FS-001 | S1 调度器 | completed（2026-06-11） |
-| FS-002…FS-007 | S1 调度器 | not_started |
+| FS-002 | S1 调度器 | completed（2026-06-11） |
+| FS-003…FS-007 | S1 调度器 | not_started |
 | FS-008…FS-010 | S2 Phase A | not_started（D-MR-008 进行中） |
 | FS-011…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
