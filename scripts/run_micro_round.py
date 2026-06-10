@@ -64,11 +64,14 @@ def _run_gate() -> dict[str, Any]:
     return json.loads(proc.stdout)
 
 
-def _acquire_translate_lock(stage: str, run_id: str) -> int:
-    lock_dir = REPO_ROOT / "workspace" / ".locks"
-    lock_dir.mkdir(parents=True, exist_ok=True)
+def _translate_lock_path(stage: str, run_id: str) -> Path:
     key = run_id.strip() if run_id.strip() else f"{stage}_default"
-    lock_path = lock_dir / f"translate_{stage}_{key}.lock"
+    return REPO_ROOT / "workspace" / ".locks" / f"translate_{stage}_{key}.lock"
+
+
+def _acquire_translate_lock(stage: str, run_id: str) -> int:
+    lock_path = _translate_lock_path(stage, run_id)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -80,7 +83,7 @@ def _acquire_translate_lock(stage: str, run_id: str) -> int:
     return fd
 
 
-def _release_translate_lock(fd: int) -> int:
+def _release_translate_lock(fd: int, stage: str = "", run_id: str = "") -> int:
     if fd < 0:
         return -1
     try:
@@ -91,6 +94,11 @@ def _release_translate_lock(fd: int) -> int:
         os.close(fd)
     except OSError:
         pass
+    # Remove the residue file so monitoring never sees a dead-pid lock
+    # (FS-008; same pattern as refine_stage_c in FS-006). flock dies with
+    # the process; supervised micro rounds are single-worker by contract.
+    if stage:
+        _translate_lock_path(stage, run_id).unlink(missing_ok=True)
     return -1
 
 
@@ -374,7 +382,7 @@ def run_micro_round(
         stop_policy="stop_when_controller_exits",
     )
     if worker is None:
-        _release_translate_lock(lock_fd)
+        _release_translate_lock(lock_fd, "stage_b", run_id)
         return 2, {"error": reason or "register_worker failed"}
 
     worker_id = worker["worker_id"]
@@ -457,7 +465,7 @@ def run_micro_round(
         _registry.unregister_worker(worker_id, status="failed")
         return 2, {"error": str(exc), "run_id": run_id}
     finally:
-        lock_fd = _release_translate_lock(lock_fd)
+        lock_fd = _release_translate_lock(lock_fd, "stage_b", run_id)
 
     progress_path = REPO_ROOT / "workspace" / "runs" / run_id / "run_progress.json"
     cp_path = REPO_ROOT / "workspace" / "checkpoints" / f"{run_id}.json"
@@ -498,6 +506,33 @@ def run_micro_round(
 
     reg_status = "completed" if status == "completed" else "tick_paused" if status in {"in_progress", "budget_exhausted", "paused"} else status
     _registry.unregister_worker(worker_id, status=reg_status)
+
+    if use_real_api and not diagnostic_only and status == "completed":
+        # Final writeback: without this the production stage_state stays
+        # frozen at the startup "in_progress" payload and monitoring keeps
+        # flagging stage_state_stale after every finished micro round
+        # (FS-006 found two such fossils; root cause fixed here in FS-008).
+        update_stage_state_if_newer(
+            REPO_ROOT,
+            {
+                "phase": "draft",
+                "stage": "draft_stage_b_50ch",
+                "status": "completed",
+                "run_id": run_id,
+                "updated_at": _utc_now(),
+                "refine_blocked": True,
+                "summary": {
+                    "chapter_offset": offset,
+                    "limit_chapters": limit,
+                    "total_segments": int(progress.get("total_segments") or 0),
+                    "translated_segments": int(progress.get("completed_segments") or 0),
+                    "api_calls": summary_api_calls,
+                    "spent_usd": float(checkpoint.get("spent_usd") or 0),
+                },
+            },
+            run_id=run_id,
+            state_path=STAGE_STATE_PRODUCTION,
+        )
 
     orphans = _registry.find_orphan_api_workers()
     if orphans:

@@ -188,3 +188,63 @@ def test_single_chapter_gap_block() -> None:
     plan = plan_next_task(status)
     assert plan.round_id == "GAP-2-2"
     assert plan.chapter_range == "2-2"
+
+
+# ---------------------------------------------------------------------------
+# Interrupted-run resume (FS-008: no duplicate translation)
+# ---------------------------------------------------------------------------
+
+def _write_run_fixture(repo: Path, run_id: str, *, offset: int, status: str) -> None:
+    import json
+
+    run_dir = repo / "workspace" / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "run_metadata.json").write_text(
+        json.dumps({"run_id": run_id, "phase": "draft", "chapter_offset": offset}),
+        encoding="utf-8",
+    )
+    (run_dir / "run_progress.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "status": status,
+                "total_segments": 300,
+                "completed_segments": 100 if status == "in_progress" else 300,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_interrupted_run_at_same_offset_is_resumed(tmp_path) -> None:
+    _write_run_fixture(tmp_path, "run_x_draft_stage_b_50ch", offset=190, status="in_progress")
+    status = make_status(
+        next_task="draft_gap_backfill",
+        round_id=None,
+        chapter_range="191-202",
+        per_round=3,
+    )
+    plan = plan_next_task(status, repo_root=tmp_path)
+    assert plan.resume_run_id == "run_x_draft_stage_b_50ch"
+    cmd = plan.command
+    assert cmd[cmd.index("--run-id") + 1] == "run_x_draft_stage_b_50ch"
+
+
+def test_completed_or_other_offset_runs_are_not_resumed(tmp_path) -> None:
+    _write_run_fixture(tmp_path, "run_done_draft_stage_b_50ch", offset=190, status="completed")
+    _write_run_fixture(tmp_path, "run_other_draft_stage_b_50ch", offset=250, status="in_progress")
+    status = make_status(
+        next_task="draft_gap_backfill",
+        round_id=None,
+        chapter_range="191-202",
+        per_round=3,
+    )
+    plan = plan_next_task(status, repo_root=tmp_path)
+    assert plan.resume_run_id == ""
+    assert "--run-id" not in plan.command
+
+
+def test_no_repo_root_means_fresh_run() -> None:
+    plan = plan_next_task(make_status())
+    assert plan.resume_run_id == ""
+    assert "--run-id" not in plan.command

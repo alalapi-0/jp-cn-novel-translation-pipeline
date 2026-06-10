@@ -23,6 +23,7 @@ including pass-through budget limits.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,7 @@ class TaskPlan:
     command: list[str] | None = None
     budget: dict[str, Any] = field(default_factory=dict)
     mode: str = "dry_run"
+    resume_run_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -70,6 +72,7 @@ class TaskPlan:
             "command": self.command,
             "budget": self.budget,
             "mode": self.mode,
+            "resume_run_id": self.resume_run_id,
         }
 
 
@@ -78,6 +81,55 @@ def _parse_range(chapter_range: str) -> tuple[int, int]:
     start = int(start_s)
     end = int(end_s) if end_s else start
     return start, max(start, end)
+
+
+_DIAGNOSTIC_PREFIXES = (
+    "draft-a-",
+    "micro_validate",
+    "fixture_",
+    "asset-context",
+    "round_50_e2e",
+)
+
+
+def find_resumable_run(repo_root: Path | None, chapter_start: int) -> str:
+    """Find an interrupted run for this exact chapter offset to resume.
+
+    Resuming our own interrupted run (same offset, status in_progress) via
+    ``--run-id`` + checkpoint hydration prevents re-translating segments
+    that already completed (FS-008 acceptance: no duplicate translation).
+    This is distinct from the forbidden *reuse* of a finished run directory
+    for a different chapter range (FS-002 data-loss root cause): the match
+    is strictly same-offset + in_progress.
+    """
+    if repo_root is None:
+        return ""
+    runs_root = repo_root / "workspace" / "runs"
+    if not runs_root.is_dir():
+        return ""
+    offset = chapter_start - 1
+    candidates: list[tuple[float, str]] = []
+    for progress_path in runs_root.glob("*/run_progress.json"):
+        run_id = progress_path.parent.name
+        if any(run_id.startswith(p) for p in _DIAGNOSTIC_PREFIXES):
+            continue
+        try:
+            progress = json.loads(progress_path.read_text(encoding="utf-8"))
+            meta = json.loads(
+                (progress_path.parent / "run_metadata.json").read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(progress, dict) or not isinstance(meta, dict):
+            continue
+        if str(progress.get("status") or "") != "in_progress":
+            continue
+        if int(meta.get("chapter_offset") if meta.get("chapter_offset") is not None else -1) != offset:
+            continue
+        candidates.append((progress_path.stat().st_mtime, run_id))
+    if not candidates:
+        return ""
+    return max(candidates)[1]
 
 
 def _first_block(chapter_range: str, per_round: int) -> str:
@@ -98,6 +150,7 @@ def _draft_command(
     mode: str,
     budgets: dict[str, Any],
     python_executable: str,
+    resume_run_id: str = "",
 ) -> list[str]:
     cmd = [
         python_executable,
@@ -110,6 +163,8 @@ def _draft_command(
         chapter_range,
         "--supervised",
     ]
+    if resume_run_id:
+        cmd.extend(["--run-id", resume_run_id])
     if mode == "real":
         cmd.append("--real-api")
     else:
@@ -127,7 +182,7 @@ def plan_next_task(
     *,
     mode: str = "dry_run",
     budgets: dict[str, Any] | None = None,
-    repo_root: Path | None = None,  # noqa: ARG001 - reserved for later planners
+    repo_root: Path | None = None,
     python_executable: str = "python3",
 ) -> TaskPlan:
     """Decide the single next task for one tick from a status snapshot.
@@ -173,10 +228,13 @@ def plan_next_task(
             block = str(chapter_range)
             round_id = str(status.get("next_round_id") or f"D-MR-{block}")
             task_type = "draft_micro_round"
+        block_start, _ = _parse_range(block)
+        resume_run_id = find_resumable_run(repo_root, block_start)
         return TaskPlan(
             task_type=task_type,
             implemented=True,
-            reason="next draft micro round per status snapshot",
+            reason="next draft micro round per status snapshot"
+            + (f" (resuming interrupted run {resume_run_id})" if resume_run_id else ""),
             round_id=round_id,
             chapter_range=block,
             command=_draft_command(
@@ -185,9 +243,11 @@ def plan_next_task(
                 mode=mode,
                 budgets=budgets,
                 python_executable=python_executable,
+                resume_run_id=resume_run_id,
             ),
             budget=budgets,
             mode=mode,
+            resume_run_id=resume_run_id,
         )
 
     if phase in _NOT_IMPLEMENTED_ROUNDS:

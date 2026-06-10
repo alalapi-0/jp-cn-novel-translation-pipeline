@@ -319,13 +319,24 @@ def evaluate_gate(*, allow_diagnostic: bool = False) -> dict[str, Any]:
         for r in run_rows
         if r.get("chapter_offset") is not None
     )
-    if offsets_in_progress and all_offsets:
-        min_in_prog = min(offsets_in_progress)
-        higher = [o for o in all_offsets if o > min_in_prog]
-        if higher:
+    if offsets_in_progress:
+        if len(set(offsets_in_progress)) > 1:
+            # Two concurrent in-progress runs at different offsets is true
+            # out-of-order execution — keep blocking.
             blocks.append(
-                f"offset_skip: in_progress offset={min_in_prog} but higher offsets exist"
+                "offset_skip: multiple in_progress runs at offsets "
+                f"{sorted(set(offsets_in_progress))}"
             )
+        else:
+            # A single in-progress run below historically completed offsets
+            # is legitimate gap backfill (FS-002: ch191-208 records lost).
+            # Visible as a warning, never a block (FS-008).
+            min_in_prog = min(offsets_in_progress)
+            higher = [o for o in all_offsets if o > min_in_prog]
+            if higher:
+                warnings.append(
+                    f"backfill_in_progress: offset={min_in_prog} below completed offsets"
+                )
 
     # Cost guard / API key (after .env load)
     has_key = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
