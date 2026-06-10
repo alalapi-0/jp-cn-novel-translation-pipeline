@@ -2,6 +2,9 @@
 
 Copy-paste prompts for Tool-aware rounds. Each requires: read AGENTS.md, agent_tools.yaml, latest-agent-report; tool plan; small scope; gate; report; no real API/publish; no auto push.
 
+> **FS 连续推进轮（2026-06-11 起的主线模式）**：使用 `docs/prompts/CONTINUOUS_FS_ADVANCE_PROMPT.md`。
+> 该 Prompt 由用户授权每轮 commit + push main 与按轮次边界使用真实 API，优先级规则见其正文；与下方旧模板冲突时以其为准。
+
 ---
 
 ## 1. Cursor tool probe round
