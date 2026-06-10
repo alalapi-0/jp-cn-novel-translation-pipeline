@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template for the local translation scheduler launchd agent (FS-005).
+  Rendered by scripts/local_scheduler_launchd.sh, which substitutes the
+  REPO_ROOT / LABEL / INTERVAL_SECONDS / LOG_DIR placeholders (written in
+  double curly braces below).
+  The tick runs in dry-run mode by design; enabling real-API mode is a
+  deliberate manual edit (see docs/local_scheduler_runbook.md, FS-006).
+  Never embed API keys here: providers read keys from the environment of
+  the user's own shell sessions, not from launchd.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{{LABEL}}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>{{REPO_ROOT}}/scripts/local_scheduler_launchd.sh</string>
+        <string>run-tick</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>{{REPO_ROOT}}</string>
+    <key>StartInterval</key>
+    <integer>{{INTERVAL_SECONDS}}</integer>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>{{LOG_DIR}}/launchd_stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{LOG_DIR}}/launchd_stderr.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+    </dict>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

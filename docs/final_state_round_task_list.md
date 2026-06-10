@@ -163,6 +163,8 @@ launchd 脚本 + 模板。
 ### 下一轮衔接
 FS-006 Runbook 与 stale 治理。
 
+> ✅ 完成于 2026-06-11（`local_scheduler_launchd.sh` install/--dry-run/uninstall/status/run-tick + plist 模板；真实 install→kickstart→tick 日志含时间戳与退出码（`workspace/logs/scheduler/scheduler_tick.log`，dry-run tick exit 0 plan GAP-191-193）→重复 install/uninstall 幂等→已卸载收尾；plist 固定 dry-run、无密钥、显式 PATH/WorkingDirectory）
+
 ## Round FS-006：local_scheduler_runbook.md 与 stale lock 治理
 
 ### 目标
@@ -1425,7 +1427,8 @@ FS-070。
 | FS-002 | S1 调度器 | completed（2026-06-11） |
 | FS-003 | S1 调度器 | completed（2026-06-11） |
 | FS-004 | S1 调度器 | completed（2026-06-11） |
-| FS-005…FS-007 | S1 调度器 | not_started |
+| FS-005 | S1 调度器 | completed（2026-06-11） |
+| FS-006…FS-007 | S1 调度器 | not_started |
 | FS-008…FS-010 | S2 Phase A | not_started（D-MR-008 进行中） |
 | FS-011…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |

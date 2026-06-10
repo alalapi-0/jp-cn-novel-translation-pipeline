@@ -1,76 +1,69 @@
 {
-  "round_id": "FS-004",
-  "timestamp": "2026-06-10T21:02:00Z",
+  "round_id": "FS-005",
+  "timestamp": "2026-06-10T21:08:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "FS-004: phase->next-task decision table (task_planner) + tick dispatch of run_micro_round as supervised subprocess (dry-run)",
+  "goal": "FS-005: launchd integration for periodic dry-run scheduler ticks (install/uninstall/status + plist template + readable logs)",
   "scope": [
-    "src/scheduler/task_planner.py",
-    "src/scheduler/tick.py",
-    "scripts/local_scheduler_tick.py",
-    "tests/test_scheduler_task_planner.py",
-    "tests/test_local_scheduler_tick.py",
+    "scripts/local_scheduler_launchd.sh",
+    "scripts/launchd/com.lightnovel.translation.scheduler.plist.template",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 266aade feat(scheduler): FS-003 local_scheduler_tick dry-run skeleton",
+  "repo_status_before": "main at df32eef feat(scheduler): FS-004 task planner + run_micro_round integration",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "shell:run_micro_round --help + source read", "purpose": "confirm CLI contract incl. real-api default=True", "result": "dry-run plans hard-disarm with --dry-run --no-real-api"},
-    {"tool": "shell:run_micro_round dry-run probe", "purpose": "verify GAP-191-193 chapter-range planning works", "result": "exit 0, batch plan with segment ids, metrics to workspace/diagnostics"},
-    {"tool": "write", "purpose": "task_planner + tick dispatcher + CLI budgets + tests", "result": "created/updated"},
-    {"tool": "shell:pytest", "purpose": "planner+tick suites and full suite", "result": "38 passed scoped / full 277 passed"}
+    {"tool": "write", "purpose": "launchd management script + plist template", "result": "created"},
+    {"tool": "shell:launchctl", "purpose": "real install -> status -> kickstart -> idempotency -> uninstall acceptance", "result": "all pass; agent left uninstalled by design"},
+    {"tool": "read/grep", "purpose": "confirm workspace/logs/ gitignored", "result": ".gitignore line 92"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in FS-004"},
-    {"tool": "real API", "reason": "forbidden in FS-004; planner real mode exists but tick rejects dry_run=False until FS-007"},
-    {"tool": "context7", "reason": "internal contracts only"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in FS-005"},
+    {"tool": "real API", "reason": "forbidden in FS-005; plist pins --dry-run"},
+    {"tool": "pytest", "reason": "shell+plist only round, no python changes; full suite green at FS-004 (277 passed)"}
   ],
   "web_research": [],
   "real_api_used": {"used": false, "api_calls": 0, "cost_usd": 0.0},
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
-    "src/scheduler/task_planner.py",
-    "src/scheduler/tick.py",
-    "scripts/local_scheduler_tick.py",
-    "tests/test_scheduler_task_planner.py",
-    "tests/test_local_scheduler_tick.py",
+    "scripts/local_scheduler_launchd.sh",
+    "scripts/launchd/com.lightnovel.translation.scheduler.plist.template",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "python3 scripts/run_micro_round.py --round-id GAP-191-193 --chapter-range 191-193 --dry-run --no-real-api (exit 0)",
-    "python3 scripts/local_scheduler_tick.py --dry-run --max-api-calls 5 (plan GAP-191-193, dispatched rc:0, exit 0)",
-    ".venv/bin/python -m pytest tests/test_scheduler_task_planner.py tests/test_local_scheduler_tick.py (38 passed)",
-    "npm run test:py (277 passed)",
+    "bash scripts/local_scheduler_launchd.sh install --dry-run (renders plist, no side effects)",
+    "bash scripts/local_scheduler_launchd.sh install (bootstrap gui/501)",
+    "launchctl kickstart gui/501/com.lightnovel.translation.scheduler (tick log: start ts, full tick output, exit code=0)",
+    "install again / uninstall twice (idempotent)",
+    "bash scripts/local_scheduler_launchd.sh status (loaded and not-loaded paths)",
     "python3 scripts/check_orphan_workers.py --json (CLEAN)",
-    "python3 scripts/agent_gate.py --json (warn-only, same pre-existing warns)"
+    "python3 scripts/agent_gate.py --json (warn-only, pre-existing)"
   ],
   "test_results": [
-    {"suite": "tests/test_scheduler_task_planner.py", "result": "17 passed"},
-    {"suite": "tests/test_local_scheduler_tick.py", "result": "21 passed"},
-    {"suite": "full python suite (npm run test:py)", "result": "277 passed"}
+    {"suite": "manual launchd acceptance (install/kickstart/status/uninstall)", "result": "pass"},
+    {"suite": "full python suite", "result": "277 passed at FS-004; no python changes in FS-005"}
   ],
   "acceptance_result": [
-    {"criterion": "decision table gives correct next task for 5 phase fixtures", "pass": true, "evidence": "draft micro-round / gap backfill, consistency, baseline_lock, refinement, final_review, production_candidate + unknown all covered by tests"},
-    {"criterion": "D-MR branch dry-run renders run_micro_round command line with budget pass-through", "pass": true, "evidence": "command includes --round-id/--chapter-range/--supervised/--dry-run/--no-real-api + 5 budget flags; real-repo tick shows full command"},
-    {"criterion": "unimplemented branches report not_implemented explicitly, never silently skip", "pass": true, "evidence": "plan.reason carries not_implemented:...; tick execution carries not_implemented=true; test_tick_reports_not_implemented_explicitly"},
-    {"criterion": "tick never runs tasks concurrently", "pass": true, "evidence": "single plan per tick by construction; lock mutex tests still green"}
+    {"criterion": "install/uninstall/status idempotent", "pass": true, "evidence": "double install ok (bootout+bootstrap), double uninstall ok, status works loaded and unloaded"},
+    {"criterion": "kickstart writes tick log with timestamp and exit code", "pass": true, "evidence": "workspace/logs/scheduler/scheduler_tick.log: [2026-06-10T21:03:47Z] tick start ... [2026-06-10T21:03:48Z] tick exit code=0"},
+    {"criterion": "plist template carries no user-specific secrets", "pass": true, "evidence": "placeholders only; comment forbids embedding keys; rendered plist lives outside repo"},
+    {"criterion": "not installed in real-API mode by default", "pass": true, "evidence": "run-tick pins --dry-run; real mode requires manual runbook edit (FS-006/FS-007)"}
   ],
   "issues_found": [],
   "issues_fixed": [],
   "remaining_issues": [
-    "ch191-208 draft backfill required before FS-008 batch resume (planner now maps it to GAP-191-193 first block)",
-    "stale lock refine_stage_c_run_20260602_203645.lock + stage_state_stale warns -> FS-006",
-    "pre-existing gate warn vector_index_health - not scheduler related"
+    "ch191-208 draft backfill before FS-008 batch resume",
+    "stale lock refine_stage_c_run_20260602_203645.lock + stage_state_stale warns -> FS-006 (next round)",
+    "pre-existing gate warn vector_index_health"
   ],
   "severity_summary": {"p0": 0, "p1": 1, "p2": 0, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "real mode rendering exists in planner but is unreachable from tick until FS-007 flips the switch with budget guards"
+    "agent intentionally left uninstalled until FS-007 smoke passes; unattended operation also needs FS-006 stale-lock heal path"
   ],
-  "next_recommended_round": "FS-005: launchd integration (local_scheduler_launchd.sh install/uninstall/status + plist template, logs to workspace/logs/scheduler/)",
+  "next_recommended_round": "FS-006: local_scheduler_runbook.md + stale lock healing (refine_stage_c_run_20260602_203645.lock, stage_state_stale)",
   "human_decisions_required": []
 }
