@@ -118,17 +118,105 @@ LOOP:
 
 ---
 
-## 8. 当前交接状态（2026-06-11）
+## 8. 当前交接状态（2026-06-11 07:40，第二次交接）
 
 | 项 | 状态 |
 | --- | --- |
-| 已完成轮次 | FS-000（治理）、FS-001（pause/lock 内核）、FS-002（status 聚合） |
-| **下一轮** | **FS-003：local_scheduler_tick.py dry-run 骨架** |
-| Phase A 进度 | 223/613 章（36.38%），metadata 与 content 双口径一致 |
-| 已知 P1 | ch191-208 缺口（run 目录重用致历史丢失）→ FS-008 前回填 |
-| 已知 warn | stale lock `refine_stage_c_run_20260602_203645.lock`、stage_state_stale → FS-006 治理 |
-| worker | 0 active / 0 orphan |
-| 测试基线 | 239 passed |
+| 已完成轮次 | FS-000…FS-008 全部 ✅（S0 治理 + S1 调度器全线 + S2 批量启动轮） |
+| **当前任务** | **S2 Phase A 批量推进**：D-MR 队列连续执行（D-MR-016 进行中被暂停） |
+| Phase A 进度 | **247/613 章（40.29%）**，ch1-247 连续完成；191-211 历史缺口已全部回填 |
+| 断点 | D-MR-016（248-250）中断于 122/412 段，checkpoint 在；恢复后 planner 自动同 offset 续跑，**不会重复翻译** |
+| 暂停状态 | `workspace/control/scheduler_paused.json` 存在（交接保护）→ **恢复推进前必须先清除**（见 §11 第 1 步） |
+| worker | 0 active / 0 orphan；调度器锁 absent |
+| 测试基线 | 294 passed |
+| 今日成本 | $0.31（96+ calls，全部 deepseek/deepseek-v4-pro 初翻） |
+| 剩余工作量 | ch248-613 ≈ 366 章 ≈ 122 个 D-MR ≈ 预计 $4-5、≈20 小时纯翻译时间 |
+| 已知 P2 | agent_gate warn `vector_index_health`（历史遗留，与调度器无关） |
+| 闸门提醒 | FS-010（Phase A 收尾）与 FS-038 / FS-050 是闸门轮；FS-038/FS-050 需用户确认 |
+
+## 11. 批量推进操作手册（FS-008 实战验证，后续 Agent 直接照做）
+
+### 11.1 恢复推进（交接后第一件事）
+
+```bash
+# 1. 状态确认（必须 orphan CLEAN、无 active worker）
+python3 scripts/check_orphan_workers.py --json
+python3 scripts/local_scheduler_status.py --json
+
+# 2. 清除交接 pause（这是上一个 Agent 留的保护态）
+python3 -c "
+import sys; sys.path.insert(0, 'src')
+from scheduler.control import clear_pause
+print('cleared:', clear_pause())"
+
+# 3. 重新确认 safe_to_run=true 后开始循环
+```
+
+### 11.2 标准批量循环（一个 Milestone Block = 5 个 tick slot）
+
+```bash
+for i in 1 2 3 4 5; do
+  echo "=== B<N> MR $i start $(date -u +%H:%M:%SZ) ==="
+  python3 scripts/local_scheduler_tick.py --real-api --max-api-calls 30 --max-wall-time-minutes 40 --json > /tmp/tick_bN_$i.json 2>&1
+  rc=$?
+  st=$(python3 -c "import json;print(json.load(open('/tmp/tick_bN_$i.json'))['status'])" 2>/dev/null || echo parse_fail)
+  plan=$(python3 -c "import json;d=json.load(open('/tmp/tick_bN_$i.json'));print(d['plan']['round_id'] if d.get('plan') else '-')" 2>/dev/null || echo -)
+  echo "B<N> MR $i: exit=$rc status=$st plan=$plan"
+  if [ $rc -ne 0 ] || [ "$st" != "completed" ]; then echo "B<N>_STOP_AT_$i"; break; fi
+  python3 scripts/check_orphan_workers.py --json | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if d['decision']=='CLEAN' else 1)" || { echo "B<N>_ORPHAN_AT_$i"; break; }
+  echo "B<N> MR $i: orphan CLEAN"
+done; echo "B<N>_LOOP_END"
+```
+
+要点：
+- **后台启动 + 周期轮询**（每 4-5 分钟看一次终端输出 / 侧查最新 run 的 `run_progress.json`）。
+- 普通 MR（~300-560 段）一个 tick 完成（9-15 分钟）；**大 MR（如 D-MR-015 有 1562 段）需 2-3 个 tick**——budget 耗尽时 tick 仍报 completed，下个 slot 由 planner `find_resumable_run` 同 offset 自动续跑，这是正常行为不是 bug。
+- 决策表自动跳过已完成章节区，无需手工指定 round。
+
+### 11.3 每个 Block 结束后（强制）
+
+```bash
+# 健康检查（FS-009 式）
+python3 scripts/throughput_gate.py --json   # 期望 WARN 且只有 refine_pending / diagnostic_* 类
+python3 scripts/check_orphan_workers.py --json
+python3 -c "  # failed 必须为 0
+import json, glob
+fails = sum(int(json.load(open(p)).get('failed_segments') or 0) for p in glob.glob('workspace/runs/run_*/run_progress.json'))
+print('TOTAL failed:', fails)"
+# 成本累计（写入轮次报告）
+python3 -c "
+import json, glob
+print(round(sum(float(json.load(open(p)).get('spent_usd') or 0) for p in glob.glob('workspace/checkpoints/run_*.json')), 4))"
+```
+
+然后：更新 `docs/final_state_round_task_list.md` 的 FS-008/FS-009 注记 → 写 `reports/latest-agent-report.json` + 追加 `reports/agent_audit_log.jsonl` → `validate_agent_report.py` PASS → commit + push（见 11.5）。
+
+### 11.4 实战坑清单（本会话踩过，勿重蹈）
+
+1. **commit 用 `git commit -F <消息文件>`**，不要用 heredoc 内嵌消息——heredoc 形式在本环境曾让 shell 卡死 4 分钟（无任何输出，git 进程不存在）。消息文件写到 `.git/COMMIT_MSG_*.txt`，用完删除。
+2. **Shell spawn 报 "Execution backend unavailable" 不代表命令没跑**——先查 `workspace/control/scheduler_running.lock` 持有者与 `ps`，确认后再决定重试，否则会撞 `skipped_lock_held`。
+3. **永不 kill -9 worker**。优雅停止 = `request_pause`（挡新 tick）+ `translation.stop_control.request_stop`（让运行中 worker 在下个 heartbeat 存盘退出）→ 等锁释放 → `clear_stop_request`（一次性信号，pause file 才是持续暂停）。
+4. tick exit 2 = blocked：先看 `workspace/control/tick_reports/` 最新 json 的 `execution.stderr_tail`，再 `throughput_gate --json` 看 `blocks`。gate BLOCK 修复后 tick 直接重试即可。
+5. **绝不把不同章节窗口 hydrate 进已有 run 目录**（FS-002 / FS-008 两次数据事故根因；现已有三防线代码拦截，若再遇 `hydrate refused` 报错 = 防线生效，开 fresh run 而不是绕过）。
+6. `workspace/archived_runs/`、`workspace/runs/` 等真实数据：保持未跟踪，不 add、不删、不改写历史窗口。
+7. 全套测试目前 294 passed 是基线；任何代码改动后 `npm run test:py` 必须不低于此。
+
+### 11.5 提交模板
+
+```bash
+git status --short && git diff --stat && git diff --check
+git add <仅本轮文件 + 任务清单 + reports 三件套>
+git commit -F .git/COMMIT_MSG_XXX.txt && rm .git/COMMIT_MSG_XXX.txt
+git push origin main
+```
+
+commit message 风格：`feat(scope): FS-XXX 中文摘要` 或批量轮 `feat(pipeline): Phase A Block #N（D-MR-xxx…yyy，章节 a-b）`+ 要点列表。
+
+### 11.6 后续轮次衔接
+
+- 批量期间每 Block 重复 FS-009 健康检查；S3（configs 资产层 FS-011…）可在等待 API 的间隙穿插推进（Roadmap §3 允许并行）。
+- 613/613 完成 → FS-010 Phase A 收尾闸门（completion check + draft 导出 + 报告）。
+- FS-038（baseline lock）、FS-050（production_candidate）到达时**停止等用户确认**。
 
 ---
 

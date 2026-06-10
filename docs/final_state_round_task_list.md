@@ -1438,7 +1438,7 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | completed（2026-06-11；ch1-241 连续，D-MR-014 起批量推进中） |
+| FS-008 | S2 Phase A | completed（2026-06-11；ch1-241 连续，批量推进交接中：247/613，D-MR-016 断点 122/412，paused 保护） |
 | FS-009 | S2 Phase A | recurring（Block #1 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011…FS-016 | S3 资产层 | not_started |

@@ -1,83 +1,66 @@
 {
-  "round_id": "FS-008",
-  "timestamp": "2026-06-10T22:50:00Z",
+  "round_id": "FS-008-handoff",
+  "timestamp": "2026-06-10T23:45:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "FS-008: Phase A batch advance kickoff - gap backfill ch191-211 complete, resume machinery hardened after incident",
+  "goal": "Phase A batch advance Block #2 (partial) + graceful pause for agent handoff per user request",
   "scope": [
-    "src/scheduler/task_planner.py",
-    "scripts/throughput_gate.py",
-    "scripts/run_micro_round.py",
-    "scripts/micro_round_plan.py",
-    "tests (planner/gate/gap)",
+    "batch advance D-MR-014/015/016",
+    "docs/prompts/CONTINUOUS_FS_ADVANCE_PROMPT.md (handoff state + §11 batch ops manual)",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 7e8bc39 FS-008 kickoff fixes",
+  "repo_status_before": "main at c57e5f9 FS-008 incident fixes + backfill close-out",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "shell:supervised tick loops", "purpose": "batch advance GAP-194..202 + controlled re-translation 203-205/209-211", "result": "7 MRs completed unattended, failed=0"},
-    {"tool": "read/grep/python forensics", "purpose": "incident: D-MR-001 fake-completed in 0 calls; traced to LEGACY_PARTIAL_RUN_ID auto-resume + hydrate window rewrite", "result": "legacy run segments rewritten 209-211 -> 206-208; ch209-211 controlled records lost (draft md preserved)"},
-    {"tool": "write", "purpose": "three defense lines + cleanup", "result": "legacy auto-resume removed; hydrate refuses cross-offset redirect; false-completed refused when round not covered"},
-    {"tool": "shell:pytest", "purpose": "regression", "result": "scoped 46 passed; full suite 294 passed at kickoff commit"}
+    {"tool": "shell:supervised tick loop", "purpose": "Block #2: D-MR-014 (537 seg), D-MR-015 (1562 seg, 3 ticks), D-MR-016 (started)", "result": "all unattended, orphan CLEAN throughout"},
+    {"tool": "scheduler.control + stop_control", "purpose": "graceful pause: pause file + request_stop -> worker checkpointed and exited cleanly", "result": "0 orphans, lock absent, resumable breakpoint"},
+    {"tool": "write", "purpose": "handoff prompt update with battle-tested ops manual", "result": "CONTINUOUS_FS_ADVANCE_PROMPT.md §8 + §11"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in FS-008"},
-    {"tool": "context7", "reason": "internal pipeline only"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in batch rounds"}
   ],
   "web_research": [],
   "real_api_used": {
     "used": true,
-    "api_calls": 96,
-    "cost_usd": 0.1558,
+    "api_calls": 75,
+    "cost_usd": 0.1464,
     "model": "deepseek/deepseek-v4-pro",
     "profile": "draft_translation_primary",
-    "scope": "GAP-191-193/194-196/197-199/200-202 + D-MR-001(203-205) + D-MR-003(209-211); 6 fresh runs, all completed, failed=0"
+    "scope": "Block #2: D-MR-014 242-244 completed ($0.0425), D-MR-015 245-247 completed 1562 seg ($0.0932), D-MR-016 248-250 interrupted at 122/412 ($0.0107, resumable)"
   },
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
-    "scripts/micro_round_plan.py",
-    "scripts/run_micro_round.py",
+    "docs/prompts/CONTINUOUS_FS_ADVANCE_PROMPT.md",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "supervised tick loop Block#1: GAP-194-196/197-199/200-202 + D-MR-001 + D-MR-002(no-op detected) all exit 0 orphan CLEAN",
-    "forensics: legacy run 095821 now holds 206-208 FULL (T-002-era output restored by hydrate); 209-211 absent from all runs",
-    "fix-verify loop: D-MR-001 203-205 real re-translation 562/562 ($0.0360); D-MR-003 209-211 342/342 ($0.0226)",
-    "health check: gate WARN expected-only, 6 runs completed failed=0, content count 241 == metadata count 241",
-    "status: draft 241/613 (39.31%), next D-MR-014 242-244"
+    "Block #2 loop: D-MR-014 completed; D-MR-015 completed across 3 budget ticks (same-offset resume verified in production); D-MR-016 started",
+    "graceful stop: request_pause(handoff) + request_stop -> worker exited at heartbeat, checkpoint saved",
+    "post-stop verification: orphan CLEAN 0/0, scheduler lock absent, D-MR-016 at 122/412 resumable",
+    "cost aggregation: $0.3102 today total"
   ],
   "test_results": [
-    {"suite": "planner/gate/gap scoped", "result": "46 passed"},
-    {"suite": "full python suite", "result": "294 passed (kickoff commit); micro_round_plan/run_micro_round changes re-verified in scoped suites"}
+    {"suite": "no code changes this segment (docs only)", "result": "baseline remains 294 passed"}
   ],
   "acceptance_result": [
-    {"criterion": "resume from correct breakpoint without duplicate translation", "pass": true, "evidence": "find_resumable_run same-offset in_progress matching + tests; hydrate cross-offset refusal closes the rewrite hole"},
-    {"criterion": "3+ consecutive MRs unattended", "pass": true, "evidence": "Block#1 slots 1-3 (GAP-194/197/200) + fix-verify 2 MRs, all completed orphan CLEAN without intervention"},
-    {"criterion": "per-MR reports generated", "pass": true, "evidence": "micro_round_metrics/*.json + summary json + tick reports for every MR"}
+    {"criterion": "graceful handoff: no orphans, no held locks, resumable breakpoint, paused state", "pass": true, "evidence": "orphan CLEAN, lock absent, D-MR-016 checkpoint 122/412, scheduler_paused.json present"},
+    {"criterion": "handoff prompt enables seamless continuation", "pass": true, "evidence": "CONTINUOUS_FS_ADVANCE_PROMPT.md §8 updated state table + §11 ops manual (resume steps, loop template, health checks, pitfall list, commit template)"}
   ],
-  "issues_found": [
-    "P1 incident: LEGACY_PARTIAL_RUN_ID auto-resume pointed D-MR-001/002 at legacy run 095821; hydrate rewrote its segments window 209-211 -> 206-208, orphaning ch209-211 controlled records (draft md files preserved, no physical text loss)",
-    "P1: run_micro_round trusted runner 'nothing to do' as completed even when target range not covered (D-MR-001 fake success, 0 calls)"
-  ],
-  "issues_fixed": [
-    "legacy auto-resume permanently removed from micro_round_plan (planner same-offset resume is the only resume path)",
-    "hydrate refuses cross-offset redirect: run directory is single-window; different window requires fresh run_id",
-    "completion verdict: round_done=False now downgrades 'completed' to 'failed' (false success surfaces planner bugs)",
-    "ch203-205 and ch209-211 re-translated in fresh controlled runs; ch206-208 verified as genuine T-002 output and kept"
-  ],
+  "issues_found": [],
+  "issues_fixed": [],
   "remaining_issues": [
-    "pre-existing agent_gate warn vector_index_health",
-    "~100 duplicate-translated segments from pre-fix resume bug (cost ~$0.008, no data impact)"
+    "D-MR-016 (248-250) at 122/412 - next agent resumes via standard loop after clearing pause",
+    "pre-existing agent_gate warn vector_index_health (P2)"
   ],
   "severity_summary": {"p0": 0, "p1": 0, "p2": 1, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "batch advance now at D-MR-014 (242-244); 124 MRs remain (~372 chapters, est. $4-5 total at current rates) - within MAX_TEST_COST_USD=5 per-run guard but cumulative budget needs user awareness at next milestone"
+    "next agent must clear_pause() before looping (documented in §11.1); pause file left intentionally as handoff protection"
   ],
-  "next_recommended_round": "Continue D-MR queue from D-MR-014 in Milestone Blocks (5 MR / 15 ch) with FS-009 health checks; FS-010 completion gate when 613/613",
+  "next_recommended_round": "Resume S2 batch: clear pause -> Block #3 loop from D-MR-016 breakpoint (auto-resumed by planner); FS-009 health check each block; S3 FS-011 may interleave during API waits",
   "human_decisions_required": []
 }
