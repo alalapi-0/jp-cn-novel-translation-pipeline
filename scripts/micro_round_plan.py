@@ -8,8 +8,11 @@ from typing import Any
 
 FIRST_DRAFT_MR_CHAPTER = 203
 TOTAL_CHAPTERS = 613
-LEGACY_PARTIAL_RUN_ID = "run_20260607_095821_draft_stage_b_50ch"
-LEGACY_RUN_CHAPTER_END = 210
+# NOTE (FS-008 incident, 2026-06-11): the old LEGACY_PARTIAL_RUN_ID auto-resume
+# pointed D-MR-001/002 at run_20260607_095821 and the hydrate step rewrote that
+# run's segments window (209-211 -> 206-208), orphaning the ch209-211 records.
+# Legacy-run auto-resume is permanently removed; resume decisions belong to the
+# scheduler task planner, which only ever resumes same-offset in_progress runs.
 
 # Legacy 20-chapter rounds (deprecated, kept for report compatibility).
 LEGACY_ROUND_PLAN: dict[str, dict[str, Any]] = {
@@ -27,7 +30,7 @@ LEGACY_ROUND_PLAN: dict[str, dict[str, Any]] = {
         "chapter_end": 210,
         "offset": 190,
         "limit": 20,
-        "resume_run_id": LEGACY_PARTIAL_RUN_ID,
+        "resume_run_id": "",
     },
     "T-003": {
         "phase": "draft",
@@ -55,7 +58,6 @@ def draft_mr_plan(round_id: str, *, round_size: int = 3) -> dict[str, Any] | Non
     end = min(start + round_size - 1, TOTAL_CHAPTERS)
     offset = start - 1
     limit = end - start + 1
-    resume_run_id = LEGACY_PARTIAL_RUN_ID if start <= LEGACY_RUN_CHAPTER_END else ""
     return {
         "round_id": round_id,
         "phase": "draft",
@@ -64,7 +66,7 @@ def draft_mr_plan(round_id: str, *, round_size: int = 3) -> dict[str, Any] | Non
         "offset": offset,
         "limit": limit,
         "round_size": round_size,
-        "resume_run_id": resume_run_id,
+        "resume_run_id": "",
         "model_profile": "draft_translation_primary",
     }
 

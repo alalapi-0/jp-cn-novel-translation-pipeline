@@ -140,6 +140,18 @@ def _hydrate_if_needed(
     # Fresh micro-round run: no prior checkpoint/progress — draft_runner initializes artifacts.
     if not checkpoint_path.is_file() and not progress_path.is_file():
         return 0
+    if prev_offset >= 0 and prev_offset != offset:
+        # Redirecting an existing run to a different chapter window rewrites
+        # its history (FS-008 incident: legacy run's ch209-211 records were
+        # destroyed by a 206-208 rehydrate; FS-002 lost ch191-208 the same
+        # way). A run directory is single-window: resume must be same-offset,
+        # anything else needs a fresh run_id.
+        print(
+            f"hydrate refused: run {run_id} holds offset={prev_offset} "
+            f"(status={prev_status}); requested offset={offset} would rewrite history",
+            file=sys.stderr,
+        )
+        return 1
     proc = __import__("subprocess").run(
         [
             _python(),
@@ -475,7 +487,11 @@ def run_micro_round(
     quality = _chapter_quality(seg_doc, ch_start, ch_end)
     if quality["round_done"]:
         status = "completed"
-    elif progress.get("status") == "failed" and status == "completed":
+    elif status == "completed":
+        # Runner returned "nothing left to do" but the target range is not
+        # actually covered by this run's segments (e.g. resumed run holds a
+        # different window). Refusing the false success is what surfaces
+        # planner/resume bugs instead of silently skipping chapters (FS-008).
         status = "failed"
 
     compact = build_compact_summary(
