@@ -253,9 +253,16 @@ def run_refine_controlled(
                     heartbeat_cb()
                 continue
 
+            # FS-016: inject batch-hit configs assets (spec §22 subset rule)
+            from translation.configs_asset_context import build_configs_asset_context
+
+            configs_ctx = build_configs_asset_context(
+                [str(s.get("source_text") or "") for s in batch]
+            )
             messages = build_refine_batch_messages(
                 batch,
                 chapter_label=chapter_labels.get(chapter_id, chapter_id),
+                asset_context=None if configs_ctx.empty else configs_ctx.text,
             )
             options = GenerateOptions(
                 project_id="light-novel-jp-cn",

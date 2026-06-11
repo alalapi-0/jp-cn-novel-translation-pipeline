@@ -726,13 +726,26 @@ def _run_chapter_batches(
             check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
 
             glossary_hits = ""
-            if compact_context and asset_resolved and asset_resolved.is_file():
-                from assets.translation_memory import select_batch_context_hits
+            if compact_context:
+                hit_blocks: list[str] = []
+                if asset_resolved and asset_resolved.is_file():
+                    from assets.translation_memory import select_batch_context_hits
 
-                glossary_hits = select_batch_context_hits(
-                    asset_resolved,
-                    [s.source_text for s in pending],
+                    tm_hits = select_batch_context_hits(
+                        asset_resolved,
+                        [s.source_text for s in pending],
+                    )
+                    if tm_hits:
+                        hit_blocks.append(tm_hits)
+                # FS-016: configs asset layer (batch-hit subset only, spec §22)
+                from translation.configs_asset_context import build_configs_asset_context
+
+                configs_ctx = build_configs_asset_context(
+                    [s.source_text for s in pending]
                 )
+                if not configs_ctx.empty:
+                    hit_blocks.append(configs_ctx.text)
+                glossary_hits = "\n".join(hit_blocks)
 
             messages = build_batch_messages(
                 pending,

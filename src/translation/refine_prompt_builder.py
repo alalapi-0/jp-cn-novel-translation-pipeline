@@ -33,6 +33,7 @@ def build_refine_batch_messages(
     *,
     chapter_label: str,
     prompt_version: str = "refine_v2",
+    asset_context: str | None = None,
 ) -> list[Message]:
     items = [
         {
@@ -61,8 +62,15 @@ def build_refine_batch_messages(
         },
         "segments": items,
     }
+    context_prefix = ""
+    if asset_context and asset_context.strip():
+        context_prefix = (
+            "以下为本 batch 命中的术语与角色设定（仅含命中子集，须严格遵循；"
+            "locked 术语逐字使用）：\n" + asset_context.strip() + "\n\n"
+        )
     user_content = (
-        "请对以下 segments 进行对照式润色，返回单个 JSON 对象，键为 items（数组）。\n"
+        context_prefix
+        + "请对以下 segments 进行对照式润色，返回单个 JSON 对象，键为 items（数组）。\n"
         "每个 item 必须包含 segment_id 与 refined_translation（也可用 translation 字段）。\n\n"
         + json.dumps(contract, ensure_ascii=False, indent=2)
     )

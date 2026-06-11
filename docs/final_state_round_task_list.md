@@ -442,6 +442,8 @@ FS-013…FS-015；`src/translation/prompt_builder.py`、`refine_prompt_builder.p
 ### 下一轮衔接
 S4 UI 基座（或继续 S2 批量推进）。
 
+> ✅ 完成于 2026-06-11（S2 批量等待间隙穿插执行，**S3 资产层收官**。新增 `src/translation/configs_asset_context.py`：build_configs_asset_context 按当前 batch source_text 命中筛选 configs 资产（glossary source_term/alias 命中 + character name/alias 命中），locked > approved > 其余排序、[locked]/[approved] 旗标、紧凑角色行（译名/一人称/口癖/敬语/称呼≤2/禁止≤1）、max_terms/max_characters/char_budget 三重预算（超限 truncated 标记）、(size,mtime) 缓存、deleted 墓碑排除。接入：draft_runner compact 分支（TM hits + configs hits 叠加）、refine_prompt_builder 新 asset_context 参数 + refine_runner 注入。验收：✅注入条目 ⊆ batch 命中集合（50 条未命中术语零泄漏断言 + 别名命中 + 墓碑排除）✅context pack 预算受控（char_budget=60 截断断言 + max_terms cap）✅run_micro_round --dry-run --fake-provider plan 通过（272 段 14 batch est 29693 tok）。测试 +10（全套 385 passed））
+
 ---
 
 # Stage S4：Web UI 基座与设计系统
@@ -1458,7 +1460,7 @@ FS-070。
 | FS-013 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-014 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-015 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
-| FS-016 | S3 资产层 | not_started |
+| FS-016 | S3 资产层 | completed（2026-06-11，批量间隙穿插；**S3 全 stage 完成**） |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031…FS-037 | S6 Phase B | not_started |
