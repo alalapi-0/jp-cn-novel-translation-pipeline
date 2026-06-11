@@ -4,20 +4,20 @@
 > 旧 20 章任务清单（deprecated）：`docs/translation_recovery_task_list.md`  
 > 生成时间：2026-06-07（治理轮，未执行真实 API）
 >
-> **2026-06-12 live override**：D-MR-001…071 已完成；当前连续完成 415/613 章。下一任务固定为 **D-MR-072（416–418）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
+> **2026-06-12 live override**：D-MR-001…078 已完成；当前连续完成 436/613 章。下一任务固定为 **D-MR-079（437–439）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
 
 ## Current State
 
 - **total chapters**: 613（`input_jp/*.md`）
-- **draft completed chapters**: **415**（第 1–415 章连续完成）
+- **draft completed chapters**: **436**（第 1–436 章连续完成）
 - **current partial run**: 无
 - **refinement completed chapters**: **170**（可导出 refined）
 - **active worker**: 0
 - **orphan worker**: 0（`check_orphan_workers.py` → CLEAN）
 - **stale lock**: 0
 - **default model**: `deepseek/deepseek-v4-pro`（Nemotron 暂不启用）
-- **next draft micro round**: **D-MR-072**（第 416–418 章）
-- **remaining draft MRs**: 66（D-MR-072 … D-MR-137）
+- **next draft micro round**: **D-MR-079**（第 437–439 章）
+- **remaining draft MRs**: 59（D-MR-079 … D-MR-137）
 - **state source**: `local_scheduler_status.py --json`（当前唯一执行真值）
 
 ### Legacy T-002 映射
@@ -69,12 +69,19 @@
 - **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
 - **report**: `workspace/round_reports/D-MR-067/`
 
-### D-MR-072（NEXT）
+### D-MR-078（COMPLETED）
 
-- **chapter range**: 416–418
+- **chapter range**: 434–436
 - **execution**: `python3 scripts/local_scheduler_tick.py --dry-run` 先规划；真实执行按 FS-008 cost guard / pause / lock / orphan 规则
 - **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
-- **report**: `workspace/round_reports/D-MR-072/`
+- **report**: `workspace/round_reports/D-MR-078/`
+
+### D-MR-079（NEXT）
+
+- **chapter range**: 437–439
+- **execution**: `python3 scripts/local_scheduler_tick.py --dry-run` 先规划；真实执行按 FS-008 cost guard / pause / lock / orphan 规则
+- **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
+- **report**: `workspace/round_reports/D-MR-079/`
 
 ### D-MR-002
 

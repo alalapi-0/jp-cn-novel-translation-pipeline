@@ -20,7 +20,7 @@
 执行要点：
 
 - **下一轮做什么**：在 `final_state_round_task_list.md` 中找第一个未完成的 FS 轮，按其"输入 / 文件 / 命令 / 验收 / 禁止 / 产物"执行；不重新发明路线。
-- **当前状态以探针为准**：先运行 `python3 scripts/local_scheduler_status.py --json`、`python3 scripts/check_orphan_workers.py --json`；叙述性快照若与探针冲突，先修正文档再推进。2026-06-12 Block #14 后的 Phase A 安全入口是 `D-MR-072`（416–418 章）。
+- **当前状态以探针为准**：先运行 `python3 scripts/local_scheduler_status.py --json`、`python3 scripts/check_orphan_workers.py --json`；叙述性快照若与探针冲突，先修正文档再推进。2026-06-12 Block #15 后的 Phase A 安全入口是 `D-MR-079`（437–439 章）。
 - **真实 API 是生产目标的一部分**，按轮次任务的"是否允许真实 API"字段执行（cost guard + 预算限制 + pause file 尊重），不得永久禁用，也不得无限制连续调用。生产模型切换 / 并发 / 提价需用户确认。
 - **Web UI 是主线**而非附属：UI 轮必须真实浏览器 before/after 检查（页面、console、network），中文优先，统一设计系统，危险操作二次确认。
 - **Phase A / D 批量执行**沿用 `docs/translation_recovery_3ch_roadmap.md` 的 D-MR / R-MR 3 章 micro round 体系。
