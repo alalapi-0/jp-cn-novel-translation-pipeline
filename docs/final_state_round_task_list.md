@@ -259,6 +259,8 @@ D-MR-008 从正确断点续跑且无重复翻译；连续 3 个 MR 无人工干�
 > ✅ Block #5 收口于 2026-06-11（D-MR-025 → 026 → 027 → 028 → 029 各一 tick 完成（5/5），15 章。**进度 289/613（47.15%），ch1-289 连续**，next D-MR-030（290-292）。健康检查：orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1666，今日累计 ≈ $0.74）
 >
 > ✅ Block #6 收口于 2026-06-11（D-MR-030 → 031 → 032 → 033 → 034 各一 tick 完成（5/5），15 章。**进度 304/613（49.59%），ch1-304 连续**，next D-MR-035（305-307）。健康检查：orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1368，今日累计 ≈ $0.88）
+>
+> ✅ Block #7 收口于 2026-06-11（第三棒接力续跑：接手时 D-MR-037 进行中 → 等 tick 完成 → D-MR-038 跨 2 tick 同 offset 续跑（731 段，设计行为）→ 5/5 tick slot 满。**进度 316/613（51.55%），ch1-316 连续**，next D-MR-039（317-319）。健康检查：orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1599（035/036/037/038 checkpoint 实测），今日累计 ≈ $1.04）
 
 ## Round FS-009：Phase A 周期健康检查轮（模板轮，可重复执行）
 
@@ -1458,8 +1460,8 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：304/613（49.59%），ch1-304 连续，next D-MR-035） |
-| FS-009 | S2 Phase A | recurring（Block #1…#6 已执行 2026-06-11；每 Block 重复） |
+| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：316/613（51.55%），ch1-316 连续，next D-MR-039） |
+| FS-009 | S2 Phase A | recurring（Block #1…#7 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
