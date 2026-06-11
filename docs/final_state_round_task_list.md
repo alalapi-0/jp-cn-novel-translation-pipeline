@@ -2,7 +2,7 @@
 
 > 最终成品轮次任务清单（FS-000 … FS-070），2026-06-10 治理轮创建。
 > 锚点：`docs/product_final_state_spec.md`；总路线：`docs/final_state_implementation_roadmap.md`。
-> Phase A 的 D-MR-052…137 与 Phase D 的 R-MR 批量执行细节见 `docs/translation_recovery_3ch_task_list.md`（继续有效）；本清单的 FS 轮负责工程能力建设与阶段闸门。
+> Phase A 的 D-MR-057…137 与 Phase D 的 R-MR 批量执行细节见 `docs/translation_recovery_3ch_task_list.md`（继续有效）；本清单的 FS 轮负责工程能力建设与阶段闸门。
 >
 > 通用约定（适用所有轮次，不再逐轮重复）：
 > - 每轮开始执行 `docs/next_agent_execution_protocol.md` 的标准流程。
@@ -283,6 +283,8 @@ D-MR-008 从正确断点续跑且无重复翻译；连续 3 个 MR 无人工干�
 > ✅ Block #9 收口于 2026-06-11（D-MR-043 → 044 → 045 → 046 → 047 各一 tick 完成（5/5），15 章。**进度 343/613（55.95%），ch1-343 连续**，next D-MR-048（344-346）。健康检查：orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1643，今日累计 ≈ $1.33）
 >
 > ✅ Block #10 收口于 2026-06-11（D-MR-048 → 049（跨 2 tick 同 offset 续跑）→ 050 → 051 各完成（5/5 tick slot）。**进度 355/613（57.91%），ch1-355 连续**，next D-MR-052（356-358）。健康检查：orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1726，今日累计 ≈ $1.50）
+>
+> ✅ Block #11 收口于 2026-06-11（D-MR-052 → 053 → 054 → 055 → 056 完成，15 章；大轮按 checkpoint 分切片续跑）。**进度 370/613（60.36%），ch1-370 连续**，next D-MR-057（371-373）。五轮 3062/3062 segments completed，failed=0、blocking validation_failed=0、missing draft=0、orphan CLEAN；Block 成本 $0.19766261（136 个已完成 API calls；D-MR-053 有 1 个超时中断的 in-flight 请求，账单状态未知）。本轮修复 wall-time 穿透：RouterProvider 单次 timeout 现在受剩余 run budget 约束，51 个定向测试与全套 387 tests 通过；gate WARN 仅预期诊断、blocks=[]。
 
 ## Round FS-009：Phase A 周期健康检查轮（模板轮，可重复执行）
 
@@ -1482,8 +1484,8 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | launch completed / batch in_progress（355/613，ch1-355 连续，next D-MR-052） |
-| FS-009 | S2 Phase A | recurring（Block #1…#10 已执行 2026-06-11；每 Block 重复） |
+| FS-008 | S2 Phase A | launch completed / batch in_progress（370/613，ch1-370 连续，next D-MR-057） |
+| FS-009 | S2 Phase A | recurring（Block #1…#11 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |

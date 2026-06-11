@@ -1,25 +1,22 @@
-round_id: final_state_governance_rebaseline_20260611
-round_name: "Final-state governance rebaseline and authority alignment"
-round_number_human: "FS-000 revalidation"
+round_id: fs_008_block11_20260611
+round_name: "Phase A Block #11 and wall-budget enforcement"
+round_number_human: "FS-008 Block #11"
 status: completed
-type: planning_governance
-real_api_called: false
-full_translation_executed: false
-existing_translation_outputs_modified: false
+type: translation_execution
+real_api_called: true
+full_translation_executed: true
+existing_translation_outputs_modified: true
 
 completed_tasks:
-  - "Synchronized the user-provided Product Final State Specification v1.1 into the repository anchor"
-  - "Aligned project authority files and Agent entry points with the final-state roadmap"
-  - "Rebased Phase A truth to 355/613 contiguous chapters; next D-MR-052 (356-358)"
-  - "Recorded S1 scheduler and S3 glossary/config asset stages as completed"
-  - "Verified the existing four-page Workbench in a real browser: HTTP 200, no console warnings/errors"
-  - "Recorded the remaining 15-page final UI gap and Phase B-E implementation gaps"
-  - "Added workspace/archived_runs/ to .gitignore to prevent real run archives entering Git"
-  - "Refreshed tool inventory and governance handoff reports"
+  - "Completed D-MR-052 through D-MR-056 with 3062/3062 segments and no failed or validation_failed segments"
+  - "Advanced contiguous Phase A draft progress from 355/613 to 370/613"
+  - "Detected and safely interrupted a D-MR-053 provider hang without leaving an orphan worker"
+  - "Bound provider request timeout to remaining supervised wall budget and added regression tests"
+  - "Completed FS-009 health check: throughput blocks empty, orphan CLEAN, full Python suite 387 passed"
 
 next_recommended_round:
-  id: FS-008-block11
-  title: "Continue Phase A from D-MR-052; run FS-009 health check after the block"
+  id: FS-008-block12
+  title: "Continue Phase A from D-MR-057; run FS-009 health check after the block"
 
 next_parallel_engineering_round:
   id: FS-017

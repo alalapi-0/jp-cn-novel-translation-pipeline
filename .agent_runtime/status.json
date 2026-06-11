@@ -1,15 +1,15 @@
 {
   "mode": "continuous_real_api",
-  "round": 13,
+  "round": 14,
   "current_role": "runner-agent",
   "last_successful_commit": "1ba100e",
   "last_push_branch": "main",
-  "api_mode": "missing_api_key",
+  "api_mode": "real_api_available",
   "browser_check_interval_minutes": 5,
   "last_browser_check_at": "2026-06-07T04:08:50+00:00",
-  "last_real_api_check_at": "2026-06-07T02:21:03+00:00",
+  "last_real_api_check_at": "2026-06-11T17:17:55+00:00",
   "hard_blocked": false,
   "stop_reason": null,
-  "updated_at": "2026-06-07T07:13:17.480652+00:00",
-  "pilot_notes": "draft run_20260607_040204 ch171-220 (PID 50620) in_progress; registry reconciled dead in_progress workers"
+  "updated_at": "2026-06-11T17:20:00+00:00",
+  "pilot_notes": "Phase A Block #11 complete: ch1-370 contiguous; next D-MR-057; provider timeout bounded by remaining wall budget"
 }

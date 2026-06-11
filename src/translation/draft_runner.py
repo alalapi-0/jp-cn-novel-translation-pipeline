@@ -39,6 +39,11 @@ STAGE_A_MAX_CHAPTERS = 5
 STAGE_B_MAX_CHAPTERS = 50
 DEFAULT_BATCH_TOKEN_BUDGET = 12_000
 DEFAULT_MAX_SEGMENTS_PER_CALL = 30
+DEFAULT_PROVIDER_TIMEOUT_SECONDS = 120
+# draft_translation currently routes through OpenRouter (3 attempts) and one
+# fallback provider (2 attempts). Reserve wall time for the whole route chain.
+MAX_ROUTER_ATTEMPTS_PER_GENERATE = 5
+WALL_TIME_START_SAFETY_SECONDS = 5.0
 
 
 @dataclass
@@ -61,6 +66,12 @@ class RunBudget:
             return True
         return False
 
+    def remaining_wall_seconds(self) -> float | None:
+        if self.max_wall_seconds <= 0:
+            return None
+        elapsed = time.monotonic() - self.started_at
+        return max(0.0, self.max_wall_seconds - elapsed)
+
     def should_write_progress(self) -> bool:
         if self.progress_interval_seconds <= 0:
             return False
@@ -69,6 +80,31 @@ class RunBudget:
             self.last_progress_at = now
             return True
         return False
+
+
+def _bound_provider_timeout(
+    provider: Any,
+    run_budget: RunBudget | None,
+    *,
+    outer_attempts_remaining: int,
+) -> int | None:
+    """Keep a routed provider call inside the remaining run wall budget."""
+    if run_budget is None or not hasattr(provider, "timeout_sec"):
+        return None
+    remaining = run_budget.remaining_wall_seconds()
+    if remaining is None:
+        return None
+
+    retry_slots = max(1, outer_attempts_remaining) * MAX_ROUTER_ATTEMPTS_PER_GENERATE
+    usable = max(1.0, remaining - WALL_TIME_START_SAFETY_SECONDS)
+    budget_timeout = max(1, int(usable / retry_slots))
+    current = getattr(provider, "timeout_sec", None)
+    caps = [DEFAULT_PROVIDER_TIMEOUT_SECONDS, budget_timeout]
+    if isinstance(current, (int, float)) and current > 0:
+        caps.append(int(current))
+    timeout = max(1, min(caps))
+    provider.timeout_sec = timeout
+    return timeout
 
 
 @dataclass(frozen=True)
@@ -764,6 +800,22 @@ def _run_chapter_batches(
             last_exc: Exception | None = None
             ok, msg = False, "no_attempt"
             for attempt in range(1, MAX_API_RETRIES + 1):
+                remaining = run_budget.remaining_wall_seconds() if run_budget else None
+                if run_budget and (
+                    run_budget.exhausted()
+                    or (
+                        remaining is not None
+                        and remaining <= WALL_TIME_START_SAFETY_SECONDS
+                    )
+                ):
+                    export_segments_doc(parsed_chapters, run_root / "segments.json")
+                    controlled.save()
+                    raise DraftRunTickExit(summary, run_root)
+                _bound_provider_timeout(
+                    provider,
+                    run_budget,
+                    outer_attempts_remaining=MAX_API_RETRIES - attempt + 1,
+                )
                 if heartbeat_cb:
                     heartbeat_cb()
                 check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)

@@ -4,25 +4,25 @@
 > 配套任务清单：`docs/translation_recovery_3ch_task_list.md`  
 > 旧 20 章路线（已 deprecated）：`docs/translation_recovery_20ch_roadmap.md`
 >
-> **2026-06-11 live override**：本节旧快照已由 S1 调度器真值替代。D-MR-001…051 已完成，当前连续完成 ch1–355，下一安全任务是 **D-MR-052（ch356–358）**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json`，不得按历史定义回退。
+> **2026-06-11 live override**：本节旧快照已由 S1 调度器真值替代。D-MR-001…056 已完成，当前连续完成 ch1–370，下一安全任务是 **D-MR-057（ch371–373）**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json`，不得按历史定义回退。
 
 ## 当前快照（只读统计，不含正文）
 
 | 指标 | 值 | 来源 |
 | --- | --- | --- |
 | 全书源文章节 | **613** | `input_jp/*.md` |
-| 初翻完成章 | **355**（第 1–355 章连续完成） | `local_scheduler_status.py --json` |
+| 初翻完成章 | **370**（第 1–370 章连续完成） | `local_scheduler_status.py --json` |
 | 部分完成章 | 无 | scheduler status |
 | 润色可导出章 | **170** | `throughput_gate.exportable_chapters` |
-| 下一 micro round | **D-MR-052**（第 356–358 章） | scheduler status |
+| 下一 micro round | **D-MR-057**（第 371–373 章） | scheduler status |
 | 默认初翻模型 | DeepSeek | `deepseek/deepseek-v4-pro` |
 | 活跃 worker | 0 | `throughput_gate` / `check_orphan_workers.py` |
 | 孤儿 worker | 0 | 同上 |
 | stale lock | 0 | scheduler status |
-| 剩余初翻 micro rounds | **86** | D-MR-052 … D-MR-137 |
+| 剩余初翻 micro rounds | **81** | D-MR-057 … D-MR-137 |
 | 剩余润色 micro rounds | **148**（Phase D，baseline 后） | R-MR-001 … R-MR-148 |
 
-**Legacy 说明**：原 T-002 缺口已在受控回填中闭合。D-MR-001…051 的历史定义继续保留用于审计，不再作为执行入口。
+**Legacy 说明**：原 T-002 缺口已在受控回填中闭合。D-MR-001…056 的历史定义继续保留用于审计，不再作为执行入口。
 
 ---
 

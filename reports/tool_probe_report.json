@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-11T15:02:27Z",
+  "timestamp": "2026-06-11T17:18:54Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M .gitignore\n M AGENTS.md\n M README.md\n M agent.md\n M agent_layer.yaml\n M agent_tools.yaml\n M docs/TOOL_INVENTORY.md\n M docs/definition_of_done.md\n M docs/final_state_implementation_roadmap.md\n M docs/final_state_round_task_list.md\n M docs/index.md\n M docs/next_agent_execution_protocol.md\n M docs/non_goals_and_guardrails.md\n M docs/phase_acceptance_criteria.md\n M docs/product_final_state_spec.md\n M docs/translation_recovery_3ch_roadmap.md\n M docs/translation_recovery_3ch_task_list.md\n M governan",
+      "output": "M .agent_runtime/status.json\n M data/examples/review_issue_report.example.json\n M reports/gate_result.json\n M reports/tool_probe_report.json\n M src/translation/draft_runner.py\n?? tests/test_run_budget.py",
       "available": true
     },
     "git_branch": {
