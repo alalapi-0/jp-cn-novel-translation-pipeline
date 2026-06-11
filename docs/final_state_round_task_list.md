@@ -251,6 +251,8 @@ D-MR-008 从正确断点续跑且无重复翻译；连续 3 个 MR 无人工干�
 > 🔄 启动于 2026-06-11（启动轮修复三项：①planner `find_resumable_run` 同 offset in_progress run 续跑注入 `--run-id`（防重复翻译；与禁止的"完成 run 目录重用"严格区分）②throughput_gate `offset_skip` 回填豁免（单 in_progress 低 offset → `backfill_in_progress` warn；多 in_progress 异 offset 仍 BLOCK）③run_micro_round 完成时写回 production stage_state + translate 锁释放即 unlink（stage_state_stale / stale_lock 根因清除）。GAP-191-193 完成（307 段，但因续跑 bug 重翻 100 段 ≈ $0.008 浪费，修复后不再发生；被取代 run 已标 aborted 归档）。进度 226/613。验收项"连续 3 MR 无干预"在后续 Block 执行中核对）
 >
 > ✅ 完成于 2026-06-11（**Block #1 收口：ch1-241 连续完成（241/613，39.31%），缺口 191-211 全部回填**。事故与修复：legacy run 自动 resume（`LEGACY_PARTIAL_RUN_ID`）+ hydrate 窗口重写导致 ①D-MR-001 假完成（0 调用）②legacy run segments 从 209-211 被改写为 206-208（209-211 受控记录丢失；draft md 无物理丢失）→ 三防线修复：移除 legacy 自动 resume；hydrate 拒绝跨 offset 重定向（"run 目录单窗口"原则）；round_done=False 时拒绝 completed 假成功。206-208 经核证为 T-002 真实成果有效保留；203-205（562 段 $0.036）与 209-211（342 段 $0.023）受控重翻完成。验收：✅续跑无重复翻译（修复后 find_resumable_run 测试覆盖）✅连续 5 MR 无人工干预（GAP-194/197/200 + D-MR-001/003）✅每 MR metrics+summary+tick report 生成。健康检查：6 run 全 completed、failed=0、gate 仅预期诊断警告；今日成本 $0.1558）
+>
+> ✅ Block #3 收口于 2026-06-11（第三棒接力：清交接 pause → D-MR-016 自 122/412 断点同 offset 续跑收尾 → D-MR-017（387 段）→ D-MR-018（310 段）→ D-MR-019（403 段，tick shell 被环境回收中断于 60/403：worker checkpoint 干净退出、清 stale lock 后 planner 同 run 同 offset 自动续跑无重复翻译，后续 slot 改单 tick 单 shell 模式）→ D-MR-020（251 段）。**进度 262/613（42.74%），ch1-262 连续**。健康检查：5/5 tick completed、orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅 refine_pending + diagnostic_*（预期）；Block 成本 ≈ $0.127（deepseek/deepseek-v4-pro）。批量等待间隙穿插完成 S3 四轮：FS-011/012/013/014（见各轮注记））
 
 ## Round FS-009：Phase A 周期健康检查轮（模板轮，可重复执行）
 
@@ -1446,8 +1448,8 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | completed（2026-06-11；ch1-241 连续，批量推进交接中：247/613，D-MR-016 断点 122/412，paused 保护） |
-| FS-009 | S2 Phase A | recurring（Block #1 已执行 2026-06-11；每 Block 重复） |
+| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：262/613（42.74%），ch1-262 连续，next D-MR-021） |
+| FS-009 | S2 Phase A | recurring（Block #1/#2/#3 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |

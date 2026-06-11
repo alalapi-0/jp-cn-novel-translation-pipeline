@@ -1,57 +1,62 @@
 {
-  "round_id": "FS-014",
-  "timestamp": "2026-06-11T00:50:00Z",
+  "round_id": "FS-008-block3",
+  "timestamp": "2026-06-11T00:45:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "S3 FS-014: glossary import/export in CSV/YAML/JSON with lossless roundtrip and locked/approved protection (interleaved during S2 batch waits)",
+  "goal": "Phase A batch Block #3: resume from handoff (clear pause, D-MR-016 breakpoint) and complete 5 MR slots; FS-009 health check; S3 FS-011..014 interleaved during waits (committed separately)",
   "scope": [
-    "src/glossary/io.py",
-    "src/glossary/__init__.py (export io API)",
-    "tests/test_glossary_io.py",
-    "docs/final_state_round_task_list.md"
+    "batch D-MR-016 (resume) / 017 / 018 / 019 / 020",
+    "docs/final_state_round_task_list.md (FS-008 block note + status table)"
   ],
-  "repo_status_before": "main at 3eed5f5 (FS-013); S2 batch Block #3 MR4 resuming D-MR-019 in parallel",
+  "repo_status_before": "main at 711acda (FS-014); handoff state: paused=true, D-MR-016 at 122/412",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "write", "purpose": "io module (3 formats, ImportReport, CSV nullable convention) + 15 tests", "result": "all green first run"},
-    {"tool": "shell:pytest", "purpose": "new + full suite", "result": "15 new passed; full 365 passed"}
+    {"tool": "scheduler.control", "purpose": "clear handoff pause; clear one stale lock after environment reclaimed MR4 tick shell", "result": "safe_to_run restored both times"},
+    {"tool": "shell:local_scheduler_tick x5", "purpose": "supervised real-api ticks (max-api-calls 30, max-wall 40min each)", "result": "5/5 completed, orphan CLEAN after each"},
+    {"tool": "throughput_gate/check_orphan_workers", "purpose": "block health check", "result": "WARN only refine_pending+diagnostic_*, orphan CLEAN, failed=0"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in this round (import/export UI comes in S10 FS-051)"},
-    {"tool": "real API", "reason": "FS-014 offline io round"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in batch rounds"}
   ],
   "web_research": [],
   "real_api_used": {
-    "used": false,
-    "api_calls": 0,
-    "cost_usd": 0,
-    "scope": "offline; parallel S2 Block #3 cost reported in its block report"
+    "used": true,
+    "api_calls": 64,
+    "cost_usd": 0.127,
+    "model": "deepseek/deepseek-v4-pro",
+    "profile": "draft_translation_primary",
+    "scope": "Block #3: D-MR-016 resume-finish ($0.0227 of $0.0334 run total), D-MR-017 387seg ($0.0324), D-MR-018 310seg ($0.0217), D-MR-019 403seg ($0.0298, incl mid-run resume), D-MR-020 251seg ($0.0206)"
   },
-  "ui_checked": {"checked": false, "evidence": "no UI in this round"},
+  "ui_checked": {"checked": false, "evidence": "no UI in batch rounds"},
   "changed_files": [
-    "src/glossary/io.py",
-    "src/glossary/__init__.py",
-    "tests/test_glossary_io.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl"
+    "reports/agent_audit_log.jsonl",
+    "reports/gate_result.json (auto-refreshed by ticks)"
   ],
   "commands_run": [
-    ".venv/bin/python -m pytest tests/test_glossary_io.py -q -> 15 passed",
-    "npm run test:py -> 365 passed (350 + 15 new)"
+    "clear_pause() -> safe_to_run=true; tick1 resumed D-MR-016 at offset 122/412 (no re-translation)",
+    "tick2 D-MR-017, tick3 D-MR-018 unattended",
+    "MR4 incident: loop shell reclaimed by environment ~1min into tick4 (pid 61477 died holding lock; worker checkpointed 60/403 and exited; orphan CLEAN) -> clear_stale_lock() -> re-tick resumed same run same offset (60->403, no duplication); switched to one-shell-per-tick",
+    "tick5 D-MR-020 completed",
+    "health: throughput_gate WARN (refine_pending + 3x diagnostic_completed_checkpoint only), orphan CLEAN, TOTAL failed=0, draft 262/613 next D-MR-021"
   ],
   "test_results": [
-    {"suite": "tests/test_glossary_io.py", "result": "15 passed"},
-    {"suite": "full pytest", "result": "365 passed (>= baseline 294)"}
+    {"suite": "no pipeline code changes in block segment", "result": "suite at 365 passed (raised by interleaved S3 rounds, committed separately)"}
   ],
   "acceptance_result": [
-    {"criterion": "three-format roundtrip lossless (export->import->compare)", "pass": true, "evidence": "parametrized csv/yaml/json: to_dict equality across stores; CSV nullable None preserved; state flags survive roundtrip"},
-    {"criterion": "import conflict keeps locked terms unchanged + counted in conflict report", "pass": true, "evidence": "skipped_locked=1, conflicts[0].reason=locked, kept_target asserted unchanged"},
-    {"criterion": "import never silently overwrites approved_by_user", "pass": true, "evidence": "differing incoming -> skipped_approved + conflict entry; identical incoming -> unchanged (no false conflicts)"}
+    {"criterion": "5 tick slots completed with orphan CLEAN between", "pass": true, "evidence": "B3 MR1-5 exit=0 status=completed plan=D-MR-016..020; orphan CLEAN after each"},
+    {"criterion": "breakpoint resume without re-translation", "pass": true, "evidence": "D-MR-016 122->412 same run; D-MR-019 60->403 same run with --run-id injected by planner"},
+    {"criterion": "block health: failed=0, gate warnings expected-only", "pass": true, "evidence": "TOTAL failed: 0; gate WARN = refine_pending + diagnostic_completed_checkpoint x3; blocks=[]"},
+    {"criterion": "cost within estimate", "pass": true, "evidence": "$0.127 for 15 chapters (~$0.0085/ch, in line with $4-5 projection for 366ch)"}
   ],
-  "issues_found": [],
-  "issues_fixed": [],
+  "issues_found": [
+    "long-lived loop shell reclaimed by environment at ~28min: killed tick mid-flight leaving stale scheduler lock (no data loss, worker checkpointed)"
+  ],
+  "issues_fixed": [
+    "stale lock cleared via clear_stale_lock(); same-offset resume verified in production; switched to one-shell-per-tick pattern for the rest of the block"
+  ],
   "remaining_issues": [
     "P2 agent_gate round_52 dry-run side effect (FS-012 backlog)",
     "pre-existing agent_gate warn vector_index_health (P2)"
@@ -59,7 +64,9 @@
   "severity_summary": {"p0": 0, "p1": 0, "p2": 2, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
-  "risks": [],
-  "next_recommended_round": "Finish S2 Block #3 (MR4 ~done, MR5 next) then block health check + commit; FS-015 (term usage index) may interleave",
+  "risks": [
+    "per-tick shells mitigate reclaim risk; keep ticks under ~15min budget each"
+  ],
+  "next_recommended_round": "Block #4 (D-MR-021 263-265 onward, 5 slots); interleave FS-015 (term usage index) during waits; today cumulative cost ~$0.44",
   "human_decisions_required": []
 }
