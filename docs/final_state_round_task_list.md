@@ -2,7 +2,7 @@
 
 > 最终成品轮次任务清单（FS-000 … FS-070），2026-06-10 治理轮创建。
 > 锚点：`docs/product_final_state_spec.md`；总路线：`docs/final_state_implementation_roadmap.md`。
-> Phase A 的 D-MR-067…137 与 Phase D 的 R-MR 批量执行细节见 `docs/translation_recovery_3ch_task_list.md`（继续有效）；本清单的 FS 轮负责工程能力建设与阶段闸门。
+> Phase A 的 D-MR-072…137 与 Phase D 的 R-MR 批量执行细节见 `docs/translation_recovery_3ch_task_list.md`（继续有效）；本清单的 FS 轮负责工程能力建设与阶段闸门。
 >
 > 通用约定（适用所有轮次，不再逐轮重复）：
 > - 每轮开始执行 `docs/next_agent_execution_protocol.md` 的标准流程。
@@ -289,6 +289,8 @@ D-MR-008 从正确断点续跑且无重复翻译；连续 3 个 MR 无人工干�
 > ✅ Block #12 收口于 2026-06-11（D-MR-057 → 058 → 059 → 060 → 061 完成，15 章；五轮均按 checkpoint 分切片续跑）。**进度 385/613（62.81%），ch1-385 连续**，next D-MR-062（386-388）。五轮 2220/2220 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；Block 成本 $0.26699060（110 个已完成 API calls）。wall-time timeout 约束在所有切片中生效；throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
 >
 > ✅ Block #13 收口于 2026-06-12（D-MR-062 → 063 → 064 → 065 → 066 完成，15 章）。**进度 400/613（65.25%），ch1-400 连续**，next D-MR-067（401-403）。五轮 1652/1652 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按最终 checkpoint 去重成本 $0.12218781（85 个已完成 API calls）。本轮修复预算切片状态语义：可恢复切片报告 `budget_exhausted`，覆盖已完成时同步封口 checkpoint/run_progress；一次 resume 被 offset_skip 门禁安全拒绝且未调用 API，修复历史假 in-progress 后恢复，最终 throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
+>
+> ✅ Block #14 收口于 2026-06-12（D-MR-067 → 068 → 069 → 070 → 071 完成，15 章；大轮按同一 checkpoint 分切片续跑）。**进度 415/613（67.70%），ch1-415 连续**，next D-MR-072（416-418）。五轮 2355/2355 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按最终 checkpoint 去重成本 $0.15660078（111 个已完成 API calls）。预算切片均正确报告 `budget_exhausted` 并在完成时封口；throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
 
 ## Round FS-009：Phase A 周期健康检查轮（模板轮，可重复执行）
 
@@ -1488,8 +1490,8 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | launch completed / batch in_progress（400/613，ch1-400 连续，next D-MR-067） |
-| FS-009 | S2 Phase A | recurring（Block #1…#13 已执行至 2026-06-12；每 Block 重复） |
+| FS-008 | S2 Phase A | launch completed / batch in_progress（415/613，ch1-415 连续，next D-MR-072） |
+| FS-009 | S2 Phase A | recurring（Block #1…#14 已执行至 2026-06-12；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
