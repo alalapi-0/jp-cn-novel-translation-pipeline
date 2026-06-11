@@ -373,6 +373,8 @@ glossary 内核 + 测试。
 ### 下一轮衔接
 FS-014 导入导出。
 
+> ✅ 完成于 2026-06-11（S2 批量等待间隙穿插执行。`src/glossary/`：models.py（GlossaryEntry 13 字段 + conflict/deleted 扩展态、12 分类校验、置信度域校验、异常族）+ store.py（YAML 后端 CRUD：add 唯一性/软删墓碑取代、get/entries/search 子串+分类+locked/approved/conflict 过滤、update 白名单字段+机器/人工通道、lock/unlock/approve/mark_conflict 状态机、suggest 机器建议入口、restore；并发=同进程 threading.Lock + 跨进程 O_EXCL lock file 超时重试，原子写 tmp+replace）。验收：✅CRUD 全操作 26 测试 ✅locked 拒绝机器 suggest/update/force-delete（人工可改、unlock 仅人工）✅updated_at 自动维护（created_at 不可改）✅并发 30 线程零丢失 + 外部锁持有者超时拒绝 ✅delete 默认软删 force 才物理删。store 输出过 glossary schema（含墓碑/conflict 扩展字段）；FS-012 真实数据加载冒烟通过。全套 350 passed（324+26））
+
 ## Round FS-014：glossary 导入导出（CSV / YAML / JSON）
 
 ### 目标
@@ -1447,7 +1449,8 @@ FS-070。
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
-| FS-013…FS-016 | S3 资产层 | not_started |
+| FS-013 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
+| FS-014…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031…FS-037 | S6 Phase B | not_started |

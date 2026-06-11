@@ -1,28 +1,25 @@
 {
-  "round_id": "FS-012",
-  "timestamp": "2026-06-11T00:20:00Z",
+  "round_id": "FS-013",
+  "timestamp": "2026-06-11T00:35:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "S3 FS-012: migrate legacy translation_memory assets into workspace/configs structure (interleaved during S2 batch waits)",
+  "goal": "S3 FS-013: glossary CRUD kernel (src/glossary) with locked/approved/conflict state machine, soft delete, file-lock concurrency (interleaved during S2 batch waits)",
   "scope": [
-    "scripts/migrate_assets_to_configs.py",
-    "scripts/validate_configs.py (--allow-missing)",
-    "tests/test_migrate_assets_to_configs.py",
-    "reports/asset_migration_report.json (stats only)",
+    "src/glossary/__init__.py + models.py + store.py",
+    "tests/test_glossary_store.py",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 2df9e0f (FS-011); S2 batch Block #3 running in parallel (MR3 = D-MR-018)",
+  "repo_status_before": "main at 3f0d79d (FS-012); S2 batch Block #3 MR1-3 done, MR4 tick killed by terminal reclaim and resumed",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "shell:json probe", "purpose": "inventory 7 TM asset files: 82 term_candidates (all kind=bracket_label), 0 character data", "result": "migration scope fixed to glossary + character skeleton"},
-    {"tool": "write", "purpose": "migration script (dedupe/conflict/verify) + 9 tests", "result": "dry-run then real run executed"},
-    {"tool": "shell:pytest", "purpose": "new + full suite", "result": "30 passed (FS-011+FS-012 files); full 324 passed"},
-    {"tool": "git check-ignore", "purpose": "confirm workspace/configs/ ignored", "result": ".gitignore:86 match"}
+    {"tool": "read scheduler.control", "purpose": "reuse O_CREAT|O_EXCL lock-file pattern for store write lock", "result": "consistent locking style"},
+    {"tool": "write", "purpose": "glossary kernel + 26 tests", "result": "all green first run"},
+    {"tool": "shell:pytest", "purpose": "new + full suite", "result": "26 new passed; full 350 passed"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in this round"},
-    {"tool": "real API", "reason": "FS-012 is offline migration round"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in this round (glossary UI comes in S10 FS-051)"},
+    {"tool": "real API", "reason": "FS-013 offline kernel round"}
   ],
   "web_research": [],
   "real_api_used": {
@@ -33,44 +30,45 @@
   },
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
-    "scripts/migrate_assets_to_configs.py",
-    "scripts/validate_configs.py",
-    "tests/test_migrate_assets_to_configs.py",
-    "reports/asset_migration_report.json",
+    "src/glossary/__init__.py",
+    "src/glossary/models.py",
+    "src/glossary/store.py",
+    "tests/test_glossary_store.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "migrate_assets_to_configs.py --dry-run -> PASS files=7 candidates=82 entries=64 duplicates=14 conflicts=4 dropped_fields=0",
-    "migrate_assets_to_configs.py (real) -> verified=True; wrote workspace/configs/glossary.yaml + character_profile.yaml (local only)",
-    "validate_configs.py --configs-dir workspace/configs --allow-missing -> PASS (glossary+character PASS, 3 SKIP missing)",
-    "npm run test:py -> 324 passed (315 + 9 new)"
+    ".venv/bin/python -m pytest tests/test_glossary_store.py -q -> 26 passed",
+    "npm run test:py -> 350 passed (324 + 26 new)"
   ],
   "test_results": [
-    {"suite": "tests/test_migrate_assets_to_configs.py", "result": "9 passed"},
-    {"suite": "full pytest", "result": "324 passed (>= baseline 294)"}
+    {"suite": "tests/test_glossary_store.py", "result": "26 passed"},
+    {"suite": "full pytest", "result": "350 passed (>= baseline 294)"}
   ],
   "acceptance_result": [
-    {"criterion": "dry-run report lists entries / conflicts / dropped fields = 0", "pass": true, "evidence": "entries=64 duplicates=14 conflicts=4 dropped_fields=0; reports/asset_migration_report.json"},
-    {"criterion": "after real run glossary loader reads back all migrated entries", "pass": true, "evidence": "built-in verify reload: 64/64 entries + Draft7 schema PASS; validate_configs --configs-dir workspace/configs PASS"},
-    {"criterion": "source assets never deleted/modified", "pass": true, "evidence": "byte-identity test + mtimes unchanged (Jun 7)"},
-    {"criterion": "real migrated terms never committed", "pass": true, "evidence": "workspace/configs/ gitignored (.gitignore:86); migration report contains stats only (no CJK content assert)"}
+    {"criterion": "all CRUD operations tested", "pass": true, "evidence": "add/get/entries/search/update/delete-soft/delete-force/restore + duplicate & missing negatives (26 tests)"},
+    {"criterion": "locked terms cannot be overwritten by machine suggestions", "pass": true, "evidence": "suggest/update(by_machine)/force-delete(by_machine) raise LockedEntryError; human edit + unlock allowed; conflict flagging on locked entries allowed without touching translation"},
+    {"criterion": "updated_at auto-maintained", "pass": true, "evidence": "touch() on every mutation; created_at immutable (update whitelist rejects it)"},
+    {"criterion": "concurrent writes file-lock protected", "pass": true, "evidence": "threading.Lock + O_EXCL lock file: 30-thread add zero loss; foreign lock holder forces StoreLockTimeoutError then recovers"},
+    {"criterion": "delete is soft unless explicit force", "pass": true, "evidence": "soft tombstone + restore + add-supersedes-tombstone; force=True physically removes"}
   ],
   "issues_found": [
-    "P2: agent_gate round_52 legacy check (check_round_52_refine_stage_c) runs refine_stage_c --dry-run against old run_20260602_203645 on every gate invocation and rewrites that run's run_progress.json (phase=refine in_progress heartbeat). No draft data touched (segments.json mtime Jun 5 intact) - this is the known refine_pending / diagnostic warn source. Dry-run should be side-effect-free; backlog fix."
+    "Block #3 loop shell reclaimed by environment at MR4 start (~28min lifetime): tick pid 61477 killed after dispatching worker; worker checkpointed 60/403 and exited; stale scheduler lock left"
   ],
-  "issues_fixed": [],
+  "issues_fixed": [
+    "stale lock cleared via scheduler.control.clear_stale_lock(); MR4 re-ticked and planner auto-resumed same run_20260611_001419 at same offset (60->113/403, no re-translation); switched to one-shell-per-tick pattern for remaining slots"
+  ],
   "remaining_issues": [
-    "P2 agent_gate round_52 dry-run side effect (see issues_found)",
+    "P2 agent_gate round_52 dry-run side effect (FS-012 backlog)",
     "pre-existing agent_gate warn vector_index_health (P2)"
   ],
   "severity_summary": {"p0": 0, "p1": 0, "p2": 2, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "all 82 legacy candidates are kind=bracket_label -> category=other; FS-013 CRUD + human review will reclassify"
+    "long-lived loop shells can be reclaimed; per-tick shells used from now on"
   ],
-  "next_recommended_round": "Continue S2 batch Blocks toward 613/613; FS-013 (glossary CRUD kernel) may interleave during API waits",
+  "next_recommended_round": "Finish S2 Block #3 (MR4 resuming, MR5 next) then block health check + commit; FS-014 (glossary import/export) may interleave",
   "human_decisions_required": []
 }
