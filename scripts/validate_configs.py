@@ -86,8 +86,15 @@ def validate_config_file(config_path: Path, schema_path: Path) -> tuple[bool, li
     return len(errors) == 0, errors
 
 
-def validate_all(configs_dir: Path = DEFAULT_CONFIGS_DIR) -> dict[str, Any]:
-    """Validate all five config files; returns machine-readable summary."""
+def validate_all(
+    configs_dir: Path = DEFAULT_CONFIGS_DIR,
+    allow_missing: bool = False,
+) -> dict[str, Any]:
+    """Validate all five config files; returns machine-readable summary.
+
+    allow_missing: skip absent config files instead of failing (used for
+    workspace/configs/ real-data dirs that only carry migrated subsets).
+    """
     results: list[dict[str, Any]] = []
     overall = "PASS"
     exit_code = 0
@@ -98,6 +105,12 @@ def validate_all(configs_dir: Path = DEFAULT_CONFIGS_DIR) -> dict[str, Any]:
             "config": _display_path(config_path),
             "schema": _display_path(schema_path),
         }
+        if allow_missing and not config_path.is_file():
+            entry["valid"] = None
+            entry["skipped"] = "missing"
+            entry["errors"] = []
+            results.append(entry)
+            continue
         try:
             ok, errors = validate_config_file(config_path, schema_path)
             entry["valid"] = ok
@@ -123,18 +136,23 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_CONFIGS_DIR,
         help="Directory containing the five YAML configs (default: configs/)",
     )
+    parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Skip absent config files (for real-data dirs carrying migrated subsets)",
+    )
     parser.add_argument("--json", action="store_true", help="Print machine-readable result")
     args = parser.parse_args(argv)
 
     configs_dir = args.configs_dir if args.configs_dir.is_absolute() else REPO_ROOT / args.configs_dir
-    summary = validate_all(configs_dir)
+    summary = validate_all(configs_dir, allow_missing=args.allow_missing)
 
     if args.json:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
     else:
         print(f"validate_configs: {summary['status']} -> {_display_path(configs_dir)}")
         for item in summary["results"]:
-            mark = "PASS" if item["valid"] else "FAIL"
+            mark = "SKIP" if item.get("skipped") else ("PASS" if item["valid"] else "FAIL")
             print(f"  [{mark}] {item['config']}")
             for err in item["errors"]:
                 print(f"      - {err}")

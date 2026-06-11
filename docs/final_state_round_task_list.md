@@ -350,6 +350,8 @@ FS-011 schema；现有资产文件。
 ### 下一轮衔接
 FS-013 CRUD。
 
+> ✅ 完成于 2026-06-11（S2 批量等待间隙穿插执行。`scripts/migrate_assets_to_configs.py`：7 个 TM 资产文件 → 82 term_candidates → 去重合并 64 条 glossary 条目（14 重复合并、4 冲突首译保留+notes 记录）、丢弃字段=0（kind/evidence 全量并入 description）；实跑写 `workspace/configs/glossary.yaml + character_profile.yaml`（角色骨架——legacy 资产无角色数据）+ 内置 verify（重载+schema 校验+条目数比对）=True；`validate_configs.py` 增 `--allow-missing`（真实目录部分文件场景）。验收：✅dry-run 报告条目/冲突/丢弃=0 ✅实跑后加载器读回全部 64 条且过 schema ✅源资产零修改（mtime+字节级测试断言）✅真实数据仅落 workspace/configs/（gitignore 验证）。迁移统计报告 `reports/asset_migration_report.json`（纯统计无术语内容）。测试 +9（全套 324 passed））
+
 ## Round FS-013：glossary CRUD 内核
 
 ### 目标
@@ -1444,7 +1446,8 @@ FS-070。
 | FS-009 | S2 Phase A | recurring（Block #1 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
-| FS-012…FS-016 | S3 资产层 | not_started |
+| FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
+| FS-013…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031…FS-037 | S6 Phase B | not_started |

@@ -1,82 +1,76 @@
 {
-  "round_id": "FS-011",
-  "timestamp": "2026-06-11T00:10:00Z",
+  "round_id": "FS-012",
+  "timestamp": "2026-06-11T00:20:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "S3 FS-011: configs/ asset layer - five sanitized YAML templates + five Draft7 JSON schemas + validate_configs script + tests (interleaved during S2 batch API waits per Roadmap §3)",
+  "goal": "S3 FS-012: migrate legacy translation_memory assets into workspace/configs structure (interleaved during S2 batch waits)",
   "scope": [
-    "configs/glossary.yaml + character_profile.yaml + style_profile.yaml + world_bible.yaml + model_profiles.yaml + README.md",
-    "schemas/glossary.schema.json + character_profile + style_profile + world_bible + model_profiles",
-    "scripts/validate_configs.py",
-    "tests/test_configs_schema.py",
-    ".gitignore (workspace/configs/)",
+    "scripts/migrate_assets_to_configs.py",
+    "scripts/validate_configs.py (--allow-missing)",
+    "tests/test_migrate_assets_to_configs.py",
+    "reports/asset_migration_report.json (stats only)",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at FS-008 handoff commit; S2 batch Block #3 running in parallel (D-MR-016 resumed)",
+  "repo_status_before": "main at 2df9e0f (FS-011); S2 batch Block #3 running in parallel (MR3 = D-MR-018)",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "read/grep", "purpose": "spec §7.8/§7.9/§7.10/§10 field definitions; existing config/draft_models.yaml + model-router/config/models.yaml alignment", "result": "13 glossary fields + 12 categories + 14 world categories extracted"},
-    {"tool": "write", "purpose": "5 sanitized YAML templates + 5 Draft7 schemas + validator script + 21 tests", "result": "all files written"},
-    {"tool": "shell:pytest", "purpose": "new tests + full suite", "result": "21 new passed; full suite 315 passed (baseline 294 + 21)"},
-    {"tool": "shell:validate_configs", "purpose": "template validation", "result": "PASS all 5"}
+    {"tool": "shell:json probe", "purpose": "inventory 7 TM asset files: 82 term_candidates (all kind=bracket_label), 0 character data", "result": "migration scope fixed to glossary + character skeleton"},
+    {"tool": "write", "purpose": "migration script (dedupe/conflict/verify) + 9 tests", "result": "dry-run then real run executed"},
+    {"tool": "shell:pytest", "purpose": "new + full suite", "result": "30 passed (FS-011+FS-012 files); full 324 passed"},
+    {"tool": "git check-ignore", "purpose": "confirm workspace/configs/ ignored", "result": ".gitignore:86 match"}
   ],
   "tools_not_used": [
     {"tool": "playwright/browser MCP", "reason": "no UI in this round"},
-    {"tool": "real API", "reason": "FS-011 is offline round (real API used only by parallel S2 batch ticks, reported separately)"}
+    {"tool": "real API", "reason": "FS-012 is offline migration round"}
   ],
   "web_research": [],
   "real_api_used": {
     "used": false,
     "api_calls": 0,
     "cost_usd": 0,
-    "scope": "FS-011 itself offline; parallel S2 Block #3 cost reported in its own block report"
+    "scope": "offline; parallel S2 Block #3 cost reported in its block report"
   },
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
-    "configs/README.md",
-    "configs/glossary.yaml",
-    "configs/character_profile.yaml",
-    "configs/style_profile.yaml",
-    "configs/world_bible.yaml",
-    "configs/model_profiles.yaml",
-    "schemas/glossary.schema.json",
-    "schemas/character_profile.schema.json",
-    "schemas/style_profile.schema.json",
-    "schemas/world_bible.schema.json",
-    "schemas/model_profiles.schema.json",
+    "scripts/migrate_assets_to_configs.py",
     "scripts/validate_configs.py",
-    "tests/test_configs_schema.py",
-    ".gitignore",
+    "tests/test_migrate_assets_to_configs.py",
+    "reports/asset_migration_report.json",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    ".venv/bin/python scripts/validate_configs.py -> PASS all 5 templates",
-    ".venv/bin/python -m pytest tests/test_configs_schema.py -q -> 21 passed",
-    "npm run test:py -> 315 passed (baseline 294 + 21 new)"
+    "migrate_assets_to_configs.py --dry-run -> PASS files=7 candidates=82 entries=64 duplicates=14 conflicts=4 dropped_fields=0",
+    "migrate_assets_to_configs.py (real) -> verified=True; wrote workspace/configs/glossary.yaml + character_profile.yaml (local only)",
+    "validate_configs.py --configs-dir workspace/configs --allow-missing -> PASS (glossary+character PASS, 3 SKIP missing)",
+    "npm run test:py -> 324 passed (315 + 9 new)"
   ],
   "test_results": [
-    {"suite": "tests/test_configs_schema.py", "result": "21 passed"},
-    {"suite": "full pytest", "result": "315 passed (>= baseline 294)"}
+    {"suite": "tests/test_migrate_assets_to_configs.py", "result": "9 passed"},
+    {"suite": "full pytest", "result": "324 passed (>= baseline 294)"}
   ],
   "acceptance_result": [
-    {"criterion": "five YAML templates pass their own schemas", "pass": true, "evidence": "validate_configs.py PASS x5; test_all_templates_pass_schemas"},
-    {"criterion": "glossary schema contains all 13 fields of spec §7.8 + 12-category enum", "pass": true, "evidence": "test_glossary_schema_requires_all_13_fields + test_glossary_schema_has_12_category_enum (exact set match); world_bible 14-category enum also asserted"},
-    {"criterion": "templates contain no real translated terms", "pass": true, "evidence": "all fixture entries fictional (sample-marker asserted in tests); model_profiles no-secret assertions + schema rejects api_key field"}
+    {"criterion": "dry-run report lists entries / conflicts / dropped fields = 0", "pass": true, "evidence": "entries=64 duplicates=14 conflicts=4 dropped_fields=0; reports/asset_migration_report.json"},
+    {"criterion": "after real run glossary loader reads back all migrated entries", "pass": true, "evidence": "built-in verify reload: 64/64 entries + Draft7 schema PASS; validate_configs --configs-dir workspace/configs PASS"},
+    {"criterion": "source assets never deleted/modified", "pass": true, "evidence": "byte-identity test + mtimes unchanged (Jun 7)"},
+    {"criterion": "real migrated terms never committed", "pass": true, "evidence": "workspace/configs/ gitignored (.gitignore:86); migration report contains stats only (no CJK content assert)"}
   ],
-  "issues_found": [],
+  "issues_found": [
+    "P2: agent_gate round_52 legacy check (check_round_52_refine_stage_c) runs refine_stage_c --dry-run against old run_20260602_203645 on every gate invocation and rewrites that run's run_progress.json (phase=refine in_progress heartbeat). No draft data touched (segments.json mtime Jun 5 intact) - this is the known refine_pending / diagnostic warn source. Dry-run should be side-effect-free; backlog fix."
+  ],
   "issues_fixed": [],
   "remaining_issues": [
+    "P2 agent_gate round_52 dry-run side effect (see issues_found)",
     "pre-existing agent_gate warn vector_index_health (P2)"
   ],
-  "severity_summary": {"p0": 0, "p1": 0, "p2": 1, "p3": 0},
+  "severity_summary": {"p0": 0, "p1": 0, "p2": 2, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "real asset data must go to workspace/configs/ (now gitignored), never configs/ - documented in configs/README.md"
+    "all 82 legacy candidates are kind=bracket_label -> category=other; FS-013 CRUD + human review will reclassify"
   ],
-  "next_recommended_round": "Continue S2 batch Blocks (D-MR queue toward 613/613); FS-012 (asset migration to workspace/configs) may interleave during API waits",
+  "next_recommended_round": "Continue S2 batch Blocks toward 613/613; FS-013 (glossary CRUD kernel) may interleave during API waits",
   "human_decisions_required": []
 }
