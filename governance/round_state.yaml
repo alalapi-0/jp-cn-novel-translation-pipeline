@@ -1,6 +1,6 @@
-round_id: fs_008_block11_20260611
-round_name: "Phase A Block #11 and wall-budget enforcement"
-round_number_human: "FS-008 Block #11"
+round_id: fs_008_block12_20260611
+round_name: "Phase A Block #12"
+round_number_human: "FS-008 Block #12"
 status: completed
 type: translation_execution
 real_api_called: true
@@ -8,15 +8,15 @@ full_translation_executed: true
 existing_translation_outputs_modified: true
 
 completed_tasks:
-  - "Completed D-MR-052 through D-MR-056 with 3062/3062 segments and no failed or validation_failed segments"
-  - "Advanced contiguous Phase A draft progress from 355/613 to 370/613"
-  - "Detected and safely interrupted a D-MR-053 provider hang without leaving an orphan worker"
-  - "Bound provider request timeout to remaining supervised wall budget and added regression tests"
-  - "Completed FS-009 health check: throughput blocks empty, orphan CLEAN, full Python suite 387 passed"
+  - "Completed D-MR-057 through D-MR-061 with 2220/2220 segments and no failed or validation_failed segments"
+  - "Advanced contiguous Phase A draft progress from 370/613 to 385/613"
+  - "Verified all 15 chapters are unique, ordered, fully covered, and stage-C eligible"
+  - "Confirmed bounded provider timeouts across all checkpoint-resume slices"
+  - "Completed FS-009 health check: throughput blocks empty and orphan CLEAN"
 
 next_recommended_round:
-  id: FS-008-block12
-  title: "Continue Phase A from D-MR-057; run FS-009 health check after the block"
+  id: FS-008-block13
+  title: "Continue Phase A from D-MR-062; run FS-009 health check after the block"
 
 next_parallel_engineering_round:
   id: FS-017

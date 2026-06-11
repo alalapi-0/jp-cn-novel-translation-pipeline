@@ -274,6 +274,47 @@ def build_compact_summary(
     return payload
 
 
+def write_final_micro_round_progress(
+    run_root: Path,
+    *,
+    round_id: str,
+    run_id: str,
+    status: str,
+    progress: dict[str, Any],
+    checkpoint: dict[str, Any],
+    summary_api_calls: int,
+    run_budget: RunBudget | None,
+) -> Path:
+    """Synchronize the compact progress card with the authoritative run state."""
+    completed = int(progress.get("completed_segments") or 0)
+    total = int(progress.get("total_segments") or 0)
+    api_calls = summary_api_calls or int(checkpoint.get("api_calls") or 0)
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "run_id": run_id,
+        "round_id": round_id,
+        "status": status,
+        "progress": f"{completed}/{total}",
+        "api_calls": api_calls,
+        "cost_usd": round(float(checkpoint.get("spent_usd") or 0), 6),
+        "segments_per_call": round(completed / api_calls, 2) if api_calls else 0,
+        "updated_at": _utc_now(),
+    }
+    if run_budget:
+        payload["budget"] = {
+            "max_api_calls": run_budget.max_api_calls,
+            "max_segments": run_budget.max_segments,
+            "api_calls_used": run_budget.api_calls_used,
+            "segments_used": run_budget.segments_used,
+        }
+    path = run_root / "micro_round_progress.json"
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
 def run_micro_round(
     *,
     phase: str = "draft",
@@ -493,6 +534,17 @@ def run_micro_round(
         # different window). Refusing the false success is what surfaces
         # planner/resume bugs instead of silently skipping chapters (FS-008).
         status = "failed"
+
+    write_final_micro_round_progress(
+        REPO_ROOT / "workspace" / "runs" / run_id,
+        round_id=round_id,
+        run_id=run_id,
+        status=status,
+        progress=progress,
+        checkpoint=checkpoint,
+        summary_api_calls=summary_api_calls,
+        run_budget=run_budget,
+    )
 
     compact = build_compact_summary(
         round_id=round_id,

@@ -1,17 +1,17 @@
 {
-  "round_id": "FS-008-block11",
-  "timestamp": "2026-06-11T17:20:00Z",
+  "round_id": "FS-008-block12",
+  "timestamp": "2026-06-11T18:30:00Z",
   "agent": "codex",
   "agent_surface": "codex",
   "mode": "implement",
-  "goal": "Complete Phase A Block #11 (D-MR-052 through D-MR-056), run FS-009 health checks, and preserve bounded supervised execution",
+  "goal": "Complete Phase A Block #12 (D-MR-057 through D-MR-061), run FS-009 health checks, and keep compact progress reports synchronized",
   "scope": [
-    "real API draft translation for chapters 356-370",
+    "real API draft translation for chapters 371-385",
     "checkpoint resume and worker safety",
-    "wall-time enforcement bug fix",
+    "compact micro-round progress finalization",
     "authoritative progress and handoff reports"
   ],
-  "repo_status_before": "main at 62873f3; clean worktree; scheduler 355/613 next D-MR-052",
+  "repo_status_before": "main at dd7036e; clean worktree; scheduler 370/613 next D-MR-057",
   "tool_probe_status": "passed",
   "tools_available": [
     "shell",
@@ -26,18 +26,13 @@
   "tools_used": [
     {
       "tool": "local scheduler / real API provider",
-      "purpose": "execute D-MR-052 through D-MR-056 with checkpoint and cost guards",
-      "result": "370/613 contiguous; 3062/3062 block segments completed; failed=0; validation_failed=0"
+      "purpose": "execute D-MR-057 through D-MR-061 with checkpoint, timeout, and cost guards",
+      "result": "385/613 contiguous; 2220/2220 block segments completed; failed=0; validation_failed=0"
     },
     {
       "tool": "shell / Python / pytest",
-      "purpose": "diagnose provider hang, implement timeout bounding, and validate the pipeline",
-      "result": "51 focused tests and 387 full Python tests passed"
-    },
-    {
-      "tool": "translation-qa",
-      "purpose": "run deterministic quality-review fixture before later consistency stages",
-      "result": "fixture runner passed and emitted the expected synthetic issue taxonomy"
+      "purpose": "verify chapter order and coverage, repair stale compact progress cards, and validate the reporting fix",
+      "result": "15/15 chapters unique and ordered; focused progress tests passed"
     },
     {
       "tool": "git / gh",
@@ -59,22 +54,14 @@
       "reason": "No third-party implementation documentation was needed"
     }
   ],
-  "web_research": [
-    {
-      "query": "OpenRouter deepseek/deepseek-v4-pro pricing",
-      "source_type": "official OpenRouter model page",
-      "finding": "Current listed pricing was checked before the cost-bearing run; the $5 local cap remained far above the projected block cost.",
-      "encoded_into_repo": "Cost and model are recorded in this report and the local block summary."
-    }
-  ],
+  "web_research": [],
   "real_api_used": {
     "used": true,
-    "api_calls": 136,
-    "interrupted_in_flight_requests": 1,
-    "cost_usd": 0.19766261,
+    "api_calls": 110,
+    "cost_usd": 0.2669906,
     "model": "deepseek/deepseek-v4-pro",
     "profile": "draft_translation_primary",
-    "scope": "D-MR-052 through D-MR-056, chapters 356-370"
+    "scope": "D-MR-057 through D-MR-061, chapters 371-385"
   },
   "ui_checked": {
     "checked": false,
@@ -84,8 +71,8 @@
     ".agent_runtime/status.json",
     "AGENTS.md",
     "agent_layer.yaml",
-    "src/translation/draft_runner.py",
-    "tests/test_run_budget.py",
+    "scripts/run_micro_round.py",
+    "tests/test_run_micro_round_progress.py",
     "docs/final_state_implementation_roadmap.md",
     "docs/final_state_round_task_list.md",
     "docs/translation_recovery_3ch_roadmap.md",
@@ -103,19 +90,18 @@
     "python3 scripts/check_orphan_workers.py --json",
     "python3 scripts/throughput_gate.py --json",
     "python3 scripts/local_scheduler_tick.py --real-api with explicit call and wall budgets",
-    "python3 scripts/run_quality_review.py --write-example",
-    ".venv/bin/python -m pytest focused scheduler/translation tests",
+    ".venv/bin/python -m pytest -q tests/test_run_micro_round_progress.py tests/test_run_budget.py",
     "npm run check:tooling",
     "python3 scripts/agent_gate.py --json"
   ],
   "test_results": [
     {
-      "suite": "focused translation and scheduler tests",
-      "result": "51 passed"
+      "suite": "focused progress and wall-budget tests",
+      "result": "3 passed"
     },
     {
       "suite": "full Python suite via check:tooling",
-      "result": "387 passed in 45.76s"
+      "result": "388 passed in 45.36s"
     },
     {
       "suite": "throughput and worker health",
@@ -123,24 +109,24 @@
     },
     {
       "suite": "block content statistics",
-      "result": "3062/3062 completed; failed=0; validation_failed=0; missing_draft=0"
+      "result": "2220/2220 completed; 15/15 chapters unique and ordered; failed=0; validation_failed=0; coverage=1.0"
     }
   ],
   "acceptance_result": [
     {
-      "criterion": "D-MR-052 through D-MR-056 complete without gaps",
+      "criterion": "D-MR-057 through D-MR-061 complete without gaps",
       "pass": true,
-      "evidence": "scheduler reports 370/613 contiguous and next D-MR-057"
+      "evidence": "scheduler reports 385/613 contiguous and next D-MR-062"
     },
     {
       "criterion": "Block failed and blocking validation failures are zero",
       "pass": true,
-      "evidence": "five run artifacts report failed=0 and validation_failed=0"
+      "evidence": "five run artifacts report completed coverage; all 2220 segment statuses are machine_translated"
     },
     {
-      "criterion": "Cost guard and checkpoints remain effective",
+      "criterion": "Cost guard, checkpoints, and bounded timeouts remain effective",
       "pass": true,
-      "evidence": "$0.19766261 recorded; interrupted D-MR-053 resumed from 81/484 without duplicate work"
+      "evidence": "$0.26699060 recorded across 110 completed calls; all five rounds resumed from the same run_id until complete"
     },
     {
       "criterion": "No active or orphan worker remains",
@@ -149,18 +135,16 @@
     }
   ],
   "issues_found": [
-    "D-MR-053 stopped heartbeating at 81/484 while a provider request exceeded the requested 40-minute wall budget",
-    "The scheduler used a fixed 3600-second dispatch ceiling and provider retries could outlive the per-run wall budget"
+    "micro_round_progress.json could remain in_progress or omit the final batch after the authoritative run had completed"
   ],
   "issues_fixed": [
-    "Safely interrupted the attached D-MR-053 process group and preserved its checkpoint with no orphan worker",
-    "Bound routed provider request timeout to remaining wall time and remaining retry slots",
-    "Added regression coverage for timeout bounding and exhausted-budget no-call behavior"
+    "Added a final compact-progress writeback from authoritative run_progress and checkpoint state",
+    "Added regression coverage and synchronized the five Block #12 local progress cards to completed"
   ],
   "remaining_issues": [
     "P2: vector_index_health warns about empty manifest segments/orphan vectors",
     "P2: throughput_gate legacy draft count remains overlap-prone; scheduler metadata union is the Phase A authority",
-    "Phase A has 243 chapters remaining; Phase B-E and final Web UI are not yet complete"
+    "Phase A has 228 chapters remaining; Phase B-E and final Web UI are not yet complete"
   ],
   "severity_summary": {
     "p0": 0,
@@ -171,9 +155,9 @@
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "The interrupted in-flight D-MR-053 request may appear on provider billing despite having no completed response",
-    "Large three-chapter rounds can exceed 30 calls and should continue using bounded checkpoint slices"
+    "Large three-chapter rounds can exceed one scheduler slice and must continue using the same checkpoint run_id",
+    "Per-slice provider accounting is authoritative for block cost because resumed run metadata reflects the final slice"
   ],
-  "next_recommended_round": "FS-008 Block #12 from D-MR-057 (chapters 371-373); run FS-009 after the next milestone block",
+  "next_recommended_round": "FS-008 Block #13 from D-MR-062 (chapters 386-388); run FS-009 after the next milestone block",
   "human_decisions_required": []
 }
