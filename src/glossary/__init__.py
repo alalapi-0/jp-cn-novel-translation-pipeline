@@ -4,6 +4,15 @@ Public API:
     from glossary import GlossaryStore, GlossaryEntry, CATEGORIES
 """
 
+from .io import (
+    FORMATS,
+    GlossaryIOError,
+    ImportReport,
+    detect_format,
+    export_glossary,
+    import_glossary,
+    read_entries,
+)
 from .models import (
     CATEGORIES,
     CategoryError,
@@ -21,9 +30,16 @@ __all__ = [
     "CategoryError",
     "DuplicateEntryError",
     "EntryNotFoundError",
+    "FORMATS",
     "GlossaryEntry",
     "GlossaryError",
+    "GlossaryIOError",
     "GlossaryStore",
+    "ImportReport",
     "LockedEntryError",
     "StoreLockTimeoutError",
+    "detect_format",
+    "export_glossary",
+    "import_glossary",
+    "read_entries",
 ]

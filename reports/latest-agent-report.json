@@ -1,25 +1,25 @@
 {
-  "round_id": "FS-013",
-  "timestamp": "2026-06-11T00:35:00Z",
+  "round_id": "FS-014",
+  "timestamp": "2026-06-11T00:50:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "S3 FS-013: glossary CRUD kernel (src/glossary) with locked/approved/conflict state machine, soft delete, file-lock concurrency (interleaved during S2 batch waits)",
+  "goal": "S3 FS-014: glossary import/export in CSV/YAML/JSON with lossless roundtrip and locked/approved protection (interleaved during S2 batch waits)",
   "scope": [
-    "src/glossary/__init__.py + models.py + store.py",
-    "tests/test_glossary_store.py",
+    "src/glossary/io.py",
+    "src/glossary/__init__.py (export io API)",
+    "tests/test_glossary_io.py",
     "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 3f0d79d (FS-012); S2 batch Block #3 MR1-3 done, MR4 tick killed by terminal reclaim and resumed",
+  "repo_status_before": "main at 3eed5f5 (FS-013); S2 batch Block #3 MR4 resuming D-MR-019 in parallel",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "read scheduler.control", "purpose": "reuse O_CREAT|O_EXCL lock-file pattern for store write lock", "result": "consistent locking style"},
-    {"tool": "write", "purpose": "glossary kernel + 26 tests", "result": "all green first run"},
-    {"tool": "shell:pytest", "purpose": "new + full suite", "result": "26 new passed; full 350 passed"}
+    {"tool": "write", "purpose": "io module (3 formats, ImportReport, CSV nullable convention) + 15 tests", "result": "all green first run"},
+    {"tool": "shell:pytest", "purpose": "new + full suite", "result": "15 new passed; full 365 passed"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in this round (glossary UI comes in S10 FS-051)"},
-    {"tool": "real API", "reason": "FS-013 offline kernel round"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in this round (import/export UI comes in S10 FS-051)"},
+    {"tool": "real API", "reason": "FS-014 offline io round"}
   ],
   "web_research": [],
   "real_api_used": {
@@ -30,35 +30,28 @@
   },
   "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
+    "src/glossary/io.py",
     "src/glossary/__init__.py",
-    "src/glossary/models.py",
-    "src/glossary/store.py",
-    "tests/test_glossary_store.py",
+    "tests/test_glossary_io.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    ".venv/bin/python -m pytest tests/test_glossary_store.py -q -> 26 passed",
-    "npm run test:py -> 350 passed (324 + 26 new)"
+    ".venv/bin/python -m pytest tests/test_glossary_io.py -q -> 15 passed",
+    "npm run test:py -> 365 passed (350 + 15 new)"
   ],
   "test_results": [
-    {"suite": "tests/test_glossary_store.py", "result": "26 passed"},
-    {"suite": "full pytest", "result": "350 passed (>= baseline 294)"}
+    {"suite": "tests/test_glossary_io.py", "result": "15 passed"},
+    {"suite": "full pytest", "result": "365 passed (>= baseline 294)"}
   ],
   "acceptance_result": [
-    {"criterion": "all CRUD operations tested", "pass": true, "evidence": "add/get/entries/search/update/delete-soft/delete-force/restore + duplicate & missing negatives (26 tests)"},
-    {"criterion": "locked terms cannot be overwritten by machine suggestions", "pass": true, "evidence": "suggest/update(by_machine)/force-delete(by_machine) raise LockedEntryError; human edit + unlock allowed; conflict flagging on locked entries allowed without touching translation"},
-    {"criterion": "updated_at auto-maintained", "pass": true, "evidence": "touch() on every mutation; created_at immutable (update whitelist rejects it)"},
-    {"criterion": "concurrent writes file-lock protected", "pass": true, "evidence": "threading.Lock + O_EXCL lock file: 30-thread add zero loss; foreign lock holder forces StoreLockTimeoutError then recovers"},
-    {"criterion": "delete is soft unless explicit force", "pass": true, "evidence": "soft tombstone + restore + add-supersedes-tombstone; force=True physically removes"}
+    {"criterion": "three-format roundtrip lossless (export->import->compare)", "pass": true, "evidence": "parametrized csv/yaml/json: to_dict equality across stores; CSV nullable None preserved; state flags survive roundtrip"},
+    {"criterion": "import conflict keeps locked terms unchanged + counted in conflict report", "pass": true, "evidence": "skipped_locked=1, conflicts[0].reason=locked, kept_target asserted unchanged"},
+    {"criterion": "import never silently overwrites approved_by_user", "pass": true, "evidence": "differing incoming -> skipped_approved + conflict entry; identical incoming -> unchanged (no false conflicts)"}
   ],
-  "issues_found": [
-    "Block #3 loop shell reclaimed by environment at MR4 start (~28min lifetime): tick pid 61477 killed after dispatching worker; worker checkpointed 60/403 and exited; stale scheduler lock left"
-  ],
-  "issues_fixed": [
-    "stale lock cleared via scheduler.control.clear_stale_lock(); MR4 re-ticked and planner auto-resumed same run_20260611_001419 at same offset (60->113/403, no re-translation); switched to one-shell-per-tick pattern for remaining slots"
-  ],
+  "issues_found": [],
+  "issues_fixed": [],
   "remaining_issues": [
     "P2 agent_gate round_52 dry-run side effect (FS-012 backlog)",
     "pre-existing agent_gate warn vector_index_health (P2)"
@@ -66,9 +59,7 @@
   "severity_summary": {"p0": 0, "p1": 0, "p2": 2, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
-  "risks": [
-    "long-lived loop shells can be reclaimed; per-tick shells used from now on"
-  ],
-  "next_recommended_round": "Finish S2 Block #3 (MR4 resuming, MR5 next) then block health check + commit; FS-014 (glossary import/export) may interleave",
+  "risks": [],
+  "next_recommended_round": "Finish S2 Block #3 (MR4 ~done, MR5 next) then block health check + commit; FS-015 (term usage index) may interleave",
   "human_decisions_required": []
 }

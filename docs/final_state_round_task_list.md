@@ -394,6 +394,8 @@ FS-014 导入导出。
 ### 下一轮衔接
 FS-015 usage index。
 
+> ✅ 完成于 2026-06-11（S2 批量等待间隙穿插执行。`src/glossary/io.py`：export_glossary / read_entries / import_glossary 三格式（CSV/YAML/JSON，.yml 别名）；CSV 空单元格=None 约定（nullable 字段无损）、aliases `|` 分隔、状态布尔列；ImportReport{total/added/updated/unchanged/skipped_locked/skipped_approved/conflicts[]}。验收：✅三格式 roundtrip 无损（导出→导入→to_dict 全等，参数化 3 格式）✅导入冲突时 locked 保持原译并入冲突报告（reason=locked + kept_target 证据）✅approved_by_user 永不静默覆盖（差异 → skipped_approved + 冲突报告；全等 → unchanged）。状态旗标（locked/approved/conflict）经 CSV roundtrip 保留。测试 +15（全套 365 passed））
+
 ## Round FS-015：term usage index 与冲突标记
 
 ### 目标
@@ -1450,7 +1452,8 @@ FS-070。
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-013 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
-| FS-014…FS-016 | S3 资产层 | not_started |
+| FS-014 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
+| FS-015…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031…FS-037 | S6 Phase B | not_started |
