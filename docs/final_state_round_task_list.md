@@ -255,6 +255,8 @@ D-MR-008 从正确断点续跑且无重复翻译；连续 3 个 MR 无人工干�
 > ✅ Block #3 收口于 2026-06-11（第三棒接力：清交接 pause → D-MR-016 自 122/412 断点同 offset 续跑收尾 → D-MR-017（387 段）→ D-MR-018（310 段）→ D-MR-019（403 段，tick shell 被环境回收中断于 60/403：worker checkpoint 干净退出、清 stale lock 后 planner 同 run 同 offset 自动续跑无重复翻译，后续 slot 改单 tick 单 shell 模式）→ D-MR-020（251 段）。**进度 262/613（42.74%），ch1-262 连续**。健康检查：5/5 tick completed、orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅 refine_pending + diagnostic_*（预期）；Block 成本 ≈ $0.127（deepseek/deepseek-v4-pro）。批量等待间隙穿插完成 S3 四轮：FS-011/012/013/014（见各轮注记））
 >
 > ✅ Block #4 收口于 2026-06-11（单 tick 单 shell 模式：D-MR-021（272 段）→ D-MR-022（338 段）→ D-MR-023（跨 2 个 budget tick 同 offset 续跑，设计行为）→ D-MR-024。**进度 274/613（44.70%），ch1-274 连续**，next D-MR-025（275-277）。健康检查：5/5 tick completed、orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1354（4 run checkpoint 实测），今日累计 ≈ $0.57。间隙穿插完成 S3 收官两轮 FS-015/016 → **S3 全 stage 完成**）
+>
+> ✅ Block #5 收口于 2026-06-11（D-MR-025 → 026 → 027 → 028 → 029 各一 tick 完成（5/5），15 章。**进度 289/613（47.15%），ch1-289 连续**，next D-MR-030（290-292）。健康检查：orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1666，今日累计 ≈ $0.74）
 
 ## Round FS-009：Phase A 周期健康检查轮（模板轮，可重复执行）
 
@@ -1454,8 +1456,8 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：274/613（44.70%），ch1-274 连续，next D-MR-025） |
-| FS-009 | S2 Phase A | recurring（Block #1…#4 已执行 2026-06-11；每 Block 重复） |
+| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：289/613（47.15%），ch1-289 连续，next D-MR-030） |
+| FS-009 | S2 Phase A | recurring（Block #1…#5 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |

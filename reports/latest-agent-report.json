@@ -1,19 +1,19 @@
 {
-  "round_id": "FS-008-block4",
-  "timestamp": "2026-06-11T01:50:00Z",
+  "round_id": "FS-008-block5",
+  "timestamp": "2026-06-11T02:55:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Phase A batch Block #4 (one-shell-per-tick): D-MR-021..024 complete; FS-009 health check; S3 finale FS-015/016 interleaved (committed separately)",
+  "goal": "Phase A batch Block #5: D-MR-025..029 (15 chapters), one shell per tick; FS-009 health check",
   "scope": [
-    "batch D-MR-021 / 022 / 023 (2-tick budget resume) / 024",
+    "batch D-MR-025 / 026 / 027 / 028 / 029",
     "docs/final_state_round_task_list.md (block note + status table)"
   ],
-  "repo_status_before": "main at 5a4c6a1 (FS-016)",
+  "repo_status_before": "main at bd12456 (Block #4)",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "shell:local_scheduler_tick x5", "purpose": "supervised real-api ticks, one shell each (reclaim mitigation)", "result": "5/5 completed, orphan CLEAN after each"},
-    {"tool": "throughput_gate/check_orphan_workers", "purpose": "block health check", "result": "WARN expected-only, orphan CLEAN, failed=0"}
+    {"tool": "shell:local_scheduler_tick x5", "purpose": "supervised real-api ticks (one shell each)", "result": "5/5 completed, orphan CLEAN after each"},
+    {"tool": "throughput_gate/check_orphan_workers", "purpose": "block health check", "result": "WARN expected-only, blocks=[], failed=0"}
   ],
   "tools_not_used": [
     {"tool": "playwright/browser MCP", "reason": "no UI in batch rounds"}
@@ -21,11 +21,11 @@
   "web_research": [],
   "real_api_used": {
     "used": true,
-    "api_calls": 100,
-    "cost_usd": 0.1354,
+    "api_calls": 110,
+    "cost_usd": 0.1666,
     "model": "deepseek/deepseek-v4-pro",
     "profile": "draft_translation_primary",
-    "scope": "Block #4: D-MR-021 272seg ($0.0246), D-MR-022 338seg ($0.0264), D-MR-023 across 2 budget ticks ($0.0527), D-MR-024 ($0.0317)"
+    "scope": "Block #5: D-MR-025..029, chapters 275-289, each completed in one tick"
   },
   "ui_checked": {"checked": false, "evidence": "no UI in batch rounds"},
   "changed_files": [
@@ -35,18 +35,17 @@
     "reports/gate_result.json (auto-refreshed by ticks)"
   ],
   "commands_run": [
-    "5x one-shell ticks: D-MR-021, D-MR-022 (slow-but-healthy heartbeat verified mid-run), D-MR-023 (budget exhausted -> next slot same-offset resume, by design), D-MR-024",
-    "health: gate WARN expected-only (refine_pending + 3 diagnostic), blocks=[], orphan CLEAN, TOTAL failed=0",
-    "progress: draft 274/613 (44.70%) next D-MR-025 275-277"
+    "5x one-shell ticks: D-MR-025 (9.5min), D-MR-026 (8.4min), D-MR-027 (12.5min), D-MR-028 (16.2min), D-MR-029 (17.1min)",
+    "health: gate WARN expected-only, blocks=[], orphan CLEAN, TOTAL failed=0",
+    "progress: draft 289/613 (47.15%) next D-MR-030 290-292"
   ],
   "test_results": [
-    {"suite": "no pipeline code changes in block segment", "result": "suite at 385 passed (raised by interleaved S3 rounds)"}
+    {"suite": "no code changes in block segment", "result": "suite remains 385 passed"}
   ],
   "acceptance_result": [
-    {"criterion": "5 tick slots completed with orphan CLEAN between", "pass": true, "evidence": "B4 MR1-5 exit=0 completed; D-MR-021..024"},
-    {"criterion": "budget resume without re-translation", "pass": true, "evidence": "D-MR-023 spanned MR3+MR4 ticks, same run_20260611_011249 same offset"},
-    {"criterion": "block health: failed=0, gate expected-only", "pass": true, "evidence": "TOTAL failed: 0; WARN = refine_pending + diagnostic x3; blocks=[]"},
-    {"criterion": "cost within estimate", "pass": true, "evidence": "$0.1354 for 12 chapters; today cumulative ~$0.57"}
+    {"criterion": "5 tick slots completed with orphan CLEAN between", "pass": true, "evidence": "B5 MR1-5 exit=0 completed; D-MR-025..029"},
+    {"criterion": "block health: failed=0, gate expected-only", "pass": true, "evidence": "TOTAL failed: 0; gate WARN, blocks=[]"},
+    {"criterion": "cost within estimate", "pass": true, "evidence": "$0.1666 for 15 chapters; today cumulative ~$0.74"}
   ],
   "issues_found": [],
   "issues_fixed": [],
@@ -58,6 +57,6 @@
   "gate_status": "warning",
   "blockers": [],
   "risks": [],
-  "next_recommended_round": "Block #5 (D-MR-025 onward). S3 fully done; S4 FS-017 is a browser/UI round - recommend dedicated session or continue pure batch blocks toward FS-010 (613/613)",
+  "next_recommended_round": "Block #6 (D-MR-030 onward) toward FS-010 (613/613); remaining ~324 chapters ~= 108 D-MR ~= $3.7",
   "human_decisions_required": []
 }
