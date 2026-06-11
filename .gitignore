@@ -85,6 +85,9 @@ workspace/manifests/*
 # Real translation asset configs (templates live in configs/, real data stays local)
 workspace/configs/
 
+# Term usage indexes built from real draft content (FS-015)
+workspace/indexes/
+
 # Workspace runtime / personalized production state (local only)
 workspace/stage_state.json
 workspace/stage_state_production.json

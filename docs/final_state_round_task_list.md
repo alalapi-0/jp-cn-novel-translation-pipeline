@@ -419,6 +419,8 @@ usage index 工具 + 测试。
 ### 下一轮衔接
 FS-016 prompt 接入；亦是 S6 entity index 的基础。
 
+> ✅ 完成于 2026-06-11（S2 批量等待间隙穿插执行。`src/glossary/usage_index.py`：流式逐文件逐章扫描（永不全书入单一上下文），per-term source/target/co/divergent 命中统计（章节聚合 + 总计 + 限量 divergent segment_id 样本，索引零正文泄漏——测试断言）；冲突标记 divergent_translation（同源多译：divergent/source ≥0.3 且 source_hits≥2）+ shared_target（同译多源：glossary 内多 source 共享一 target）；增量=per-file (size,mtime) fingerprint 桶复用 + chapter 归属新文件优先（重翻取代归档贡献）。`scripts/build_term_usage_index.py`：--chapter-range/--runs-dir/--rebuild/--json。验收：✅增量更新（真实数据二跑 scanned=0 reused=32；改单文件只重扫 1）✅冲突统计与 fixture 预期一致（kingdom ratio=0.5、shared 公会双源断言）✅输出落 workspace/indexes/（gitignore 断言）。真实数据跑通：1-50 章 26 术语命中 16 冲突；全范围 41 章 64 术语 25 冲突。测试 +10（全套 375 passed））
+
 ## Round FS-016：prompt builder 接入 configs 资产
 
 ### 目标
@@ -1455,7 +1457,8 @@ FS-070。
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-013 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-014 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
-| FS-015…FS-016 | S3 资产层 | not_started |
+| FS-015 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
+| FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031…FS-037 | S6 Phase B | not_started |

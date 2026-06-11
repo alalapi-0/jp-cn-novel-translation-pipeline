@@ -1,62 +1,62 @@
 {
-  "round_id": "FS-008-block3",
-  "timestamp": "2026-06-11T00:45:00Z",
+  "round_id": "FS-015",
+  "timestamp": "2026-06-11T01:00:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Phase A batch Block #3: resume from handoff (clear pause, D-MR-016 breakpoint) and complete 5 MR slots; FS-009 health check; S3 FS-011..014 interleaved during waits (committed separately)",
+  "goal": "S3 FS-015: term usage index over draft runs + divergent/shared-target conflict marking, incremental by file fingerprint (interleaved during S2 batch waits)",
   "scope": [
-    "batch D-MR-016 (resume) / 017 / 018 / 019 / 020",
-    "docs/final_state_round_task_list.md (FS-008 block note + status table)"
+    "src/glossary/usage_index.py",
+    "scripts/build_term_usage_index.py",
+    "tests/test_term_usage_index.py",
+    ".gitignore (workspace/indexes/)",
+    "docs/final_state_round_task_list.md"
   ],
-  "repo_status_before": "main at 711acda (FS-014); handoff state: paused=true, D-MR-016 at 122/412",
+  "repo_status_before": "main at 7b16d02 (Block #3); S2 Block #4 MR1 (D-MR-021) running in parallel",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "scheduler.control", "purpose": "clear handoff pause; clear one stale lock after environment reclaimed MR4 tick shell", "result": "safe_to_run restored both times"},
-    {"tool": "shell:local_scheduler_tick x5", "purpose": "supervised real-api ticks (max-api-calls 30, max-wall 40min each)", "result": "5/5 completed, orphan CLEAN after each"},
-    {"tool": "throughput_gate/check_orphan_workers", "purpose": "block health check", "result": "WARN only refine_pending+diagnostic_*, orphan CLEAN, failed=0"}
+    {"tool": "shell:json probe", "purpose": "inspect segments.json structure (chapters[].segments[].source_text/draft_text)", "result": "streaming reader designed against real shape"},
+    {"tool": "write", "purpose": "usage index module + CLI + 10 tests", "result": "1 fix (relative_to on tmp paths) then green"},
+    {"tool": "shell:cli real run", "purpose": "task-card command on real data", "result": "1-50: 32 files, 26 terms hit, 16 conflicts; incremental rerun reused 32/32; full range 41 chapters 25 conflicts"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in batch rounds"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in this round"},
+    {"tool": "real API", "reason": "FS-015 is pure rule-based statistics"}
   ],
   "web_research": [],
   "real_api_used": {
-    "used": true,
-    "api_calls": 64,
-    "cost_usd": 0.127,
-    "model": "deepseek/deepseek-v4-pro",
-    "profile": "draft_translation_primary",
-    "scope": "Block #3: D-MR-016 resume-finish ($0.0227 of $0.0334 run total), D-MR-017 387seg ($0.0324), D-MR-018 310seg ($0.0217), D-MR-019 403seg ($0.0298, incl mid-run resume), D-MR-020 251seg ($0.0206)"
+    "used": false,
+    "api_calls": 0,
+    "cost_usd": 0,
+    "scope": "offline; parallel S2 Block #4 cost reported in its block report"
   },
-  "ui_checked": {"checked": false, "evidence": "no UI in batch rounds"},
+  "ui_checked": {"checked": false, "evidence": "no UI in this round"},
   "changed_files": [
+    "src/glossary/usage_index.py",
+    "scripts/build_term_usage_index.py",
+    "tests/test_term_usage_index.py",
+    ".gitignore",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl",
-    "reports/gate_result.json (auto-refreshed by ticks)"
+    "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "clear_pause() -> safe_to_run=true; tick1 resumed D-MR-016 at offset 122/412 (no re-translation)",
-    "tick2 D-MR-017, tick3 D-MR-018 unattended",
-    "MR4 incident: loop shell reclaimed by environment ~1min into tick4 (pid 61477 died holding lock; worker checkpointed 60/403 and exited; orphan CLEAN) -> clear_stale_lock() -> re-tick resumed same run same offset (60->403, no duplication); switched to one-shell-per-tick",
-    "tick5 D-MR-020 completed",
-    "health: throughput_gate WARN (refine_pending + 3x diagnostic_completed_checkpoint only), orphan CLEAN, TOTAL failed=0, draft 262/613 next D-MR-021"
+    ".venv/bin/python -m pytest tests/test_term_usage_index.py -q -> 10 passed",
+    ".venv/bin/python scripts/build_term_usage_index.py --chapter-range 1-50 --json -> PASS (files=32 scanned=32; rerun reused=32)",
+    "npm run test:py -> 375 passed (365 + 10 new)"
   ],
   "test_results": [
-    {"suite": "no pipeline code changes in block segment", "result": "suite at 365 passed (raised by interleaved S3 rounds, committed separately)"}
+    {"suite": "tests/test_term_usage_index.py", "result": "10 passed"},
+    {"suite": "full pytest", "result": "375 passed (>= baseline 294)"}
   ],
   "acceptance_result": [
-    {"criterion": "5 tick slots completed with orphan CLEAN between", "pass": true, "evidence": "B3 MR1-5 exit=0 status=completed plan=D-MR-016..020; orphan CLEAN after each"},
-    {"criterion": "breakpoint resume without re-translation", "pass": true, "evidence": "D-MR-016 122->412 same run; D-MR-019 60->403 same run with --run-id injected by planner"},
-    {"criterion": "block health: failed=0, gate warnings expected-only", "pass": true, "evidence": "TOTAL failed: 0; gate WARN = refine_pending + diagnostic_completed_checkpoint x3; blocks=[]"},
-    {"criterion": "cost within estimate", "pass": true, "evidence": "$0.127 for 15 chapters (~$0.0085/ch, in line with $4-5 projection for 366ch)"}
+    {"criterion": "index supports incremental update", "pass": true, "evidence": "per-file (size,mtime) fingerprint buckets; real data rerun scanned=0 reused=32; single-file change re-scans 1 (test)"},
+    {"criterion": "conflict statistics match fixture expectations", "pass": true, "evidence": "divergent_translation ratio=0.5 for kingdom (4 src hits / 2 divergent) + guild; shared_target for double-source 公会 - exact asserts"},
+    {"criterion": "output to workspace/indexes/ gitignored", "pass": true, "evidence": ".gitignore entry + test_workspace_indexes_gitignored"},
+    {"criterion": "no full-book single context (streaming)", "pass": true, "evidence": "per-file/per-chapter iteration; index contains ids+counts only, no text (leak test)"}
   ],
-  "issues_found": [
-    "long-lived loop shell reclaimed by environment at ~28min: killed tick mid-flight leaving stale scheduler lock (no data loss, worker checkpointed)"
-  ],
-  "issues_fixed": [
-    "stale lock cleared via clear_stale_lock(); same-offset resume verified in production; switched to one-shell-per-tick pattern for the rest of the block"
-  ],
+  "issues_found": [],
+  "issues_fixed": [],
   "remaining_issues": [
     "P2 agent_gate round_52 dry-run side effect (FS-012 backlog)",
     "pre-existing agent_gate warn vector_index_health (P2)"
@@ -65,8 +65,8 @@
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "per-tick shells mitigate reclaim risk; keep ticks under ~15min budget each"
+    "all migrated terms are category=other bracket labels; conflict ratios will become more meaningful after FS-013 human reclassification"
   ],
-  "next_recommended_round": "Block #4 (D-MR-021 263-265 onward, 5 slots); interleave FS-015 (term usage index) during waits; today cumulative cost ~$0.44",
+  "next_recommended_round": "Continue S2 Block #4 (MR2+); FS-016 (prompt builder asset injection) last S3 round may interleave",
   "human_decisions_required": []
 }
