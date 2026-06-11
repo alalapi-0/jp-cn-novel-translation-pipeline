@@ -1,0 +1,80 @@
+# =============================================================================
+# character_profile.yaml — 角色设定模板（脱敏，规格 §7.9）
+# =============================================================================
+# 本文件是提交 Git 的【模板】：仅含虚构示例角色（サンプル~ / 示例~），
+# 不得写入真实小说角色或真实译名。
+# 真实角色数据存放于 workspace/configs/character_profile.yaml（已 gitignore）。
+#
+# 字段说明（schema: schemas/character_profile.schema.json）：
+#   name                 角色名（原文，必填）
+#   target_name          译名
+#   aliases              别名 / 昵称列表
+#   address_map          称呼关系：本角色如何称呼他人 [{to, address, context?}]
+#   first_person         第一人称（俺 / 僕 / 私 …）
+#   speech_tics          口癖列表
+#   honorific_style      敬语风格（casual / polite / keigo / mixed …自由文本）
+#   personality_summary  性格摘要
+#   speech_style         说话风格说明
+#   forbidden            翻译该角色台词时的禁止事项列表
+#   appearing_chapters   出场章节号列表
+#   relationships        角色关系 [{character, relation}]
+#   manual_notes         人工备注（可为 null）
+#   created_at / updated_at  时间戳（ISO 8601）
+#
+# 角色设定必须能被初翻、润色和一致性检查复用（规格 §7.9）。
+# =============================================================================
+
+schema_version: 1
+
+meta:
+  project: sample
+  description: "角色设定脱敏模板——仅虚构示例，真实数据在 workspace/configs/"
+
+characters:
+  - name: "サンプル・タロウ"
+    target_name: "示例太郎"
+    aliases:
+      - "タロウ"
+    address_map:
+      - to: "サンプル・ハナコ"
+        address: "ハナコさん"
+        context: "平时"
+      - to: "サンプル・ハナコ"
+        address: "お前"
+        context: "战斗紧急时"
+    first_person: "俺"
+    speech_tics:
+      - "～だぜ"
+    honorific_style: "casual"
+    personality_summary: "虚构示例：直率冲动的少年主角"
+    speech_style: "短句、口语化、感叹词多"
+    forbidden:
+      - "不得使用书面语翻译其台词"
+      - "不得把第一人称译成『我方』"
+    appearing_chapters: [1, 2, 3]
+    relationships:
+      - character: "サンプル・ハナコ"
+        relation: "青梅竹马"
+    manual_notes: "模板示例，迁移真实数据时删除"
+    created_at: "2026-06-11T00:00:00Z"
+    updated_at: "2026-06-11T00:00:00Z"
+
+  - name: "サンプル・ハナコ"
+    target_name: "示例花子"
+    aliases: []
+    address_map:
+      - to: "サンプル・タロウ"
+        address: "タロウくん"
+    first_person: "私"
+    speech_tics: []
+    honorific_style: "polite"
+    personality_summary: "虚构示例：礼貌稳重的女主角"
+    speech_style: "完整句、敬体为主"
+    forbidden: []
+    appearing_chapters: [1]
+    relationships:
+      - character: "サンプル・タロウ"
+        relation: "青梅竹马"
+    manual_notes: null
+    created_at: "2026-06-11T00:00:00Z"
+    updated_at: "2026-06-11T00:00:00Z"

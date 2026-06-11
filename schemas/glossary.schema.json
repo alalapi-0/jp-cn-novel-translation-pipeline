@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "light_novel/schemas/glossary.schema.json",
+  "title": "Glossary (spec §7.8)",
+  "description": "术语库 schema：13 个必备字段 + 12 分类枚举。模板 configs/glossary.yaml；真实数据 workspace/configs/glossary.yaml。",
+  "type": "object",
+  "required": ["schema_version", "entries"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "meta": {
+      "type": "object",
+      "properties": {
+        "project": {"type": "string"},
+        "description": {"type": "string"},
+        "language_pair": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "entries": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/glossary_entry"}
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "glossary_entry": {
+      "type": "object",
+      "required": [
+        "source_term",
+        "target_term",
+        "reading",
+        "category",
+        "description",
+        "first_seen_chapter",
+        "confidence",
+        "locked",
+        "approved_by_user",
+        "aliases",
+        "notes",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "source_term": {"type": "string", "minLength": 1},
+        "target_term": {"type": "string"},
+        "reading": {"type": ["string", "null"]},
+        "category": {
+          "type": "string",
+          "enum": [
+            "person_name",
+            "place_name",
+            "organization_name",
+            "skill_name",
+            "item_name",
+            "title",
+            "race",
+            "magic",
+            "system_term",
+            "game_term",
+            "do_not_translate",
+            "other"
+          ]
+        },
+        "description": {"type": ["string", "null"]},
+        "first_seen_chapter": {"type": ["integer", "null"], "minimum": 1},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "locked": {"type": "boolean"},
+        "approved_by_user": {"type": "boolean"},
+        "aliases": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": ["string", "null"]},
+        "created_at": {"type": "string", "minLength": 1},
+        "updated_at": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    }
+  }
+}

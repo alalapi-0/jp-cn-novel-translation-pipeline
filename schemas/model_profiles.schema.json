@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "light_novel/schemas/model_profiles.schema.json",
+  "title": "Model Profiles (spec §10)",
+  "description": "模型配置 schema：profile / fallback / cost guard。永不含 API Key。",
+  "type": "object",
+  "required": ["schema_version", "default_profile", "profiles"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "meta": {"type": "object", "additionalProperties": true},
+    "default_profile": {"type": "string", "minLength": 1},
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/model_profile"}
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "model_profile": {
+      "type": "object",
+      "required": [
+        "profile_id",
+        "role",
+        "provider",
+        "model",
+        "temperature",
+        "max_tokens",
+        "enabled",
+        "fallback",
+        "cost_guard",
+        "notes"
+      ],
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9_\\-]+$"},
+        "role": {
+          "type": "string",
+          "enum": ["draft", "refine", "review", "embedding", "other"]
+        },
+        "provider": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1},
+        "temperature": {"type": ["number", "null"], "minimum": 0, "maximum": 2},
+        "max_tokens": {"type": ["integer", "null"], "minimum": 1},
+        "enabled": {"type": "boolean"},
+        "fallback": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider", "model"],
+            "properties": {
+              "provider": {"type": "string", "minLength": 1},
+              "model": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          }
+        },
+        "cost_guard": {
+          "type": "object",
+          "required": ["max_cost_per_round_usd", "max_api_calls_per_round"],
+          "properties": {
+            "max_cost_per_round_usd": {"type": "number", "exclusiveMinimum": 0},
+            "max_api_calls_per_round": {"type": "integer", "minimum": 1}
+          },
+          "additionalProperties": false
+        },
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true,
+      "not": {
+        "anyOf": [
+          {"required": ["api_key"]},
+          {"required": ["apiKey"]},
+          {"required": ["token"]},
+          {"required": ["secret"]}
+        ]
+      }
+    }
+  }
+}

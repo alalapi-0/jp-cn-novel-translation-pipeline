@@ -82,6 +82,9 @@ workspace/manifests/*
 !workspace/model_runs/.gitkeep
 !workspace/checkpoints/.gitkeep
 
+# Real translation asset configs (templates live in configs/, real data stays local)
+workspace/configs/
+
 # Workspace runtime / personalized production state (local only)
 workspace/stage_state.json
 workspace/stage_state_production.json

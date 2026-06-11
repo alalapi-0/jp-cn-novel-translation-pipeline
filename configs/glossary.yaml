@@ -1,0 +1,87 @@
+# =============================================================================
+# glossary.yaml — 术语库模板（脱敏，规格 §7.8）
+# =============================================================================
+# 本文件是提交 Git 的【模板】：仅含虚构示例条目（サンプル~ / 示例~），
+# 不得写入真实小说术语或真实译名。
+# 真实术语数据存放于 workspace/configs/glossary.yaml（已 gitignore，FS-012 迁移）。
+#
+# 字段说明（13 个必备字段，schema: schemas/glossary.schema.json）：
+#   source_term         原文术语（必填，非空）
+#   target_term         译文术语（锁定前可为空字符串）
+#   reading             读音 / 假名（可为 null）
+#   category            分类（12 枚举之一，见下方 categories 对照表）
+#   description         术语说明（可为 null）
+#   first_seen_chapter  首次出现章节号（>=1，可为 null）
+#   confidence          机器置信度 0~1（可为 null）
+#   locked              是否锁定（锁定后机器建议不得覆盖）
+#   approved_by_user    是否人工确认
+#   aliases             别名 / 异表记列表
+#   notes               人工备注（可为 null）
+#   created_at          创建时间（ISO 8601）
+#   updated_at          更新时间（ISO 8601）
+#
+# categories 12 分类枚举（英文 slug = schema 枚举值，中文为规格名称）：
+#   person_name        人名
+#   place_name         地名
+#   organization_name  组织名
+#   skill_name         技能名
+#   item_name          道具名
+#   title              称号
+#   race               种族
+#   magic              魔法
+#   system_term        系统术语
+#   game_term          游戏术语
+#   do_not_translate   不翻译词
+#   other              其他
+# =============================================================================
+
+schema_version: 1
+
+meta:
+  project: sample
+  description: "术语库脱敏模板——仅虚构示例，真实数据在 workspace/configs/"
+  language_pair: ja-zh
+
+entries:
+  - source_term: "サンプル王国"
+    target_term: "示例王国"
+    reading: "サンプルおうこく"
+    category: place_name
+    description: "虚构示例条目：展示地名类术语的字段用法"
+    first_seen_chapter: 1
+    confidence: 0.95
+    locked: false
+    approved_by_user: false
+    aliases:
+      - "サンプル国"
+    notes: "模板示例，迁移真实数据时删除"
+    created_at: "2026-06-11T00:00:00Z"
+    updated_at: "2026-06-11T00:00:00Z"
+
+  - source_term: "サンプル・タロウ"
+    target_term: "示例太郎"
+    reading: "さんぷる・たろう"
+    category: person_name
+    description: "虚构示例条目：展示人名类术语；locked=true 表示机器建议不得覆盖"
+    first_seen_chapter: 1
+    confidence: 1.0
+    locked: true
+    approved_by_user: true
+    aliases: []
+    notes: null
+    created_at: "2026-06-11T00:00:00Z"
+    updated_at: "2026-06-11T00:00:00Z"
+
+  - source_term: "サンプルスキル"
+    target_term: ""
+    reading: null
+    category: skill_name
+    description: "虚构示例条目：target_term 为空 = 译名未定，等待人工确认"
+    first_seen_chapter: null
+    confidence: null
+    locked: false
+    approved_by_user: false
+    aliases: []
+    notes: "展示可空字段的合法形态"
+    created_at: "2026-06-11T00:00:00Z"
+    updated_at: "2026-06-11T00:00:00Z"

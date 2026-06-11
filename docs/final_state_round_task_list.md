@@ -327,6 +327,8 @@ configs 模板层 + schema + 测试。
 ### 下一轮衔接
 FS-012 迁移现有资产。
 
+> ✅ 完成于 2026-06-11（S2 批量等待间隙穿插执行（Roadmap §3 允许）。新增 `configs/` 五 YAML 脱敏模板（glossary / character_profile / style_profile / world_bible / model_profiles + README 约定）+ `schemas/` 五 Draft7 JSON Schema + `scripts/validate_configs.py`（PASS，--json / --configs-dir 支持）+ `tests/test_configs_schema.py` 21 用例。验收：✅五 YAML 全过各自 schema ✅glossary schema required 含规格 §7.8 全部 13 字段、category 12 枚举（world_bible 14 枚举）✅模板全虚构（サンプル~ 断言；model_profiles 无密钥断言 + schema not/api_key 拒绝）。`.gitignore` 增 `workspace/configs/`（FS-012 真实数据落点）。全套 315 passed（基线 294+21））
+
 ## Round FS-012：现有翻译资产迁移
 
 ### 目标
@@ -1441,7 +1443,8 @@ FS-070。
 | FS-008 | S2 Phase A | completed（2026-06-11；ch1-241 连续，批量推进交接中：247/613，D-MR-016 断点 122/412，paused 保护） |
 | FS-009 | S2 Phase A | recurring（Block #1 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
-| FS-011…FS-016 | S3 资产层 | not_started |
+| FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
+| FS-012…FS-016 | S3 资产层 | not_started |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031…FS-037 | S6 Phase B | not_started |

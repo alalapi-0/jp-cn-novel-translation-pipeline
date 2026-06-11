@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "light_novel/schemas/character_profile.schema.json",
+  "title": "Character Profile (spec §7.9)",
+  "description": "角色设定 schema。模板 configs/character_profile.yaml；真实数据 workspace/configs/character_profile.yaml。",
+  "type": "object",
+  "required": ["schema_version", "characters"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "meta": {"type": "object", "additionalProperties": true},
+    "characters": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/character"}
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "character": {
+      "type": "object",
+      "required": [
+        "name",
+        "target_name",
+        "aliases",
+        "address_map",
+        "first_person",
+        "speech_tics",
+        "honorific_style",
+        "personality_summary",
+        "speech_style",
+        "forbidden",
+        "appearing_chapters",
+        "relationships",
+        "manual_notes",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "target_name": {"type": "string"},
+        "aliases": {"type": "array", "items": {"type": "string"}},
+        "address_map": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["to", "address"],
+            "properties": {
+              "to": {"type": "string", "minLength": 1},
+              "address": {"type": "string", "minLength": 1},
+              "context": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "first_person": {"type": ["string", "null"]},
+        "speech_tics": {"type": "array", "items": {"type": "string"}},
+        "honorific_style": {"type": ["string", "null"]},
+        "personality_summary": {"type": ["string", "null"]},
+        "speech_style": {"type": ["string", "null"]},
+        "forbidden": {"type": "array", "items": {"type": "string"}},
+        "appearing_chapters": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 1}
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["character", "relation"],
+            "properties": {
+              "character": {"type": "string", "minLength": 1},
+              "relation": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          }
+        },
+        "manual_notes": {"type": ["string", "null"]},
+        "created_at": {"type": "string", "minLength": 1},
+        "updated_at": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    }
+  }
+}

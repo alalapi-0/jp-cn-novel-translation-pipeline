@@ -1,0 +1,74 @@
+# =============================================================================
+# model_profiles.yaml — 模型配置模板（规格 §10）
+# =============================================================================
+# 本文件是提交 Git 的【模板】，与现有 config/draft_models.yaml /
+# model-router/config/models.yaml 对齐（FS-012 之后逐步统一到本结构）。
+#
+# 安全红线：
+#   - 永不写入 API Key / token；密钥只从环境变量读取。
+#   - 生产模型切换 / 并发 / 提价需用户确认（AGENTS.md）。
+#
+# 字段说明（schema: schemas/model_profiles.schema.json）：
+#   profile_id   配置 ID（唯一）
+#   role         用途（draft / refine / review / embedding / other）
+#   provider     提供方路由（model_router / openrouter / deepseek …）
+#   model        模型标识
+#   temperature  采样温度 0~2（可为 null = 用 provider 默认）
+#   max_tokens   单次输出上限（可为 null）
+#   enabled      是否启用
+#   fallback     降级链 [{provider, model}]
+#   cost_guard   成本护栏 {max_cost_per_round_usd, max_api_calls_per_round}
+#   notes        备注（可为 null）
+# =============================================================================
+
+schema_version: 1
+
+meta:
+  project: sample
+  description: "模型配置模板——生产现状对齐 config/draft_models.yaml，永不含密钥"
+
+default_profile: draft_translation_primary
+
+profiles:
+  - profile_id: draft_translation_primary
+    role: draft
+    provider: model_router
+    model: deepseek/deepseek-v4-pro
+    temperature: 0.3
+    max_tokens: null
+    enabled: true
+    fallback:
+      - provider: deepseek
+        model: deepseek-chat
+    cost_guard:
+      max_cost_per_round_usd: 1.0
+      max_api_calls_per_round: 200
+    notes: "生产初翻主力（T-001/T-002 基线，用户 2026-06-07 决定保持）"
+
+  - profile_id: draft_translation_candidate
+    role: draft
+    provider: model_router
+    model: nvidia/nemotron-3-ultra-550b-a55b:free
+    temperature: 0.3
+    max_tokens: null
+    enabled: false
+    fallback: []
+    cost_guard:
+      max_cost_per_round_usd: 0.5
+      max_api_calls_per_round: 50
+    notes: "A/B 2026-06-07：质量达标但延迟 ~195s vs 8s，用户决定不切换，保持 disabled"
+
+  - profile_id: refine_primary
+    role: refine
+    provider: model_router
+    model: deepseek/deepseek-v4-pro
+    temperature: 0.4
+    max_tokens: null
+    enabled: true
+    fallback:
+      - provider: deepseek
+        model: deepseek-chat
+    cost_guard:
+      max_cost_per_round_usd: 1.5
+      max_api_calls_per_round: 200
+    notes: "Phase D 润色占位配置，S8 启动前按 R-MR 实测调整"

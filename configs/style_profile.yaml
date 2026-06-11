@@ -1,0 +1,50 @@
+# =============================================================================
+# style_profile.yaml — 风格配置模板（脱敏，规格 §10 / §15.1）
+# =============================================================================
+# 本文件是提交 Git 的【模板】。风格配置供初翻 / 润色 / 终检 prompt 复用。
+# 项目专属的真实风格数据存放于 workspace/configs/style_profile.yaml（已 gitignore）。
+#
+# 字段说明（schema: schemas/style_profile.schema.json）：
+#   profile_id                  风格 ID（唯一）
+#   name                        风格名称
+#   description                 用途说明
+#   tone                        整体语气
+#   register                    语体（casual / neutral / formal …自由文本）
+#   pacing                      节奏要求（轻小说节奏，规格 §15.1）
+#   sentence_length             句长偏好
+#   paragraph_structure_policy  段落结构策略（保持原文段落结构）
+#   foreshadowing_policy        伏笔处理策略（保持暧昧性，不提前挑明）
+#   honorific_handling          敬语处理策略
+#   onomatopoeia_handling       拟声词 / 拟态词处理策略
+#   punctuation_rules           标点规则列表
+#   preferred_phrases           倾向用语列表
+#   forbidden_phrases           禁止用语列表
+#   notes                       备注（可为 null）
+# =============================================================================
+
+schema_version: 1
+
+meta:
+  project: sample
+  description: "风格配置脱敏模板——真实项目风格数据在 workspace/configs/"
+
+profiles:
+  - profile_id: ln_default
+    name: "轻小说默认风格"
+    description: "虚构示例：日译中轻小说全书初翻与润色的默认风格基线"
+    tone: "轻快、贴近角色"
+    register: casual
+    pacing: "保持轻小说节奏：短段落、对话密集处不合并"
+    sentence_length: "偏短句；长定语从句拆分"
+    paragraph_structure_policy: "保持原文段落结构，不增删段落"
+    foreshadowing_policy: "保持伏笔暧昧性，不提前挑明剧情"
+    honorific_handling: "敬称按 character_profile 的称呼关系处理；无对应关系时音译保留"
+    onomatopoeia_handling: "拟声词优先意译；无对应表达时保留并加注"
+    punctuation_rules:
+      - "对话使用「」"
+      - "心理活动使用（）"
+      - "省略号统一为……"
+    preferred_phrases: []
+    forbidden_phrases:
+      - "总而言之（口癖滥用示例）"
+    notes: "模板示例，迁移真实数据时按项目调整"

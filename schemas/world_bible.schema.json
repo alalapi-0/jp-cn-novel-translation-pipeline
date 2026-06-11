@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "light_novel/schemas/world_bible.schema.json",
+  "title": "World Bible (spec §7.10)",
+  "description": "世界观设定 schema：14 分类枚举。模板 configs/world_bible.yaml；真实数据 workspace/configs/world_bible.yaml。",
+  "type": "object",
+  "required": ["schema_version", "entries"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "meta": {"type": "object", "additionalProperties": true},
+    "entries": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/world_entry"}
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "world_entry": {
+      "type": "object",
+      "required": [
+        "entry_id",
+        "name",
+        "target_name",
+        "category",
+        "summary",
+        "details",
+        "related_terms",
+        "first_seen_chapter",
+        "notes",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "entry_id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9_\\-]+$"},
+        "name": {"type": "string", "minLength": 1},
+        "target_name": {"type": "string"},
+        "category": {
+          "type": "string",
+          "enum": [
+            "faction",
+            "country",
+            "region",
+            "magic_system",
+            "level_system",
+            "skill_system",
+            "currency",
+            "religion",
+            "race",
+            "organization",
+            "game_system",
+            "quest_system",
+            "achievement_system",
+            "other"
+          ]
+        },
+        "summary": {"type": ["string", "null"]},
+        "details": {"type": ["string", "null"]},
+        "related_terms": {"type": "array", "items": {"type": "string"}},
+        "first_seen_chapter": {"type": ["integer", "null"], "minimum": 1},
+        "notes": {"type": ["string", "null"]},
+        "created_at": {"type": "string", "minLength": 1},
+        "updated_at": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "light_novel/schemas/style_profile.schema.json",
+  "title": "Style Profile (spec §10 / §15.1)",
+  "description": "风格配置 schema。模板 configs/style_profile.yaml；真实数据 workspace/configs/style_profile.yaml。",
+  "type": "object",
+  "required": ["schema_version", "profiles"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "meta": {"type": "object", "additionalProperties": true},
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/style"}
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "style": {
+      "type": "object",
+      "required": [
+        "profile_id",
+        "name",
+        "description",
+        "tone",
+        "register",
+        "pacing",
+        "sentence_length",
+        "paragraph_structure_policy",
+        "foreshadowing_policy",
+        "honorific_handling",
+        "onomatopoeia_handling",
+        "punctuation_rules",
+        "preferred_phrases",
+        "forbidden_phrases",
+        "notes"
+      ],
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9_\\-]+$"},
+        "name": {"type": "string", "minLength": 1},
+        "description": {"type": ["string", "null"]},
+        "tone": {"type": ["string", "null"]},
+        "register": {"type": ["string", "null"]},
+        "pacing": {"type": ["string", "null"]},
+        "sentence_length": {"type": ["string", "null"]},
+        "paragraph_structure_policy": {"type": ["string", "null"]},
+        "foreshadowing_policy": {"type": ["string", "null"]},
+        "honorific_handling": {"type": ["string", "null"]},
+        "onomatopoeia_handling": {"type": ["string", "null"]},
+        "punctuation_rules": {"type": "array", "items": {"type": "string"}},
+        "preferred_phrases": {"type": "array", "items": {"type": "string"}},
+        "forbidden_phrases": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    }
+  }
+}
