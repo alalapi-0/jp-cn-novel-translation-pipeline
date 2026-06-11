@@ -1,60 +1,52 @@
 {
-  "round_id": "FS-016",
-  "timestamp": "2026-06-11T01:15:00Z",
+  "round_id": "FS-008-block4",
+  "timestamp": "2026-06-11T01:50:00Z",
   "agent": "cursor-composer",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "S3 FS-016 (stage finale): prompt builders consume configs assets per spec §22 - batch-hit glossary subset + involved character notes only, never full assets (interleaved during S2 batch waits)",
+  "goal": "Phase A batch Block #4 (one-shell-per-tick): D-MR-021..024 complete; FS-009 health check; S3 finale FS-015/016 interleaved (committed separately)",
   "scope": [
-    "src/translation/configs_asset_context.py",
-    "src/translation/draft_runner.py (compact branch: TM + configs hits)",
-    "src/translation/refine_prompt_builder.py (asset_context param)",
-    "src/translation/refine_runner.py (inject batch hits)",
-    "tests/test_prompt_builder_assets.py",
-    "docs/final_state_round_task_list.md"
+    "batch D-MR-021 / 022 / 023 (2-tick budget resume) / 024",
+    "docs/final_state_round_task_list.md (block note + status table)"
   ],
-  "repo_status_before": "main at 453504d (FS-015); S2 Block #4 MR1 done (D-MR-021), MR2 starting",
+  "repo_status_before": "main at 5a4c6a1 (FS-016)",
   "tool_probe_status": "passed",
   "tools_used": [
-    {"tool": "read draft_runner/refine_runner/prompt builders", "purpose": "locate injection points and existing TM hit selection", "result": "compact_context branch + refine builder identified"},
-    {"tool": "write", "purpose": "configs asset context selector + integrations + 10 tests", "result": "all green first run"},
-    {"tool": "shell:run_micro_round --dry-run --fake-provider", "purpose": "task-card command validation", "result": "plan OK: 272 seg, 14 batches, est 29693 tokens, 0 overlong"}
+    {"tool": "shell:local_scheduler_tick x5", "purpose": "supervised real-api ticks, one shell each (reclaim mitigation)", "result": "5/5 completed, orphan CLEAN after each"},
+    {"tool": "throughput_gate/check_orphan_workers", "purpose": "block health check", "result": "WARN expected-only, orphan CLEAN, failed=0"}
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in this round"},
-    {"tool": "real API", "reason": "dry-run / fake provider validation only per task card"}
+    {"tool": "playwright/browser MCP", "reason": "no UI in batch rounds"}
   ],
   "web_research": [],
   "real_api_used": {
-    "used": false,
-    "api_calls": 0,
-    "cost_usd": 0,
-    "scope": "offline; parallel S2 Block #4 cost reported in its block report"
+    "used": true,
+    "api_calls": 100,
+    "cost_usd": 0.1354,
+    "model": "deepseek/deepseek-v4-pro",
+    "profile": "draft_translation_primary",
+    "scope": "Block #4: D-MR-021 272seg ($0.0246), D-MR-022 338seg ($0.0264), D-MR-023 across 2 budget ticks ($0.0527), D-MR-024 ($0.0317)"
   },
-  "ui_checked": {"checked": false, "evidence": "no UI in this round"},
+  "ui_checked": {"checked": false, "evidence": "no UI in batch rounds"},
   "changed_files": [
-    "src/translation/configs_asset_context.py",
-    "src/translation/draft_runner.py",
-    "src/translation/refine_prompt_builder.py",
-    "src/translation/refine_runner.py",
-    "tests/test_prompt_builder_assets.py",
     "docs/final_state_round_task_list.md",
     "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl"
+    "reports/agent_audit_log.jsonl",
+    "reports/gate_result.json (auto-refreshed by ticks)"
   ],
   "commands_run": [
-    ".venv/bin/python -m pytest tests/test_prompt_builder_assets.py -q -> 10 passed",
-    "python3 scripts/run_micro_round.py --dry-run --fake-provider --round-id FS-016-VALIDATE --chapter-range 263-265 -> plan OK",
-    "npm run test:py -> 385 passed (375 + 10 new)"
+    "5x one-shell ticks: D-MR-021, D-MR-022 (slow-but-healthy heartbeat verified mid-run), D-MR-023 (budget exhausted -> next slot same-offset resume, by design), D-MR-024",
+    "health: gate WARN expected-only (refine_pending + 3 diagnostic), blocks=[], orphan CLEAN, TOTAL failed=0",
+    "progress: draft 274/613 (44.70%) next D-MR-025 275-277"
   ],
   "test_results": [
-    {"suite": "tests/test_prompt_builder_assets.py", "result": "10 passed"},
-    {"suite": "full pytest", "result": "385 passed (>= baseline 294)"}
+    {"suite": "no pipeline code changes in block segment", "result": "suite at 385 passed (raised by interleaved S3 rounds)"}
   ],
   "acceptance_result": [
-    {"criterion": "injected glossary entries ⊆ batch hit set", "pass": true, "evidence": "subset asserts incl alias-hit canonical injection, deleted-tombstone exclusion, 50-entry no-dump guard (only 1 hit term injected)"},
-    {"criterion": "context pack within token budget", "pass": true, "evidence": "char_budget=60 -> char_count<=60 + truncated flag; max_glossary_terms cap test"},
-    {"criterion": "fake provider end-to-end", "pass": true, "evidence": "run_micro_round --dry-run --fake-provider plan passes (272 seg / 14 batches / est 29693 tok); prompt integration tests cover draft+refine message content"}
+    {"criterion": "5 tick slots completed with orphan CLEAN between", "pass": true, "evidence": "B4 MR1-5 exit=0 completed; D-MR-021..024"},
+    {"criterion": "budget resume without re-translation", "pass": true, "evidence": "D-MR-023 spanned MR3+MR4 ticks, same run_20260611_011249 same offset"},
+    {"criterion": "block health: failed=0, gate expected-only", "pass": true, "evidence": "TOTAL failed: 0; WARN = refine_pending + diagnostic x3; blocks=[]"},
+    {"criterion": "cost within estimate", "pass": true, "evidence": "$0.1354 for 12 chapters; today cumulative ~$0.57"}
   ],
   "issues_found": [],
   "issues_fixed": [],
@@ -65,9 +57,7 @@
   "severity_summary": {"p0": 0, "p1": 0, "p2": 2, "p3": 0},
   "gate_status": "warning",
   "blockers": [],
-  "risks": [
-    "configs glossary currently holds 64 category=other terms from FS-012; injection quality improves as humans curate locked/approved terms (S10 UI)"
-  ],
-  "next_recommended_round": "S3 complete (FS-011..016). Continue S2 Block #4 (MR2 running); next interleave candidates: S4 FS-017 is a UI round (needs browser) - prefer batch-focus or S4 during a dedicated UI session",
+  "risks": [],
+  "next_recommended_round": "Block #5 (D-MR-025 onward). S3 fully done; S4 FS-017 is a browser/UI round - recommend dedicated session or continue pure batch blocks toward FS-010 (613/613)",
   "human_decisions_required": []
 }

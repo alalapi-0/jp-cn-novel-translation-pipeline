@@ -253,6 +253,8 @@ D-MR-008 从正确断点续跑且无重复翻译；连续 3 个 MR 无人工干�
 > ✅ 完成于 2026-06-11（**Block #1 收口：ch1-241 连续完成（241/613，39.31%），缺口 191-211 全部回填**。事故与修复：legacy run 自动 resume（`LEGACY_PARTIAL_RUN_ID`）+ hydrate 窗口重写导致 ①D-MR-001 假完成（0 调用）②legacy run segments 从 209-211 被改写为 206-208（209-211 受控记录丢失；draft md 无物理丢失）→ 三防线修复：移除 legacy 自动 resume；hydrate 拒绝跨 offset 重定向（"run 目录单窗口"原则）；round_done=False 时拒绝 completed 假成功。206-208 经核证为 T-002 真实成果有效保留；203-205（562 段 $0.036）与 209-211（342 段 $0.023）受控重翻完成。验收：✅续跑无重复翻译（修复后 find_resumable_run 测试覆盖）✅连续 5 MR 无人工干预（GAP-194/197/200 + D-MR-001/003）✅每 MR metrics+summary+tick report 生成。健康检查：6 run 全 completed、failed=0、gate 仅预期诊断警告；今日成本 $0.1558）
 >
 > ✅ Block #3 收口于 2026-06-11（第三棒接力：清交接 pause → D-MR-016 自 122/412 断点同 offset 续跑收尾 → D-MR-017（387 段）→ D-MR-018（310 段）→ D-MR-019（403 段，tick shell 被环境回收中断于 60/403：worker checkpoint 干净退出、清 stale lock 后 planner 同 run 同 offset 自动续跑无重复翻译，后续 slot 改单 tick 单 shell 模式）→ D-MR-020（251 段）。**进度 262/613（42.74%），ch1-262 连续**。健康检查：5/5 tick completed、orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅 refine_pending + diagnostic_*（预期）；Block 成本 ≈ $0.127（deepseek/deepseek-v4-pro）。批量等待间隙穿插完成 S3 四轮：FS-011/012/013/014（见各轮注记））
+>
+> ✅ Block #4 收口于 2026-06-11（单 tick 单 shell 模式：D-MR-021（272 段）→ D-MR-022（338 段）→ D-MR-023（跨 2 个 budget tick 同 offset 续跑，设计行为）→ D-MR-024。**进度 274/613（44.70%），ch1-274 连续**，next D-MR-025（275-277）。健康检查：5/5 tick completed、orphan 全程 CLEAN、TOTAL failed=0、gate WARN 仅预期诊断、blocks=[]；Block 成本 $0.1354（4 run checkpoint 实测），今日累计 ≈ $0.57。间隙穿插完成 S3 收官两轮 FS-015/016 → **S3 全 stage 完成**）
 
 ## Round FS-009：Phase A 周期健康检查轮（模板轮，可重复执行）
 
@@ -1452,8 +1454,8 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：262/613（42.74%），ch1-262 连续，next D-MR-021） |
-| FS-009 | S2 Phase A | recurring（Block #1/#2/#3 已执行 2026-06-11；每 Block 重复） |
+| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：274/613（44.70%），ch1-274 连续，next D-MR-025） |
+| FS-009 | S2 Phase A | recurring（Block #1…#4 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
 | FS-012 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |
