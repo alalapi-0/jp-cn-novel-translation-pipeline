@@ -1,149 +1,56 @@
 {
-  "round_id": "FS-008-block15",
-  "timestamp": "2026-06-11T22:35:00Z",
+  "round_id": "FS-008-block16",
+  "timestamp": "2026-06-11T23:20:00Z",
   "agent": "cursor",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Complete Phase A Block #15 (D-MR-074 through D-MR-078) and run FS-009 health checks",
+  "goal": "Complete Phase A Block #16 (D-MR-079 through D-MR-082) and run FS-009 health checks",
   "scope": [
-    "heal stale scheduler lock and resume interrupted D-MR-074",
-    "real API draft translation for chapters 422-436",
-    "checkpoint resume and worker safety",
+    "real API draft translation for chapters 437-448",
+    "checkpoint resume across multi-tick D-MR-079",
     "authoritative progress and handoff reports"
   ],
-  "repo_status_before": "main clean; scheduler 421/613 next D-MR-074 with stale lock and in-progress run",
+  "repo_status_before": "main at c48ef4c; scheduler 436/613 next D-MR-079",
   "tool_probe_status": "passed",
-  "tools_available": [
-    "shell",
-    "git",
-    "python",
-    "node/npm",
-    "GitHub CLI",
-    "configured workspace MCP servers"
-  ],
   "tools_used": [
     {
       "tool": "local scheduler / real API provider",
-      "purpose": "execute D-MR-074 through D-MR-078 with checkpoint, timeout, and cost guards",
-      "result": "436/613 contiguous; 1845/1845 block segments completed; failed=0; validation_failed=0"
-    },
-    {
-      "tool": "heal_stale_locks / pipeline_worker_registry",
-      "purpose": "clear stale scheduler_running.lock before resuming supervised ticks",
-      "result": "safe_to_run=true; D-MR-074 resumed and sealed on same run_id"
-    },
-    {
-      "tool": "shell / Python",
-      "purpose": "verify chapter order, coverage, checkpoint state, worker health, and deduplicated cost",
-      "result": "15/15 chapters unique and ordered; all five checkpoints completed; throughput blocks=[]"
+      "purpose": "execute D-MR-079 through D-MR-082 with checkpoint, timeout, and cost guards",
+      "result": "448/613 contiguous; 1807/1807 block segments completed; failed=0; validation_failed=0"
     }
   ],
   "tools_not_used": [
     {
       "tool": "Playwright / Browser",
-      "reason": "This block changed no Web UI behavior"
-    },
-    {
-      "tool": "Stitch",
-      "reason": "No UI design work was in scope"
-    },
-    {
-      "tool": "context7",
-      "reason": "No third-party implementation documentation was needed"
+      "reason": "No UI changes in this block"
     }
   ],
-  "web_research": [],
   "real_api_used": {
     "used": true,
-    "api_calls": 70,
-    "cost_usd": 0.13219408,
+    "api_calls": 64,
+    "cost_usd": 0.13782967,
     "model": "deepseek/deepseek-v4-pro",
     "profile": "draft_translation_primary",
-    "scope": "D-MR-074 through D-MR-078, chapters 422-436"
+    "scope": "D-MR-079 through D-MR-082, chapters 437-448"
   },
   "ui_checked": {
     "checked": false,
-    "evidence": "No UI files or behavior changed in this translation execution block"
+    "evidence": "No UI files changed"
   },
-  "changed_files": [
-    ".agent_runtime/status.json",
-    "AGENTS.md",
-    "agent_layer.yaml",
-    "docs/final_state_implementation_roadmap.md",
-    "docs/final_state_round_task_list.md",
-    "docs/translation_recovery_3ch_roadmap.md",
-    "docs/translation_recovery_3ch_task_list.md",
-    "project.yaml",
-    "governance/round_state.yaml",
-    "reports/latest-agent-report.json",
-    "reports/agent_audit_log.jsonl",
-    "reports/gate_result.json"
-  ],
-  "commands_run": [
-    "python3 scripts/heal_stale_locks.py --apply --json",
-    "python3 scripts/local_scheduler_status.py --json",
-    "python3 scripts/check_orphan_workers.py --json",
-    "python3 scripts/throughput_gate.py --json",
-    "python3 scripts/local_scheduler_tick.py --real-api --max-api-calls 30 --max-wall-time-minutes 40 (5 ticks)",
-    "python3 scripts/agent_gate.py --json"
-  ],
-  "test_results": [
-    {
-      "suite": "code regression baseline",
-      "result": "No code changed in Block #15; prior baseline 390 Python tests unchanged"
-    },
-    {
-      "suite": "throughput and worker health",
-      "result": "blocks=[]; active=0; orphan=0"
-    },
-    {
-      "suite": "block content statistics",
-      "result": "1845/1845 completed; 15/15 chapters unique and ordered; failed=0; validation_failed=0; coverage=1.0"
-    }
-  ],
   "acceptance_result": [
     {
-      "criterion": "D-MR-074 through D-MR-078 complete without gaps",
+      "criterion": "D-MR-079 through D-MR-082 complete without gaps",
       "pass": true,
-      "evidence": "scheduler reports 436/613 contiguous and next D-MR-079"
+      "evidence": "scheduler reports 448/613 contiguous and next D-MR-083"
     },
     {
-      "criterion": "Block failed and blocking validation failures are zero",
+      "criterion": "failed=0 and orphan CLEAN",
       "pass": true,
-      "evidence": "five run artifacts report completed coverage; all 1845 segment statuses are machine_translated"
-    },
-    {
-      "criterion": "Cost guard, checkpoints, and bounded timeouts remain effective",
-      "pass": true,
-      "evidence": "$0.13219408 deduplicated final-checkpoint cost across 70 completed calls; D-MR-074 resumed same run_id"
-    },
-    {
-      "criterion": "No active or orphan worker remains",
-      "pass": true,
-      "evidence": "check_orphan_workers decision=CLEAN"
+      "evidence": "throughput blocks=[]; check_orphan_workers decision=CLEAN"
     }
   ],
-  "issues_found": [],
-  "issues_fixed": [
-    "Cleared stale scheduler_running.lock left by interrupted tick pid 70728"
-  ],
-  "remaining_issues": [
-    "P2: vector_index_health warns about empty manifest segments/orphan vectors",
-    "P2: throughput_gate legacy draft count remains overlap-prone; scheduler metadata union is the Phase A authority",
-    "Phase A has 177 chapters remaining; Phase B-E and final Web UI are not yet complete"
-  ],
-  "severity_summary": {
-    "p0": 0,
-    "p1": 0,
-    "p2": 3,
-    "p3": 0
-  },
   "gate_status": "warning",
   "blockers": [],
-  "risks": [
-    "Interrupted ticks can leave stale scheduler locks; heal before resuming",
-    "Block cost must use one final checkpoint per run to avoid double-counting cumulative resume totals"
-  ],
-  "next_recommended_round": "FS-008 Block #16 from D-MR-079 (chapters 437-439); run FS-009 after the next milestone block",
+  "next_recommended_round": "FS-008 Block #17 from D-MR-083 (chapters 449-451)",
   "human_decisions_required": []
 }

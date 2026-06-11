@@ -293,6 +293,8 @@ D-MR-008 从正确断点续跑且无重复翻译；连续 3 个 MR 无人工干�
 > ✅ Block #14 收口于 2026-06-12（D-MR-067 → 068 → 069 → 070 → 071 完成，15 章；大轮按同一 checkpoint 分切片续跑）。**进度 415/613（67.70%），ch1-415 连续**，next D-MR-072（416-418）。五轮 2355/2355 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按最终 checkpoint 去重成本 $0.15660078（111 个已完成 API calls）。预算切片均正确报告 `budget_exhausted` 并在完成时封口；throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
 >
 > ✅ Block #15 收口于 2026-06-12（接手时 stale scheduler lock + D-MR-074 进行中 487/617 → heal lock 后续跑 D-MR-074 → 075 → 076 → 077 → 078，15 章）。**进度 436/613（71.13%），ch1-436 连续**，next D-MR-079（437-439）。五轮 1845/1845 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按最终 checkpoint 去重成本 $0.13219408（70 个已完成 API calls）。D-MR-074 同 offset 续跑封口；throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
+>
+> ✅ Block #16 收口于 2026-06-12（D-MR-079 跨 2 tick 同 offset 续跑 → 080 → 081 → 082，12 章）。**进度 448/613（73.08%），ch1-448 连续**，next D-MR-083（449-451）。四轮 1807/1807 segments completed，12/12 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按最终 checkpoint 去重成本 $0.13782967（64 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
 
 ## Round FS-009：Phase A 周期健康检查轮（模板轮，可重复执行）
 
@@ -1492,7 +1494,7 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | launch completed / batch in_progress（436/613，ch1-436 连续，next D-MR-079） |
+| FS-008 | S2 Phase A | launch completed / batch in_progress（448/613，ch1-448 连续，next D-MR-083） |
 | FS-009 | S2 Phase A | recurring（Block #1…#14 已执行至 2026-06-12；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |

@@ -1,6 +1,6 @@
-round_id: fs_008_block15_20260612
-round_name: "Phase A Block #15"
-round_number_human: "FS-008 Block #15"
+round_id: fs_008_block16_20260612
+round_name: "Phase A Block #16"
+round_number_human: "FS-008 Block #16"
 status: completed
 type: translation_execution
 real_api_called: true
@@ -8,15 +8,14 @@ full_translation_executed: true
 existing_translation_outputs_modified: true
 
 completed_tasks:
-  - "Healed stale scheduler lock and resumed D-MR-074 from 487/617 segments"
-  - "Completed D-MR-074 through D-MR-078 with 1845/1845 segments and no failed or validation_failed segments"
-  - "Advanced contiguous Phase A draft progress from 421/613 to 436/613"
-  - "Verified all 15 chapters (422-436) are unique, ordered, fully covered, and checkpoint-complete"
+  - "Completed D-MR-079 through D-MR-082 with 1807/1807 segments (D-MR-079 resumed across 2 ticks)"
+  - "Advanced contiguous Phase A draft progress from 436/613 to 448/613"
+  - "Verified all 12 chapters (437-448) are unique, ordered, fully covered, and checkpoint-complete"
   - "Completed FS-009 health check with throughput blocks empty and orphan CLEAN"
 
 next_recommended_round:
-  id: FS-008-block16
-  title: "Continue Phase A from D-MR-079; run FS-009 health check after the block"
+  id: FS-008-block17
+  title: "Continue Phase A from D-MR-083; run FS-009 health check after the block"
 
 next_parallel_engineering_round:
   id: FS-017
