@@ -1,6 +1,6 @@
-round_id: fs_008_block12_20260611
-round_name: "Phase A Block #12"
-round_number_human: "FS-008 Block #12"
+round_id: fs_008_block13_20260612
+round_name: "Phase A Block #13 and budget-edge state finalization"
+round_number_human: "FS-008 Block #13"
 status: completed
 type: translation_execution
 real_api_called: true
@@ -8,15 +8,16 @@ full_translation_executed: true
 existing_translation_outputs_modified: true
 
 completed_tasks:
-  - "Completed D-MR-057 through D-MR-061 with 2220/2220 segments and no failed or validation_failed segments"
-  - "Advanced contiguous Phase A draft progress from 370/613 to 385/613"
-  - "Verified all 15 chapters are unique, ordered, fully covered, and stage-C eligible"
-  - "Confirmed bounded provider timeouts across all checkpoint-resume slices"
-  - "Completed FS-009 health check: throughput blocks empty and orphan CLEAN"
+  - "Completed D-MR-062 through D-MR-066 with 1652/1652 segments and no failed or validation_failed segments"
+  - "Advanced contiguous Phase A draft progress from 385/613 to 400/613"
+  - "Mapped supervised budget pauses to budget_exhausted instead of failed"
+  - "Closed checkpoint and run_progress when full coverage lands exactly on a budget boundary"
+  - "Repaired the D-MR-064 false in-progress state and restored throughput blocks=[]"
+  - "Completed FS-009 health check with orphan CLEAN"
 
 next_recommended_round:
-  id: FS-008-block13
-  title: "Continue Phase A from D-MR-062; run FS-009 health check after the block"
+  id: FS-008-block14
+  title: "Continue Phase A from D-MR-067; run FS-009 health check after the block"
 
 next_parallel_engineering_round:
   id: FS-017

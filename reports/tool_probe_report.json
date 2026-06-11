@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-11T18:33:24Z",
+  "timestamp": "2026-06-11T20:28:04Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M .agent_runtime/status.json\n M AGENTS.md\n M agent_layer.yaml\n M docs/final_state_implementation_roadmap.md\n M docs/final_state_round_task_list.md\n M docs/translation_recovery_3ch_roadmap.md\n M docs/translation_recovery_3ch_task_list.md\n M governance/round_state.yaml\n M project.yaml\n M reports/agent_audit_log.jsonl\n M reports/gate_result.json\n M reports/latest-agent-report.json\n M scripts/run_micro_round.py\n?? tests/test_run_micro_round_progress.py",
+      "output": "M .agent_runtime/status.json\n M AGENTS.md\n M agent_layer.yaml\n M docs/final_state_implementation_roadmap.md\n M docs/final_state_round_task_list.md\n M docs/translation_recovery_3ch_roadmap.md\n M docs/translation_recovery_3ch_task_list.md\n M governance/round_state.yaml\n M project.yaml\n M reports/agent_audit_log.jsonl\n M reports/gate_result.json\n M reports/latest-agent-report.json\n M scripts/run_micro_round.py\n M tests/test_run_micro_round_progress.py",
       "available": true
     },
     "git_branch": {

@@ -28,7 +28,12 @@ from translation.draft_runner import (  # noqa: E402
     RunBudget,
     run_draft_stage_b,
 )
-from translation.run_progress import safe_load_json, update_stage_state_if_newer  # noqa: E402
+from translation.run_progress import (  # noqa: E402
+    atomic_write_json,
+    safe_load_json,
+    update_stage_state_if_newer,
+    write_run_progress,
+)
 from translation.stop_control import StopRequested, check_stop_or_raise, clear_stop_request, install_signal_handlers  # noqa: E402
 
 _registry_spec = importlib.util.spec_from_file_location(
@@ -315,6 +320,63 @@ def write_final_micro_round_progress(
     return path
 
 
+def status_from_draft_summary(
+    summary: Any,
+    run_budget: RunBudget | None,
+) -> str:
+    if summary.aborted:
+        return "failed"
+    if getattr(summary, "tick_paused", False):
+        if run_budget and run_budget.exhausted():
+            return "budget_exhausted"
+        return "in_progress"
+    return "completed"
+
+
+def finalize_completed_run_state(
+    repo_root: Path,
+    *,
+    run_id: str,
+    progress: dict[str, Any],
+    checkpoint: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Close checkpoint and run progress when coverage proves the run is done."""
+    total = int(progress.get("total_segments") or 0)
+    completed = int(progress.get("completed_segments") or 0)
+    if total <= 0 or completed != total:
+        return progress, checkpoint
+
+    run_root = repo_root / "workspace" / "runs" / run_id
+    write_run_progress(
+        run_root,
+        run_id=run_id,
+        phase=str(progress.get("phase") or "draft"),
+        stage=str(progress.get("stage") or "draft_stage_b_50ch"),
+        chapter_offset=int(progress.get("chapter_offset") or 0),
+        status="completed",
+        total_segments=total,
+        completed_segments=completed,
+        pending_segments=0,
+        last_completed_segment_id=str(
+            progress.get("last_completed_segment_id") or ""
+        ),
+    )
+    checkpoint = dict(checkpoint)
+    checkpoint["status"] = "completed"
+    checkpoint["updated_at"] = _utc_now()
+    atomic_write_json(
+        repo_root / "workspace" / "checkpoints" / f"{run_id}.json",
+        checkpoint,
+    )
+    return (
+        safe_load_json(run_root / "run_progress.json") or progress,
+        safe_load_json(
+            repo_root / "workspace" / "checkpoints" / f"{run_id}.json"
+        )
+        or checkpoint,
+    )
+
+
 def run_micro_round(
     *,
     phase: str = "draft",
@@ -486,10 +548,7 @@ def run_micro_round(
                     run_budget=run_budget,
                 )
                 summary_api_calls = summary.api_calls
-                if summary.aborted:
-                    status = "failed"
-                    break
-                status = "completed"
+                status = status_from_draft_summary(summary, run_budget)
                 break
             except DraftRunTickExit as tick_exit:
                 summary_api_calls = tick_exit.summary.api_calls
@@ -528,6 +587,12 @@ def run_micro_round(
     quality = _chapter_quality(seg_doc, ch_start, ch_end)
     if quality["round_done"]:
         status = "completed"
+        progress, checkpoint = finalize_completed_run_state(
+            REPO_ROOT,
+            run_id=run_id,
+            progress=progress,
+            checkpoint=checkpoint,
+        )
     elif status == "completed":
         # Runner returned "nothing left to do" but the target range is not
         # actually covered by this run's segments (e.g. resumed run holds a

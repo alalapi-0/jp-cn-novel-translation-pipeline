@@ -6,6 +6,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
@@ -55,3 +56,50 @@ def test_final_progress_overwrites_stale_periodic_card(tmp_path: Path) -> None:
     assert payload["cost_usd"] == 0.010009
     assert payload["segments_per_call"] == 58.29
     assert payload["budget"]["segments_used"] == 128
+
+
+def test_tick_pause_maps_to_budget_exhausted_instead_of_failed() -> None:
+    budget = MODULE.RunBudget(max_api_calls=15)
+    budget.api_calls_used = 15
+    summary = SimpleNamespace(aborted=False, tick_paused=True)
+
+    assert MODULE.status_from_draft_summary(summary, budget) == "budget_exhausted"
+
+
+def test_completed_coverage_closes_progress_and_checkpoint(tmp_path: Path) -> None:
+    run_id = "run-completed-at-budget-edge"
+    run_root = tmp_path / "workspace" / "runs" / run_id
+    checkpoint_path = tmp_path / "workspace" / "checkpoints" / f"{run_id}.json"
+    run_root.mkdir(parents=True)
+    checkpoint_path.parent.mkdir(parents=True)
+    progress = {
+        "run_id": run_id,
+        "phase": "draft",
+        "stage": "draft_stage_b_50ch",
+        "chapter_offset": 391,
+        "status": "in_progress",
+        "total_segments": 286,
+        "completed_segments": 286,
+        "pending_segments": 0,
+    }
+    checkpoint = {
+        "run_id": run_id,
+        "completed_segments": ["segment-1"],
+        "status": "in_progress",
+    }
+    (run_root / "run_progress.json").write_text(
+        json.dumps(progress),
+        encoding="utf-8",
+    )
+    checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
+
+    final_progress, final_checkpoint = MODULE.finalize_completed_run_state(
+        tmp_path,
+        run_id=run_id,
+        progress=progress,
+        checkpoint=checkpoint,
+    )
+
+    assert final_progress["status"] == "completed"
+    assert final_progress["pending_segments"] == 0
+    assert final_checkpoint["status"] == "completed"

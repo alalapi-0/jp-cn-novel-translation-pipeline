@@ -1,17 +1,17 @@
 {
-  "round_id": "FS-008-block12",
-  "timestamp": "2026-06-11T18:30:00Z",
+  "round_id": "FS-008-block13",
+  "timestamp": "2026-06-11T20:30:00Z",
   "agent": "codex",
   "agent_surface": "codex",
   "mode": "implement",
-  "goal": "Complete Phase A Block #12 (D-MR-057 through D-MR-061), run FS-009 health checks, and keep compact progress reports synchronized",
+  "goal": "Complete Phase A Block #13 (D-MR-062 through D-MR-066), run FS-009 health checks, and close budget-edge state correctly",
   "scope": [
-    "real API draft translation for chapters 371-385",
+    "real API draft translation for chapters 386-400",
     "checkpoint resume and worker safety",
-    "compact micro-round progress finalization",
+    "budget pause and full-coverage state finalization",
     "authoritative progress and handoff reports"
   ],
-  "repo_status_before": "main at dd7036e; clean worktree; scheduler 370/613 next D-MR-057",
+  "repo_status_before": "main at 282679f; clean worktree; scheduler 385/613 next D-MR-062",
   "tool_probe_status": "passed",
   "tools_available": [
     "shell",
@@ -26,13 +26,13 @@
   "tools_used": [
     {
       "tool": "local scheduler / real API provider",
-      "purpose": "execute D-MR-057 through D-MR-061 with checkpoint, timeout, and cost guards",
-      "result": "385/613 contiguous; 2220/2220 block segments completed; failed=0; validation_failed=0"
+      "purpose": "execute D-MR-062 through D-MR-066 with checkpoint, timeout, and cost guards",
+      "result": "400/613 contiguous; 1652/1652 block segments completed; failed=0; validation_failed=0"
     },
     {
       "tool": "shell / Python / pytest",
-      "purpose": "verify chapter order and coverage, repair stale compact progress cards, and validate the reporting fix",
-      "result": "15/15 chapters unique and ordered; focused progress tests passed"
+      "purpose": "verify chapter order and coverage, diagnose offset_skip, and validate state-finalization fixes",
+      "result": "15/15 chapters unique and ordered; 14 focused tests passed"
     },
     {
       "tool": "git / gh",
@@ -57,11 +57,11 @@
   "web_research": [],
   "real_api_used": {
     "used": true,
-    "api_calls": 110,
-    "cost_usd": 0.2669906,
+    "api_calls": 85,
+    "cost_usd": 0.12218781,
     "model": "deepseek/deepseek-v4-pro",
     "profile": "draft_translation_primary",
-    "scope": "D-MR-057 through D-MR-061, chapters 371-385"
+    "scope": "D-MR-062 through D-MR-066, chapters 386-400"
   },
   "ui_checked": {
     "checked": false,
@@ -90,18 +90,18 @@
     "python3 scripts/check_orphan_workers.py --json",
     "python3 scripts/throughput_gate.py --json",
     "python3 scripts/local_scheduler_tick.py --real-api with explicit call and wall budgets",
-    ".venv/bin/python -m pytest -q tests/test_run_micro_round_progress.py tests/test_run_budget.py",
+    ".venv/bin/python -m pytest -q tests/test_run_micro_round_progress.py tests/test_run_budget.py tests/test_throughput_gate.py",
     "npm run check:tooling",
     "python3 scripts/agent_gate.py --json"
   ],
   "test_results": [
     {
-      "suite": "focused progress and wall-budget tests",
-      "result": "3 passed"
+      "suite": "focused progress, wall-budget, and throughput tests",
+      "result": "14 passed"
     },
     {
       "suite": "full Python suite via check:tooling",
-      "result": "388 passed in 45.36s"
+      "result": "390 passed in 44.80s"
     },
     {
       "suite": "throughput and worker health",
@@ -109,24 +109,24 @@
     },
     {
       "suite": "block content statistics",
-      "result": "2220/2220 completed; 15/15 chapters unique and ordered; failed=0; validation_failed=0; coverage=1.0"
+      "result": "1652/1652 completed; 15/15 chapters unique and ordered; failed=0; validation_failed=0; coverage=1.0"
     }
   ],
   "acceptance_result": [
     {
-      "criterion": "D-MR-057 through D-MR-061 complete without gaps",
+      "criterion": "D-MR-062 through D-MR-066 complete without gaps",
       "pass": true,
-      "evidence": "scheduler reports 385/613 contiguous and next D-MR-062"
+      "evidence": "scheduler reports 400/613 contiguous and next D-MR-067"
     },
     {
       "criterion": "Block failed and blocking validation failures are zero",
       "pass": true,
-      "evidence": "five run artifacts report completed coverage; all 2220 segment statuses are machine_translated"
+      "evidence": "five run artifacts report completed coverage; all 1652 segment statuses are machine_translated"
     },
     {
       "criterion": "Cost guard, checkpoints, and bounded timeouts remain effective",
       "pass": true,
-      "evidence": "$0.26699060 recorded across 110 completed calls; all five rounds resumed from the same run_id until complete"
+      "evidence": "$0.12218781 deduplicated final-checkpoint cost across 85 completed calls; resumed rounds retained the same run_id"
     },
     {
       "criterion": "No active or orphan worker remains",
@@ -135,16 +135,18 @@
     }
   ],
   "issues_found": [
-    "micro_round_progress.json could remain in_progress or omit the final batch after the authoritative run had completed"
+    "A budget-limited slice was reported as failed even though it was safely resumable",
+    "When the final segment landed exactly on the budget boundary, checkpoint and run_progress could remain in_progress and trigger offset_skip"
   ],
   "issues_fixed": [
-    "Added a final compact-progress writeback from authoritative run_progress and checkpoint state",
-    "Added regression coverage and synchronized the five Block #12 local progress cards to completed"
+    "Mapped tick_paused runs to budget_exhausted or in_progress instead of failed",
+    "Finalized checkpoint and run_progress whenever chapter coverage proves the round complete",
+    "Repaired the D-MR-064 false in-progress state and restored throughput blocks=[]"
   ],
   "remaining_issues": [
     "P2: vector_index_health warns about empty manifest segments/orphan vectors",
     "P2: throughput_gate legacy draft count remains overlap-prone; scheduler metadata union is the Phase A authority",
-    "Phase A has 228 chapters remaining; Phase B-E and final Web UI are not yet complete"
+    "Phase A has 213 chapters remaining; Phase B-E and final Web UI are not yet complete"
   ],
   "severity_summary": {
     "p0": 0,
@@ -156,8 +158,8 @@
   "blockers": [],
   "risks": [
     "Large three-chapter rounds can exceed one scheduler slice and must continue using the same checkpoint run_id",
-    "Per-slice provider accounting is authoritative for block cost because resumed run metadata reflects the final slice"
+    "Block cost must use one final checkpoint per run to avoid double-counting cumulative resume totals"
   ],
-  "next_recommended_round": "FS-008 Block #13 from D-MR-062 (chapters 386-388); run FS-009 after the next milestone block",
+  "next_recommended_round": "FS-008 Block #14 from D-MR-067 (chapters 401-403); run FS-009 after the next milestone block",
   "human_decisions_required": []
 }

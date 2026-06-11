@@ -4,20 +4,20 @@
 > 旧 20 章任务清单（deprecated）：`docs/translation_recovery_task_list.md`  
 > 生成时间：2026-06-07（治理轮，未执行真实 API）
 >
-> **2026-06-11 live override**：D-MR-001…061 已完成；当前连续完成 385/613 章。下一任务固定为 **D-MR-062（386–388）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
+> **2026-06-12 live override**：D-MR-001…066 已完成；当前连续完成 400/613 章。下一任务固定为 **D-MR-067（401–403）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
 
 ## Current State
 
 - **total chapters**: 613（`input_jp/*.md`）
-- **draft completed chapters**: **385**（第 1–385 章连续完成）
+- **draft completed chapters**: **400**（第 1–400 章连续完成）
 - **current partial run**: 无
 - **refinement completed chapters**: **170**（可导出 refined）
 - **active worker**: 0
 - **orphan worker**: 0（`check_orphan_workers.py` → CLEAN）
 - **stale lock**: 0
 - **default model**: `deepseek/deepseek-v4-pro`（Nemotron 暂不启用）
-- **next draft micro round**: **D-MR-062**（第 386–388 章）
-- **remaining draft MRs**: 76（D-MR-062 … D-MR-137）
+- **next draft micro round**: **D-MR-067**（第 401–403 章）
+- **remaining draft MRs**: 71（D-MR-067 … D-MR-137）
 - **state source**: `local_scheduler_status.py --json`（当前唯一执行真值）
 
 ### Legacy T-002 映射
@@ -55,12 +55,19 @@
 - **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
 - **report**: `workspace/round_reports/D-MR-057/`
 
-### D-MR-062（NEXT）
+### D-MR-062（COMPLETED）
 
 - **chapter range**: 386–388
 - **execution**: `python3 scripts/local_scheduler_tick.py --dry-run` 先规划；真实执行按 FS-008 cost guard / pause / lock / orphan 规则
 - **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
 - **report**: `workspace/round_reports/D-MR-062/`
+
+### D-MR-067（NEXT）
+
+- **chapter range**: 401–403
+- **execution**: `python3 scripts/local_scheduler_tick.py --dry-run` 先规划；真实执行按 FS-008 cost guard / pause / lock / orphan 规则
+- **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
+- **report**: `workspace/round_reports/D-MR-067/`
 
 ### D-MR-002
 
