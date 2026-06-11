@@ -1,5 +1,5 @@
 version: 1
-updated_at: '2026-06-09T13:51:32Z'
+updated_at: '2026-06-11T14:50:15Z'
 repo_name: light_novel
 agent_surfaces:
   cursor:
@@ -53,7 +53,7 @@ tools:
     never_use_for:
     - reset hard without explicit approval
     - force push
-    probe_result: M docs/RESEARCH_NOTES.md M docs/TOOL_INVENTORY.md M scripts/tool_probe.py ?? workspace/archived_runs/
+    probe_result: ?? workspace/archived_runs/
   node_npm:
     available: true
     safe_probe: node -v && npm -v
@@ -144,7 +144,7 @@ tools:
     - remote repo inspection
     fallback: gh CLI
     probe_result: config=PASS; launcher=npx (ok); thread_tools=26; safe_tool=list_commits; GITHUB_TOKEN=unset; token_env=no;
-      gh_auth=no...
+      gh_auth=ok...
   stitch_mcp:
     available: true
     configured: true
@@ -229,7 +229,7 @@ task_stage_mapping:
     - python3 scripts/tool_probe.py
 probe_sync:
   source: reports/tool_probe_report.json
-  probe_timestamp: '2026-06-09T13:51:32Z'
-  synced_at: '2026-06-09T13:51:41Z'
+  probe_timestamp: '2026-06-11T14:50:15Z'
+  synced_at: '2026-06-11T14:50:26Z'
   probe_status: passed
-  changes_count: 3
+  changes_count: 2

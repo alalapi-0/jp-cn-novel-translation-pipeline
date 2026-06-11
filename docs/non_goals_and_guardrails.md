@@ -1,6 +1,6 @@
 # Non-Goals and Guardrails
 
-> 非目标与防跑偏约束（2026-06-10 治理轮创建）。锚点：`docs/product_final_state_spec.md` §4.2 / §20–24。
+> 非目标与防跑偏约束（2026-06-10 创建；2026-06-11 治理复核）。锚点：`docs/product_final_state_spec.md` §4.2 / §20–24。
 > 任何轮次任务、临时 Prompt、优化想法与本文件冲突时，以最终规格与本文件为准。
 
 ## 1. 当前阶段不做什么（Non-Goals）
@@ -110,7 +110,7 @@ workspace/runs、workspace/diagnostics、workspace/archived_runs 大型内容
 
 ## 10. 大型 workspace 处理规则
 
-- `workspace/runs`、`archived_runs`、`diagnostics`、`logs`、`indexes` 等保持 gitignore；
+- `workspace/runs`、`workspace/archived_runs/`、`diagnostics`、`logs`、`indexes` 等保持 gitignore；每轮 commit 前可用 `git check-ignore workspace/archived_runs/` 复核；
 - 不全量读取大型 run 文件入上下文（用统计 / manifest / 抽样）；
 - 归档而非删除：历史 run 移入 `workspace/archived_runs/`；
 - 状态模板放 `docs/examples/` 或 `templates/`，真实状态留 workspace。

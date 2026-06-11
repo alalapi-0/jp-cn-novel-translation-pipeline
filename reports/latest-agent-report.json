@@ -1,61 +1,207 @@
 {
-  "round_id": "FS-008-block10",
-  "timestamp": "2026-06-11T08:45:00Z",
-  "agent": "cursor-composer",
-  "agent_surface": "cursor",
-  "mode": "implement",
-  "goal": "Phase A batch Block #10: D-MR-048..051 (12 chapters, 5 tick slots); FS-009 health check",
+  "round_id": "FS-000-rebaseline-20260611",
+  "timestamp": "2026-06-11T15:01:05Z",
+  "agent": "codex",
+  "agent_surface": "codex",
+  "mode": "audit",
+  "goal": "Rebaseline repository governance against Product Final State Specification v1.1 and leave an executable, current handoff",
   "scope": [
-    "batch D-MR-048 / 049 (2-tick resume) / 050 / 051",
-    "docs/final_state_round_task_list.md (block note + status table)"
+    "final-state authority chain and Agent entry points",
+    "roadmap/task/status truth synchronization",
+    "scheduler and worker safety probes",
+    "existing Workbench browser verification",
+    "Git ignore and reporting safety"
   ],
-  "repo_status_before": "main at 367c4ad (Block #9); 343/613 next D-MR-048",
+  "repo_status_before": "main at b020fbc; user-owned workspace/archived_runs/ was untracked",
   "tool_probe_status": "passed",
+  "tools_available": [
+    "shell",
+    "git",
+    "python",
+    "node/npm",
+    "Browser in-app",
+    "Playwright",
+    "filesystem MCP",
+    "GitHub",
+    "context7",
+    "chrome-devtools",
+    "stitch"
+  ],
   "tools_used": [
-    {"tool": "shell:local_scheduler_tick x5", "purpose": "supervised real-api ticks", "result": "5/5 completed, orphan CLEAN after each"},
-    {"tool": "throughput_gate/check_orphan_workers", "purpose": "block health check", "result": "WARN expected-only, blocks=[], failed=0"}
+    {
+      "tool": "shell/git",
+      "purpose": "repository scan, governance diff, scheduler/orphan/throughput probes, tests and safety checks",
+      "result": "completed; no hard blocker; orphan CLEAN; scheduler safe_to_run=true"
+    },
+    {
+      "tool": "tool_probe",
+      "purpose": "refresh callable tool inventory",
+      "result": "passed; 6/7 configured MCP servers callable, 1 config-only"
+    },
+    {
+      "tool": "Browser in-app",
+      "purpose": "real user-view check of index/review/issues/export pages",
+      "result": "all pages loaded; console error/warn count 0; observed API requests returned HTTP 200"
+    },
+    {
+      "tool": "Playwright",
+      "purpose": "existing Workbench regression suite",
+      "result": "32 passed, 3 skipped; skips are planned pages not yet implemented"
+    }
   ],
   "tools_not_used": [
-    {"tool": "playwright/browser MCP", "reason": "no UI in batch rounds"}
+    {
+      "tool": "context7/web search",
+      "reason": "No external or version-uncertain facts were needed; repository and user-provided specification were authoritative"
+    },
+    {
+      "tool": "stitch",
+      "reason": "This was governance/UI gap verification, not a UI design implementation round"
+    },
+    {
+      "tool": "GitHub app",
+      "reason": "Local git and configured remote were sufficient until commit/push"
+    }
   ],
   "web_research": [],
   "real_api_used": {
-    "used": true,
-    "api_calls": 115,
-    "cost_usd": 0.1726,
-    "model": "deepseek/deepseek-v4-pro",
-    "profile": "draft_translation_primary",
-    "scope": "Block #10: D-MR-048..051, chapters 344-355; D-MR-049 two-tick resume"
+    "used": false,
+    "api_calls": 0,
+    "cost_usd": 0,
+    "reason": "Governance rebaseline required no model call; browser checks were read-only"
   },
-  "ui_checked": {"checked": false, "evidence": "no UI in batch rounds"},
+  "ui_checked": {
+    "checked": true,
+    "pages": [
+      "/index.html",
+      "/review.html",
+      "/issues.html",
+      "/export.html"
+    ],
+    "console_errors": 0,
+    "network_result": "observed local API requests returned HTTP 200",
+    "gap": "Existing four-page Workbench is operational but final 15-page UI, settings, pipeline console, asset pages and revision-sync journey remain unimplemented"
+  },
   "changed_files": [
+    ".gitignore",
+    "AGENTS.md",
+    "README.md",
+    "agent.md",
+    "agent_layer.yaml",
+    "agent_tools.yaml",
+    "docs/TOOL_INVENTORY.md",
+    "docs/product_final_state_spec.md",
+    "docs/final_state_implementation_roadmap.md",
     "docs/final_state_round_task_list.md",
+    "docs/phase_acceptance_criteria.md",
+    "docs/definition_of_done.md",
+    "docs/non_goals_and_guardrails.md",
+    "docs/next_agent_execution_protocol.md",
+    "docs/translation_recovery_3ch_roadmap.md",
+    "docs/translation_recovery_3ch_task_list.md",
+    "docs/index.md",
+    "governance/agent_policy.yaml",
+    "governance/file_role_map.yaml",
+    "governance/novel_pipeline_contract.yaml",
+    "governance/repo_inventory.example.json",
+    "governance/round_state.yaml",
+    "project.yaml",
+    "reports/gate_result.json",
+    "reports/tool_probe_report.json",
     "reports/latest-agent-report.json",
     "reports/agent_audit_log.jsonl"
   ],
   "commands_run": [
-    "5x one-shell ticks: D-MR-048/049/049-resume/050/051 completed",
-    "health: orphan CLEAN, TOTAL failed=0",
-    "progress: draft 355/613 (57.91%) next D-MR-052 356-358"
+    "python3 scripts/agent.py status / next / queue",
+    "python3 scripts/tool_probe.py --sync-docs",
+    "python3 scripts/agent_gate.py --json",
+    "python3 scripts/check_orphan_workers.py --json",
+    "python3 scripts/throughput_gate.py --json",
+    "python3 scripts/local_scheduler_status.py --json",
+    "python3 scripts/local_scheduler_tick.py --dry-run --json",
+    "npm run check:mcp",
+    "npm run check:stitch",
+    "npm run test:py",
+    "npm run test:ui"
   ],
   "test_results": [
-    {"suite": "no code changes", "result": "385 passed baseline unchanged"}
+    {
+      "suite": "Python",
+      "result": "385 passed in 49.91s"
+    },
+    {
+      "suite": "Playwright UI",
+      "result": "32 passed, 3 skipped in 37.1s"
+    },
+    {
+      "suite": "MCP configuration",
+      "result": "PASS"
+    },
+    {
+      "suite": "Stitch configuration",
+      "result": "PASS"
+    },
+    {
+      "suite": "scheduler dry-run",
+      "result": "completed; planned D-MR-052 chapters 356-358; no API"
+    }
   ],
   "acceptance_result": [
-    {"criterion": "5 tick slots completed with orphan CLEAN", "pass": true},
-    {"criterion": "block health: failed=0", "pass": true},
-    {"criterion": "cost within estimate", "pass": true, "evidence": "$0.1726; today ~$1.50"}
+    {
+      "criterion": "Repository final-state specification matches the user-provided attachment",
+      "pass": true,
+      "evidence": "SHA-256 identical: cb0441ee72e5b6eeb9fbe8efa9c8e5703962cc36a6a4b939d8a5abab4523b5d6"
+    },
+    {
+      "criterion": "Roadmap and task queue identify a safe, current next task",
+      "pass": true,
+      "evidence": "355/613 contiguous; next D-MR-052 (356-358)"
+    },
+    {
+      "criterion": "Existing UI was verified in a real browser",
+      "pass": true,
+      "evidence": "four pages loaded; console clean; local API HTTP 200"
+    },
+    {
+      "criterion": "No source, translation, secret or runtime archive is staged",
+      "pass": true,
+      "evidence": "workspace/archived_runs/ now ignored; scoped git review required"
+    }
   ],
-  "issues_found": [],
-  "issues_fixed": [],
+  "issues_found": [
+    "Final-state specification attachment and repository copy differed in Markdown fidelity",
+    "Project authority/state files still pointed to pre-final-state Round 57/58 governance",
+    "Final-state roadmap still claimed scheduler/configs were missing and draft progress was about 224 chapters",
+    "3-chapter recovery documents still marked D-MR-001 as the next task",
+    "workspace/archived_runs/ was not ignored and could expose real run archives to accidental staging",
+    "Existing Workbench has only four pages versus the final specification's 15-page information architecture"
+  ],
+  "issues_fixed": [
+    "Synchronized the final-state specification byte-for-byte with the user attachment",
+    "Aligned project.yaml, governance files, AGENTS.md, agent.md, README and docs index",
+    "Rebased Phase A truth to 355/613 and D-MR-052",
+    "Recorded S1 and S3 as completed and refreshed current gaps",
+    "Added workspace/archived_runs/ to .gitignore",
+    "Clarified that agent_gate and scheduler tick must run serially"
+  ],
   "remaining_issues": [
-    "P2 agent_gate round_52 dry-run side effect",
-    "pre-existing vector_index_health warn (P2)"
+    "P2: vector_index_health warns about empty manifest segments/orphan vectors",
+    "P2: historical production-run selector includes one inconsistent counter (3871/2196)",
+    "P2: three planned UI pages are skipped because S4/S5 have not implemented them",
+    "Phase B-E, final 15-page UI and user revision sync remain planned work"
   ],
-  "severity_summary": {"p0": 0, "p1": 0, "p2": 2, "p3": 0},
+  "severity_summary": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 4,
+    "p3": 0
+  },
   "gate_status": "warning",
   "blockers": [],
-  "risks": [],
-  "next_recommended_round": "Block #11 (D-MR-052 onward); ~258 chapters remaining",
+  "risks": [
+    "Narrative progress files can drift again unless each round synchronizes scheduler status, FS status table and latest report",
+    "Real API rounds remain cost-bearing and must preserve pause/lock/orphan/cost guards"
+  ],
+  "next_recommended_round": "FS-008 Block #11 from D-MR-052; FS-017 is the next parallel engineering round",
   "human_decisions_required": []
 }

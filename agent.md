@@ -1,6 +1,16 @@
 # Agent 快捷入口（agent.md）
 
-与 `AGENTS.md` 互补的简短指引。权威顺序仍以 `governance/repo_protocol_standard.yaml` 为准。
+与 `AGENTS.md` 互补的简短指引。跨仓库安全规则见 `governance/repo_protocol_standard.yaml`；项目最终目标以 `docs/product_final_state_spec.md` 为最高锚点。
+
+## 当前推进入口
+
+1. 读 `docs/product_final_state_spec.md`
+2. 读 `docs/final_state_implementation_roadmap.md`
+3. 读 `docs/final_state_round_task_list.md`
+4. 运行 `python3 scripts/local_scheduler_status.py --json`
+5. 按首个可执行未完成轮推进，不从旧 Round 00–57 文档重新推导路线
+
+2026-06-11 治理复核时：Phase A 连续完成 355/613 章，下一安全 micro round 为 `D-MR-052`（356–358 章）；S1 调度器与 S3 资产层已完成，S4 UI 基座未开始。
 
 ## UI / 设计任务
 

@@ -46,6 +46,16 @@ pipeline_stages:
   - quality_review
   - export_and_workbench_review
 
+final_state_phase_order:
+  - phase_a_draft_translation
+  - phase_b_draft_consistency_audit
+  - phase_c_baseline_lock
+  - phase_d_refinement
+  - phase_e_final_quality_review
+  - production_candidate
+
+final_state_anchor: docs/product_final_state_spec.md
+
 artifact_types:
   - source_manifest
   - chapter_segments

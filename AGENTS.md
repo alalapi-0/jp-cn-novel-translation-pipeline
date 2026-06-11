@@ -1,6 +1,6 @@
 # Agent 入口说明
 
-本文件告诉 Agent 如何阅读、行动和避免风险。**Cursor 与 Codex 共用本文件。** 权威顺序以 `governance/repo_protocol_standard.yaml` 为准；Tool-aware Agent Layer 2.0 机器配置见 `agent_layer.yaml`。
+本文件告诉 Agent 如何阅读、行动和避免风险。**Cursor 与 Codex 共用本文件。** `governance/repo_protocol_standard.yaml` 管理跨仓库安全与治理规则；本项目的产品目标、阶段顺序和验收终点以 `docs/product_final_state_spec.md` 为最高锚点（项目级 override 见 `project.yaml`）。Tool-aware Agent Layer 2.0 机器配置见 `agent_layer.yaml`。
 
 ## 🎯 最终成品规格（最高优先级，2026-06-10 起）
 
@@ -20,10 +20,12 @@
 执行要点：
 
 - **下一轮做什么**：在 `final_state_round_task_list.md` 中找第一个未完成的 FS 轮，按其"输入 / 文件 / 命令 / 验收 / 禁止 / 产物"执行；不重新发明路线。
+- **当前状态以探针为准**：先运行 `python3 scripts/local_scheduler_status.py --json`、`python3 scripts/check_orphan_workers.py --json`；叙述性快照若与探针冲突，先修正文档再推进。2026-06-11 治理复核后的 Phase A 安全入口是 `D-MR-052`（356–358 章）。
 - **真实 API 是生产目标的一部分**，按轮次任务的"是否允许真实 API"字段执行（cost guard + 预算限制 + pause file 尊重），不得永久禁用，也不得无限制连续调用。生产模型切换 / 并发 / 提价需用户确认。
 - **Web UI 是主线**而非附属：UI 轮必须真实浏览器 before/after 检查（页面、console、network），中文优先，统一设计系统，危险操作二次确认。
 - **Phase A / D 批量执行**沿用 `docs/translation_recovery_3ch_roadmap.md` 的 D-MR / R-MR 3 章 micro round 体系。
 - **永远不得**：自动标记 human_approved_final、自动发布、覆盖 baseline / production_candidate / 原文、提交真实正文或密钥、`git add .`、留下 orphan worker。
+- **门禁串行执行**：`agent_gate.py` 会运行诊断 worker；不要与 `local_scheduler_tick.py` 并行启动，避免安全门禁把瞬时诊断进程判为并发 worker。
 - P0 / P1 未清零不做 P2 / P3；硬阻塞时停止并输出 BLOCKED（见 `non_goals_and_guardrails.md` §7）。
 
 ## Repo Mission
@@ -45,25 +47,26 @@
 ## Read First（治理顺序）
 
 1. `governance/repo_protocol_standard.yaml`
-2. `project.yaml`
-3. `governance/agent_policy.yaml`
-4. `governance/round_state.yaml`
-5. `governance/file_role_map.yaml`
-6. `governance/novel_pipeline_contract.yaml`
-7. `README.md`
-8. `docs/index.md`
+2. `docs/product_final_state_spec.md`
+3. `project.yaml`
+4. `governance/agent_policy.yaml`
+5. `governance/round_state.yaml`
+6. `governance/file_role_map.yaml`
+7. `governance/novel_pipeline_contract.yaml`
+8. `README.md`
+9. `docs/index.md`
 
 ## 本仓库追加必读（治理与推进）
 
-9. `docs/project_vision.md`
-10. `docs/architecture_overview.md`
-11. `docs/governance_rules.md`
-12. `docs/repo_protocol_alignment.md`
-13. `docs/roadmap_rounds_00_40.md`
-14. `docs/roadmap_rounds_41_50_tooling_and_workbench.md`（工具链轮次）
-15. `docs/agent_operating_manual.md`
-16. `docs/agent_tooling_strategy.md`
-17. 当前轮 Prompt（`prompts/round_XX_*.md` 或对应模板）
+10. `docs/project_vision.md`
+11. `docs/architecture_overview.md`
+12. `docs/governance_rules.md`
+13. `docs/repo_protocol_alignment.md`
+14. `docs/roadmap_rounds_00_40.md`
+15. `docs/roadmap_rounds_41_50_tooling_and_workbench.md`（工具链轮次）
+16. `docs/agent_operating_manual.md`
+17. `docs/agent_tooling_strategy.md`
+18. 当前轮 Prompt（`prompts/round_XX_*.md` 或对应模板）
 
 ## 编辑前检查
 

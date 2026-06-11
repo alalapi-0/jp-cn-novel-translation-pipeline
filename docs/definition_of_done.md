@@ -1,6 +1,6 @@
 # Definition of Done
 
-> Done 定义（2026-06-10 治理轮创建）。锚点：`docs/product_final_state_spec.md` §25。
+> Done 定义（2026-06-10 创建；2026-06-11 治理复核，无 Done 条件弱化）。锚点：`docs/product_final_state_spec.md` §25。
 > 详细可验证条件见 `docs/phase_acceptance_criteria.md`；本文件是各级 Done 的权威汇总。
 
 ## 1. 自动化生产流程 Done（项目级）

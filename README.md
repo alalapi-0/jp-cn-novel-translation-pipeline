@@ -2,7 +2,14 @@
 
 本仓库用于规划和逐步建设一个面向长篇小说与轻小说的中日文互译生产流水线。它不再只是一次性的“日文小说翻译成中文”任务目录，而是面向长期项目管理、双向翻译、术语一致性、角色语气控制、世界观设定管理、检索增强、批量初翻、二次润色和人工审核工作台的治理仓库。
 
-当前仓库仍处于治理与架构准备阶段，不是生产级公开翻译发布工具。
+当前仓库处于最终成品路线的 **Phase A 全书初翻阶段**。截至 2026-06-11 的治理复核，连续完成 355/613 章，下一安全 micro round 为 `D-MR-052`（356–358 章）；S1 本地调度器与 S3 配置/术语资产内核已完成。它仍不是公开 SaaS 或自动发布工具。
+
+最终目标与当前唯一主路线：
+
+- `docs/product_final_state_spec.md`
+- `docs/final_state_implementation_roadmap.md`
+- `docs/final_state_round_task_list.md`
+- `docs/next_agent_execution_protocol.md`
 
 ## 快速开始（本地工作台）
 
@@ -84,13 +91,13 @@ python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
 
 ## 当前阶段
 
-当前阶段以仓库治理、架构规划、工具链与 Workbench MVP 为主。**治理轮**不启动大批量真实小说翻译、不建立生产级向量库；但已提供 Workbench 静态前端、dry-run 与**授权范围内**的真实 API smoke / 小样本生成（需 `OPENROUTER_API_KEY` + `REAL_API_TESTS_ENABLED=true`）。
+当前主线为 Phase A 初翻批量推进，同时允许按总路线与 S2 交错完成工程轮。真实 API 是生产能力的一部分，只能由允许真实 API 的轮次在 pause/lock/orphan/cost guard 全部通过后使用。治理轮默认不启动真实翻译。
 
-## Round 57 功能状态（当前可用 vs 未来）
+## 当前 Workbench 功能状态（现有能力 vs 最终路线）
 
-| 能力 | 当前可用（Round 57） | 未来功能（路线） |
+| 能力 | 当前可用 | 最终路线待实现 |
 |---|---|---|
-| Quickstart 生成 | 支持 dry-run 与真实 API 小样本；带请求幂等与生成任务状态查询 | 批量章节任务编排、后台队列与重试策略 UI |
+| Quickstart 生成 | 支持 dry-run 与真实 API 小样本；带请求幂等与生成任务状态查询 | Dashboard、项目/API 设置、Pipeline 控制台与调度器 UI |
 | 审核状态 | `review_state` 持久化（approved/rejected/pending） | 更完整的人审流转（指派、批注、审计轨迹） |
 | 导出 | 支持 `approved`（默认）/`draft` 模式，导出前合并审核状态 | 多格式导出、发布前质量门禁与签出流程 |
 | 质量 Issue | 支持 quality-review API + fixture fallback，页面显示数据源 | 多轮对比、自动修复建议回写和闭环追踪 |
@@ -111,19 +118,16 @@ python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
 - 已存在早期翻译流水线、术语系统和 embedding memory 相关文档。
 - 本轮治理将保留旧结构，并在其上补齐双向流水线规划。
 
-## 未来路线
+## 最终路线
 
-项目按 Round 推进，核心路线见 `docs/roadmap_rounds_00_40.md`：
+项目按 FS Round 推进，核心路线见 `docs/final_state_implementation_roadmap.md` 与 `docs/final_state_round_task_list.md`：
 
-1. 仓库结构标准化。
-2. shared core 与方向专属模块设计。
-3. 日译中与中译日方向规则。
-4. 项目配置与数据 schema。
-5. 文件扫描、章节解析、文本清洗、段落切分。
-6. 术语、角色、世界观候选抽取。
-7. Provider、embedding、vector store adapter。
-8. Context Pack、初翻、润色、审核、导出。
-9. CLI、前端工作台和短篇闭环验证。
+1. 本地调度器与 Phase A 全书初翻。
+2. 配置/术语资产与 Web UI 基座、MVP。
+3. Phase B 一致性检查与 Phase C baseline lock。
+4. Phase D 全书润色与 Phase E 终检。
+5. production_candidate、用户修改稿同步、完整导出。
+6. 15 页最终 Web UI、Playwright 用户旅程与项目级 DoD 验收。
 
 ## 目录说明
 
@@ -138,8 +142,8 @@ python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
 - `directions/`：不同语言方向的规则和 Prompt。
 - `workspace/`：中间数据、解析结果、context pack、model run、embedding 和向量索引的本地工作区。
 - `data/`：项目级结构化数据、schema 和样例。
-- `src/`：未来代码实现位置。
-- `frontend/`：未来前端工作台位置。
+- `src/`：翻译、调度、质量检查、Workbench 后端与资产模块。
+- `frontend/`：当前 4 页 Workbench；最终路线将扩展到规格定义的 15 页。
 - `scripts/`：已有脚本与后续轻量工具脚本。
 - `tests/`：未来测试用例。
 
@@ -187,6 +191,10 @@ Embedding 用于检索相似段落、术语上下文、角色台词、世界观�
 
 每轮 Agent 应先读取：
 
+- `docs/product_final_state_spec.md`
+- `docs/next_agent_execution_protocol.md`
+- `docs/final_state_implementation_roadmap.md`
+- `docs/final_state_round_task_list.md`
 - `governance/repo_protocol_standard.yaml`
 - `project.yaml`
 - `AGENTS.md`

@@ -2,6 +2,19 @@
 
 本仓库正在从单本日译中任务仓库升级为中日文小说互译生产流水线。后续 Agent 应优先阅读治理入口文档，再进入具体实现或执行轮。
 
+## 最终成品主线（最高优先级）
+
+- `docs/product_final_state_spec.md`：最终成品规格 / 最高项目目标锚点
+- `docs/next_agent_execution_protocol.md`：每轮标准执行流程
+- `docs/final_state_implementation_roadmap.md`：S0–S15 总路线
+- `docs/final_state_round_task_list.md`：FS-000…FS-070 任务与状态
+- `docs/phase_acceptance_criteria.md`：阶段验收条件
+- `docs/definition_of_done.md`：Done 定义
+- `docs/non_goals_and_guardrails.md`：非目标与防跑偏
+- `docs/local_scheduler_runbook.md`：本地调度运维
+
+旧 Round / RM 文档继续作为历史设计和子路线参考；与上述最终成品主线冲突时，不得覆盖主线。
+
 ## 必读治理入口
 
 - `README.md`

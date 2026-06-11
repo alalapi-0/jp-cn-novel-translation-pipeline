@@ -20,6 +20,10 @@ repo:
 docs:
   read_first:
     - AGENTS.md
+    - docs/product_final_state_spec.md
+    - docs/next_agent_execution_protocol.md
+    - docs/final_state_implementation_roadmap.md
+    - docs/final_state_round_task_list.md
     - agent_tools.yaml
     - agent_layer.yaml
     - docs/TOOL_USAGE_POLICY.md
@@ -81,6 +85,7 @@ agent_policy:
   require_gate_before_commit: true
   max_scope_per_round: small
   prefer_incremental_changes: true
+  real_api_round_override: "Allowed only when the selected FS/D-MR/R-MR task explicitly permits it and cost/pause/lock/orphan guards pass"
 
 severity:
   p0: "data loss, secret leak, app cannot start, build completely broken, destructive behavior, real publish/API misfire"
@@ -95,6 +100,17 @@ round:
   roadmap: docs/AGENT_ROADMAP.md
   tool_probe_report: reports/tool_probe_report.json
   gate_result: reports/gate_result.json
+
+final_state:
+  anchor: docs/product_final_state_spec.md
+  roadmap: docs/final_state_implementation_roadmap.md
+  task_list: docs/final_state_round_task_list.md
+  acceptance: docs/phase_acceptance_criteria.md
+  definition_of_done: docs/definition_of_done.md
+  guardrails: docs/non_goals_and_guardrails.md
+  execution_protocol: docs/next_agent_execution_protocol.md
+  current_phase: phase_a_draft_translation
+  next_micro_round: D-MR-052
 
 legacy_governance:
   note: "Existing governance/*.yaml and docs/roadmap_rounds_* remain authoritative for pipeline rounds"

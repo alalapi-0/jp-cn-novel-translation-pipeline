@@ -1,6 +1,6 @@
 # Phase Acceptance Criteria
 
-> 阶段验收标准（2026-06-10 治理轮创建）。锚点：`docs/product_final_state_spec.md`。
+> 阶段验收标准（2026-06-10 创建；2026-06-11 治理复核，无验收项弱化）。锚点：`docs/product_final_state_spec.md`。
 > 所有条目必须**可检查**：以命令输出、报告文件、测试结果或 Playwright 断言为证据；禁止"体验良好"类不可验证表述。
 > 每个阶段验收时生成核对表（checklist + 证据引用），存入 `workspace/round_reports/` 或 `docs/reports/`（脱敏统计版）。
 

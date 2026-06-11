@@ -1,7 +1,7 @@
 # Product Final State Specification
 
 项目名称：长篇小说中日互译生产流水线
-仓库路径：/Users/alalapi/PycharmProjects/light_novel
+仓库路径：`/Users/alalapi/PycharmProjects/light_novel`
 文档类型：最终成品规格 / 终局锚点 / 后续 Agent 防跑偏基准
 版本：v1.1
 优先级：高于普通 Roadmap、Round Report、临时 Prompt、单轮执行指令
@@ -10,7 +10,7 @@
 
 ## 1. 北极星目标
 
-本项目的最终成品，是一个本地可持续运行、可通过 Web UI 操作的长篇小说中日互译生产流水线。
+本项目的最终成品，是一个**本地可持续运行、可通过 Web UI 操作的长篇小说中日互译生产流水线**。
 
 它允许用户在本地导入长篇小说原文，通过真实 API 分阶段完成：
 
@@ -19,10 +19,11 @@
 3. baseline draft 锁定；
 4. 全书润色；
 5. 润色后质量检查；
-6. 生成可人工最终审阅的 production_candidate。
+6. 生成可人工最终审阅的 `production_candidate`。
 
 最终用户不应该被迫长期盯着 Cursor 聊天窗口，也不应该通过复杂命令手动推进每个阶段。最终形态应是：
 
+```text
 用户启动本地 Web 项目
 → 在浏览器中配置项目与 API
 → 导入小说原文
@@ -36,6 +37,7 @@
 → 用户在 Web UI 中审阅、修改、上传人工修改稿
 → 系统根据用户修改同步术语库、翻译记忆和全书一致性
 → 最终导出 production_candidate
+```
 
 ---
 
@@ -43,8 +45,10 @@
 
 本项目最终不是一个单次翻译脚本，而是：
 
+```text
 一个本地 Web UI 驱动的长篇小说中日互译生产系统。
 它通过本地调度器和真实 API，将原文解析为稳定中间态，按 checkpoint 分阶段完成初翻、一致性检查、baseline、润色、终检和导出，并支持用户通过 Web UI 管理术语、角色、配置、进度、报告和人工修改同步。
+```
 
 ---
 
@@ -100,11 +104,13 @@
 
 最终系统由五层组成：
 
+```text
 Web UI 层
 → 本地 API / Backend 层
 → Pipeline Orchestrator 层
 → Translation / Refinement Worker 层
 → Storage / Workspace / Index 层
+```
 
 ### 5.1 Web UI 层
 
@@ -330,7 +336,9 @@ UI 必须让非开发者也能理解当前项目在做什么、进展如何、�
 禁止在 UI 中明文显示完整 API Key。
 最多显示脱敏形式，例如：
 
+```text
 sk-****abcd
+```
 
 ### 7.4 原文导入页
 
@@ -429,10 +437,12 @@ sk-****abcd
 
 必须支持多栏视图：
 
+```text
 原文
 初翻
 润色
 用户修改稿
+```
 
 至少支持以下模式：
 
@@ -487,6 +497,7 @@ sk-****abcd
 
 术语字段至少包括：
 
+```text
 source_term
 target_term
 reading
@@ -500,6 +511,7 @@ aliases
 notes
 created_at
 updated_at
+```
 
 术语分类至少包括：
 
@@ -685,7 +697,9 @@ UI 最终必须做到：
 
 建议风格：
 
+```text
 现代、干净、低噪音、信息密度适中、偏生产工具感
+```
 
 可接受风格参考：
 
@@ -731,6 +745,7 @@ UI 最终必须做到：
 
 建议状态：
 
+```text
 not_started
 in_progress
 paused
@@ -742,6 +757,7 @@ needs_review
 superseded
 production_candidate
 human_approved_final
+```
 
 不得在不同页面使用不同叫法。
 
@@ -765,11 +781,13 @@ human_approved_final
 
 最终本地调度系统必须包含：
 
+```text
 scripts/local_scheduler_tick.py
 scripts/local_scheduler_status.py
 scripts/local_scheduler_launchd.sh
 scripts/launchd/com.lightnovel.translation.scheduler.plist.template
 docs/local_scheduler_runbook.md
+```
 
 ### 9.1 local_scheduler_tick.py
 
@@ -812,7 +830,9 @@ docs/local_scheduler_runbook.md
 
 如果存在：
 
+```text
 workspace/control/scheduler_paused.json
+```
 
 且内容包含：
 
@@ -828,7 +848,9 @@ workspace/control/scheduler_paused.json
 
 本地调度器必须使用互斥锁：
 
+```text
 workspace/control/scheduler_running.lock
+```
 
 如果 lock 存在且 pid 活跃，新的 tick 必须退出。
 
@@ -840,9 +862,10 @@ workspace/control/scheduler_running.lock
 
 最终目录结构应至少包含：
 
-```
+```text
 input_jp/
 input_zh/
+
 workspace/
   control/
   logs/
@@ -853,17 +876,20 @@ workspace/
   diagnostics/
   indexes/
   translation_memory/
+
 configs/
   glossary.yaml
   character_profile.yaml
   style_profile.yaml
   world_bible.yaml
   model_profiles.yaml
+
 output_draft/
 draft_full_baseline/
 output_refined/
 refined_full_candidate/
 production_candidate/
+
 docs/
   product_final_state_spec.md
   definition_of_done.md
@@ -880,12 +906,14 @@ docs/
 
 最终流程分为五个阶段：
 
+```text
 Phase A：Draft Translation
 → Phase B：Draft Consistency Audit
 → Phase C：Baseline Draft Lock
 → Phase D：Refinement
 → Phase E：Final Quality Review
 → production_candidate
+```
 
 ---
 
@@ -958,12 +986,14 @@ Phase A 完成条件：
 
 层级：
 
+```text
 Level 0：metadata / manifest
 Level 1：entity index / glossary / character index
 Level 2：冲突统计
 Level 3：只展开冲突 segment
 Level 4：规则无法判断时才调用模型
 Level 5：局部重译或局部修正
+```
 
 ### 13.3 完成标准
 
@@ -993,9 +1023,11 @@ baseline draft 不是最终人工定稿。
 
 必须生成：
 
+```text
 draft_full_baseline/
 draft_full_baseline_metadata.json
 draft_full_baseline_go_decision.md
+```
 
 ### 14.3 完成标准
 
@@ -1084,12 +1116,14 @@ Phase D 完成条件：
 
 采用：
 
+```text
 Level 0：refined metadata
 Level 1：diff / change_log index
 Level 2：修改比例异常统计
 Level 3：定位过度润色候选章节
 Level 4：局部展开 source / draft / refined 三方对比
 Level 5：必要时模型审查或局部重润色
+```
 
 ### 16.3 完成标准
 
@@ -1110,7 +1144,7 @@ Phase E 完成条件：
 
 ## 17. production_candidate 定义
 
-production_candidate 是自动化流程可以生成的最高级别成品。
+`production_candidate` 是自动化流程可以生成的最高级别成品。
 
 它表示：
 
@@ -1134,9 +1168,9 @@ production_candidate 是自动化流程可以生成的最高级别成品。
 
 ## 18. human_approved_final 定义
 
-human_approved_final 只能由用户明确确认后生成。
+`human_approved_final` 只能由用户明确确认后生成。
 
-任何 Agent 不得自动标记 human_approved_final。
+任何 Agent 不得自动标记 `human_approved_final`。
 
 ---
 
@@ -1217,7 +1251,7 @@ sync plan 至少包含：
 
 任何 Agent 都不得提交：
 
-```
+```text
 .env
 API Key
 token
@@ -1238,7 +1272,7 @@ Chrome profile
 
 可以提交：
 
-```
+```text
 scripts
 tests
 docs
@@ -1255,7 +1289,7 @@ Task List
 
 不得使用：
 
-```
+```bash
 git add .
 ```
 
@@ -1263,7 +1297,7 @@ git add .
 
 每次 commit 前必须执行：
 
-```
+```bash
 git status --short
 git diff --stat
 git diff --check
@@ -1277,17 +1311,23 @@ git diff --check
 
 默认使用：
 
+```text
 draft_translation_primary
+```
 
 当前生产模型为：
 
+```text
 deepseek/deepseek-v4-pro
+```
 
 ### 21.2 润色模型
 
 默认使用：
 
+```text
 refinement_primary
+```
 
 润色模型可以比初翻模型能力更强，但必须保持：
 
@@ -1418,9 +1458,9 @@ Agent 和脚本不得每轮回溯全书。
 3. Phase C baseline draft 锁定完成；
 4. Phase D 全书润色完成；
 5. Phase E 润色后质量检查完成；
-6. production_candidate/ 已生成；
-7. production_candidate_metadata.json 已生成；
-8. production_candidate_go_decision.md 已生成；
+6. `production_candidate/` 已生成；
+7. `production_candidate_metadata.json` 已生成；
+8. `production_candidate_go_decision.md` 已生成；
 9. Web UI 可以启动；
 10. Web UI 可以显示项目总览；
 11. Web UI 可以启动 / 暂停 / 恢复流水线；
@@ -1447,7 +1487,7 @@ Agent 和脚本不得每轮回溯全书。
 
 任何后续 Agent 在执行前，必须优先读取：
 
-```
+```text
 docs/product_final_state_spec.md
 docs/definition_of_done.md
 docs/phase_acceptance_criteria.md
@@ -1492,7 +1532,9 @@ docs/translation_recovery_3ch_task_list.md
 
 本项目的最终原则是：
 
+```text
 稳定完成真实小说的本地自动化翻译生产流程，并通过不丑、清晰、可控的 Web UI 让用户能够管理整个流程。
+```
 
 任何优化都必须服务于：
 

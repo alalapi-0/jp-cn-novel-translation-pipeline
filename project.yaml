@@ -2,13 +2,13 @@ project:
   name: light_novel
   type: ai_novel_translation_pipeline
   summary: "中日文小说互译生产流水线治理与实现仓库"
-  long_term_goal: "支持 JP_TO_CN 与 CN_TO_JP 双向翻译、术语/角色/世界观一致性、批量初翻、润色、审核与前端工作台"
+  long_term_goal: "交付 docs/product_final_state_spec.md 定义的本地 Web UI 驱动长篇小说中日互译生产系统"
   owner: user
   primary_language: zh-CN
   output_language: bilingual_zh_ja
-  stage: phase_2_pilot
-  current_round_human: "Round 57 (Continuous real API Stage C refine)"
-  current_round_machine: round_57_continuous_real_api_refine
+  stage: phase_a_draft_translation
+  current_round_human: "FS-008 Phase A batch execution; next D-MR-052 (chapters 356-358)"
+  current_round_machine: fs_008_phase_a_batch
 
 repository:
   entry_points:
@@ -16,6 +16,13 @@ repository:
     agent: AGENTS.md
     docs_navigation: docs/index.md
   authoritative_files:
+    - docs/product_final_state_spec.md
+    - docs/next_agent_execution_protocol.md
+    - docs/final_state_implementation_roadmap.md
+    - docs/final_state_round_task_list.md
+    - docs/phase_acceptance_criteria.md
+    - docs/definition_of_done.md
+    - docs/non_goals_and_guardrails.md
     - governance/repo_protocol_standard.yaml
     - project.yaml
     - governance/round_state.yaml
@@ -50,6 +57,13 @@ asset_extraction:
   write_to_public_asset_library: false
 
 project_overrides:
+  - field: authority.priority_order
+    standard_expectation: "Portable protocol is first for cross-repository governance"
+    override_value: "docs/product_final_state_spec.md is the highest project-goal anchor; protocol safety and secret-handling rules remain non-negotiable"
+    reason: "The user designated the final-state specification as the repository's product destination and anti-drift authority"
+    owner: user
+    review_trigger: "Only when the user explicitly revises the final-state specification"
+
   - field: round_protocol.current_round_source
     standard_expectation: governance/round_state.yaml
     override_value: "Also keep legacy round_state/translation_pipeline_governance_round.yaml for historical traceability"

@@ -1,6 +1,6 @@
 # Final State Implementation Roadmap
 
-> 最终成品实现总路线图（2026-06-10 治理轮创建）
+> 最终成品实现总路线图（2026-06-10 创建；2026-06-11 Codex 治理复核）
 > 最高锚点：`docs/product_final_state_spec.md`（v1.1）
 > 配套轮次任务：`docs/final_state_round_task_list.md`
 > 阶段验收：`docs/phase_acceptance_criteria.md`
@@ -16,47 +16,48 @@
 
 ---
 
-## 1. 当前仓库状态摘要（2026-06-10 实测）
+## 1. 当前仓库状态摘要（2026-06-11 实测）
 
 | 维度 | 现状 | 证据 |
 | --- | --- | --- |
 | 全书章节 | 613 章（input_jp） | `translation_recovery_3ch_roadmap.md` |
-| 初翻进度 | 约 224/613 章（D-MR-008 进行中，run_20260608_003341 已归档） | `workspace/archived_runs/.../micro_round_progress.json` |
-| Phase | Phase A in_progress；B/C/D/E 未开始 | `workspace/stage_state.json` |
-| Worker 状态 | 0 active / 0 orphan；throughput_gate WARN（stale lock + stage_state_stale） | `check_orphan_workers.py` / `throughput_gate.py` 实测 |
+| 初翻进度 | **355/613 连续完成（57.91%）**；下一轮 `D-MR-052`（356–358） | `local_scheduler_status.py --json` |
+| Phase | Phase A in_progress；B/C/D/E 未开始 | scheduler status + FS 状态表 |
+| Worker 状态 | 0 active / 0 orphan；throughput_gate WARN 但 blocks=[] | `check_orphan_workers.py` / `throughput_gate.py` 实测 |
 | 初翻执行器 | `scripts/run_micro_round.py`（supervised、checkpoint、budget、--dry-run 完备） | `--help` 实测 |
 | 批次规划 | `scripts/plan_translation_batches.py` 完备 | `--help` 实测 |
-| 本地调度器 | **不存在**（`local_scheduler_tick.py` / `local_scheduler_status.py` / launchd 模板均缺失） | `ls scripts/` 实测 |
-| pause / lock 文件 | `workspace/control/` 目录存在但为空，约定未实现 | 实测 |
-| configs/ 目录 | **不存在**；glossary / character_profile / style_profile / world_bible / model_profiles YAML 均缺失 | 实测 |
-| 术语资产 | 散落于 `workspace/assets/translation_memory/`，无独立 CRUD | 实测 |
-| 前端 | 静态 HTML Workbench 4 页（index / review / issues / export）+ `src/workbench/server.py` 本地后端 | `ls frontend/` |
-| 前端测试 | Playwright 已配置（`npm run test:ui`） | `package.json` |
-| Python 测试 | 38 个测试文件，`npm run test:py` | `ls tests/` |
-| 门禁 | `agent_gate.py`（PASS + 1 warn：working tree dirty）、`throughput_gate.py`、`check_orphan_workers.py` 可用 | 实测 |
-| 真实 API | OpenRouter / DeepSeek 走 model_router；smoke test 入口 `run_real_api_smoke.py`；cost guard 存在 | `package.json` / `tests/` |
-| Git 安全 | `.env` 未跟踪、input/output 已 ignore | `agent_gate` 实测 |
+| 本地调度器 | **S1 已完成**：tick / status / launchd / pause / lock / stale heal / runbook 均存在 | `scripts/local_scheduler_*`、`src/scheduler/`、测试 |
+| pause / lock 文件 | 协议与互斥测试已实现；当前 paused=false、lock=absent | scheduler status 实测 |
+| configs/ 目录 | **S3 已完成**：五 YAML 模板、五 schema、迁移脚本与校验器存在 | `configs/`、`schemas/`、`validate_configs.py` |
+| 术语资产 | CRUD、三格式导入导出、usage index、prompt 注入已实现 | `src/glossary/`、FS-013…016 测试 |
+| 前端 | 现有 4 页 Workbench（index / review / issues / export）+ 本地 API；尚非最终 15 页 UI | 真实浏览器检查 |
+| 前端实测 | 4 页关键请求均 HTTP 200，console 无 error/warn；首页仍为旧工作台信息架构 | 2026-06-11 Browser 检查 |
+| 前端测试 | Playwright 已配置，当前 3 个 spec 文件 | `package.json`、`tests/ui/` |
+| Python 测试 | 52 个 `test_*.py` 文件 | `tests/` |
+| 门禁 | agent_gate WARNING（无 failed/blocked）；throughput_gate WARN（blocks=[]）；orphan CLEAN | 2026-06-11 实测 |
+| 真实 API | OpenRouter / DeepSeek 走 model_router；cost guard 与 smoke 入口存在；本治理轮未调用 | 代码、测试、浏览器状态卡 |
+| Git 安全 | `.env` 未跟踪；本轮补齐 `workspace/archived_runs/` ignore | `.gitignore` + `git check-ignore` |
 
 ## 2. 与最终规格的差距分析
 
 | # | 规格要求（章节） | 现状 | 差距等级 |
 | --- | --- | --- | --- |
-| G1 | 本地调度系统（§9：tick / status / launchd / pause / lock） | 完全缺失 | **大** |
-| G2 | Phase A 全书初翻（§12） | ~37% 完成，执行链路成熟 | 中（剩余 ~130 个 D-MR） |
+| G1 | 本地调度系统（§9：tick / status / launchd / pause / lock） | **已完成 S1**；待 S5 接入 Web UI | 小（UI 接线） |
+| G2 | Phase A 全书初翻（§12） | 355/613 连续完成，执行链路成熟 | 中（剩余 D-MR-052…137） |
 | G3 | Phase B 一致性检查（§13：manifest / entity index / progressive disclosure） | 仅有 quality_review 雏形与 consistency 设计文档，无 manifest/entity index 工具链 | **大** |
 | G4 | Phase C baseline lock（§14） | 无 | 中（工具量小，依赖 B） |
 | G5 | Phase D 全书润色（§15） | refine_runner / refine_prompt_builder 存在，R-MR 队列未启动，over-refinement checker 缺失 | 大 |
 | G6 | Phase E 终检 + production_candidate（§16–17） | 无 | 大 |
-| G7 | Web UI 15 页信息架构（§7） | 4 页静态 Workbench，无 Dashboard / 设置 / 控制台 / 术语库 / 对照 / 上传 / 导出页 | **极大** |
+| G7 | Web UI 15 页信息架构（§7） | 4 页 Workbench 可运行；无最终 Dashboard / 设置 / 控制台 / 资产管理 / 修改稿同步 | **极大** |
 | G8 | UI 视觉系统（§8：统一状态标签 / 色彩 / 反馈 / 二次确认） | 部分 Dark theme CSS 变量，未系统化 | 大 |
-| G9 | 术语库系统（§7.8：CRUD / 导入导出 / locked / approved） | 仅 translation_memory 资产文件 | **大** |
-| G10 | 角色 / 世界观 / 翻译记忆管理（§7.9–7.11） | 设计文档有，configs 与 UI 无 | 大 |
+| G9 | 术语库系统（§7.8：CRUD / 导入导出 / locked / approved） | 内核已完成；UI 未开始 | 中 |
+| G10 | 角色 / 世界观 / 翻译记忆管理（§7.9–7.11） | configs 模板已存在；专用 store / UI 未完成 | 中 |
 | G11 | 用户修改稿同步（§19：对齐 / diff / sync plan / 同步执行） | 完全缺失 | **大** |
-| G12 | configs/ 目录与五个 YAML（§10） | 缺失 | 小（结构性工作） |
+| G12 | configs/ 目录与五个 YAML（§10） | **已完成 S3** | 已关闭 |
 | G13 | 导出系统（§7.14：MD / 双语 / TXT / EPUB / package） | exporter.py 支持部分 MD 导出 | 中 |
 | G14 | 状态标签统一（§8.3） | 各处叫法不一 | 中 |
 
-**结论**：执行内核（worker / checkpoint / gate / micro round）成熟度高；缺的是"调度器 + Phase B-E 工具链 + Web UI 全量 + 术语库 / 同步系统"。治理后路线以"调度器先行 → Phase A 跑完 → B/C 工具链 → UI 基座并行推进 → D/E → 用户同步 → Final UI"为主轴。
+**结论**：执行内核、S1 调度器和 S3 术语资产层已成熟；当前主缺口是"Phase A 剩余批量 + Phase B-E 工具链 + Web UI 全量 + 用户修改稿同步"。后续不再回做 S1/S3，按 `D-MR-052` 继续 S2，并可与 S4 UI 基座交错推进。
 
 ## 3. 阶段拆分总览
 
@@ -79,12 +80,15 @@
 | S14 | Web UI Final 打磨与全量用户视角测试 | FS-065…FS-068 | 否 | **是** | **是** | S5–S13 |
 | S15 | 端到端 DoD 验收 | FS-069…FS-070 | 验证性 | **是** | **是** | 全部 |
 
+当前状态：S0、S1、S3 completed；S2 in_progress（355/613）；S4–S15 not_started。首个可继续的生产任务是 D-MR-052；首个可并行工程任务是 FS-017。
+
 > 并行建议：S2（真实 API 初翻批量执行）与 S3 / S4（资产层、UI 基座）可交替推进——初翻轮消耗 API 与时间，工程轮消耗 Agent 实现能力，二者交错可最大化吞吐。
 
 ## 4. 各阶段详情
 
 ### S1 本地调度器主线（FS-001…FS-007）
 
+- **状态**：completed（2026-06-11）。
 - **目标**：实现规格 §9 全部组件，使初翻可由 launchd 周期 tick 推进，不再依赖 Cursor 前台。
 - **输入**：`run_micro_round.py`、`throughput_gate.py`、`check_orphan_workers.py`、`workspace/control/`。
 - **输出**：`scripts/local_scheduler_tick.py`、`scripts/local_scheduler_status.py`、`scripts/local_scheduler_launchd.sh`、`scripts/launchd/com.lightnovel.translation.scheduler.plist.template`、`docs/local_scheduler_runbook.md`、pause / lock 文件协议、对应 pytest。
@@ -95,7 +99,8 @@
 
 ### S2 Phase A 初翻完成（FS-008…FS-010 + D-MR 批量）
 
-- **目标**：用调度器 + supervised micro round 跑完 D-MR-008…D-MR-137（ch ~225–613），达到规格 §12.2 完成标准。
+- **状态**：in_progress；连续完成 ch1–355。
+- **目标**：用调度器 + supervised micro round 跑完 D-MR-052…D-MR-137（ch356–613），达到规格 §12.2 完成标准。
 - **输入**：S1 调度器、`translation_recovery_3ch_task_list.md` 的 D-MR 队列。
 - **输出**：全书 draft、`workspace/round_reports/D-MR-*/`、draft export、Phase A completion report。
 - **完成标准**：见 `docs/phase_acceptance_criteria.md` Phase A 节。
@@ -105,6 +110,7 @@
 
 ### S3 configs 资产层与术语库内核（FS-011…FS-016）
 
+- **状态**：completed（2026-06-11）。
 - **目标**：建立规格 §10 的 `configs/` 五 YAML 与术语库 CRUD 内核（无 UI）。
 - **输出**：`configs/glossary.yaml`、`character_profile.yaml`、`style_profile.yaml`、`world_bible.yaml`、`model_profiles.yaml`（模板 + 从现有资产迁移）；`src/glossary/` CRUD 模块；CSV / YAML / JSON 导入导出；locked / approved_by_user / conflict 字段；term usage index；pytest。
 - **完成标准**：glossary CRUD 全字段（规格 §7.8）可用且有测试；导入导出 roundtrip 测试通过；初翻 prompt builder 能消费 configs 资产。
@@ -177,8 +183,8 @@ S0 → S1（调度器）→ S2（初翻跑完）→ S3+S4+S5（资产层 + UI MV
 
 ### 推荐执行节奏
 
-1. 先做 S1（调度器是把 Agent 从前台解放出来的杠杆，优先级最高）。
-2. S2 初翻批量轮与 S3 / S4 工程轮**交替**：每完成若干 D-MR 即插入 1–2 个工程轮。
+1. 从 `D-MR-052` 继续 S2；每个 Milestone Block 后执行 FS-009 健康检查。
+2. S2 初翻批量轮与 S4 工程轮**交替**：每完成若干 D-MR 即插入 1–2 个 UI 基座轮。
 3. UI 每轮只做一个页面切片（遵守 `.cursor/rules/cursor-browser-ui.mdc`）。
 4. Phase B–E 工具链在 Phase A 接近完成时提前开工（规则层 Level 0–3 不依赖全书完成）。
 
@@ -193,3 +199,4 @@ S0 → S1（调度器）→ S2（初翻跑完）→ S3+S4+S5（资产层 + UI MV
 | Phase B 全文硬扫导致上下文膨胀 | P1 | progressive disclosure 强制分层；Level 4 才允许模型 |
 | 用户修改稿同步覆盖 baseline | P0 | 同步只写 TM / glossary / fix plan / revised output，禁写 baseline（代码层拒绝 + 测试） |
 | 旧 Roadmap 与新路线冲突 | P2 | 本文件 + 最终规格优先；冲突时在轮次报告标注 |
+| 叙述性进度快照落后于运行状态 | P1 | 每轮以 `local_scheduler_status.py --json` 为真值并同步 3ch 子路线、FS 状态表与 latest report |

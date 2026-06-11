@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-06-09T15:22:37Z",
+  "generated_at": "2026-06-11T15:02:37Z",
   "counts_summary": {
-    "scripts": 95,
-    "tests": 120,
+    "scripts": 115,
+    "tests": 145,
     "prompts": 52,
     "tooling_prompts": 10,
     "frontend_files": 10,

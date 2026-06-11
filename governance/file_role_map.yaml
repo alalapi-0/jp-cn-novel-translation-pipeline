@@ -22,11 +22,31 @@ human_entry:
 
 agent_entry:
   - AGENTS.md
+  - docs/product_final_state_spec.md
+  - docs/next_agent_execution_protocol.md
   - docs/agent_operating_manual.md
 
 roadmaps:
+  - docs/final_state_implementation_roadmap.md
+  - docs/final_state_round_task_list.md
   - docs/roadmap_rounds_00_40.md
   - docs/roadmap_rounds_41_50_tooling_and_workbench.md
+
+final_state_governance:
+  - path: docs/product_final_state_spec.md
+    role: highest_project_goal_anchor
+  - path: docs/final_state_implementation_roadmap.md
+    role: executable_final_state_roadmap
+  - path: docs/final_state_round_task_list.md
+    role: ordered_round_queue_and_status
+  - path: docs/phase_acceptance_criteria.md
+    role: phase_gates
+  - path: docs/definition_of_done.md
+    role: done_contract
+  - path: docs/non_goals_and_guardrails.md
+    role: scope_and_safety_guardrails
+  - path: docs/next_agent_execution_protocol.md
+    role: standard_round_execution_protocol
 
 tooling_docs:
   - docs/agent_tooling_strategy.md

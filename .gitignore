@@ -70,6 +70,7 @@ workspace/smoke/*
 !workspace/smoke/.gitkeep
 workspace/checkpoints/*
 workspace/runs/*
+workspace/archived_runs/
 !workspace/runs/.gitkeep
 workspace/review/*
 workspace/e2e_trial/*

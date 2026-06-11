@@ -80,7 +80,7 @@ Future Codex sessions should read the same files listed in `docs/CODEX_USAGE.md`
 | name | configured | callable_now | safe_probe | fallback |
 |------|------------|--------------|------------|----------|
 | filesystem | true | true | list_allowed_directories (read-only) | Read/Grep |
-| github | true | false | list_commits or search (read-only if token present) | `gh` CLI |
+| github | true | true | list_commits or search (read-only if token present) | `gh` CLI |
 | playwright | true | true | browser_snapshot on local URL | `npm run test:ui` |
 | chrome-devtools | true | true | navigate local workbench + console check | playwright MCP |
 | context7 | true | true | resolve-library-id + query-docs | WebSearch |

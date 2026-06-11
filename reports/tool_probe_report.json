@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-09T15:22:26Z",
+  "timestamp": "2026-06-11T15:02:27Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M .github/workflows/ci.yml\n M docs/AGENT_REPORTING.md\n M docs/AGENT_ROADMAP.md\n M docs/RESEARCH_NOTES.md\n M docs/USER_VIEW_TESTING.md\n M docs/testing/BROWSER_TESTING.md\n M governance/repo_inventory.example.json\n M reports/gate_result.json\n M reports/tool_probe_report.json\n M scripts/agent_gate.py\n M scripts/run_browser_inspection.py\n M scripts/run_tooling_checks.sh\n M scripts/user_view_test.py\n M scripts/write_agent_report.py\n?? docs/CODEX_HANDOFF.example.md\n?? docs/ENV_FLAGS_AUDIT.md\n?? docs/re",
+      "output": "M .gitignore\n M AGENTS.md\n M README.md\n M agent.md\n M agent_layer.yaml\n M agent_tools.yaml\n M docs/TOOL_INVENTORY.md\n M docs/definition_of_done.md\n M docs/final_state_implementation_roadmap.md\n M docs/final_state_round_task_list.md\n M docs/index.md\n M docs/next_agent_execution_protocol.md\n M docs/non_goals_and_guardrails.md\n M docs/phase_acceptance_criteria.md\n M docs/product_final_state_spec.md\n M docs/translation_recovery_3ch_roadmap.md\n M docs/translation_recovery_3ch_task_list.md\n M governan",
       "available": true
     },
     "git_branch": {
@@ -155,7 +155,7 @@
     "CODEX_AVAILABLE": "manual",
     "agents_md_at_repo_root": true,
     "codex_config_dir_exists": true,
-    "codex_cli_on_path": false,
+    "codex_cli_on_path": true,
     "notes": "Codex not verified in this Cursor thread; protocol files remain compatible."
   },
   "mcp_servers": [
@@ -328,10 +328,10 @@
     {
       "name": "github",
       "configured": true,
-      "callable_now": "false",
+      "callable_now": "true",
       "command_hint": "npx",
       "safe_probe_command": "list_commits or search (read-only if token present)",
-      "probe_result": "config=PASS; launcher=npx (ok); thread_tools=26; safe_tool=list_commits; GITHUB_TOKEN=unset; token_env=no; gh_auth=no; gh_detail=github.com\n  X Timeout trying to log in to github.com account alalapi-0 (keyring)\n  - Active account: true",
+      "probe_result": "config=PASS; launcher=npx (ok); thread_tools=26; safe_tool=list_commits; GITHUB_TOKEN=unset; token_env=no; gh_auth=ok; gh_detail=github.com\n  ✓ Logged in to github.com account alalapi-0 (keyring)\n  - Active account: true\n  - Git operations protocol:",
       "probe_checks": {
         "config_check": {
           "available": true,
@@ -357,8 +357,8 @@
         },
         "offline": {
           "token_env": false,
-          "gh_auth": false,
-          "gh_detail": "github.com\n  X Timeout trying to log in to github.com account alalapi-0 (keyring)\n  - Active account: true"
+          "gh_auth": true,
+          "gh_detail": "github.com\n  ✓ Logged in to github.com account alalapi-0 (keyring)\n  - Active account: true\n  - Git operations protocol:"
         }
       },
       "allowed_scope": "repo with GITHUB_TOKEN",
@@ -458,9 +458,9 @@
   ],
   "mcp_probe_summary": {
     "total_configured": 7,
-    "callable_true": 5,
+    "callable_true": 6,
     "callable_config_only": 1,
-    "callable_false": 1,
+    "callable_false": 0,
     "deferred_probe_results": []
   },
   "web_search": {

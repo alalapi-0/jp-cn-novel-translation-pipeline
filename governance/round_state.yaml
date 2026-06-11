@@ -1,34 +1,33 @@
-round_id: round_58_throughput_recovery
-round_name: "Throughput recovery, safety gates, and isolated real API diagnostic"
-round_number_human: "58"
-status: in_progress
-type: throughput_recovery
+round_id: final_state_governance_rebaseline_20260611
+round_name: "Final-state governance rebaseline and authority alignment"
+round_number_human: "FS-000 revalidation"
+status: completed
+type: planning_governance
 real_api_called: false
 full_translation_executed: false
+existing_translation_outputs_modified: false
 
 completed_tasks:
-  - "Stitch Design MCP integration: local stdio proxy, docs/design/stitch/, check:stitch, AGENTS/agent.md, Cursor rules"
-  - "P0-A: unified run_progress.json atomic writer for draft/refine"
-  - "P0-B: pipeline_worker_registry.py + production_watchdog pipefail fix"
-  - "P0-C: scripts/throughput_gate.py (ALLOW/WARN/BLOCK)"
-  - "P0-D: export_refined_runs --run-id --up-to-offset fixture verified"
-  - "P0-E: Stage C controlled runner with configurable STAGE_C_MAX_SEGMENTS"
-  - "P1: pipeline_events.jsonl + model_run metadata fields"
-  - "pytest 19/19 pass for throughput recovery test suite"
+  - "Synchronized the user-provided Product Final State Specification v1.1 into the repository anchor"
+  - "Aligned project authority files and Agent entry points with the final-state roadmap"
+  - "Rebased Phase A truth to 355/613 contiguous chapters; next D-MR-052 (356-358)"
+  - "Recorded S1 scheduler and S3 glossary/config asset stages as completed"
+  - "Verified the existing four-page Workbench in a real browser: HTTP 200, no console warnings/errors"
+  - "Recorded the remaining 15-page final UI gap and Phase B-E implementation gaps"
+  - "Added workspace/archived_runs/ to .gitignore to prevent real run archives entering Git"
+  - "Refreshed tool inventory and governance handoff reports"
 
 next_recommended_round:
-  id: round_58_user_approved_small_pilot
-  title: "User-approved small pilot after throughput gate ALLOW"
+  id: FS-008-block11
+  title: "Continue Phase A from D-MR-052; run FS-009 health check after the block"
 
-next_recommended_phase:
-  id: phase_2
-  title: "Production pilot — authorized long-form runs, refine stage, semantic checkers"
+next_parallel_engineering_round:
+  id: FS-017
+  title: "Web UI architecture decision and shared layout shell"
 
 blockers:
   hard: []
   soft:
-    - "STITCH_API_KEY not set in agent shell — Stitch MCP requires user-local key and Cursor Reload"
-    - "No OPENROUTER/DEEPSEEK API key in agent shell — real API diagnostic ran dry-run only"
-    - "workspace/stage_state.json still points to old refine run — requires user-approved resume"
-    - "Fourth Stage B run checkpoint/state conflict may BLOCK production until repaired"
-    - "pytest collection can hang >120s in parallel-agent shells; prefer PYTHONPATH=src direct runs"
+    - "throughput_gate WARN: refine_pending and historical diagnostic checkpoints; blocks=[]"
+    - "vector index health remains a pre-existing P2 warning"
+    - "Final Web UI remains at four legacy Workbench pages; S4-S5 not started"

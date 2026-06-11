@@ -3,24 +3,26 @@
 > 主路线图（2026-06-07 治理轮）：将执行单位从 **20 章/轮** 重构为 **3 章 micro round**，采用 supervised tick loop 与渐进式披露一致性/质量检查。  
 > 配套任务清单：`docs/translation_recovery_3ch_task_list.md`  
 > 旧 20 章路线（已 deprecated）：`docs/translation_recovery_20ch_roadmap.md`
+>
+> **2026-06-11 live override**：本节旧快照已由 S1 调度器真值替代。D-MR-001…051 已完成，当前连续完成 ch1–355，下一安全任务是 **D-MR-052（ch356–358）**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json`，不得按历史定义回退。
 
 ## 当前快照（只读统计，不含正文）
 
 | 指标 | 值 | 来源 |
 | --- | --- | --- |
 | 全书源文章节 | **613** | `input_jp/*.md` |
-| 初翻完成章 | **202**（第 1–202 章） | `segments.json` / `throughput_gate` |
-| 部分完成章 | **ch-203**（152/316 segments） | `run_20260607_095821_draft_stage_b_50ch` |
+| 初翻完成章 | **355**（第 1–355 章连续完成） | `local_scheduler_status.py --json` |
+| 部分完成章 | 无 | scheduler status |
 | 润色可导出章 | **170** | `throughput_gate.exportable_chapters` |
-| 下一 micro round | **D-MR-001**（第 203–205 章，续跑 checkpoint） | 本路线图 |
+| 下一 micro round | **D-MR-052**（第 356–358 章） | scheduler status |
 | 默认初翻模型 | DeepSeek | `deepseek/deepseek-v4-pro` |
 | 活跃 worker | 0 | `throughput_gate` / `check_orphan_workers.py` |
 | 孤儿 worker | 0 | 同上 |
-| stale lock | 1（需 heal） | `translate_stage_b_run_20260607_095821_draft_stage_b_50ch.lock` |
-| 剩余初翻 micro rounds | **137** | D-MR-001 … D-MR-137 |
+| stale lock | 0 | scheduler status |
+| 剩余初翻 micro rounds | **86** | D-MR-052 … D-MR-137 |
 | 剩余润色 micro rounds | **148**（Phase D，baseline 后） | R-MR-001 … R-MR-148 |
 
-**Legacy 说明**：原 T-002（191–210）在 `run_20260607_095821_draft_stage_b_50ch` 中已完成 ch191–202；ch203 部分完成；ch204–210 待续。新体系不重复编号已完成章，从 **D-MR-001 @ ch203** 继续。
+**Legacy 说明**：原 T-002 缺口已在受控回填中闭合。D-MR-001…051 的历史定义继续保留用于审计，不再作为执行入口。
 
 ---
 
@@ -96,7 +98,7 @@
 
 ### Micro Round 完整列表（Phase A）
 
-### D-MR-001：第 203–205 章初翻
+### D-MR-001：第 203–205 章初翻（已完成，历史定义）
 
 - phase: draft
 - chapter_range: 203–205
@@ -115,7 +117,7 @@
   - checkpoint saved
   - no orphan worker
 - resume_checkpoint: `run_20260607_095821_draft_stage_b_50ch` (ch-203 partial 152/316)
-- status: **NEXT**
+- status: **COMPLETED**
 
 ### D-MR-002：第 206–208 章初翻
 

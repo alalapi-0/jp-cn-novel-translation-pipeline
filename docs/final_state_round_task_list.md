@@ -2,7 +2,7 @@
 
 > 最终成品轮次任务清单（FS-000 … FS-070），2026-06-10 治理轮创建。
 > 锚点：`docs/product_final_state_spec.md`；总路线：`docs/final_state_implementation_roadmap.md`。
-> Phase A 的 D-MR-008…137 与 Phase D 的 R-MR 批量执行细节见 `docs/translation_recovery_3ch_task_list.md`（继续有效）；本清单的 FS 轮负责工程能力建设与阶段闸门。
+> Phase A 的 D-MR-052…137 与 Phase D 的 R-MR 批量执行细节见 `docs/translation_recovery_3ch_task_list.md`（继续有效）；本清单的 FS 轮负责工程能力建设与阶段闸门。
 >
 > 通用约定（适用所有轮次，不再逐轮重复）：
 > - 每轮开始执行 `docs/next_agent_execution_protocol.md` 的标准流程。
@@ -12,6 +12,8 @@
 > - UI 轮必须真实浏览器 before/after 检查并保存记录到 `artifacts/`。
 > - 真实 API 轮必须遵守 cost guard 与规格 §21/§22；不得自动更换生产模型。
 > - 状态更新：完成后在本文件该轮末尾追加 `> ✅ 完成于 YYYY-MM-DD（commit/报告引用）`。
+> - 状态真值：先运行 `local_scheduler_status.py --json`；不得使用旧 Roadmap 的叙述性 NEXT 标记覆盖探针。
+> - `agent_gate.py` 与 scheduler tick 串行运行；二者并行时诊断 worker 会触发安全并发阻断。
 
 ---
 
@@ -19,12 +21,26 @@
 
 ### 目标
 保存最终规格，建立 Roadmap / Task List / 验收 / 防跑偏 / DoD / 推进协议体系，更新 AGENTS.md。
+### 背景
+最终规格需要成为可持续执行的工程路线，且治理入口必须与运行真值同步。
+### 输入
+用户提供的 v1.1 最终规格、仓库治理文件、代码/测试/UI/调度器实测结果。
+### 要修改 / 新增的文件
+最终规格、Roadmap、Task List、验收/DoD/Guardrails/执行协议、Agent 入口、状态与脱敏报告。
+### 要执行的命令
+agent status/next、agent_gate、scheduler status/tick dry-run、orphan/throughput gate、Python/UI 测试与浏览器检查。
+### 是否允许真实 API
+允许最小 smoke，但非必需；本治理复核未调用。
 ### 验收标准
 8 份治理文档存在且互相引用一致；agent_gate 通过；治理产物已 commit。
+### 禁止事项
+不得启动批量真实翻译、读取或提交正文、覆盖运行产物、自动标记 human_approved_final。
 ### 产物
 `docs/product_final_state_spec.md` 等 8 份文档。
 ### 下一轮衔接
 FS-001 启动调度器主线。
+
+> ✅ 初始治理完成于 2026-06-10；2026-06-11 Codex 复核并同步权威链、运行真值、UI 差距和 Git ignore 安全规则。
 
 ---
 
@@ -1458,7 +1474,7 @@ FS-070。
 
 | 轮次 | Stage | 状态 |
 | --- | --- | --- |
-| FS-000 | S0 治理 | completed（2026-06-10） |
+| FS-000 | S0 治理 | completed（2026-06-10；2026-06-11 复核） |
 | FS-001 | S1 调度器 | completed（2026-06-11） |
 | FS-002 | S1 调度器 | completed（2026-06-11） |
 | FS-003 | S1 调度器 | completed（2026-06-11） |
@@ -1466,7 +1482,7 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | completed（2026-06-11；批量推进中：355/613（57.91%），ch1-355 连续，next D-MR-052） |
+| FS-008 | S2 Phase A | launch completed / batch in_progress（355/613，ch1-355 连续，next D-MR-052） |
 | FS-009 | S2 Phase A | recurring（Block #1…#10 已执行 2026-06-11；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |

@@ -1,5 +1,11 @@
 mode: conservative_structured_repo_governance
 
+final_state_policy:
+  highest_project_goal_anchor: docs/product_final_state_spec.md
+  execution_roadmap: docs/final_state_implementation_roadmap.md
+  round_queue: docs/final_state_round_task_list.md
+  conflict_rule: "Project implementation goals follow the final-state specification; portable protocol safety and secret rules remain mandatory."
+
 allowed_actions:
   - read_governance_entry_files
   - grep_glob_targeted_search
@@ -42,6 +48,7 @@ translation_pipeline_rules:
   - do_not_call_real_api_in_governance_round
   - use_fake_provider_before_real_provider
   - real_batch_translation_only_in_translation_execution_round
+  - real_api_is_allowed_in_explicitly_authorized_fs_dmr_rmr_rounds_with_cost_guard
 
 automation_gate:
   entry: scripts/agent_gate.py

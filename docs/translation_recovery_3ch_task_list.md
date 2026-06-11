@@ -3,21 +3,22 @@
 > 配套主路线图：`docs/translation_recovery_3ch_roadmap.md`  
 > 旧 20 章任务清单（deprecated）：`docs/translation_recovery_task_list.md`  
 > 生成时间：2026-06-07（治理轮，未执行真实 API）
+>
+> **2026-06-11 live override**：D-MR-001…051 已完成；当前连续完成 355/613 章。下一任务固定为 **D-MR-052（356–358）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
 
 ## Current State
 
 - **total chapters**: 613（`input_jp/*.md`）
-- **draft completed chapters**: **202**（第 1–202 章全段 draft 完成）
-- **current partial run**: `run_20260607_095821_draft_stage_b_50ch` — T-002 legacy 191–210 范围；ch191–202 ✅；**ch203 部分完成（152/316）**；ch204–210 待续；status=`stopped_by_controller` / recoverable
+- **draft completed chapters**: **355**（第 1–355 章连续完成）
+- **current partial run**: 无
 - **refinement completed chapters**: **170**（可导出 refined）
 - **active worker**: 0
 - **orphan worker**: 0（`check_orphan_workers.py` → CLEAN）
-- **stale lock**: 1 — `workspace/.locks/translate_stage_b_run_20260607_095821_draft_stage_b_50ch.lock`（执行前须 `--heal`）
+- **stale lock**: 0
 - **default model**: `deepseek/deepseek-v4-pro`（Nemotron 暂不启用）
-- **next draft micro round**: **D-MR-001**（第 203–205 章，续跑 `run_20260607_095821_draft_stage_b_50ch` checkpoint）
-- **remaining draft MRs**: 137（D-MR-001 … D-MR-137）
-- **stage_state.json**: completed @ run_20260607_040204（190 章 run，已被 partial 超越）
-- **stage_state_production.json**: failed @ `run_20260607_095821_draft_stage_b_50ch`
+- **next draft micro round**: **D-MR-052**（第 356–358 章）
+- **remaining draft MRs**: 86（D-MR-052 … D-MR-137）
+- **state source**: `local_scheduler_status.py --json`（当前唯一执行真值）
 
 ### Legacy T-002 映射
 
@@ -32,13 +33,20 @@
 
 > 完整 137 项列表见 `docs/translation_recovery_3ch_roadmap.md` §3.2。
 
-### D-MR-001（NEXT）
+### D-MR-001（COMPLETED；历史定义）
 
 - **chapter range**: 203–205
 - **resume**: `run_20260607_095821_draft_stage_b_50ch`（ch203 partial）
 - **execution**: supervised tick loop, `--round-size 3`
 - **pre-flight**: `pipeline_worker_registry --heal` 清理 stale lock
 - **report**: `workspace/round_reports/D-MR-001/`
+
+### D-MR-052（NEXT）
+
+- **chapter range**: 356–358
+- **execution**: `python3 scripts/local_scheduler_tick.py --dry-run` 先规划；真实执行按 FS-008 cost guard / pause / lock / orphan 规则
+- **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
+- **report**: `workspace/round_reports/D-MR-052/`
 
 ### D-MR-002
 
