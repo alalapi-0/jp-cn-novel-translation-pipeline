@@ -1,56 +1,55 @@
 {
-  "round_id": "FS-008-block17",
-  "timestamp": "2026-06-12T01:59:00Z",
+  "round_id": "FS-008-block18",
+  "timestamp": "2026-06-12T03:10:39Z",
   "agent": "cursor",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Complete Phase A Block #17 (D-MR-083 through D-MR-087) and run FS-009 health checks",
+  "goal": "Complete Phase A Block #18 (D-MR-088 through D-MR-092) and run FS-009 health checks",
   "scope": [
-    "real API draft translation for chapters 449-463",
-    "checkpoint resume across multi-tick D-MR-087",
+    "real API draft translation for chapters 464-478",
     "authoritative progress and handoff reports"
   ],
-  "repo_status_before": "main at 9cfaff3; scheduler 448/613 next D-MR-083",
+  "repo_status_before": "main at 7b7040d; scheduler 463/613 next D-MR-088",
   "tool_probe_status": "skipped_reuse_prior",
   "tools_used": [
     {
       "tool": "local scheduler / real API provider",
-      "purpose": "execute D-MR-083 through D-MR-087 with checkpoint, timeout, and cost guards",
-      "result": "463/613 contiguous; 2387/2387 block segments completed; failed=0; validation_failed=0"
+      "purpose": "execute D-MR-088..092",
+      "result": "478/613 contiguous; 1922/1922 segments; failed=0"
     }
   ],
   "tools_not_used": [
     {
       "tool": "Playwright / Browser",
-      "reason": "No UI changes in this block"
+      "reason": "No UI changes"
     }
   ],
   "real_api_used": {
     "used": true,
-    "api_calls": 113,
-    "cost_usd": 0.21516848,
+    "api_calls": 98,
+    "cost_usd": 0.13753922,
     "model": "deepseek/deepseek-v4-pro",
     "profile": "draft_translation_primary",
-    "scope": "D-MR-083 through D-MR-087, chapters 449-463"
+    "scope": "D-MR-088..092, chapters 464-478"
   },
   "ui_checked": {
     "checked": false,
-    "evidence": "No UI files changed"
+    "evidence": "No UI changes"
   },
   "acceptance_result": [
     {
-      "criterion": "D-MR-083 through D-MR-087 complete without gaps",
+      "criterion": "D-MR-088..092 complete without gaps",
       "pass": true,
-      "evidence": "scheduler reports 463/613 contiguous and next D-MR-088"
+      "evidence": "scheduler 478/613 next D-MR-093"
     },
     {
-      "criterion": "failed=0 and orphan CLEAN",
+      "criterion": "failed=0 orphan CLEAN",
       "pass": true,
-      "evidence": "throughput blocks=[]; check_orphan_workers decision=CLEAN"
+      "evidence": "throughput blocks=[]"
     }
   ],
   "gate_status": "warning",
   "blockers": [],
-  "next_recommended_round": "FS-008 Block #18 from D-MR-088 (chapters 464-466)",
+  "next_recommended_round": "FS-008 Block #19 from D-MR-093 (chapters 479-481)",
   "human_decisions_required": []
 }

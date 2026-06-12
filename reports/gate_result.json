@@ -357,11 +357,11 @@
     {
       "id": "git_status_dirty",
       "severity": "warn",
-      "message": "working tree has 9 uncommitted change(s) on branch main"
+      "message": "working tree has 12 uncommitted change(s) on branch main"
     }
   ]
 }
-": "pass",
+: "pass",
       "message": "found: agent_layer.yaml"
     },
     {
@@ -442,7 +442,7 @@
     {
       "id": "git_status_dirty",
       "severity": "warn",
-      "message": "working tree has 9 uncommitted change(s) on branch main"
+      "message": "working tree has 12 uncommitted change(s) on branch main"
     }
   ],
   "commands": [
