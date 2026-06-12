@@ -1,23 +1,25 @@
-round_id: fs_036_20260612
-round_name: "FS-036 local fix plan"
-round_number_human: "FS-036 / Phase B Level 3"
+round_id: fs_037_20260612
+round_name: "FS-037 Level 4 arbitration + Phase B gate"
+round_number_human: "FS-037 / Phase B Level 4-5"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/consistency/local_fix_plan.py: aggregate FS-034/035 into term_fixes / retranslate_tasks / deferred"
-  - "Added scripts/build_local_fix_plan.py and scripts/apply_term_fixes.py (dry-run default)"
-  - "Wired task_planner consistency subtasks: build_fix_plan, apply_term_fixes, retranslate→FS-037"
-  - "Real data: term_fixes=0, retranslate_segments=1079 (source_residual), deferred=50 (unlisted_high_freq)"
-  - "Added tests/test_local_fix_plan.py (12 passed); npm run test:py 461 passed"
+  - "Added src/consistency/arbitration.py + scripts/arbitrate_conflicts.py (max-api-calls cap, dry-run default)"
+  - "Added src/consistency/retranslate.py + scripts/run_consistency_retranslate.py (batched checkpoint/resume)"
+  - "Added src/consistency/draft_consistency_report.py + build_draft_consistency_report.py + phase_b_completion_check.py"
+  - "Implemented task_planner consistency_retranslate + consistency_arbitrate commands"
+  - "Real data: arbitration candidates=0; retranslate pilot dry-run 24/1079 (1055 remaining in checkpoint)"
+  - "phase_b_completion_check overall_pass=true (B1-B8); npm run test:py 471 passed"
 
 next_recommended_round:
-  id: FS-037
-  title: "Level 4 model arbitration + Phase B completion gate"
+  id: FS-038
+  title: "baseline lock and read-only protection"
 
 blockers:
   hard: []
   soft:
+    - "1055 source_residual segments remain in retranslate checkpoint (non-blocking; resume via run_consistency_retranslate.py)"
+    - "Real API retranslate blocked this session (DEEPSEEK_API_KEY unset); dry-run pilot validated pipeline"
     - "throughput_gate WARN: refine_pending + diagnostic checkpoints (expected post-Phase A)"
-    - "1079 source_residual segments queued for FS-037 selective retranslate (non-blocking warnings)"

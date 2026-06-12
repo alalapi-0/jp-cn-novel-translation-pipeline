@@ -1,3 +1,5 @@
+> ✅ **FS-037 Phase B 收尾完成**（2026-06-12）：`arbitrate_conflicts.py`（0 候选/0 API）；`run_consistency_retranslate.py` pilot dry-run 24/1079（checkpoint 续跑）；`phase_b_completion_check.py --json` overall_pass=true（B1–B8 PASS）；`draft_consistency_report.json` blocking=0；471 passed。**推荐下一闸门：FS-038 baseline lock**。
+
 > ✅ **FS-036 local fix plan 完成**（2026-06-12）：`build_local_fix_plan.py --json` status=PASS；真实数据 term_fixes=0、retranslate_tasks=1（1079 source_residual segments）、deferred=50（unlisted_high_freq）；`apply_term_fixes.py --dry-run` applied=0（无规则补丁）；task_planner consistency 分支接入 build/apply；`tests/test_local_fix_plan.py` 12 passed；npm run test:py 461 passed。**推荐下一闸门：FS-037 模型仲裁 + Phase B 收尾**。
 
 > ✅ **FS-035 draft structure audit 完成**（2026-06-12）：`audit_draft_structure.py --json` status=PASS；blocking=0；真实数据 findings=1079（均为 source_residual warning；kana-only P1 修正）；四类 issue fixture 全覆盖 + 5 条误判回归集；severity blocking/warning/info；`tests/test_draft_structure_audit.py` 14 passed；npm run test:py 449 passed。**推荐下一闸门：FS-036 local fix plan**。
@@ -971,6 +973,8 @@ Phase B 完成报告。
 ### 下一轮衔接
 FS-038 baseline lock。
 
+> ✅ 完成于 2026-06-12。`scripts/arbitrate_conflicts.py` + `src/consistency/arbitration.py`（Level 4，max-api-calls 硬上限）；`scripts/run_consistency_retranslate.py` + `src/consistency/retranslate.py`（batched checkpoint/resume）；`scripts/build_draft_consistency_report.py` + `scripts/phase_b_completion_check.py`；task_planner `consistency_retranslate` 已实现。真实数据：仲裁候选=0；重译 pilot dry-run 24/1079（剩余 1055 下轮续跑）；Phase B B1–B8 PASS；测试 +10（全套 471 passed）。
+
 ---
 
 # Stage S7：Phase C baseline lock
@@ -1555,7 +1559,7 @@ FS-070。
 | FS-034 | S6 Phase B | completed（2026-06-12，glossary conflict audit blocking=0 PASS） |
 | FS-035 | S6 Phase B | completed（2026-06-12，draft structure audit blocking=0 PASS） |
 | FS-036 | S6 Phase B | done |
-| FS-037 | S6 Phase B | not_started |
+| FS-037 | S6 Phase B | completed（2026-06-12，Phase B PASS；retranslate pilot 24/1079） |
 | FS-038…FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |

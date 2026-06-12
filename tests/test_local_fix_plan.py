@@ -245,14 +245,16 @@ def test_consistency_apply_term_fixes_dry_run_by_default() -> None:
     assert "--apply" not in plan.command
 
 
-def test_consistency_retranslate_not_implemented() -> None:
+def test_consistency_retranslate_implemented() -> None:
     status = {
         "current_phase": "consistency",
         "next_task": "consistency_retranslate",
         "paused": False,
         "detail": {},
     }
-    plan = plan_next_task(status)
-    assert plan.implemented is False
+    plan = plan_next_task(status, mode="dry_run", budgets={"max_api_calls": 5, "max_segments": 20})
+    assert plan.implemented is True
     assert plan.task_type == "consistency_retranslate"
-    assert "FS-037" in plan.reason
+    assert plan.command is not None
+    assert plan.command[1].endswith("run_consistency_retranslate.py")
+    assert "--dry-run" in plan.command

@@ -48,6 +48,9 @@ _NOT_IMPLEMENTED_ROUNDS = {
 
 BUILD_FIX_PLAN_REL = "scripts/build_local_fix_plan.py"
 APPLY_TERM_FIXES_REL = "scripts/apply_term_fixes.py"
+ARBITRATE_CONFLICTS_REL = "scripts/arbitrate_conflicts.py"
+RUN_CONSISTENCY_RETRANSLATE_REL = "scripts/run_consistency_retranslate.py"
+BUILD_CONSISTENCY_REPORT_REL = "scripts/build_draft_consistency_report.py"
 
 _CONSISTENCY_TASKS: dict[str, tuple[str, str, str]] = {
     # next_task -> (task_type, script_rel, human reason)
@@ -65,6 +68,16 @@ _CONSISTENCY_TASKS: dict[str, tuple[str, str, str]] = {
         "consistency_apply_term_fixes",
         APPLY_TERM_FIXES_REL,
         "apply deterministic term patches (dry-run unless real mode)",
+    ),
+    "consistency_arbitrate": (
+        "consistency_arbitrate",
+        ARBITRATE_CONFLICTS_REL,
+        "Level 4 model arbitration for rule-undecidable conflicts",
+    ),
+    "consistency_build_report": (
+        "consistency_build_report",
+        BUILD_CONSISTENCY_REPORT_REL,
+        "aggregate full draft consistency report (stats only)",
     ),
 }
 
@@ -203,7 +216,9 @@ def _consistency_command(
     script_rel: str,
     mode: str,
     python_executable: str,
+    budgets: dict[str, Any] | None = None,
 ) -> list[str]:
+    budgets = budgets or {}
     cmd = [python_executable, script_rel]
     if script_rel.endswith("build_local_fix_plan.py"):
         cmd.append("--json")
@@ -212,6 +227,26 @@ def _consistency_command(
             cmd.append("--apply")
         else:
             cmd.append("--dry-run")
+        cmd.append("--json")
+    elif script_rel.endswith("arbitrate_conflicts.py"):
+        if mode == "real":
+            cmd.append("--real-api")
+        else:
+            cmd.append("--dry-run")
+        if budgets.get("max_api_calls"):
+            cmd.extend(["--max-api-calls", str(budgets["max_api_calls"])])
+        cmd.append("--json")
+    elif script_rel.endswith("run_consistency_retranslate.py"):
+        if mode == "real":
+            cmd.append("--real-api")
+        else:
+            cmd.append("--dry-run")
+        if budgets.get("max_api_calls"):
+            cmd.extend(["--max-api-calls", str(budgets["max_api_calls"])])
+        if budgets.get("max_segments"):
+            cmd.extend(["--limit", str(budgets["max_segments"])])
+        cmd.append("--json")
+    elif script_rel.endswith("build_draft_consistency_report.py"):
         cmd.append("--json")
     return cmd
 
@@ -294,8 +329,15 @@ def plan_next_task(
         if next_task == "consistency_retranslate":
             return TaskPlan(
                 task_type="consistency_retranslate",
-                implemented=False,
-                reason="not_implemented: segment retranslate execution lands in FS-037",
+                implemented=True,
+                reason="localized segment retranslate from fix plan (batched, checkpoint/resume)",
+                command=_consistency_command(
+                    script_rel=RUN_CONSISTENCY_RETRANSLATE_REL,
+                    mode=mode,
+                    python_executable=python_executable,
+                    budgets=budgets,
+                ),
+                budget=budgets,
                 mode=mode,
             )
         spec = _CONSISTENCY_TASKS.get(next_task)
@@ -309,6 +351,7 @@ def plan_next_task(
                     script_rel=script_rel,
                     mode=mode,
                     python_executable=python_executable,
+                    budgets=budgets,
                 ),
                 budget=budgets,
                 mode=mode,
