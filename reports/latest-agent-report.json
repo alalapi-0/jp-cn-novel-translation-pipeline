@@ -1,54 +1,62 @@
 {
-  "round_id": "FS-010",
-  "timestamp": "2026-06-12T11:45:00Z",
+  "round_id": "FS-031",
+  "timestamp": "2026-06-12T12:30:00Z",
   "agent": "cursor",
-  "mode": "phase_gate",
-  "goal": "Phase A closure gate: README count fix, completion check, D-MR-137 seal",
+  "mode": "implementation",
+  "goal": "Build chapter manifest (Level 0): 612 numbered chapters, incremental rebuild, no body text",
   "real_api_used": {
     "used": false,
     "api_calls": 0,
     "cost_usd": 0,
-    "scope": "gate only"
+    "scope": "none"
   },
   "acceptance_result": [
     {
-      "criterion": "phase_a_completion_check overall_pass",
+      "criterion": "build_chapter_manifest.py --json full_coverage 612/612",
       "pass": true
     },
     {
-      "criterion": "scheduler draft 612/612 consistency phase",
+      "criterion": "missing/duplicate chapters explicit in stats",
       "pass": true
     },
     {
-      "criterion": "orphan_workers CLEAN",
+      "criterion": "incremental rebuild reuses unchanged segment files",
+      "pass": true,
+      "evidence": "148 reused, 0 scanned on second run"
+    },
+    {
+      "criterion": "manifest contains no source_text or draft_text",
       "pass": true
     },
     {
-      "criterion": "throughput_gate",
-      "pass": false,
-      "evidence": "WARN expected refine_pending"
+      "criterion": "tests/test_chapter_manifest.py",
+      "pass": true,
+      "evidence": "8 passed"
     }
   ],
   "blockers": [],
-  "next_recommended_round": "FS-031",
+  "next_recommended_round": "FS-032",
   "gate_status": "passed",
   "severity_summary": {
     "p0": 0,
     "p1": 0,
     "p2": 0,
-    "p3": 1
+    "p3": 0
   },
-  "tools_used": ["shell", "grep", "read"],
-  "tools_not_used": ["playwright", "chrome-devtools", "stitch"],
+  "tools_used": ["shell", "grep", "read", "write"],
+  "tools_not_used": ["playwright", "chrome-devtools", "stitch", "context7", "github"],
   "ui_checked": {
     "checked": false
   },
   "human_decisions_required": [],
   "agent_surface": "cursor",
   "tool_probe_status": "not_run",
-  "phase_a": {
-    "total_source_chapters": 612,
-    "failed_criteria": [],
-    "report": "docs/reports/phase_a_completion_report.md"
+  "manifest": {
+    "total_expected_chapters": 612,
+    "chapters_indexed": 612,
+    "full_coverage": true,
+    "segment_files_scanned": 148,
+    "segment_files_reused": 148,
+    "output": "workspace/manifests/chapter_manifest.json"
   }
 }

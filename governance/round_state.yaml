@@ -1,20 +1,20 @@
-round_id: fs_010_20260612
-round_name: "FS-010 Phase A completion gate"
-round_number_human: "FS-010 / Phase A closure"
+round_id: fs_031_20260612
+round_name: "FS-031 chapter manifest builder"
+round_number_human: "FS-031 / Phase B Level 0"
 status: completed
-type: phase_gate
+type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Fixed _count_total_chapters to exclude README.md (612 numbered chapters)"
-  - "Added scripts/phase_a_completion_check.py with A1-A9 criteria"
-  - "Sealed D-MR-137 metrics mismatch (611-612 range, no ch613 source)"
-  - "phase_a_completion_check overall_pass=true; scheduler draft 612/612 consistency phase"
-  - "throughput_gate WARN (expected); orphan CLEAN"
+  - "Added src/consistency/manifest.py metadata-only chapter manifest builder"
+  - "Added scripts/build_chapter_manifest.py CLI with incremental rebuild"
+  - "Added tests/test_chapter_manifest.py (8 passed)"
+  - "build_chapter_manifest.py --json PASS 612/612 full_coverage=true"
+  - "Incremental rebuild: 148 segment files reused on second run"
 
 next_recommended_round:
-  id: FS-031
-  title: "Phase B toolchain: chapter manifest, segment index, consistency audit"
+  id: FS-032
+  title: "Phase B segment index builder (Level 0-1)"
 
 blockers:
   hard: []

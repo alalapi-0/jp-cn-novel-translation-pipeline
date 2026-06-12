@@ -73,3 +73,4 @@
 {"ts": "2026-06-12T09:51:10Z", "round_id": "FS-008-block25", "progress": "583/613", "cost_usd": 0.1306034}
 {"ts": "2026-06-12T11:39:45Z", "round_id": "FS-008-block27", "progress": "612/613", "note": "ch613 README"}
 {"ts": "2026-06-12T11:45:00Z", "round_id": "FS-010", "progress": "612/612", "phase_a_pass": true, "next": "FS-031"}
+{"ts": "2026-06-12T12:30:00Z", "round_id": "FS-031", "manifest": "612/612", "full_coverage": true, "tests": "8 passed", "next": "FS-032"}

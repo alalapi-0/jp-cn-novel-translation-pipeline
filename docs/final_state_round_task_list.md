@@ -1,3 +1,5 @@
+> ✅ **FS-031 chapter manifest 完成**（2026-06-12）：`build_chapter_manifest.py --json` status=PASS；612/612 编号章全覆盖（README 排除）；missing/duplicate 显式统计；增量重建 148 segment files reused；manifest 无正文；`tests/test_chapter_manifest.py` 8 passed。**推荐下一闸门：FS-032 segment index**。
+
 > ✅ **FS-010 Phase A 收尾完成**（2026-06-12）：`phase_a_completion_check.py --json` overall_pass=true（612 编号章）；`_count_total_chapters` 改为仅计 `^\d+-` 源文件（排除 README.md）；调度器 draft 612/612、phase=consistency；D-MR-137 metrics 封口（ch613 无源文件，范围 611-612）；orphan CLEAN；throughput_gate WARN（预期 refine_pending + diagnostic checkpoints）；agent_gate WARN（提交前 dirty tree）。**推荐下一闸门：FS-031 Phase B 工具链**（manifest / segment index / consistency audit）。
 
 > ✅ Block #27 收口于 2026-06-12（D-MR-133 → 134 → 135 → 136 → 137，15 章窗口；D-MR-137 占 4 tick slot + 2 续跑 tick）。**进度 612/613（99.84%），ch1-612 连续**；调度器仍显示 missing_draft_chapters=1（ch613），根因为 `_count_total_chapters` 将 `input_jp/README.md` 计入 613 总数且无对应编号章文件。五轮 1959/1959 segments（D-MR-137 metrics status=failed 但 run failed_segments=0）；orphan CLEAN；本 block 成本 $0.12280961（82 API calls + 续跑）。**推荐下一闸门：FS-010 Phase A 收尾**（completion check、README 计数修正或豁免、D-MR-137 状态封口）。
@@ -843,7 +845,7 @@ S6 Phase B 工具链（若 Phase A 已完成）或继续 S2。
 ### 是否涉及 Web UI / 浏览器检查
 否 / 否。
 ### 验收标准
-613 章全覆盖；漏章 / 重复章被显式列出；增量重建只处理变更章节。
+612 编号章全覆盖（README 排除，见 FS-010）；漏章 / 重复章被显式列出；增量重建只处理变更章节。
 ### 禁止事项
 不得将正文写入 manifest。
 ### 产物
@@ -1529,7 +1531,8 @@ FS-070。
 | FS-016 | S3 资产层 | completed（2026-06-11，批量间隙穿插；**S3 全 stage 完成**） |
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
-| FS-031…FS-037 | S6 Phase B | not_started |
+| FS-031 | S6 Phase B | completed（2026-06-12，chapter manifest 612/612 PASS） |
+| FS-032…FS-037 | S6 Phase B | not_started |
 | FS-038…FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
