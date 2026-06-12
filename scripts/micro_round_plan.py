@@ -7,7 +7,7 @@ import re
 from typing import Any
 
 FIRST_DRAFT_MR_CHAPTER = 203
-TOTAL_CHAPTERS = 613
+TOTAL_CHAPTERS = 612
 # NOTE (FS-008 incident, 2026-06-11): the old LEGACY_PARTIAL_RUN_ID auto-resume
 # pointed D-MR-001/002 at run_20260607_095821 and the hydrate step rewrote that
 # run's segments window (209-211 -> 206-208), orphaning the ch209-211 records.

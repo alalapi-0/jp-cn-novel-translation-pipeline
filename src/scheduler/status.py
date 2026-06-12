@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from scheduler.control import is_paused, lock_status
+from translation.chapter_parser import count_source_chapters
 
 TICK_STATE_REL = "workspace/control/scheduler_tick_state.json"
 QUEUE_CONFIG_REL = "workspace/control/scheduler_queue.json"
@@ -153,12 +154,7 @@ def _completed_chapters_by_phase(repo_root: Path) -> dict[str, set[int]]:
 
 
 def _count_total_chapters(repo_root: Path) -> int:
-    best = 0
-    for input_dir in ("input_jp", "input_zh"):
-        path = repo_root / input_dir
-        if path.is_dir():
-            best = max(best, sum(1 for _ in path.glob("*.md")))
-    return best
+    return count_source_chapters(repo_root)
 
 
 def _queue_config(repo_root: Path) -> dict[str, int]:

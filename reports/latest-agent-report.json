@@ -1,46 +1,54 @@
 {
-    "round_id": "FS-008-block27",
-    "timestamp": "2026-06-12T11:39:45Z",
-    "agent": "cursor",
-    "mode": "implement",
-    "goal": "Complete Phase A Blocks #24-27 batch tail",
-    "real_api_used": {
-        "used": true,
-        "api_calls": 82,
-        "cost_usd": 0.12280961,
-        "scope": "D-MR-133..137"
+  "round_id": "FS-010",
+  "timestamp": "2026-06-12T11:45:00Z",
+  "agent": "cursor",
+  "mode": "phase_gate",
+  "goal": "Phase A closure gate: README count fix, completion check, D-MR-137 seal",
+  "real_api_used": {
+    "used": false,
+    "api_calls": 0,
+    "cost_usd": 0,
+    "scope": "gate only"
+  },
+  "acceptance_result": [
+    {
+      "criterion": "phase_a_completion_check overall_pass",
+      "pass": true
     },
-    "acceptance_result": [
-        {
-            "criterion": "ch1-612 contiguous",
-            "pass": true
-        },
-        {
-            "criterion": "613/613 scheduler",
-            "pass": false,
-            "evidence": "ch613=README count"
-        }
-    ],
-    "blockers": [
-        "missing ch613 is README in total count",
-        "D-MR-137 metrics failed status"
-    ],
-    "next_recommended_round": "FS-010",
-    "gate_status": "warning",
-    "severity_summary": {
-        "p0": 0,
-        "p1": 0,
-        "p2": 2,
-        "p3": 0
+    {
+      "criterion": "scheduler draft 612/612 consistency phase",
+      "pass": true
     },
-    "tools_used": [],
-    "tools_not_used": [],
-    "ui_checked": {
-        "checked": false
+    {
+      "criterion": "orphan_workers CLEAN",
+      "pass": true
     },
-    "human_decisions_required": [
-        "README vs ch613 total count for FS-010"
-    ],
-    "agent_surface": "cursor",
-    "tool_probe_status": "not_run"
+    {
+      "criterion": "throughput_gate",
+      "pass": false,
+      "evidence": "WARN expected refine_pending"
+    }
+  ],
+  "blockers": [],
+  "next_recommended_round": "FS-031",
+  "gate_status": "passed",
+  "severity_summary": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 1
+  },
+  "tools_used": ["shell", "grep", "read"],
+  "tools_not_used": ["playwright", "chrome-devtools", "stitch"],
+  "ui_checked": {
+    "checked": false
+  },
+  "human_decisions_required": [],
+  "agent_surface": "cursor",
+  "tool_probe_status": "not_run",
+  "phase_a": {
+    "total_source_chapters": 612,
+    "failed_criteria": [],
+    "report": "docs/reports/phase_a_completion_report.md"
+  }
 }

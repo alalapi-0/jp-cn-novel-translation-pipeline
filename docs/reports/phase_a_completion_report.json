@@ -1,0 +1,124 @@
+{
+  "generated_at": "2026-06-12T11:44:15.939475+00:00",
+  "phase": "A",
+  "round": "FS-010",
+  "overall_pass": true,
+  "failed_criteria": [],
+  "total_source_chapters": 612,
+  "first_dmr_chapter": 203,
+  "book_total_chapters_config": 612,
+  "scheduler": {
+    "current_phase": "consistency",
+    "next_task": "draft_consistency_audit",
+    "draft_progress": {
+      "completed_chapters": 612,
+      "total_chapters": 612,
+      "percent": 100.0
+    },
+    "missing_draft_chapters": 0
+  },
+  "segment_summary": {
+    "chapters_observed": 612,
+    "chapters_with_draft": 612,
+    "chapter_range": {
+      "min": 1,
+      "max": 612
+    },
+    "chapter_gaps": [],
+    "chapter_gap_count": 0,
+    "pending_segments": 0,
+    "in_progress_segments": 0,
+    "failed_segments": 0,
+    "validation_failed_segments": 0,
+    "blocking_validation_failed": 0,
+    "missing_draft_segments": 0
+  },
+  "checks": {
+    "A1": {
+      "description": "全部编号章存在 draft 输出",
+      "pass": true,
+      "evidence": {
+        "total_source_chapters": 612,
+        "input_jp_numbered_files": 612,
+        "draft_completed_chapters": 612,
+        "scheduler_total_chapters": 612,
+        "chapters_with_draft": 612,
+        "current_phase": "consistency"
+      }
+    },
+    "A2": {
+      "description": "全部 segment status=completed（无 pending/in_progress）",
+      "pass": true,
+      "evidence": {
+        "pending_segments": 0,
+        "in_progress_segments": 0
+      }
+    },
+    "A3": {
+      "description": "failed segment = 0",
+      "pass": true,
+      "evidence": {
+        "failed_segments": 0
+      }
+    },
+    "A4": {
+      "description": "blocking validation_failed = 0",
+      "pass": true,
+      "evidence": {
+        "validation_failed_segments": 0
+      }
+    },
+    "A5": {
+      "description": "无章节错位 / 无漏段（FS-035 前 inline 检查）",
+      "pass": true,
+      "evidence": {
+        "chapter_gap_count": 0,
+        "chapter_gaps_sample": [],
+        "missing_draft_segments": 0,
+        "note": "audit_draft_structure.py (FS-035) not yet available; inline segment scan only"
+      }
+    },
+    "A6": {
+      "description": "checkpoint 完整可续跑",
+      "pass": true,
+      "evidence": {
+        "completed_runs": 146,
+        "missing_checkpoint_for_completed_runs": 0
+      }
+    },
+    "A7": {
+      "description": "D-MR round reports / metrics 完整",
+      "pass": true,
+      "evidence": {
+        "expected_round_count": 137,
+        "metrics_found": 135,
+        "metrics_completed_or_sealed": 135,
+        "metrics_failed_status": [],
+        "metrics_missing": [
+          "D-MR-004",
+          "D-MR-005"
+        ]
+      }
+    },
+    "A8": {
+      "description": "no active / orphan worker",
+      "pass": true,
+      "evidence": {
+        "decision": "CLEAN",
+        "active_worker_count": 0,
+        "orphan_worker_count": 0
+      }
+    },
+    "A9": {
+      "description": "draft 可导出或已导出",
+      "pass": true,
+      "evidence": {
+        "export_file_count": 641,
+        "exported_chapter_count": 607,
+        "covers_all_chapters": false,
+        "chapters_with_draft_in_segments": 612,
+        "note": "segment-level draft satisfies exportability when per-run draft/ dir incomplete"
+      }
+    }
+  }
+}

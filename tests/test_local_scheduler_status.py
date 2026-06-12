@@ -237,6 +237,17 @@ def test_draft_complete_transitions_to_consistency(tmp_path: Path) -> None:
     assert report["draft_progress"]["percent"] == 100.0
 
 
+def test_readme_md_excluded_from_total_chapters(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path, chapters=6)
+    (repo / "input_jp" / "README.md").write_text("# notes\n", encoding="utf-8")
+    set_queue(repo, anchor=1)
+    add_run(repo, "run_a", [1, 2, 3, 4, 5, 6])
+    report = collect_status(repo)
+    assert report["draft_progress"]["total_chapters"] == 6
+    assert report["draft_progress"]["completed_chapters"] == 6
+    assert report["current_phase"] == "consistency"
+
+
 # ---------------------------------------------------------------------------
 # safe_to_run aggregation
 # ---------------------------------------------------------------------------

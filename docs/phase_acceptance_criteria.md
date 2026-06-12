@@ -8,7 +8,7 @@
 
 | # | 条件 | 验证方式 |
 | --- | --- | --- |
-| A1 | 613 章全部存在 draft 输出 | `phase_a_completion_check.py --json` 章节计数 = 613 |
+| A1 | 612 编号章全部存在 draft 输出（`input_jp/README.md` 不计入章节） | `phase_a_completion_check.py --json` 章节计数 = 612 |
 | A2 | 全部 segment status=completed | 同上，pending/in_progress=0 |
 | A3 | failed segment = 0 | 同上 |
 | A4 | blocking validation_failed = 0 | 同上 |

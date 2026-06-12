@@ -23,6 +23,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from local_env import apply_local_env  # noqa: E402
 from micro_round_plan import resolve_round_plan  # noqa: E402
 from plan_translation_batches import plan_batches, resolve_plan_segments  # noqa: E402
+from translation.chapter_parser import chapter_numbers_in_range  # noqa: E402
 from translation.draft_runner import (  # noqa: E402
     DraftRunTickExit,
     RunBudget,
@@ -177,30 +178,37 @@ def _hydrate_if_needed(
 
 
 def _chapter_quality(doc: dict[str, Any], ch_start: int, ch_end: int) -> dict[str, Any]:
-    import re
+    expected = chapter_numbers_in_range(REPO_ROOT, ch_start, ch_end)
+    if not expected:
+        expected = set(range(ch_start, ch_end + 1))
 
-    completed: list[int] = []
-    failed: list[int] = []
+    completed: set[int] = set()
+    failed: set[int] = set()
     for ch in doc.get("chapters", []):
         m = re.search(r"(\d+)", str(ch.get("chapter_id") or ""))
         if not m:
             continue
         num = int(m.group(1))
-        if num < ch_start or num > ch_end:
+        if num not in expected:
             continue
         segs = ch.get("segments", [])
         if not segs:
-            failed.append(num)
+            failed.add(num)
             continue
         ok = all((s.get("draft_text") or "").strip() for s in segs)
         if ok:
-            completed.append(num)
+            completed.add(num)
         else:
-            failed.append(num)
-    target = ch_end - ch_start + 1
+            failed.add(num)
+
+    for num in expected:
+        if num not in completed and num not in failed:
+            failed.add(num)
+
     return {
-        "completed_chapters": sorted(set(completed)),
-        "round_done": len(set(completed)) >= target and not failed,
+        "completed_chapters": sorted(completed),
+        "expected_chapters": sorted(expected),
+        "round_done": expected <= completed and not failed,
     }
 
 

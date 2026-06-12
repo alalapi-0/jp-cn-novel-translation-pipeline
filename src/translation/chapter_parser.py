@@ -23,10 +23,54 @@ class ParsedChapter:
     segments: list[Segment]
 
 
+_CHAPTER_FILE_NUM_RE = re.compile(r"^(\d+)-")
+
+
 def chapter_id_from_path(path: Path) -> str:
     stem = path.stem
     m = re.match(r"^(\d+)", stem)
     return f"ch-{m.group(1)}" if m else f"ch-{path.stem[:32]}"
+
+
+def chapter_numbers_in_input_dir(input_dir: Path) -> set[int]:
+    """Numbered chapter files only (excludes README.md and non-numbered .md)."""
+    out: set[int] = set()
+    if not input_dir.is_dir():
+        return out
+    for path in input_dir.iterdir():
+        if not path.is_file() or path.suffix.lower() not in (".md", ".txt"):
+            continue
+        if path.name == "README.md":
+            continue
+        match = _CHAPTER_FILE_NUM_RE.match(path.name)
+        if match:
+            out.add(int(match.group(1)))
+    return out
+
+
+def count_source_chapters(repo_root: Path) -> int:
+    """Count numbered source chapters across input_jp / input_zh (max of dirs)."""
+    best = 0
+    for dirname in ("input_jp", "input_zh"):
+        nums = chapter_numbers_in_input_dir(repo_root / dirname)
+        if nums:
+            best = max(best, len(nums))
+    return best
+
+
+def chapter_numbers_in_range(
+    repo_root: Path,
+    ch_start: int,
+    ch_end: int,
+) -> set[int]:
+    nums: set[int] = set()
+    for dirname in ("input_jp", "input_zh"):
+        nums |= {
+            n
+            for n in chapter_numbers_in_input_dir(repo_root / dirname)
+            if ch_start <= n <= ch_end
+        }
+    return nums
 
 
 def parse_chapter_file(path: Path) -> ParsedChapter:

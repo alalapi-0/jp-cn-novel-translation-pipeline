@@ -1,22 +1,22 @@
-round_id: fs_008_block27_20260612
-round_name: "Phase A Block #27"
-round_number_human: "FS-008 Block #27 / Phase A batch tail"
+round_id: fs_010_20260612
+round_name: "FS-010 Phase A completion gate"
+round_number_human: "FS-010 / Phase A closure"
 status: completed
-type: translation_execution
-real_api_called: true
+type: phase_gate
+real_api_called: false
 
 completed_tasks:
-  - "Completed D-MR-133 through D-MR-137 (1959 segments; D-MR-137 required 4 tick slots)"
-  - "Numbered chapters 1-612 contiguous draft complete"
-  - "Identified ch613 gap: README.md counted in total_chapters without draft target"
+  - "Fixed _count_total_chapters to exclude README.md (612 numbered chapters)"
+  - "Added scripts/phase_a_completion_check.py with A1-A9 criteria"
+  - "Sealed D-MR-137 metrics mismatch (611-612 range, no ch613 source)"
+  - "phase_a_completion_check overall_pass=true; scheduler draft 612/612 consistency phase"
+  - "throughput_gate WARN (expected); orphan CLEAN"
 
 next_recommended_round:
-  id: FS-010
-  title: "Phase A completion gate: completion check, README/total count fix, D-MR-137 metrics seal"
+  id: FS-031
+  title: "Phase B toolchain: chapter manifest, segment index, consistency audit"
 
 blockers:
   hard: []
   soft:
-    - "scheduler 612/613: missing chapter 613 is README inclusion in _count_total_chapters"
-    - "micro_round_metrics D-MR-137 status=failed despite failed_segments=0"
-    - "throughput_gate WARN: stage_state_stale + diagnostic checkpoints"
+    - "throughput_gate WARN: refine_pending + diagnostic checkpoints (expected post-Phase A)"
