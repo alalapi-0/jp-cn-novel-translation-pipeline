@@ -1,22 +1,20 @@
-round_id: fs_038_20260612
-round_name: "FS-038 baseline lock and read-only protection"
-round_number_human: "FS-038 / Phase C baseline lock"
+round_id: fs_039_20260612
+round_name: "FS-039 baseline go decision and Phase D handoff"
+round_number_human: "FS-039 / Phase C go gate"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/translation/baseline_guard.py (pipeline write refusal + filesystem read-only)"
-  - "Added src/translation/baseline_lock.py + scripts/lock_baseline.py (snapshot + metadata)"
-  - "Integrated write guard into src/translation/exporter.py"
-  - "Implemented task_planner baseline_lock -> lock_baseline.py --json"
-  - "Added tests/test_baseline_lock.py (6 tests); npm run test:py 477 passed"
-  - "Real data: draft_full_baseline 612 chapters locked; aggregate_sha256 c8617f9cc81393e4…; 148 source runs"
-  - "Phase A/B prerequisite gates PASS; 1055 source_residual retranslations non-blocking"
+  - "Generated draft_full_baseline_go_decision.md (§14.3 checklist, conclusion GO)"
+  - "Generated docs/phase_d_handoff.md (R-MR-001..148, refine_primary, checker checklist)"
+  - "Extended collect_status phase ladder: consistency -> baseline_lock -> refinement (FS-039)"
+  - "task_planner baseline_go_decision branch; tests +4 (481 passed)"
+  - "Scheduler phase=refinement, next R-MR-001 ch171-173 after go decision"
 
 next_recommended_round:
-  id: FS-039
-  title: "baseline go decision and Phase D handoff"
+  id: FS-040
+  title: "R-MR queue planner"
 
 blockers:
   hard: []

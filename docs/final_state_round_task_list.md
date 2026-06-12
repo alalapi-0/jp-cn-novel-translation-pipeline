@@ -1,4 +1,4 @@
-> ✅ **FS-038 baseline lock 完成**（2026-06-12）：`lock_baseline.py` + `baseline_guard.py`/`baseline_lock.py`；612 章 `draft_full_baseline/` 快照 + metadata（aggregate hash + 148 source runs）；写保护（管线拒绝 + 文件只读）；477 passed。**推荐下一闸门：FS-039 go decision**。
+> ✅ **FS-039 baseline go decision 完成**（2026-06-12）：`draft_full_baseline_go_decision.md` 结论 **GO**（§14.3 逐条核对 Phase A/B 报告）；`docs/phase_d_handoff.md`（R-MR-001 ch171-173、refine_primary、checker 清单）；scheduler `current_phase=refinement`；481 passed。**推荐下一闸门：FS-040 R-MR 队列规划器**。
 
 > ✅ **FS-036 local fix plan 完成**（2026-06-12）：`build_local_fix_plan.py --json` status=PASS；真实数据 term_fixes=0、retranslate_tasks=1（1079 source_residual segments）、deferred=50（unlisted_high_freq）；`apply_term_fixes.py --dry-run` applied=0（无规则补丁）；task_planner consistency 分支接入 build/apply；`tests/test_local_fix_plan.py` 12 passed；npm run test:py 461 passed。**推荐下一闸门：FS-037 模型仲裁 + Phase B 收尾**。
 
@@ -1013,6 +1013,8 @@ go decision + handoff；**Phase C 完成**。
 ### 下一轮衔接
 FS-040 润色工具链。
 
+> ✅ 完成于 2026-06-12。`draft_full_baseline_go_decision.md` 结论 **GO**；`docs/phase_d_handoff.md`；`collect_status` phase 阶梯（baseline_lock → refinement）；scheduler 实测 `phase=refinement` `R-MR-001` `171-173`；测试 +4（481 passed）。
+
 ---
 
 # Stage S8：Phase D 润色工具链与 R-MR 推进
@@ -1563,7 +1565,7 @@ FS-070。
 | FS-036 | S6 Phase B | done |
 | FS-037 | S6 Phase B | completed（2026-06-12，Phase B PASS；retranslate pilot 24/1079） |
 | FS-038 | S7 Phase C | completed（2026-06-12，612 章 baseline lock + 写保护 PASS） |
-| FS-039 | S7 Phase C | not_started |
+| FS-039 | S7 Phase C | completed（2026-06-12，GO decision + Phase D handoff；phase→refinement） |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
 | FS-051…FS-053 | S10 资产 UI | not_started |

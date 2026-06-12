@@ -107,6 +107,14 @@ def test_baseline_lock_phase_implemented() -> None:
     assert "lock_baseline.py" in " ".join(plan.command)
 
 
+def test_baseline_go_decision_awaits_doc() -> None:
+    status = make_status(phase="baseline_lock", next_task="baseline_go_decision", round_id=None, chapter_range=None)
+    plan = plan_next_task(status)
+    assert plan.implemented is False
+    assert plan.task_type == "baseline_go_decision"
+    assert "go_decision" in plan.reason
+
+
 def test_refinement_phase_not_implemented() -> None:
     status = make_status(phase="refinement", next_task="refine_micro_round", round_id="R-MR-001", chapter_range="1-3")
     plan = plan_next_task(status)

@@ -334,3 +334,74 @@ def test_tick_state_defaults_to_none(tmp_path: Path) -> None:
     report = collect_status(repo)
     assert report["last_successful_tick"] is None
     assert report["last_blocked_reason"] is None
+
+
+# ---------------------------------------------------------------------------
+# Post-draft phase ladder (FS-039: baseline_lock → refinement)
+# ---------------------------------------------------------------------------
+
+def _write_phase_b_pass(repo: Path) -> None:
+    reports = repo / "docs" / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase_b_completion_report.json").write_text(
+        json.dumps({"overall_pass": True}),
+        encoding="utf-8",
+    )
+
+
+def _write_baseline_locked(repo: Path) -> None:
+    (repo / "draft_full_baseline_metadata.json").write_text(
+        json.dumps({"locked": True, "chapter_count": 6}),
+        encoding="utf-8",
+    )
+
+
+def _write_go_decision(repo: Path, *, go: bool = True) -> None:
+    conclusion = "**GO**" if go else "**NO-GO**"
+    (repo / "draft_full_baseline_go_decision.md").write_text(
+        f"# Baseline Go Decision\n\n## 结论: {conclusion}\n",
+        encoding="utf-8",
+    )
+
+
+def test_phase_b_pass_transitions_to_baseline_lock(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path, chapters=6)
+    set_queue(repo, anchor=1)
+    add_run(repo, "run_a", [1, 2, 3, 4, 5, 6])
+    _write_phase_b_pass(repo)
+    report = collect_status(repo)
+    assert report["current_phase"] == "baseline_lock"
+    assert report["next_task"] == "baseline_lock"
+    assert report["detail"]["phase_b_pass"] is True
+
+
+def test_baseline_locked_awaits_go_decision(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path, chapters=6)
+    set_queue(repo, anchor=1)
+    add_run(repo, "run_a", [1, 2, 3, 4, 5, 6])
+    _write_phase_b_pass(repo)
+    _write_baseline_locked(repo)
+    report = collect_status(repo)
+    assert report["current_phase"] == "baseline_lock"
+    assert report["next_task"] == "baseline_go_decision"
+    assert report["detail"]["baseline_locked"] is True
+    assert report["detail"]["go_decision_approved"] is False
+
+
+def test_go_decision_approved_transitions_to_refinement(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path, chapters=9)
+    set_queue(repo, anchor=1)
+    (repo / "workspace" / "control" / "scheduler_queue.json").write_text(
+        json.dumps({"dmr_anchor_chapter": 1, "rmr_anchor_chapter": 1, "chapters_per_round": 3}),
+        encoding="utf-8",
+    )
+    add_run(repo, "run_d", [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    _write_phase_b_pass(repo)
+    _write_baseline_locked(repo)
+    _write_go_decision(repo, go=True)
+    report = collect_status(repo)
+    assert report["current_phase"] == "refinement"
+    assert report["next_task"] == "refine_micro_round"
+    assert report["next_round_id"] == "R-MR-001"
+    assert report["next_chapter_range"] == "1-3"
+    assert report["detail"]["go_decision_approved"] is True

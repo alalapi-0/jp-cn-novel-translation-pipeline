@@ -364,6 +364,14 @@ def plan_next_task(
         )
 
     if phase == "baseline_lock":
+        next_task = str(status.get("next_task") or "")
+        if next_task == "baseline_go_decision":
+            return TaskPlan(
+                task_type="baseline_go_decision",
+                implemented=False,
+                reason="awaiting draft_full_baseline_go_decision.md (FS-039 gate; human/agent doc step)",
+                mode=mode,
+            )
         return TaskPlan(
             task_type="baseline_lock",
             implemented=True,

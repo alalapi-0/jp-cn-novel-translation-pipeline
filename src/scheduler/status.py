@@ -28,10 +28,15 @@ from translation.chapter_parser import count_source_chapters
 TICK_STATE_REL = "workspace/control/scheduler_tick_state.json"
 QUEUE_CONFIG_REL = "workspace/control/scheduler_queue.json"
 REGISTRY_STATE_REL = "workspace/pipeline_state.json"
+GO_DECISION_REL = "draft_full_baseline_go_decision.md"
+PHASE_B_REPORT_REL = "docs/reports/phase_b_completion_report.json"
+CONSISTENCY_REPORT_REL = "workspace/consistency_audit/draft_consistency_report.json"
 
 # Production D-MR anchor per docs/translation_recovery_3ch_roadmap.md:
 # D-MR-001 covers chapters 203-205, 3 chapters per micro round.
 DEFAULT_DMR_ANCHOR_CHAPTER = 203
+# R-MR-001 covers chapters 171-173 (historical refined 1-170 retained).
+DEFAULT_RMR_ANCHOR_CHAPTER = 171
 DEFAULT_CHAPTERS_PER_ROUND = 3
 
 _CHAPTER_NUM_RE = re.compile(r"^(\d+)-")
@@ -160,8 +165,44 @@ def _count_total_chapters(repo_root: Path) -> int:
 def _queue_config(repo_root: Path) -> dict[str, int]:
     doc = _safe_load_json(repo_root / QUEUE_CONFIG_REL) or {}
     anchor = int(doc.get("dmr_anchor_chapter") or DEFAULT_DMR_ANCHOR_CHAPTER)
+    rmr_anchor = int(doc.get("rmr_anchor_chapter") or DEFAULT_RMR_ANCHOR_CHAPTER)
     per_round = int(doc.get("chapters_per_round") or DEFAULT_CHAPTERS_PER_ROUND)
-    return {"anchor": anchor, "per_round": max(1, per_round)}
+    return {
+        "anchor": anchor,
+        "rmr_anchor": rmr_anchor,
+        "per_round": max(1, per_round),
+    }
+
+
+def _phase_b_pass(repo_root: Path) -> bool:
+    """Phase B gate satisfied — consistency audit ready for baseline lock."""
+    phase_b = _safe_load_json(repo_root / PHASE_B_REPORT_REL)
+    if phase_b and phase_b.get("overall_pass"):
+        return True
+    report = _safe_load_json(repo_root / CONSISTENCY_REPORT_REL)
+    return bool(report and report.get("recommendation") == "ready_for_baseline_lock")
+
+
+def _baseline_locked(repo_root: Path) -> bool:
+    from translation.baseline_guard import baseline_metadata_path
+
+    meta = _safe_load_json(baseline_metadata_path(repo_root))
+    return bool(meta and meta.get("locked"))
+
+
+def _go_decision_approved(repo_root: Path) -> bool:
+    path = repo_root / GO_DECISION_REL
+    if not path.is_file():
+        return False
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    if re.search(r"结论[：:]\s*\*\*GO\*\*", text, re.IGNORECASE):
+        return True
+    if re.search(r"#\s*Go decision:\s*\*\*GO\*\*", text, re.IGNORECASE):
+        return True
+    return False
 
 
 def _next_draft_target(
@@ -203,6 +244,33 @@ def _next_draft_target(
     }
 
 
+def _next_refine_target(
+    completed: set[int],
+    total: int,
+    anchor: int,
+    per_round: int,
+) -> dict[str, Any]:
+    """Locate the first missing refined chapter and map it onto the R-MR queue."""
+    missing = [ch for ch in range(anchor, total + 1) if ch not in completed]
+    if not missing:
+        return {
+            "refine_complete": True,
+            "next_round_id": None,
+            "next_chapter_range": None,
+            "missing_chapter_count": 0,
+        }
+    next_chapter = missing[0]
+    index = (next_chapter - anchor) // per_round + 1
+    start = anchor + (index - 1) * per_round
+    end = min(start + per_round - 1, total)
+    return {
+        "refine_complete": False,
+        "next_round_id": f"R-MR-{index:03d}",
+        "next_chapter_range": f"{start}-{end}",
+        "missing_chapter_count": len(missing),
+    }
+
+
 def _progress_dict(completed: int, total: int) -> dict[str, Any]:
     percent = round(100.0 * completed / total, 2) if total else 0.0
     return {"completed_chapters": completed, "total_chapters": total, "percent": percent}
@@ -233,14 +301,44 @@ def collect_status(repo_root: Path | None = None) -> dict[str, Any]:
     queue = _queue_config(root)
     target = _next_draft_target(draft_done, total_chapters, queue["anchor"], queue["per_round"])
 
-    if paused:
-        next_task = "paused"
-    elif not target["draft_complete"]:
+    refine_target: dict[str, Any] = {
+        "refine_complete": True,
+        "next_round_id": None,
+        "next_chapter_range": None,
+        "missing_chapter_count": 0,
+    }
+
+    if not target["draft_complete"]:
+        current_phase = "draft"
         next_task = "draft_gap_backfill" if target.get("gap_below_anchor") else "draft_micro_round"
+    elif _go_decision_approved(root) and _baseline_locked(root):
+        refine_target = _next_refine_target(
+            refine_done, total_chapters, queue["rmr_anchor"], queue["per_round"]
+        )
+        current_phase = "refinement"
+        next_task = "refine_micro_round" if not refine_target["refine_complete"] else "refinement_complete"
+    elif _baseline_locked(root):
+        current_phase = "baseline_lock"
+        next_task = "baseline_go_decision"
+    elif _phase_b_pass(root):
+        current_phase = "baseline_lock"
+        next_task = "baseline_lock"
     else:
+        current_phase = "consistency"
         next_task = "draft_consistency_audit"  # Phase B entry; planner lands in FS-004
 
-    current_phase = "draft" if not target["draft_complete"] else "consistency"
+    if paused:
+        next_task = "paused"
+
+    if current_phase == "refinement":
+        next_round_id = refine_target["next_round_id"]
+        next_chapter_range = refine_target["next_chapter_range"]
+    elif current_phase == "draft":
+        next_round_id = target["next_round_id"]
+        next_chapter_range = target["next_chapter_range"]
+    else:
+        next_round_id = None
+        next_chapter_range = None
 
     tick_state = _safe_load_json(root / TICK_STATE_REL) or {}
 
@@ -259,8 +357,8 @@ def collect_status(repo_root: Path | None = None) -> dict[str, Any]:
     return {
         "current_phase": current_phase,
         "next_task": next_task,
-        "next_round_id": target["next_round_id"],
-        "next_chapter_range": target["next_chapter_range"],
+        "next_round_id": next_round_id,
+        "next_chapter_range": next_chapter_range,
         "active_worker_count": len(active_workers),
         "orphan_worker_count": len(orphan_workers),
         "scheduler_lock_status": lock_state,
@@ -274,8 +372,13 @@ def collect_status(repo_root: Path | None = None) -> dict[str, Any]:
             "generated_at": _utc_now(),
             "blocked_reasons": blocked_reasons,
             "missing_draft_chapters": target["missing_chapter_count"],
+            "missing_refine_chapters": refine_target["missing_chapter_count"],
             "dmr_anchor_chapter": queue["anchor"],
+            "rmr_anchor_chapter": queue["rmr_anchor"],
             "chapters_per_round": queue["per_round"],
+            "baseline_locked": _baseline_locked(root),
+            "go_decision_approved": _go_decision_approved(root),
+            "phase_b_pass": _phase_b_pass(root),
             "lock_holder": lock["holder"],
         },
     }
