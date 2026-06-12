@@ -67,3 +67,4 @@
 {"timestamp": "2026-06-12T04:11:57Z", "round_id": "FS-008-block19", "action": "phase_a_block_complete", "detail": "D-MR-093..097; 493/613"}
 {"timestamp": "2026-06-12T05:12:00Z", "round_id": "FS-008-block20", "action": "phase_a_block_complete", "detail": "D-MR-098..102; 508/613; cost 0.12937344; 88 api calls"}
 {"timestamp": "2026-06-12T05:57:00Z", "round_id": "FS-008-block21", "action": "phase_a_block_complete", "detail": "D-MR-103..107; 523/613; cost 0.1332337; 88 api calls"}
+{"ts": "2026-06-12T06:46:15Z", "round_id": "FS-008-block22", "event": "block_complete", "progress": "538/613", "next": "D-MR-113"}

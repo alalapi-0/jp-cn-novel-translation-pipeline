@@ -1,3 +1,5 @@
+> ✅ Block #22 收口于 2026-06-12（D-MR-108 → 109 → 110 → 111 → 112，15 章）。**进度 538/613（87.77%），ch1-538 连续**，next D-MR-113（539-541）。五轮 1727/1727 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.11871376（82 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
+
 > ✅ Block #21 收口于 2026-06-12（D-MR-103 → 104 → 105 → 106 → 107，15 章）。**进度 523/613（85.32%），ch1-523 连续**，next D-MR-108（524-526）。五轮 1878/1878 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.1332337（88 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
 
 > ✅ Block #20 收口于 2026-06-12（D-MR-098 → 099 → 100 → 101 → 102，15 章）。**进度 508/613（82.87%），ch1-508 连续**，next D-MR-103（509-511）。五轮 1764/1764 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.12937344（88 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。

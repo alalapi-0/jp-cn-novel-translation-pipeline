@@ -110,7 +110,7 @@ final_state:
   guardrails: docs/non_goals_and_guardrails.md
   execution_protocol: docs/next_agent_execution_protocol.md
   current_phase: phase_a_draft_translation
-  next_micro_round: D-MR-108
+  next_micro_round: D-MR-113
 
 legacy_governance:
   note: "Existing governance/*.yaml and docs/roadmap_rounds_* remain authoritative for pipeline rounds"
