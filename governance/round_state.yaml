@@ -1,24 +1,23 @@
-round_id: fs_040_20260612
-round_name: "FS-040 R-MR queue planner"
-round_number_human: "FS-040 / Phase D queue planning"
+round_id: fs_041_20260612
+round_name: "FS-041 refine runner supervised"
+round_number_human: "FS-041 / Phase D refine micro-round execution"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added scripts/plan_refine_micro_rounds.py (baseline read-only, R-MR batch planning)"
-  - "Extended micro_round_plan.py: refine_mr_plan, build_refine_mr_queue, resolve R-MR"
-  - "task_planner refinement branch implemented (run_micro_round --phase refine dry-run)"
-  - "R-MR queue 148 rounds / 442 chapters aligned with locked baseline"
-  - "R-MR-001 dry-run: 828 segments, 104 batches; tests +10 (491 passed)"
+  - "Extended run_micro_round.py --phase refine (dry-run plan + supervised fake e2e)"
+  - "refine_runner: bootstrap from draft_full_baseline, RunBudget, checkpoint, compact progress"
+  - "R-MR-001 dry-run: 828 segments / 104 batches from locked baseline (read-only)"
+  - "Fake-provider e2e ch171: 24/39 refined, 3 api_calls, budget_exhausted resume path"
+  - "tests/test_run_micro_round_refine.py +5; npm run test:py 496 passed"
 
 next_recommended_round:
-  id: FS-041
-  title: "refine runner supervised integration"
+  id: FS-042
+  title: "diff and change_log generation"
 
 blockers:
   hard: []
   soft:
     - "1055 source_residual segments remain in retranslate checkpoint (non-blocking)"
-    - "run_micro_round --phase refine execution lands FS-041 (planner command ready)"
     - "agent_gate warning: vector inspect warnings (pre-existing)"

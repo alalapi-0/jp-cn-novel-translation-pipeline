@@ -29,6 +29,10 @@ from translation.draft_runner import (  # noqa: E402
     RunBudget,
     run_draft_stage_b,
 )
+from translation.refine_runner import (  # noqa: E402
+    RefineRunTickExit,
+    run_refine_micro_round,
+)
 from translation.run_progress import (  # noqa: E402
     atomic_write_json,
     safe_load_json,
@@ -45,8 +49,10 @@ _registry = importlib.util.module_from_spec(_registry_spec)
 _registry_spec.loader.exec_module(_registry)
 
 DEFAULT_DRAFT_MODEL = "deepseek/deepseek-v4-pro"
+DEFAULT_REFINE_MODEL = "x-ai/grok-4.3"
 DEFAULT_ASSET_CONTEXT = REPO_ROOT / "workspace/assets/translation_memory/pw-user-assets-flow.json"
 STAGE_STATE_PRODUCTION = REPO_ROOT / "workspace/stage_state_production.json"
+REFINE_STAGE_STATE = REPO_ROOT / "workspace/stage_state.json"
 
 
 def _utc_now() -> str:
@@ -111,9 +117,10 @@ def _release_translate_lock(fd: int, stage: str = "", run_id: str = "") -> int:
 def _production_env(
     controller_run_id: str,
     round_id: str,
-    draft_model: str,
+    model_name: str,
     *,
     real_api: bool = True,
+    phase: str = "draft",
 ) -> dict[str, str]:
     env = os.environ.copy()
     if real_api:
@@ -124,9 +131,14 @@ def _production_env(
     env["TRANSLATION_CONTROLLER_PID"] = str(os.getpid())
     env["TRANSLATION_CONTROLLER_RUN_ID"] = controller_run_id
     env["TRANSLATION_ROUND_ID"] = round_id
-    if draft_model:
-        env["DRAFT_MODEL"] = draft_model
-    env["MODEL_ROUTER_DEFAULT_PROFILE"] = "draft_translation"
+    if phase == "refine":
+        if model_name:
+            env["REFINE_MODEL"] = model_name
+        env["MODEL_ROUTER_DEFAULT_PROFILE"] = "refinement"
+    else:
+        if model_name:
+            env["DRAFT_MODEL"] = model_name
+        env["MODEL_ROUTER_DEFAULT_PROFILE"] = "draft_translation"
     return env
 
 
@@ -177,7 +189,13 @@ def _hydrate_if_needed(
     return proc.returncode
 
 
-def _chapter_quality(doc: dict[str, Any], ch_start: int, ch_end: int) -> dict[str, Any]:
+def _chapter_quality(
+    doc: dict[str, Any],
+    ch_start: int,
+    ch_end: int,
+    *,
+    phase: str = "draft",
+) -> dict[str, Any]:
     expected = chapter_numbers_in_range(REPO_ROOT, ch_start, ch_end)
     if not expected:
         expected = set(range(ch_start, ch_end + 1))
@@ -195,7 +213,14 @@ def _chapter_quality(doc: dict[str, Any], ch_start: int, ch_end: int) -> dict[st
         if not segs:
             failed.add(num)
             continue
-        ok = all((s.get("draft_text") or "").strip() for s in segs)
+        if phase == "refine":
+            ok = all(
+                (s.get("refined_text") or "").strip() or s.get("human_edited")
+                for s in segs
+                if (s.get("draft_text") or "").strip()
+            )
+        else:
+            ok = all((s.get("draft_text") or "").strip() for s in segs)
         if ok:
             completed.add(num)
         else:
@@ -219,6 +244,24 @@ def _write_metrics(round_id: str, payload: dict[str, Any]) -> Path:
     path = metrics_dir / f"{safe_id}.json"
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def _dry_run_refine_plan(
+    *,
+    round_id: str,
+    chapter_range: str,
+) -> dict[str, Any]:
+    from plan_refine_micro_rounds import plan_round  # noqa: WPS433
+
+    payload = plan_round(
+        REPO_ROOT,
+        round_id=round_id,
+        chapter_range=chapter_range.strip(),
+    )
+    payload["round_id"] = round_id
+    payload["phase"] = "refine"
+    payload["mode"] = "dry_run"
+    return payload
 
 
 def _dry_run_plan(
@@ -341,12 +384,21 @@ def status_from_draft_summary(
     return "completed"
 
 
+def status_from_refine_summary(
+    summary: Any,
+    run_budget: RunBudget | None,
+) -> str:
+    return status_from_draft_summary(summary, run_budget)
+
+
 def finalize_completed_run_state(
     repo_root: Path,
     *,
     run_id: str,
     progress: dict[str, Any],
     checkpoint: dict[str, Any],
+    phase: str = "",
+    stage: str = "",
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Close checkpoint and run progress when coverage proves the run is done."""
     total = int(progress.get("total_segments") or 0)
@@ -355,11 +407,13 @@ def finalize_completed_run_state(
         return progress, checkpoint
 
     run_root = repo_root / "workspace" / "runs" / run_id
+    resolved_phase = phase or str(progress.get("phase") or "draft")
+    resolved_stage = stage or str(progress.get("stage") or "draft_stage_b_50ch")
     write_run_progress(
         run_root,
         run_id=run_id,
-        phase=str(progress.get("phase") or "draft"),
-        stage=str(progress.get("stage") or "draft_stage_b_50ch"),
+        phase=resolved_phase,
+        stage=resolved_stage,
         chapter_offset=int(progress.get("chapter_offset") or 0),
         status="completed",
         total_segments=total,
@@ -385,6 +439,291 @@ def finalize_completed_run_state(
     )
 
 
+def _run_refine_micro_round(
+    *,
+    round_id: str = "R-MR-001",
+    chapter_range: str = "",
+    run_id: str = "",
+    max_api_calls: int = 0,
+    max_segments: int = 0,
+    max_wall_time_minutes: float = 0,
+    progress_interval_seconds: float = 30,
+    resume_from_checkpoint: bool = True,
+    real_api: bool = True,
+    fake_provider: bool = False,
+    dry_run: bool = False,
+    diagnostic_only: bool = False,
+    stop_on_round_complete: bool = True,
+    supervised: bool = True,
+    skip_gate: bool = False,
+    refine_model: str = DEFAULT_REFINE_MODEL,
+) -> tuple[int, dict[str, Any]]:
+    if not supervised:
+        return 2, {"error": "--supervised required"}
+
+    apply_local_env(REPO_ROOT)
+
+    if dry_run:
+        payload = _dry_run_refine_plan(
+            round_id=round_id,
+            chapter_range=chapter_range.strip(),
+        )
+        metrics_path = _write_metrics(round_id, payload)
+        payload["metrics_path"] = str(metrics_path.relative_to(REPO_ROOT))
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0, payload
+
+    install_signal_handlers()
+    clear_stop_request(REPO_ROOT)
+
+    plan = resolve_round_plan(round_id, run_id=run_id, chapter_range=chapter_range)
+    if not plan or plan.get("phase") != "refine":
+        return 2, {"error": f"unknown refine round_id={round_id}"}
+
+    _registry.heal_stale_workers()
+    if _registry.find_orphan_api_workers():
+        return 2, {"error": "orphan workers present"}
+
+    use_real_api = real_api and not fake_provider
+    if diagnostic_only:
+        skip_gate = True
+    if not skip_gate and use_real_api:
+        gate = _run_gate()
+        if gate.get("decision") == "BLOCK":
+            return 2, {"error": "throughput_gate BLOCK", "gate": gate}
+
+    offset = int(plan["offset"])
+    limit = int(plan.get("limit") or 3)
+    ch_start = int(plan["chapter_start"])
+    ch_end = int(plan["chapter_end"])
+    explicit_run_id = run_id.strip()
+    run_id = explicit_run_id or str(plan.get("resume_run_id") or "").strip()
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    if fake_provider or diagnostic_only:
+        if not explicit_run_id or not explicit_run_id.startswith("micro_validate"):
+            run_id = f"micro_validate_{ts}"
+    elif not run_id:
+        run_id = f"run_{ts}_refine_stage_c"
+
+    controller_run_id = f"micro_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
+    env = _production_env(
+        controller_run_id, round_id, refine_model, real_api=use_real_api, phase="refine"
+    )
+    for key, val in env.items():
+        os.environ[key] = val
+    if fake_provider:
+        os.environ.pop("REAL_API_TESTS_ENABLED", None)
+
+    run_budget = RunBudget(
+        max_api_calls=max_api_calls,
+        max_segments=max_segments,
+        max_wall_seconds=max_wall_time_minutes * 60 if max_wall_time_minutes > 0 else 0,
+        progress_interval_seconds=progress_interval_seconds,
+    )
+    os.environ["MICRO_ROUND_MAX_API_CALLS"] = str(max_api_calls or 0)
+    os.environ["MICRO_ROUND_MAX_SEGMENTS"] = str(max_segments or 0)
+    os.environ["MICRO_ROUND_MAX_WALL_SECONDS"] = str(run_budget.max_wall_seconds or 0)
+    os.environ["MICRO_ROUND_PROGRESS_INTERVAL"] = str(progress_interval_seconds)
+
+    log_dir = REPO_ROOT / "workspace" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"micro_round_{round_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.log"
+
+    lock_fd = _acquire_translate_lock("refine_stage_c", run_id)
+    if lock_fd < 0:
+        return 2, {"error": f"translate lock busy for run_id={run_id}"}
+
+    worker, reason = _registry.register_worker(
+        task_type="refine",
+        stage="refine_stage_c",
+        run_id=run_id,
+        chapter_offset=offset,
+        controller_pid=os.getpid(),
+        controller_run_id=controller_run_id,
+        round_id=round_id,
+        chapter_range=f"{ch_start}-{ch_end}",
+        provider="fake" if fake_provider else "model_router",
+        model=refine_model if use_real_api else "fake-model-v1",
+        stop_policy="stop_when_controller_exits",
+    )
+    if worker is None:
+        _release_translate_lock(lock_fd, "refine_stage_c", run_id)
+        return 2, {"error": reason or "register_worker failed"}
+
+    worker_id = worker["worker_id"]
+
+    def heartbeat() -> None:
+        check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=REPO_ROOT)
+        _registry.heartbeat_worker(worker_id)
+
+    provider_factory = None
+    if fake_provider:
+        from providers.fake_provider import FakeProvider  # noqa: WPS433
+
+        def provider_factory(guard: Any) -> Any:
+            return FakeProvider(cost_guard=guard)
+
+    exit_code = 0
+    status = "failed"
+    summary_api_calls = 0
+
+    try:
+        if use_real_api and not diagnostic_only:
+            update_stage_state_if_newer(
+                REPO_ROOT,
+                {
+                    "phase": "refine",
+                    "stage": "refine_stage_c",
+                    "status": "in_progress",
+                    "run_id": run_id,
+                    "updated_at": _utc_now(),
+                    "refine_blocked": False,
+                    "summary": {"chapter_offset": offset, "limit_chapters": limit},
+                },
+                run_id=run_id,
+                state_path=REFINE_STAGE_STATE,
+            )
+
+        while True:
+            heartbeat()
+            try:
+                summary, run_root = run_refine_micro_round(
+                    repo_root=REPO_ROOT,
+                    run_id=run_id,
+                    chapter_start=ch_start,
+                    chapter_end=ch_end,
+                    chapter_offset=offset,
+                    provider_factory=provider_factory,
+                    force_dry_run=not use_real_api and not fake_provider,
+                    heartbeat_cb=heartbeat,
+                    worker_id=worker_id,
+                    run_budget=run_budget,
+                    round_id=round_id,
+                )
+                summary_api_calls = summary.api_calls
+                status = status_from_refine_summary(summary, run_budget)
+                break
+            except RefineRunTickExit as tick_exit:
+                summary_api_calls = tick_exit.summary.api_calls
+                progress_path = tick_exit.run_root / "run_progress.json"
+                progress = safe_load_json(progress_path) or {}
+                seg_doc = safe_load_json(tick_exit.run_root / "segments.json") or {}
+                quality = _chapter_quality(seg_doc, ch_start, ch_end, phase="refine")
+                if stop_on_round_complete and quality["round_done"]:
+                    status = "completed"
+                    break
+                if run_budget.exhausted():
+                    status = "budget_exhausted"
+                    break
+                if progress.get("status") == "in_progress":
+                    status = "in_progress"
+                    time.sleep(0.5)
+                    continue
+                status = "paused"
+                break
+            except StopRequested as exc:
+                status = "stopped_by_controller"
+                exit_code = 3
+                _registry.unregister_worker(worker_id, status=status)
+                return exit_code, {"error": str(exc), "run_id": run_id}
+    except Exception as exc:
+        _registry.unregister_worker(worker_id, status="failed")
+        return 2, {"error": str(exc), "run_id": run_id}
+    finally:
+        lock_fd = _release_translate_lock(lock_fd, "refine_stage_c", run_id)
+
+    progress_path = REPO_ROOT / "workspace" / "runs" / run_id / "run_progress.json"
+    cp_path = REPO_ROOT / "workspace" / "checkpoints" / f"{run_id}.json"
+    progress = safe_load_json(progress_path) or {}
+    checkpoint = safe_load_json(cp_path) or {}
+    seg_doc = safe_load_json(REPO_ROOT / "workspace" / "runs" / run_id / "segments.json") or {}
+    quality = _chapter_quality(seg_doc, ch_start, ch_end, phase="refine")
+    if quality["round_done"]:
+        status = "completed"
+        progress, checkpoint = finalize_completed_run_state(
+            REPO_ROOT,
+            run_id=run_id,
+            progress=progress,
+            checkpoint=checkpoint,
+            phase="refine",
+            stage="refine_stage_c",
+        )
+    elif status == "completed":
+        status = "failed"
+
+    write_final_micro_round_progress(
+        REPO_ROOT / "workspace" / "runs" / run_id,
+        round_id=round_id,
+        run_id=run_id,
+        status=status,
+        progress=progress,
+        checkpoint=checkpoint,
+        summary_api_calls=summary_api_calls,
+        run_budget=run_budget,
+    )
+
+    compact = build_compact_summary(
+        round_id=round_id,
+        plan=plan,
+        run_id=run_id,
+        progress=progress,
+        checkpoint=checkpoint,
+        summary_api_calls=summary_api_calls,
+        status=status,
+        run_budget=run_budget,
+        log_path=str(log_path.relative_to(REPO_ROOT)),
+    )
+    compact["phase"] = "refine"
+    compact["input_source"] = plan.get("input_source", "draft_full_baseline")
+    if fake_provider:
+        compact["provider_mode"] = "fake"
+    if diagnostic_only:
+        compact["diagnostic_only"] = True
+    avg_batch = round(
+        int(progress.get("completed_segments") or 0) / max(summary_api_calls, 1),
+        2,
+    ) if summary_api_calls else 0
+    compact["avg_segments_per_batch"] = avg_batch
+    metrics_path = _write_metrics(round_id, compact)
+    compact["metrics_path"] = str(metrics_path.relative_to(REPO_ROOT))
+    summary_path = REPO_ROOT / "workspace" / "logs" / f"micro_round_{round_id}_summary.json"
+    summary_path.write_text(json.dumps(compact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    compact["summary_path"] = str(summary_path.relative_to(REPO_ROOT))
+
+    reg_status = "completed" if status == "completed" else "tick_paused" if status in {"in_progress", "budget_exhausted", "paused"} else status
+    _registry.unregister_worker(worker_id, status=reg_status)
+
+    if use_real_api and not diagnostic_only and status == "completed":
+        update_stage_state_if_newer(
+            REPO_ROOT,
+            {
+                "phase": "refine",
+                "stage": "refine_stage_c",
+                "status": "completed",
+                "run_id": run_id,
+                "updated_at": _utc_now(),
+                "refine_blocked": False,
+                "summary": {
+                    "chapter_offset": offset,
+                    "limit_chapters": limit,
+                    "total_segments": int(progress.get("total_segments") or 0),
+                    "refined_segments": int(progress.get("completed_segments") or 0),
+                    "api_calls": summary_api_calls,
+                    "spent_usd": float(checkpoint.get("spent_usd") or 0),
+                },
+            },
+            run_id=run_id,
+            state_path=REFINE_STAGE_STATE,
+        )
+
+    orphans = _registry.find_orphan_api_workers()
+    if orphans:
+        compact["orphan_warning"] = len(orphans)
+
+    print(json.dumps(compact, ensure_ascii=False, indent=2))
+    return (0 if status == "completed" else 0, compact)
+
+
 def run_micro_round(
     *,
     phase: str = "draft",
@@ -407,9 +746,29 @@ def run_micro_round(
     supervised: bool = True,
     skip_gate: bool = False,
     draft_model: str = DEFAULT_DRAFT_MODEL,
+    refine_model: str = DEFAULT_REFINE_MODEL,
 ) -> tuple[int, dict[str, Any]]:
+    if phase == "refine":
+        return _run_refine_micro_round(
+            round_id=round_id,
+            chapter_range=chapter_range,
+            run_id=run_id,
+            max_api_calls=max_api_calls,
+            max_segments=max_segments,
+            max_wall_time_minutes=max_wall_time_minutes,
+            progress_interval_seconds=progress_interval_seconds,
+            resume_from_checkpoint=resume_from_checkpoint,
+            real_api=real_api,
+            fake_provider=fake_provider,
+            dry_run=dry_run,
+            diagnostic_only=diagnostic_only,
+            stop_on_round_complete=stop_on_round_complete,
+            supervised=supervised,
+            skip_gate=skip_gate,
+            refine_model=refine_model.strip() or DEFAULT_REFINE_MODEL,
+        )
     if phase != "draft":
-        return 2, {"error": "only draft phase supported"}
+        return 2, {"error": f"unsupported phase={phase}"}
     if not supervised:
         return 2, {"error": "--supervised required"}
 
@@ -461,7 +820,9 @@ def run_micro_round(
         run_id = f"run_{ts}_draft_stage_b_50ch"
 
     controller_run_id = f"micro_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
-    env = _production_env(controller_run_id, round_id, draft_model, real_api=use_real_api)
+    env = _production_env(
+        controller_run_id, round_id, draft_model, real_api=use_real_api, phase="draft"
+    )
     for key, val in env.items():
         os.environ[key] = val
     if fake_provider:
@@ -685,7 +1046,7 @@ def run_micro_round(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Supervised micro-round translation runner")
-    parser.add_argument("--phase", choices=["draft"], default="draft")
+    parser.add_argument("--phase", choices=["draft", "refine"], default="draft")
     parser.add_argument("--round-id", default="D-MR-003")
     parser.add_argument("--chapter-range", default="")
     parser.add_argument("--run-id", default="")
@@ -707,6 +1068,7 @@ def main() -> int:
     parser.add_argument("--resume-from-checkpoint", action="store_true", default=True)
     parser.add_argument("--no-resume-from-checkpoint", action="store_false", dest="resume_from_checkpoint")
     parser.add_argument("--draft-model", default=DEFAULT_DRAFT_MODEL)
+    parser.add_argument("--refine-model", default=DEFAULT_REFINE_MODEL)
     parser.add_argument("--skip-gate", action="store_true")
     args = parser.parse_args()
 
@@ -731,6 +1093,7 @@ def main() -> int:
         supervised=args.supervised,
         skip_gate=args.skip_gate,
         draft_model=args.draft_model.strip() or DEFAULT_DRAFT_MODEL,
+        refine_model=args.refine_model.strip() or DEFAULT_REFINE_MODEL,
     )
     if code != 0 and payload.get("error"):
         print(json.dumps(payload, ensure_ascii=False, indent=2), file=sys.stderr)

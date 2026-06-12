@@ -1,3 +1,5 @@
+> ✅ **FS-041 refine runner supervised 化 完成**（2026-06-12）：`run_micro_round.py --phase refine` 执行端；`refine_runner` baseline bootstrap + RunBudget/checkpoint/compact progress；R-MR-001 dry-run 828/104 batches；fake-provider e2e ch171 24/39（budget resume）；测试 +5（496 passed）。**推荐下一闸门：FS-042 diff / change_log**。
+
 > ✅ **FS-040 R-MR 队列规划器 完成**（2026-06-12）：`plan_refine_micro_rounds.py` + `micro_round_plan` R-MR 分支；task_planner refinement 已实现（`run_micro_round --phase refine` dry-run 命令）；队列 148 轮 / 442 章与 baseline 612 章对齐；R-MR-001 dry-run 828 segments / 104 batches；测试 +10（491 passed）。**推荐下一闸门：FS-041 refine runner supervised 化**。
 
 > ✅ **FS-039 baseline go decision 完成**（2026-06-12）：`draft_full_baseline_go_decision.md` 结论 **GO**（§14.3 逐条核对 Phase A/B 报告）；`docs/phase_d_handoff.md`（R-MR-001 ch171-173、refine_primary、checker 清单）；scheduler `current_phase=refinement`；481 passed。**推荐下一闸门：FS-040 R-MR 队列规划器**。
@@ -1057,6 +1059,8 @@ supervised refine runner。
 ### 下一轮衔接
 FS-042 diff / change_log。
 
+> ✅ 完成于 2026-06-12。`run_micro_round.py --phase refine`；`refine_runner` supervised/checkpoint/budget/compact progress；baseline 只读 bootstrap；fake-provider e2e + resume 无重复润色测试；496 passed。
+
 ## Round FS-042：diff 与 change_log 生成
 
 ### 目标
@@ -1571,7 +1575,8 @@ FS-070。
 | FS-038 | S7 Phase C | completed（2026-06-12，612 章 baseline lock + 写保护 PASS） |
 | FS-039 | S7 Phase C | completed（2026-06-12，GO decision + Phase D handoff；phase→refinement） |
 | FS-040 | S8 Phase D | completed |
-| FS-041…FS-045 | S8 Phase D | not_started |
+| FS-041 | S8 Phase D | completed（2026-06-12，refine runner supervised + checkpoint） |
+| FS-042…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
 | FS-051…FS-053 | S10 资产 UI | not_started |
 | FS-054…FS-056 | S11 对照页 | not_started |
