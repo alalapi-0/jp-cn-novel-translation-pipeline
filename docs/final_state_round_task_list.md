@@ -1,3 +1,5 @@
+> ✅ Block #17 收口于 2026-06-12（D-MR-083 → 084 → 085 → 086 → 087；087 跨 2 tick 同 run 续跑，15 章）。**进度 463/613（75.53%），ch1-463 连续**，next D-MR-088（464-466）。五轮 2387/2387 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.21516848（113 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
+
 # Final State Round Task List
 
 > 最终成品轮次任务清单（FS-000 … FS-070），2026-06-10 治理轮创建。
@@ -1494,7 +1496,7 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | launch completed / batch in_progress（448/613，ch1-448 连续，next D-MR-083） |
+| FS-008 | S2 Phase A | launch completed / batch in_progress（463/613，ch1-463 连续，next D-MR-088） |
 | FS-009 | S2 Phase A | recurring（Block #1…#14 已执行至 2026-06-12；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |

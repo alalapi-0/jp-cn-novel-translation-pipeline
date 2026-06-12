@@ -4,20 +4,20 @@
 > 旧 20 章任务清单（deprecated）：`docs/translation_recovery_task_list.md`  
 > 生成时间：2026-06-07（治理轮，未执行真实 API）
 >
-> **2026-06-12 live override**：D-MR-001…082 已完成；当前连续完成 448/613 章。下一任务固定为 **D-MR-083（449–451）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
+> **2026-06-12 live override**：D-MR-001…087 已完成；当前连续完成 463/613 章。下一任务固定为 **D-MR-088（464–466）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
 
 ## Current State
 
 - **total chapters**: 613（`input_jp/*.md`）
-- **draft completed chapters**: **448**（第 1–448 章连续完成）
+- **draft completed chapters**: **463**（第 1–463 章连续完成）
 - **current partial run**: 无
 - **refinement completed chapters**: **170**（可导出 refined）
 - **active worker**: 0
 - **orphan worker**: 0（`check_orphan_workers.py` → CLEAN）
 - **stale lock**: 0
 - **default model**: `deepseek/deepseek-v4-pro`（Nemotron 暂不启用）
-- **next draft micro round**: **D-MR-083**（第 449–451 章）
-- **remaining draft MRs**: 55（D-MR-083 … D-MR-137）
+- **next draft micro round**: **D-MR-088**（第 464–466 章）
+- **remaining draft MRs**: 50（D-MR-088 … D-MR-137）
 - **state source**: `local_scheduler_status.py --json`（当前唯一执行真值）
 
 ### Legacy T-002 映射
@@ -83,7 +83,7 @@
 - **pre-flight**: `python3 scripts/check_orphan_workers.py --json` + `python3 scripts/throughput_gate.py --json`
 - **report**: `workspace/round_reports/D-MR-082/`
 
-### D-MR-083（NEXT）
+### D-MR-083（done Block #17）
 
 - **chapter range**: 449–451
 - **execution**: `python3 scripts/local_scheduler_tick.py --dry-run` 先规划；真实执行按 FS-008 cost guard / pause / lock / orphan 规则
