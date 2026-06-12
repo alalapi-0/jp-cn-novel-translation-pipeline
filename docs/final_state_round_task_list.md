@@ -1,3 +1,5 @@
+> ✅ **FS-034 glossary conflict audit 完成**（2026-06-12）：`audit_glossary_conflicts.py --json` status=PASS；blocking=0；真实数据 findings=50（均为 unlisted_high_freq top-N；6987 candidates 已索引）；locked/approved=blocking 规则文档化于 `conflict_audit.py`；fixture 同源多译/locked/approved/unlisted 全覆盖；`tests/test_conflict_audit.py` 12 passed；npm run test:py 435 passed。**推荐下一闸门：FS-035 source residual / structure audit**。
+
 > ✅ **FS-033 entity index 完成**（2026-06-12）：`build_entity_index.py --json` status=PASS；148 segment files（增量二跑 reused=148）；同源多译/同译多源 fixture 检出；unlisted top-N=50（真实数据 6987 candidates）；索引无正文；`tests/test_entity_index.py` 12 passed；glossary 当前全为 `other` 类别故 entities_indexed=0（待 FS-034 前归类）。**推荐下一闸门：FS-034 glossary conflict audit**。
 
 > ✅ **FS-032 segment index 完成**（2026-06-12）：`build_segment_index.py --json` status=PASS；79632 segments / 612 chapters；missing=0 misalign=0；增量重建 148 segment files reused；索引无正文；`tests/test_segment_index.py` 10 passed。**推荐下一闸门：FS-033 entity index**。
@@ -906,6 +908,8 @@ blocking 判定规则文档化（locked / approved 术语被违反 = blocking）
 ### 下一轮衔接
 FS-035 残留与结构审计。
 
+> ✅ 完成于 2026-06-12。`src/consistency/conflict_audit.py`：entity index + glossary（+ 可选 term usage index）比对；locked/approved 违反=blocking；divergent_translation/shared_target/unlisted_high_freq=non-blocking；逐冲突 chapters + segment_ids（无正文）。`scripts/audit_glossary_conflicts.py`：--entity-index/--term-usage-index/--json。验收：✅fixture locked/approved blocking✅divergent/shared/unlisted non-blocking✅可复现✅输出 workspace/consistency_audit/。真实数据：blocking=0、findings=50（unlisted_high_freq top-N）、6987 candidates。测试 +12（全套 435 passed）。
+
 ## Round FS-035：source residual / 漏段 / 错位 / 格式审计
 
 ### 目标
@@ -1540,7 +1544,8 @@ FS-070。
 | FS-031 | S6 Phase B | completed（2026-06-12，chapter manifest 612/612 PASS） |
 | FS-032 | S6 Phase B | completed（2026-06-12，segment index 79632/612 PASS） |
 | FS-033 | S6 Phase B | completed（2026-06-12，entity index + unlisted top-N PASS） |
-| FS-034…FS-037 | S6 Phase B | not_started |
+| FS-034 | S6 Phase B | completed（2026-06-12，glossary conflict audit blocking=0 PASS） |
+| FS-035…FS-037 | S6 Phase B | not_started |
 | FS-038…FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |

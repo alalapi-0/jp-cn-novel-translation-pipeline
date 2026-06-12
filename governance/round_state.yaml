@@ -1,23 +1,23 @@
-round_id: fs_033_20260612
-round_name: "FS-033 entity index builder"
-round_number_human: "FS-033 / Phase B Level 1"
+round_id: fs_034_20260612
+round_name: "FS-034 glossary conflict audit"
+round_number_human: "FS-034 / Phase B Level 2"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/consistency/entity_index.py entity index with source→target mappings + unlisted top-N"
-  - "Added scripts/build_entity_index.py CLI with incremental rebuild"
-  - "Added tests/test_entity_index.py (12 passed)"
-  - "build_entity_index.py --json PASS 148 files reused on incremental; unlisted_top=50"
-  - "Fixture: divergent_translation + shared_target + unlisted high-freq detected"
+  - "Added src/consistency/conflict_audit.py with blocking_rules (locked/approved=blocking)"
+  - "Added scripts/audit_glossary_conflicts.py CLI; output workspace/consistency_audit/"
+  - "Added tests/test_conflict_audit.py (12 passed); npm run test:py 435 passed"
+  - "audit_glossary_conflicts.py --json PASS blocking=0; real data 50 unlisted_high_freq (6987 candidates indexed)"
+  - "Fixture: locked_violation + approved_violation blocking; divergent/shared/unlisted non-blocking"
 
 next_recommended_round:
-  id: FS-034
-  title: "Phase B glossary conflict audit (Level 2)"
+  id: FS-035
+  title: "Phase B source residual / structure audit"
 
 blockers:
   hard: []
   soft:
     - "throughput_gate WARN: refine_pending + diagnostic checkpoints (expected post-Phase A)"
-    - "glossary entity categories empty (all other) — entity hits=0 until categories assigned; unlisted index active"
+    - "glossary entity categories mostly other — entity conflicts deferred until categorization; unlisted_high_freq active"
