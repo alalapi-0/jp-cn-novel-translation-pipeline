@@ -1,20 +1,19 @@
-round_id: fs_041_20260612
-round_name: "FS-041 refine runner supervised"
-round_number_human: "FS-041 / Phase D refine micro-round execution"
+round_id: fs_042_20260612
+round_name: "FS-042 diff and change_log generation"
+round_number_human: "FS-042 / Phase D refine diff toolchain"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Extended run_micro_round.py --phase refine (dry-run plan + supervised fake e2e)"
-  - "refine_runner: bootstrap from draft_full_baseline, RunBudget, checkpoint, compact progress"
-  - "R-MR-001 dry-run: 828 segments / 104 batches from locked baseline (read-only)"
-  - "Fake-provider e2e ch171: 24/39 refined, 3 api_calls, budget_exhausted resume path"
-  - "tests/test_run_micro_round_refine.py +5; npm run test:py 496 passed"
+  - "src/refinement/diff_builder.py: segment-level baseline vs refined diff + 8 modification categories"
+  - "scripts/build_refine_diff.py: draft_vs_refined_diff.json + change_log.json to workspace/runs/"
+  - "Reproducible diff_ratio stats (SequenceMatcher, 6-decimal rounding)"
+  - "tests/test_refine_diff_builder.py +8; npm run test:py 504 passed"
 
 next_recommended_round:
-  id: FS-042
-  title: "diff and change_log generation"
+  id: FS-043
+  title: "over-refinement / terminology / character voice checkers"
 
 blockers:
   hard: []

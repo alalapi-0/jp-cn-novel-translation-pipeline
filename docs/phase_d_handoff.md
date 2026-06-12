@@ -99,7 +99,7 @@ R-MR-N 覆盖 [chapter_start, min(chapter_start + 2, 612)]
 | scheduler `current_phase=refinement` | ✅（go decision 文件存在后） |
 | task_planner R-MR 分支 | ✅ FS-040（`refine_micro_round` 已实现；命令 `run_micro_round --phase refine`） |
 | refine micro round runner | ✅ FS-041（`run_micro_round --phase refine` supervised + checkpoint） |
-| diff / change_log | ⏳ FS-042 |
+| diff / change_log | ✅ FS-042（`build_refine_diff.py` → run 目录） |
 | 三 checker | ⏳ FS-043 |
 | 真实 API 首验 | ⏳ FS-044 |
 

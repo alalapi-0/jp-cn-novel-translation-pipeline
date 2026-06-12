@@ -1,3 +1,5 @@
+> ✅ **FS-042 diff / change_log 完成**（2026-06-12）：`src/refinement/diff_builder.py` + `build_refine_diff.py`；segment 级 draft_vs_refined_diff + change_log（8 类 modification_type、可复现 diff_ratio 统计）；产物落 `workspace/runs/`（gitignore）；测试 +8（504 passed）。**推荐下一闸门：FS-043 三 checker**。
+
 > ✅ **FS-041 refine runner supervised 化 完成**（2026-06-12）：`run_micro_round.py --phase refine` 执行端；`refine_runner` baseline bootstrap + RunBudget/checkpoint/compact progress；R-MR-001 dry-run 828/104 batches；fake-provider e2e ch171 24/39（budget resume）；测试 +5（496 passed）。**推荐下一闸门：FS-042 diff / change_log**。
 
 > ✅ **FS-040 R-MR 队列规划器 完成**（2026-06-12）：`plan_refine_micro_rounds.py` + `micro_round_plan` R-MR 分支；task_planner refinement 已实现（`run_micro_round --phase refine` dry-run 命令）；队列 148 轮 / 442 章与 baseline 612 章对齐；R-MR-001 dry-run 828 segments / 104 batches；测试 +10（491 passed）。**推荐下一闸门：FS-041 refine runner supervised 化**。
@@ -1076,6 +1078,8 @@ diff 工具链。
 ### 下一轮衔接
 FS-043 三 checker。
 
+> ✅ 完成于 2026-06-12。`diff_builder` + `build_refine_diff.py`；`draft_vs_refined_diff.json` + `change_log.json` 写入 run 目录；8 类 per-segment modification_type；6 位小数 diff_ratio 可复现；504 passed。
+
 ## Round FS-043：over-refinement / terminology / character voice checkers
 
 ### 目标
@@ -1576,7 +1580,8 @@ FS-070。
 | FS-039 | S7 Phase C | completed（2026-06-12，GO decision + Phase D handoff；phase→refinement） |
 | FS-040 | S8 Phase D | completed |
 | FS-041 | S8 Phase D | completed（2026-06-12，refine runner supervised + checkpoint） |
-| FS-042…FS-045 | S8 Phase D | not_started |
+| FS-042 | S8 Phase D | completed（2026-06-12，diff_builder + change_log；504 passed） |
+| FS-043…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
 | FS-051…FS-053 | S10 资产 UI | not_started |
 | FS-054…FS-056 | S11 对照页 | not_started |
