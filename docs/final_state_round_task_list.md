@@ -1,3 +1,5 @@
+> ✅ Block #21 收口于 2026-06-12（D-MR-103 → 104 → 105 → 106 → 107，15 章）。**进度 523/613（85.32%），ch1-523 连续**，next D-MR-108（524-526）。五轮 1878/1878 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.1332337（88 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
+
 > ✅ Block #20 收口于 2026-06-12（D-MR-098 → 099 → 100 → 101 → 102，15 章）。**进度 508/613（82.87%），ch1-508 连续**，next D-MR-103（509-511）。五轮 1764/1764 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.12937344（88 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
 
 > ✅ Block #19 收口于 2026-06-12（D-MR-093 → 094 → 095 → 096 → 097，15 章）。**进度 493/613（80.42%），ch1-493 连续**，next D-MR-098（494-496）。五轮 1928/1928 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.15204435（99 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
@@ -1502,7 +1504,7 @@ FS-070。
 | FS-005 | S1 调度器 | completed（2026-06-11） |
 | FS-006 | S1 调度器 | completed（2026-06-11） |
 | FS-007 | S1 调度器 | completed（2026-06-11，S1 收官） |
-| FS-008 | S2 Phase A | launch completed / batch in_progress（508/613，ch1-508 连续，next D-MR-103） |
+| FS-008 | S2 Phase A | launch completed / batch in_progress（523/613，ch1-523 连续，next D-MR-108） |
 | FS-009 | S2 Phase A | recurring（Block #1…#14 已执行至 2026-06-12；每 Block 重复） |
 | FS-010 | S2 Phase A | not_started |
 | FS-011 | S3 资产层 | completed（2026-06-11，批量间隙穿插） |

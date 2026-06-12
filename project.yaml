@@ -7,7 +7,7 @@ project:
   primary_language: zh-CN
   output_language: bilingual_zh_ja
   stage: phase_a_draft_translation
-  current_round_human: "FS-008 Phase A batch execution; next D-MR-103 (chapters 509-511)"
+  current_round_human: "FS-008 Phase A batch execution; next D-MR-108 (chapters 524-526)"
   current_round_machine: fs_008_phase_a_batch
 
 repository:

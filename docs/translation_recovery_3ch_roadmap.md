@@ -4,14 +4,14 @@
 > 配套任务清单：`docs/translation_recovery_3ch_task_list.md`  
 > 旧 20 章路线（已 deprecated）：`docs/translation_recovery_20ch_roadmap.md`
 >
-> **2026-06-12 live override**：本节旧快照已由 S1 调度器真值替代。D-MR-001…102 已完成，当前连续完成 ch1–508，下一安全任务是 **D-MR-103（ch509–511）**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json`，不得按历史定义回退。
+> **2026-06-12 live override**：本节旧快照已由 S1 调度器真值替代。D-MR-001…107 已完成，当前连续完成 ch1–523，下一安全任务是 **D-MR-108（ch524–526）**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json`，不得按历史定义回退。
 
 ## 当前快照（只读统计，不含正文）
 
 | 指标 | 值 | 来源 |
 | --- | --- | --- |
 | 全书源文章节 | **613** | `input_jp/*.md` |
-| 初翻完成章 | **508**（第 1–508 章连续完成） | `local_scheduler_status.py --json` |
+| 初翻完成章 | **523**（第 1–523 章连续完成） | `local_scheduler_status.py --json` |
 | 部分完成章 | 无 | scheduler status |
 | 润色可导出章 | **170** | `throughput_gate.exportable_chapters` |
 | 下一 micro round | **D-MR-083**（第 449–451 章） | scheduler status |
