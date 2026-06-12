@@ -1,3 +1,5 @@
+> ✅ **FS-043 三 checker 完成**（2026-06-12）：`src/refinement/checkers.py` + `check_refinement_quality.py`；over_refinement / terminology_preservation / character_voice 各有正反 fixture；`BLOCKING_CRITERIA` 文档化；R-MR 收尾自动跑 diff+checker（`run_micro_round --phase refine`）；测试 +12（516 passed）。**推荐下一闸门：FS-044 真实 R-MR-001 首验**。
+
 > ✅ **FS-042 diff / change_log 完成**（2026-06-12）：`src/refinement/diff_builder.py` + `build_refine_diff.py`；segment 级 draft_vs_refined_diff + change_log（8 类 modification_type、可复现 diff_ratio 统计）；产物落 `workspace/runs/`（gitignore）；测试 +8（504 passed）。**推荐下一闸门：FS-043 三 checker**。
 
 > ✅ **FS-041 refine runner supervised 化 完成**（2026-06-12）：`run_micro_round.py --phase refine` 执行端；`refine_runner` baseline bootstrap + RunBudget/checkpoint/compact progress；R-MR-001 dry-run 828/104 batches；fake-provider e2e ch171 24/39（budget resume）；测试 +5（496 passed）。**推荐下一闸门：FS-042 diff / change_log**。
@@ -1095,6 +1097,8 @@ FS-043 三 checker。
 ### 下一轮衔接
 FS-044 真实 R-MR 推进。
 
+> ✅ 完成于 2026-06-12。`checkers.py` + `check_refinement_quality.py`；三 checker 正反 fixture；`BLOCKING_CRITERIA` + 默认阈值；R-MR 完成时自动 build diff + quality report；516 passed。
+
 ## Round FS-044：R-MR 批量推进启动轮
 
 ### 目标
@@ -1581,7 +1585,8 @@ FS-070。
 | FS-040 | S8 Phase D | completed |
 | FS-041 | S8 Phase D | completed（2026-06-12，refine runner supervised + checkpoint） |
 | FS-042 | S8 Phase D | completed（2026-06-12，diff_builder + change_log；504 passed） |
-| FS-043…FS-045 | S8 Phase D | not_started |
+| FS-043 | S8 Phase D | completed |
+| FS-044…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
 | FS-051…FS-053 | S10 资产 UI | not_started |
 | FS-054…FS-056 | S11 对照页 | not_started |

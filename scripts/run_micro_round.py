@@ -638,6 +638,7 @@ def _run_refine_micro_round(
     checkpoint = safe_load_json(cp_path) or {}
     seg_doc = safe_load_json(REPO_ROOT / "workspace" / "runs" / run_id / "segments.json") or {}
     quality = _chapter_quality(seg_doc, ch_start, ch_end, phase="refine")
+    refinement_quality_summary: dict[str, Any] = {}
     if quality["round_done"]:
         status = "completed"
         progress, checkpoint = finalize_completed_run_state(
@@ -648,6 +649,26 @@ def _run_refine_micro_round(
             phase="refine",
             stage="refine_stage_c",
         )
+        run_root = REPO_ROOT / "workspace" / "runs" / run_id
+        try:
+            from refinement.checkers import (  # noqa: WPS433
+                run_refinement_checks_for_run,
+                write_refinement_quality_report,
+            )
+            from refinement.diff_builder import build_refine_diff_for_run  # noqa: WPS433
+
+            build_refine_diff_for_run(run_root)
+            quality_report = run_refinement_checks_for_run(run_root, repo_root=REPO_ROOT)
+            report_path = write_refinement_quality_report(run_root, quality_report)
+            refinement_quality_summary = {
+                "status": quality_report.status,
+                "blocking_count": quality_report.blocking_count,
+                "warning_count": quality_report.warning_count,
+                "report_path": str(report_path.relative_to(REPO_ROOT)),
+                "checkers": [c.to_dict() for c in quality_report.checkers],
+            }
+        except Exception as exc:  # noqa: BLE001
+            refinement_quality_summary = {"status": "error", "error": str(exc)}
     elif status == "completed":
         status = "failed"
 
@@ -675,6 +696,8 @@ def _run_refine_micro_round(
     )
     compact["phase"] = "refine"
     compact["input_source"] = plan.get("input_source", "draft_full_baseline")
+    if refinement_quality_summary:
+        compact["refinement_quality"] = refinement_quality_summary
     if fake_provider:
         compact["provider_mode"] = "fake"
     if diagnostic_only:

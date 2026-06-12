@@ -1,0 +1,71 @@
+{
+  "run_id": "refinement_check_fail",
+  "language_direction": "JP_TO_CN",
+  "chapters": [
+    {
+      "chapter_id": "ch-check-fail",
+      "segments": [
+        {
+          "segment_id": "fail-seg-over",
+          "source_text": "短い文。",
+          "draft_text": "短句。",
+          "refined_text": "这是一段被过度扩写、完全偏离初译基线的长句子，添加了原文没有的信息。"
+        },
+        {
+          "segment_id": "fail-seg-term",
+          "source_text": "サンプル・タロウは王国へ向かった。",
+          "draft_text": "示例太郎前往示例王国。",
+          "refined_text": "示例太郎前往样本王国。"
+        },
+        {
+          "segment_id": "fail-seg-voice",
+          "source_text": "サンプル・タロウは言った。",
+          "draft_text": "示例太郎说道：「俺没问题！」",
+          "refined_text": "示例太郎说道：「我没问题！」"
+        },
+        {
+          "segment_id": "ok-seg-004",
+          "source_text": "大丈夫？",
+          "draft_text": "「没事吧？」",
+          "refined_text": "「没事吧？」"
+        },
+        {
+          "segment_id": "ok-seg-005",
+          "source_text": "a",
+          "draft_text": "b。",
+          "refined_text": "b！"
+        },
+        {
+          "segment_id": "ok-seg-006",
+          "source_text": "c",
+          "draft_text": "d。",
+          "refined_text": "d。"
+        },
+        {
+          "segment_id": "ok-seg-007",
+          "source_text": "e",
+          "draft_text": "f。",
+          "refined_text": "f。"
+        },
+        {
+          "segment_id": "ok-seg-008",
+          "source_text": "g",
+          "draft_text": "h。",
+          "refined_text": "h。"
+        },
+        {
+          "segment_id": "ok-seg-009",
+          "source_text": "i",
+          "draft_text": "j。",
+          "refined_text": "j。"
+        },
+        {
+          "segment_id": "ok-seg-010",
+          "source_text": "k",
+          "draft_text": "l。",
+          "refined_text": "l。"
+        }
+      ]
+    }
+  ]
+}

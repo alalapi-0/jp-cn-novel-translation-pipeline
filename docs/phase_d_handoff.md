@@ -62,7 +62,7 @@ R-MR-N 覆盖 [chapter_start, min(chapter_start + 2, 612)]
 
 ## 3. Checker 清单（R-MR 收尾自动执行，FS-043 落地）
 
-每个 R-MR 完成后须跑三 checker（`scripts/check_refinement_quality.py`，待 FS-043）：
+每个 R-MR 完成后须跑三 checker（`scripts/check_refinement_quality.py`，FS-043）：
 
 | Checker | 检查内容 | Blocking 条件（草案） |
 |---------|----------|----------------------|
@@ -100,7 +100,7 @@ R-MR-N 覆盖 [chapter_start, min(chapter_start + 2, 612)]
 | task_planner R-MR 分支 | ✅ FS-040（`refine_micro_round` 已实现；命令 `run_micro_round --phase refine`） |
 | refine micro round runner | ✅ FS-041（`run_micro_round --phase refine` supervised + checkpoint） |
 | diff / change_log | ✅ FS-042（`build_refine_diff.py` → run 目录） |
-| 三 checker | ⏳ FS-043 |
-| 真实 API 首验 | ⏳ FS-044 |
+| 三 checker | ✅ FS-043（`check_refinement_quality.py`；R-MR 收尾自动执行） |
+| 真实 API 首验 | ⏳ FS-044（R-MR-001） |
 
-**推荐下一 FS 轮**：FS-040 — `plan_refine_micro_rounds.py` + task planner R-MR 分支 + dry-run 首个 R-MR 批次计划。
+**推荐下一 FS 轮**：FS-044 — 真实 API 执行 R-MR-001（1–2 MR 验证 checker 链路）。

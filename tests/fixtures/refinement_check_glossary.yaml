@@ -1,0 +1,33 @@
+schema_version: 1
+
+meta:
+  project: refinement_check_fixture
+
+entries:
+  - source_term: "サンプル王国"
+    target_term: "示例王国"
+    reading: null
+    category: place_name
+    description: "fixture locked place"
+    first_seen_chapter: 1
+    confidence: 1.0
+    locked: true
+    approved_by_user: true
+    aliases: []
+    notes: null
+    created_at: "2026-06-12T00:00:00Z"
+    updated_at: "2026-06-12T00:00:00Z"
+
+  - source_term: "サンプル・タロウ"
+    target_term: "示例太郎"
+    reading: null
+    category: person_name
+    description: "fixture locked person"
+    first_seen_chapter: 1
+    confidence: 1.0
+    locked: true
+    approved_by_user: true
+    aliases: []
+    notes: null
+    created_at: "2026-06-12T00:00:00Z"
+    updated_at: "2026-06-12T00:00:00Z"

@@ -1,19 +1,21 @@
-round_id: fs_042_20260612
-round_name: "FS-042 diff and change_log generation"
-round_number_human: "FS-042 / Phase D refine diff toolchain"
+round_id: fs_043_20260612
+round_name: "FS-043 over-refinement / terminology / character voice checkers"
+round_number_human: "FS-043 / Phase D refinement quality gate"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "src/refinement/diff_builder.py: segment-level baseline vs refined diff + 8 modification categories"
-  - "scripts/build_refine_diff.py: draft_vs_refined_diff.json + change_log.json to workspace/runs/"
-  - "Reproducible diff_ratio stats (SequenceMatcher, 6-decimal rounding)"
-  - "tests/test_refine_diff_builder.py +8; npm run test:py 504 passed"
+  - "src/refinement/checkers.py: over_refinement + terminology_preservation + character_voice"
+  - "scripts/check_refinement_quality.py: CLI with --json / --run-dir / fixture mode"
+  - "BLOCKING_CRITERIA documented in module + report JSON"
+  - "Positive/negative fixtures per checker in tests/fixtures/"
+  - "R-MR completion hook in run_micro_round.py (auto diff + quality report)"
+  - "tests/test_refinement_checkers.py +12; npm run test:py 516 passed"
 
 next_recommended_round:
-  id: FS-043
-  title: "over-refinement / terminology / character voice checkers"
+  id: FS-044
+  title: "R-MR-001 real API validation start"
 
 blockers:
   hard: []

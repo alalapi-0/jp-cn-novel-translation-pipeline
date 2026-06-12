@@ -1,0 +1,23 @@
+schema_version: 1
+
+meta:
+  project: refinement_check_fixture
+
+characters:
+  - name: "サンプル・タロウ"
+    target_name: "示例太郎"
+    aliases:
+      - "タロウ"
+    address_map: []
+    first_person: "俺"
+    speech_tics:
+      - "～だぜ"
+    honorific_style: "casual"
+    personality_summary: "fixture character"
+    speech_style: "短句口语"
+    forbidden: []
+    appearing_chapters: [1]
+    relationships: []
+    manual_notes: null
+    created_at: "2026-06-12T00:00:00Z"
+    updated_at: "2026-06-12T00:00:00Z"
