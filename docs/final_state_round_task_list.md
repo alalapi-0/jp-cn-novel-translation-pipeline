@@ -1,3 +1,5 @@
+> ✅ Block #27 收口于 2026-06-12（D-MR-133 → 134 → 135 → 136 → 137，15 章窗口；D-MR-137 占 4 tick slot + 2 续跑 tick）。**进度 612/613（99.84%），ch1-612 连续**；调度器仍显示 missing_draft_chapters=1（ch613），根因为 `_count_total_chapters` 将 `input_jp/README.md` 计入 613 总数且无对应编号章文件。五轮 1959/1959 segments（D-MR-137 metrics status=failed 但 run failed_segments=0）；orphan CLEAN；本 block 成本 $0.12280961（82 API calls + 续跑）。**推荐下一闸门：FS-010 Phase A 收尾**（completion check、README 计数修正或豁免、D-MR-137 状态封口）。
+
 > ✅ Block #26 收口于 2026-06-12（D-MR-128 → 129 → 130 → 131 → 132，15 章）。**进度 598/613（97.55%），ch1-598 连续**，next D-MR-133（599-601）。五轮 1769/1769 segments completed，15/15 chapters 唯一且连续，failed=0、orphan CLEAN；本 block 成本 $0.12750802（83 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
 
 > ✅ Block #25 收口于 2026-06-12（D-MR-123 → 124 → 125 → 126 → 127，15 章）。**进度 583/613（95.11%），ch1-583 连续**，next D-MR-128（584-586）。五轮 1927/1927 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 MR metrics 汇总成本 $0.1306034（91 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。

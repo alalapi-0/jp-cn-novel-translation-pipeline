@@ -4,7 +4,7 @@
 > 配套任务清单：`docs/translation_recovery_3ch_task_list.md`  
 > 旧 20 章路线（已 deprecated）：`docs/translation_recovery_20ch_roadmap.md`
 >
-> **2026-06-12 live override**：本节旧快照已由 S1 调度器真值替代。D-MR-001…127 已完成，当前连续完成 ch1–583，下一安全任务是 **D-MR-128（ch584–586）**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json`，不得按历史定义回退。
+> **2026-06-12 live override**：本节旧快照已由 S1 调度器真值替代。D-MR-001…137 批量已执行；编号章 ch1–612 连续完成；调度器 612/613（ch613=README 计数）。下一闸门 **FS-010**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json`，不得按历史定义回退。
 
 ## 当前快照（只读统计，不含正文）
 

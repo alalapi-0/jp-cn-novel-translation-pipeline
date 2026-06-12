@@ -1,53 +1,46 @@
 {
-    "round_id": "FS-008-block25",
-    "timestamp": "2026-06-12T09:51:10Z",
+    "round_id": "FS-008-block27",
+    "timestamp": "2026-06-12T11:39:45Z",
     "agent": "cursor",
-    "agent_surface": "cursor",
     "mode": "implement",
-    "goal": "Complete Phase A Block #25 (D-MR-123 through D-MR-127)",
-    "scope": [
-        "chapters 569-583"
-    ],
-    "repo_status_before": "568/613 next D-MR-123",
-    "tool_probe_status": "not_run",
-    "tools_used": [
-        {
-            "tool": "local scheduler",
-            "purpose": "D-MR-123..127",
-            "result": "583/613; 5 ticks"
-        }
-    ],
-    "tools_not_used": [
-        {
-            "tool": "Playwright",
-            "reason": "No UI"
-        }
-    ],
+    "goal": "Complete Phase A Blocks #24-27 batch tail",
     "real_api_used": {
         "used": true,
-        "api_calls": 91,
-        "cost_usd": 0.1306034,
-        "model": "deepseek/deepseek-v4-pro",
-        "scope": "D-MR-123..127"
-    },
-    "ui_checked": {
-        "checked": false
+        "api_calls": 82,
+        "cost_usd": 0.12280961,
+        "scope": "D-MR-133..137"
     },
     "acceptance_result": [
         {
-            "criterion": "contiguous draft",
-            "pass": true,
-            "evidence": "583/613"
+            "criterion": "ch1-612 contiguous",
+            "pass": true
+        },
+        {
+            "criterion": "613/613 scheduler",
+            "pass": false,
+            "evidence": "ch613=README count"
         }
     ],
+    "blockers": [
+        "missing ch613 is README in total count",
+        "D-MR-137 metrics failed status"
+    ],
+    "next_recommended_round": "FS-010",
     "gate_status": "warning",
     "severity_summary": {
         "p0": 0,
         "p1": 0,
-        "p2": 1,
+        "p2": 2,
         "p3": 0
     },
-    "blockers": [],
-    "next_recommended_round": "FS-008 Block #26 from D-MR-128",
-    "human_decisions_required": []
+    "tools_used": [],
+    "tools_not_used": [],
+    "ui_checked": {
+        "checked": false
+    },
+    "human_decisions_required": [
+        "README vs ch613 total count for FS-010"
+    ],
+    "agent_surface": "cursor",
+    "tool_probe_status": "not_run"
 }

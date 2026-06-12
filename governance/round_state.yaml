@@ -1,22 +1,22 @@
-round_id: fs_008_block25_20260612
-round_name: "Phase A Block #25"
-round_number_human: "FS-008 Block #25"
+round_id: fs_008_block27_20260612
+round_name: "Phase A Block #27"
+round_number_human: "FS-008 Block #27 / Phase A batch tail"
 status: completed
 type: translation_execution
 real_api_called: true
-full_translation_executed: true
-existing_translation_outputs_modified: true
 
 completed_tasks:
-  - "Completed D-MR-123 through D-MR-127 with 1927/1927 segments (5 ticks)"
-  - "Advanced contiguous Phase A draft progress from 568/613 to 583/613"
-  - "Completed FS-009 health check with throughput blocks empty and orphan CLEAN"
+  - "Completed D-MR-133 through D-MR-137 (1959 segments; D-MR-137 required 4 tick slots)"
+  - "Numbered chapters 1-612 contiguous draft complete"
+  - "Identified ch613 gap: README.md counted in total_chapters without draft target"
 
 next_recommended_round:
-  id: FS-008-block26
-  title: "Continue Phase A from D-MR-128; run FS-009 health check after the block"
+  id: FS-010
+  title: "Phase A completion gate: completion check, README/total count fix, D-MR-137 metrics seal"
 
 blockers:
   hard: []
   soft:
-    - "throughput_gate WARN: refine_pending and historical diagnostic checkpoints; blocks=[]"
+    - "scheduler 612/613: missing chapter 613 is README inclusion in _count_total_chapters"
+    - "micro_round_metrics D-MR-137 status=failed despite failed_segments=0"
+    - "throughput_gate WARN: stage_state_stale + diagnostic checkpoints"
