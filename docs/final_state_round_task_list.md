@@ -1,3 +1,5 @@
+> ✅ **FS-040 R-MR 队列规划器 完成**（2026-06-12）：`plan_refine_micro_rounds.py` + `micro_round_plan` R-MR 分支；task_planner refinement 已实现（`run_micro_round --phase refine` dry-run 命令）；队列 148 轮 / 442 章与 baseline 612 章对齐；R-MR-001 dry-run 828 segments / 104 batches；测试 +10（491 passed）。**推荐下一闸门：FS-041 refine runner supervised 化**。
+
 > ✅ **FS-039 baseline go decision 完成**（2026-06-12）：`draft_full_baseline_go_decision.md` 结论 **GO**（§14.3 逐条核对 Phase A/B 报告）；`docs/phase_d_handoff.md`（R-MR-001 ch171-173、refine_primary、checker 清单）；scheduler `current_phase=refinement`；481 passed。**推荐下一闸门：FS-040 R-MR 队列规划器**。
 
 > ✅ **FS-036 local fix plan 完成**（2026-06-12）：`build_local_fix_plan.py --json` status=PASS；真实数据 term_fixes=0、retranslate_tasks=1（1079 source_residual segments）、deferred=50（unlisted_high_freq）；`apply_term_fixes.py --dry-run` applied=0（无规则补丁）；task_planner consistency 分支接入 build/apply；`tests/test_local_fix_plan.py` 12 passed；npm run test:py 461 passed。**推荐下一闸门：FS-037 模型仲裁 + Phase B 收尾**。
@@ -1034,6 +1036,8 @@ R-MR 规划器。
 ### 下一轮衔接
 FS-041 refine runner supervised 化。
 
+> ✅ 完成于 2026-06-12。`scripts/plan_refine_micro_rounds.py`；`micro_round_plan` R-MR-001..148；task_planner refinement 分支（dry-run `run_micro_round --phase refine`）；R-MR-001 批次计划 828 segments / 104 batches；队列与 baseline 442/442 章对齐；测试 +10（491 passed）。
+
 ## Round FS-041：refine runner supervised 化与 checkpoint 对齐
 
 ### 目标
@@ -1566,7 +1570,8 @@ FS-070。
 | FS-037 | S6 Phase B | completed（2026-06-12，Phase B PASS；retranslate pilot 24/1079） |
 | FS-038 | S7 Phase C | completed（2026-06-12，612 章 baseline lock + 写保护 PASS） |
 | FS-039 | S7 Phase C | completed（2026-06-12，GO decision + Phase D handoff；phase→refinement） |
-| FS-040…FS-045 | S8 Phase D | not_started |
+| FS-040 | S8 Phase D | completed |
+| FS-041…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
 | FS-051…FS-053 | S10 资产 UI | not_started |
 | FS-054…FS-056 | S11 对照页 | not_started |

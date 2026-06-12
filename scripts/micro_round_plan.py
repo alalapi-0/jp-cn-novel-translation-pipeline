@@ -7,7 +7,9 @@ import re
 from typing import Any
 
 FIRST_DRAFT_MR_CHAPTER = 203
+FIRST_REFINE_MR_CHAPTER = 171
 TOTAL_CHAPTERS = 612
+REFINE_MODEL_PROFILE = "refine_primary"
 # NOTE (FS-008 incident, 2026-06-11): the old LEGACY_PARTIAL_RUN_ID auto-resume
 # pointed D-MR-001/002 at run_20260607_095821 and the hydrate step rewrote that
 # run's segments window (209-211 -> 206-208), orphaning the ch209-211 records.
@@ -81,6 +83,71 @@ def next_draft_mr_id(round_id: str) -> str | None:
     return f"D-MR-{nxt:03d}"
 
 
+def refine_mr_plan(
+    round_id: str,
+    *,
+    round_size: int = 3,
+    anchor_chapter: int = FIRST_REFINE_MR_CHAPTER,
+    total_chapters: int = TOTAL_CHAPTERS,
+) -> dict[str, Any] | None:
+    """Resolve R-MR-NNN to a 3-chapter refinement micro-round plan."""
+    n = _parse_mr_number(round_id, "R-MR")
+    if n is None or n < 1:
+        return None
+    start = anchor_chapter + (n - 1) * round_size
+    if start > total_chapters:
+        return None
+    end = min(start + round_size - 1, total_chapters)
+    offset = start - 1
+    limit = end - start + 1
+    return {
+        "round_id": round_id,
+        "phase": "refine",
+        "chapter_start": start,
+        "chapter_end": end,
+        "offset": offset,
+        "limit": limit,
+        "round_size": round_size,
+        "resume_run_id": "",
+        "model_profile": REFINE_MODEL_PROFILE,
+        "input_source": "draft_full_baseline",
+    }
+
+
+def next_refine_mr_id(round_id: str, *, round_size: int = 3) -> str | None:
+    n = _parse_mr_number(round_id, "R-MR")
+    if n is None:
+        return None
+    nxt = n + 1
+    if FIRST_REFINE_MR_CHAPTER + (nxt - 1) * round_size > TOTAL_CHAPTERS:
+        return None
+    return f"R-MR-{nxt:03d}"
+
+
+def build_refine_mr_queue(
+    *,
+    anchor_chapter: int = FIRST_REFINE_MR_CHAPTER,
+    total_chapters: int = TOTAL_CHAPTERS,
+    round_size: int = 3,
+) -> list[dict[str, Any]]:
+    """Enumerate R-MR-001 … R-MR-NNN covering anchor..total_chapters."""
+    queue: list[dict[str, Any]] = []
+    n = 1
+    while True:
+        round_id = f"R-MR-{n:03d}"
+        plan = refine_mr_plan(
+            round_id,
+            round_size=round_size,
+            anchor_chapter=anchor_chapter,
+            total_chapters=total_chapters,
+        )
+        if plan is None:
+            break
+        queue.append(plan)
+        n += 1
+    return queue
+
+
 def gap_backfill_plan(round_id: str) -> dict[str, Any] | None:
     """Resolve GAP-<start>-<end> backfill rounds (FS-007).
 
@@ -122,7 +189,11 @@ def resolve_round_plan(
             plan["resume_run_id"] = run_id
         return plan
 
-    plan = gap_backfill_plan(round_id) or draft_mr_plan(round_id, round_size=round_size)
+    plan = (
+        gap_backfill_plan(round_id)
+        or refine_mr_plan(round_id, round_size=round_size)
+        or draft_mr_plan(round_id, round_size=round_size)
+    )
     if plan is None:
         return None
 

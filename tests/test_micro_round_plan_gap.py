@@ -43,3 +43,11 @@ def test_dmr_rounds_still_resolve() -> None:
     assert plan is not None
     assert plan["chapter_start"] == 203
     assert plan["chapter_end"] == 205
+
+
+def test_rmr_round_resolves_with_baseline_input() -> None:
+    plan = resolve_round_plan("R-MR-001")
+    assert plan is not None
+    assert plan["phase"] == "refine"
+    assert plan["chapter_start"] == 171
+    assert plan["input_source"] == "draft_full_baseline"

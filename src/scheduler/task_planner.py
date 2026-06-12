@@ -10,7 +10,7 @@ one next task. Six task families exist across the production line:
     final_review    -> final review sub-task             (lands FS-046+)
     production_candidate -> candidate build              (lands FS-050)
 
-Only the draft family is executable today, by spawning a *supervised*
+Only the draft and refinement families spawn a *supervised*
 ``run_micro_round.py`` child process (never detached). Every other branch
 returns an explicit ``implemented=False`` plan with ``not_implemented``
 semantics so a tick can report it instead of silently skipping — and so a
@@ -40,7 +40,6 @@ BUDGET_FLAGS = {
 }
 
 _NOT_IMPLEMENTED_ROUNDS = {
-    "refinement": ("refine_micro_round", "refinement pipeline lands in FS-040+"),
     "final_review": ("final_review", "final review tooling lands in FS-046+"),
     "production_candidate": ("production_candidate", "candidate build lands in FS-050"),
 }
@@ -126,7 +125,12 @@ _DIAGNOSTIC_PREFIXES = (
 )
 
 
-def find_resumable_run(repo_root: Path | None, chapter_start: int) -> str:
+def find_resumable_run(
+    repo_root: Path | None,
+    chapter_start: int,
+    *,
+    phase: str = "draft",
+) -> str:
     """Find an interrupted run for this exact chapter offset to resume.
 
     Resuming our own interrupted run (same offset, status in_progress) via
@@ -157,6 +161,8 @@ def find_resumable_run(repo_root: Path | None, chapter_start: int) -> str:
         if not isinstance(progress, dict) or not isinstance(meta, dict):
             continue
         if str(progress.get("status") or "") != "in_progress":
+            continue
+        if str(meta.get("phase") or "draft") != phase:
             continue
         if int(meta.get("chapter_offset") if meta.get("chapter_offset") is not None else -1) != offset:
             continue
@@ -204,6 +210,38 @@ def _draft_command(
     else:
         # run_micro_round defaults to --real-api=True: a dry-run plan must
         # disarm it explicitly, belt and braces.
+        cmd.extend(["--dry-run", "--no-real-api"])
+    for key, flag in BUDGET_FLAGS.items():
+        if key in budgets and budgets[key] is not None:
+            cmd.extend([flag, str(budgets[key])])
+    return cmd
+
+
+def _refine_command(
+    *,
+    round_id: str,
+    chapter_range: str,
+    mode: str,
+    budgets: dict[str, Any],
+    python_executable: str,
+    resume_run_id: str = "",
+) -> list[str]:
+    cmd = [
+        python_executable,
+        RUN_MICRO_ROUND_REL,
+        "--phase",
+        "refine",
+        "--round-id",
+        round_id,
+        "--chapter-range",
+        chapter_range,
+        "--supervised",
+    ]
+    if resume_run_id:
+        cmd.extend(["--run-id", resume_run_id])
+    if mode == "real":
+        cmd.append("--real-api")
+    else:
         cmd.extend(["--dry-run", "--no-real-api"])
     for key, flag in BUDGET_FLAGS.items():
         if key in budgets and budgets[key] is not None:
@@ -379,6 +417,47 @@ def plan_next_task(
             command=[python_executable, LOCK_BASELINE_REL, "--json"],
             budget=budgets,
             mode=mode,
+        )
+
+    if phase == "refinement":
+        next_task = str(status.get("next_task") or "")
+        if next_task == "refinement_complete":
+            return TaskPlan(
+                task_type="refinement_complete",
+                implemented=False,
+                reason="all refinement chapters complete; awaiting Phase D gate (FS-045)",
+                mode=mode,
+            )
+        chapter_range = status.get("next_chapter_range")
+        if not chapter_range:
+            return TaskPlan(
+                task_type="refine_micro_round",
+                implemented=False,
+                reason="refinement phase but no next chapter range in status snapshot",
+                mode=mode,
+            )
+        block = str(chapter_range)
+        round_id = str(status.get("next_round_id") or f"R-MR-{block}")
+        block_start, _ = _parse_range(block)
+        resume_run_id = find_resumable_run(repo_root, block_start, phase="refine")
+        return TaskPlan(
+            task_type="refine_micro_round",
+            implemented=True,
+            reason="next R-MR micro round per status snapshot (baseline read-only input)"
+            + (f" (resuming interrupted run {resume_run_id})" if resume_run_id else ""),
+            round_id=round_id,
+            chapter_range=block,
+            command=_refine_command(
+                round_id=round_id,
+                chapter_range=block,
+                mode=mode,
+                budgets=budgets,
+                python_executable=python_executable,
+                resume_run_id=resume_run_id,
+            ),
+            budget=budgets,
+            mode=mode,
+            resume_run_id=resume_run_id,
         )
 
     if phase in _NOT_IMPLEMENTED_ROUNDS:

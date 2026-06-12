@@ -115,12 +115,41 @@ def test_baseline_go_decision_awaits_doc() -> None:
     assert "go_decision" in plan.reason
 
 
-def test_refinement_phase_not_implemented() -> None:
-    status = make_status(phase="refinement", next_task="refine_micro_round", round_id="R-MR-001", chapter_range="1-3")
+def test_refinement_phase_plans_micro_round_command() -> None:
+    status = make_status(
+        phase="refinement",
+        next_task="refine_micro_round",
+        round_id="R-MR-001",
+        chapter_range="171-173",
+    )
+    plan = plan_next_task(status, mode="dry_run")
+    assert plan.implemented is True
+    assert plan.task_type == "refine_micro_round"
+    assert plan.round_id == "R-MR-001"
+    assert plan.chapter_range == "171-173"
+    cmd = plan.command
+    assert cmd is not None
+    assert cmd[1].endswith("run_micro_round.py")
+    assert cmd[cmd.index("--phase") + 1] == "refine"
+    assert cmd[cmd.index("--round-id") + 1] == "R-MR-001"
+    assert cmd[cmd.index("--chapter-range") + 1] == "171-173"
+    assert "--supervised" in cmd
+    assert "--dry-run" in cmd
+    assert "--no-real-api" in cmd
+    assert "--real-api" not in cmd
+
+
+def test_refinement_complete_is_explicit() -> None:
+    status = make_status(
+        phase="refinement",
+        next_task="refinement_complete",
+        round_id=None,
+        chapter_range=None,
+    )
     plan = plan_next_task(status)
     assert plan.implemented is False
-    assert plan.task_type == "refine_micro_round"
-    assert "not_implemented" in plan.reason
+    assert plan.task_type == "refinement_complete"
+    assert "complete" in plan.reason
 
 
 def test_final_review_phase_not_implemented() -> None:

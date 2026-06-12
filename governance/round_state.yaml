@@ -1,23 +1,24 @@
-round_id: fs_039_20260612
-round_name: "FS-039 baseline go decision and Phase D handoff"
-round_number_human: "FS-039 / Phase C go gate"
+round_id: fs_040_20260612
+round_name: "FS-040 R-MR queue planner"
+round_number_human: "FS-040 / Phase D queue planning"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Generated draft_full_baseline_go_decision.md (§14.3 checklist, conclusion GO)"
-  - "Generated docs/phase_d_handoff.md (R-MR-001..148, refine_primary, checker checklist)"
-  - "Extended collect_status phase ladder: consistency -> baseline_lock -> refinement (FS-039)"
-  - "task_planner baseline_go_decision branch; tests +4 (481 passed)"
-  - "Scheduler phase=refinement, next R-MR-001 ch171-173 after go decision"
+  - "Added scripts/plan_refine_micro_rounds.py (baseline read-only, R-MR batch planning)"
+  - "Extended micro_round_plan.py: refine_mr_plan, build_refine_mr_queue, resolve R-MR"
+  - "task_planner refinement branch implemented (run_micro_round --phase refine dry-run)"
+  - "R-MR queue 148 rounds / 442 chapters aligned with locked baseline"
+  - "R-MR-001 dry-run: 828 segments, 104 batches; tests +10 (491 passed)"
 
 next_recommended_round:
-  id: FS-040
-  title: "R-MR queue planner"
+  id: FS-041
+  title: "refine runner supervised integration"
 
 blockers:
   hard: []
   soft:
-    - "1055 source_residual segments remain in retranslate checkpoint (non-blocking; resume via run_consistency_retranslate.py)"
+    - "1055 source_residual segments remain in retranslate checkpoint (non-blocking)"
+    - "run_micro_round --phase refine execution lands FS-041 (planner command ready)"
     - "agent_gate warning: vector inspect warnings (pre-existing)"
