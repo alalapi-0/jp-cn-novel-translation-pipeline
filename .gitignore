@@ -89,6 +89,9 @@ workspace/configs/
 # Term usage indexes built from real draft content (FS-015)
 workspace/indexes/
 
+# Consistency audit reports from real draft scans (FS-034, FS-035)
+workspace/consistency_audit/
+
 # Workspace runtime / personalized production state (local only)
 workspace/stage_state.json
 workspace/stage_state_production.json

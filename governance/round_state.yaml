@@ -1,23 +1,24 @@
-round_id: fs_034_20260612
-round_name: "FS-034 glossary conflict audit"
-round_number_human: "FS-034 / Phase B Level 2"
+round_id: fs_035_20260612
+round_name: "FS-035 draft structure audit"
+round_number_human: "FS-035 / Phase B Level 2"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/consistency/conflict_audit.py with blocking_rules (locked/approved=blocking)"
-  - "Added scripts/audit_glossary_conflicts.py CLI; output workspace/consistency_audit/"
-  - "Added tests/test_conflict_audit.py (12 passed); npm run test:py 435 passed"
-  - "audit_glossary_conflicts.py --json PASS blocking=0; real data 50 unlisted_high_freq (6987 candidates indexed)"
-  - "Fixture: locked_violation + approved_violation blocking; divergent/shared/unlisted non-blocking"
+  - "Added src/consistency/draft_structure_audit.py with four issue kinds + severity grading"
+  - "Integrated FS-032 segment index (missing/misalignment/missing_draft blocking)"
+  - "Kana-only source_residual heuristic (P1 Han false-positive fix) + 5-sample regression set"
+  - "Added scripts/audit_draft_structure.py CLI; output workspace/consistency_audit/"
+  - "Added tests/test_draft_structure_audit.py (14 passed); npm run test:py 449 passed"
+  - "audit_draft_structure.py --json PASS blocking=0; real data 1079 source_residual warnings"
 
 next_recommended_round:
-  id: FS-035
-  title: "Phase B source residual / structure audit"
+  id: FS-036
+  title: "Phase B local fix plan + selective retranslate tasks"
 
 blockers:
   hard: []
   soft:
     - "throughput_gate WARN: refine_pending + diagnostic checkpoints (expected post-Phase A)"
-    - "glossary entity categories mostly other — entity conflicts deferred until categorization; unlisted_high_freq active"
+    - "1079 source_residual warnings (non-blocking) — may feed FS-036 fix plan / FS-037 retranslate"

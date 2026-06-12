@@ -1,3 +1,5 @@
+> ✅ **FS-035 draft structure audit 完成**（2026-06-12）：`audit_draft_structure.py --json` status=PASS；blocking=0；真实数据 findings=1079（均为 source_residual warning；kana-only P1 修正）；四类 issue fixture 全覆盖 + 5 条误判回归集；severity blocking/warning/info；`tests/test_draft_structure_audit.py` 14 passed；npm run test:py 449 passed。**推荐下一闸门：FS-036 local fix plan**。
+
 > ✅ **FS-034 glossary conflict audit 完成**（2026-06-12）：`audit_glossary_conflicts.py --json` status=PASS；blocking=0；真实数据 findings=50（均为 unlisted_high_freq top-N；6987 candidates 已索引）；locked/approved=blocking 规则文档化于 `conflict_audit.py`；fixture 同源多译/locked/approved/unlisted 全覆盖；`tests/test_conflict_audit.py` 12 passed；npm run test:py 435 passed。**推荐下一闸门：FS-035 source residual / structure audit**。
 
 > ✅ **FS-033 entity index 完成**（2026-06-12）：`build_entity_index.py --json` status=PASS；148 segment files（增量二跑 reused=148）；同源多译/同译多源 fixture 检出；unlisted top-N=50（真实数据 6987 candidates）；索引无正文；`tests/test_entity_index.py` 12 passed；glossary 当前全为 `other` 类别故 entities_indexed=0（待 FS-034 前归类）。**推荐下一闸门：FS-034 glossary conflict audit**。
@@ -927,6 +929,8 @@ FS-032 索引；现有 validator 的 source_residual 启发式（按 P1 清单�
 ### 下一轮衔接
 FS-036 fix plan。
 
+> ✅ 完成于 2026-06-12。`src/consistency/draft_structure_audit.py`：整合 FS-032 索引（missing_segment/misalignment/missing_draft=blocking）+ kana-only source_residual（P1 汉字误判修正）+ format_anomaly（info）；5 条 SOURCE_RESIDUAL_FALSE_POSITIVES 回归集；severity blocking/warning/info。`scripts/audit_draft_structure.py`：--segment-index/--json。验收：✅四类 fixture✅误判回归✅severity 分级✅输出 workspace/consistency_audit/（gitignore）。真实数据：blocking=0、findings=1079（source_residual warning）。测试 +14（全套 449 passed）。
+
 ## Round FS-036：local fix plan 与局部重译计划（Level 3 / 5）
 
 ### 目标
@@ -1545,7 +1549,8 @@ FS-070。
 | FS-032 | S6 Phase B | completed（2026-06-12，segment index 79632/612 PASS） |
 | FS-033 | S6 Phase B | completed（2026-06-12，entity index + unlisted top-N PASS） |
 | FS-034 | S6 Phase B | completed（2026-06-12，glossary conflict audit blocking=0 PASS） |
-| FS-035…FS-037 | S6 Phase B | not_started |
+| FS-035 | S6 Phase B | completed（2026-06-12，draft structure audit blocking=0 PASS） |
+| FS-036…FS-037 | S6 Phase B | not_started |
 | FS-038…FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |

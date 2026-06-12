@@ -1,10 +1,10 @@
 {
-  "round_id": "FS-032",
-  "timestamp": "2026-06-12T12:00:00Z",
+  "round_id": "FS-035",
+  "timestamp": "2026-06-12T12:15:00Z",
   "agent": "cursor",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Build segment index (Level 0-1): segment mapping, missing/misalignment detection, streaming metadata, no body text",
+  "goal": "Draft structure audit: source residual, missing segments, misalignment, format; severity grading; no body text in output",
   "tool_probe_status": "not_run",
   "real_api_used": {
     "used": false,
@@ -14,35 +14,36 @@
   },
   "acceptance_result": [
     {
-      "criterion": "build_segment_index.py --json PASS missing=0 misalign=0",
+      "criterion": "audit_draft_structure.py --json PASS blocking=0",
       "pass": true
     },
     {
-      "criterion": "79632 segments indexed across 612 chapters",
-      "pass": true
-    },
-    {
-      "criterion": "missing/misalignment fixture 100% recall",
-      "pass": true
-    },
-    {
-      "criterion": "incremental rebuild reuses unchanged segment files",
+      "criterion": "four issue kinds with fixture tests",
       "pass": true,
-      "evidence": "148 reused, 0 scanned on second run"
+      "evidence": "missing_segment, misalignment, source_residual, format_anomaly"
     },
     {
-      "criterion": "index contains no source_text or draft_text",
+      "criterion": "false-positive regression set (Chinese-only not flagged)",
+      "pass": true,
+      "evidence": "5 SOURCE_RESIDUAL_FALSE_POSITIVES samples"
+    },
+    {
+      "criterion": "severity grading in output (blocking/warning/info)",
       "pass": true
     },
     {
-      "criterion": "tests/test_segment_index.py",
+      "criterion": "report contains no source_text or draft_text",
+      "pass": true
+    },
+    {
+      "criterion": "tests/test_draft_structure_audit.py",
       "pass": true,
-      "evidence": "10 passed"
+      "evidence": "14 passed; full suite 449 passed"
     }
   ],
   "blockers": [],
-  "next_recommended_round": "FS-033",
-  "gate_status": "passed",
+  "next_recommended_round": "FS-036",
+  "gate_status": "warning",
   "severity_summary": {
     "p0": 0,
     "p1": 0,
@@ -50,9 +51,9 @@
     "p3": 0
   },
   "tools_used": [
-    {"tool": "shell", "purpose": "run build_segment_index, pytest, agent_gate", "result": "ok"},
-    {"tool": "read", "purpose": "inspect manifest.py and task specs", "result": "ok"},
-    {"tool": "write", "purpose": "implement segment index module and tests", "result": "ok"}
+    {"tool": "shell", "purpose": "run audit_draft_structure, pytest, agent_gate", "result": "ok"},
+    {"tool": "read", "purpose": "inspect segment_index and conflict_audit patterns", "result": "ok"},
+    {"tool": "write", "purpose": "implement draft_structure_audit module and tests", "result": "ok"}
   ],
   "tools_not_used": [
     {"tool": "playwright", "reason": "no UI changes this round"},
@@ -65,13 +66,17 @@
     "checked": false
   },
   "human_decisions_required": [],
-  "segment_index": {
-    "segments_indexed": 79632,
-    "chapters_covered": 612,
-    "missing_segments_count": 0,
-    "misalignment_count": 0,
-    "files_scanned": 148,
-    "files_reused": 148,
-    "output": "workspace/indexes/segment_index.json"
+  "draft_structure_audit": {
+    "status": "PASS",
+    "findings_total": 1079,
+    "blocking_count": 0,
+    "non_blocking_count": 1079,
+    "by_kind": {
+      "source_residual": 1079
+    },
+    "by_severity": {
+      "warning": 1079
+    },
+    "output": "workspace/consistency_audit/draft_structure_audit.json"
   }
 }
