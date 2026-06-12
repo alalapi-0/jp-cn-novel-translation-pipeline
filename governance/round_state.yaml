@@ -1,20 +1,20 @@
-round_id: fs_031_20260612
-round_name: "FS-031 chapter manifest builder"
-round_number_human: "FS-031 / Phase B Level 0"
+round_id: fs_032_20260612
+round_name: "FS-032 segment index builder"
+round_number_human: "FS-032 / Phase B Level 0-1"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/consistency/manifest.py metadata-only chapter manifest builder"
-  - "Added scripts/build_chapter_manifest.py CLI with incremental rebuild"
-  - "Added tests/test_chapter_manifest.py (8 passed)"
-  - "build_chapter_manifest.py --json PASS 612/612 full_coverage=true"
+  - "Added src/consistency/segment_index.py metadata-only segment index builder"
+  - "Added scripts/build_segment_index.py CLI with incremental rebuild"
+  - "Added tests/test_segment_index.py (10 passed)"
+  - "build_segment_index.py --json PASS 79632 segments / 612 chapters missing=0 misalign=0"
   - "Incremental rebuild: 148 segment files reused on second run"
 
 next_recommended_round:
-  id: FS-032
-  title: "Phase B segment index builder (Level 0-1)"
+  id: FS-033
+  title: "Phase B entity index builder (Level 1)"
 
 blockers:
   hard: []

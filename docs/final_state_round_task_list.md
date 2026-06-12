@@ -1,3 +1,5 @@
+> ✅ **FS-032 segment index 完成**（2026-06-12）：`build_segment_index.py --json` status=PASS；79632 segments / 612 chapters；missing=0 misalign=0；增量重建 148 segment files reused；索引无正文；`tests/test_segment_index.py` 10 passed。**推荐下一闸门：FS-033 entity index**。
+
 > ✅ **FS-031 chapter manifest 完成**（2026-06-12）：`build_chapter_manifest.py --json` status=PASS；612/612 编号章全覆盖（README 排除）；missing/duplicate 显式统计；增量重建 148 segment files reused；manifest 无正文；`tests/test_chapter_manifest.py` 8 passed。**推荐下一闸门：FS-032 segment index**。
 
 > ✅ **FS-010 Phase A 收尾完成**（2026-06-12）：`phase_a_completion_check.py --json` overall_pass=true（612 编号章）；`_count_total_chapters` 改为仅计 `^\d+-` 源文件（排除 README.md）；调度器 draft 612/612、phase=consistency；D-MR-137 metrics 封口（ch613 无源文件，范围 611-612）；orphan CLEAN；throughput_gate WARN（预期 refine_pending + diagnostic checkpoints）；agent_gate WARN（提交前 dirty tree）。**推荐下一闸门：FS-031 Phase B 工具链**（manifest / segment index / consistency audit）。
@@ -1532,7 +1534,8 @@ FS-070。
 | FS-017…FS-022 | S4 UI 基座 | not_started |
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031 | S6 Phase B | completed（2026-06-12，chapter manifest 612/612 PASS） |
-| FS-032…FS-037 | S6 Phase B | not_started |
+| FS-032 | S6 Phase B | completed（2026-06-12，segment index 79632/612 PASS） |
+| FS-033…FS-037 | S6 Phase B | not_started |
 | FS-038…FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
