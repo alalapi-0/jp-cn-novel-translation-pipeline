@@ -1,10 +1,10 @@
 {
-  "round_id": "FS-035",
-  "timestamp": "2026-06-12T12:15:00Z",
+  "round_id": "FS-036",
+  "timestamp": "2026-06-12T12:20:00Z",
   "agent": "cursor",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Draft structure audit: source residual, missing segments, misalignment, format; severity grading; no body text in output",
+  "goal": "Local fix plan from FS-034/035 audits: term patches vs segment retranslate tasks; dry-run apply; scheduler consistency branch",
   "tool_probe_status": "not_run",
   "real_api_used": {
     "used": false,
@@ -14,35 +14,33 @@
   },
   "acceptance_result": [
     {
-      "criterion": "audit_draft_structure.py --json PASS blocking=0",
-      "pass": true
-    },
-    {
-      "criterion": "four issue kinds with fixture tests",
+      "criterion": "build_local_fix_plan.py --json produces categorized plan",
       "pass": true,
-      "evidence": "missing_segment, misalignment, source_residual, format_anomaly"
+      "evidence": "term_fixes=0 retranslate_segments=1079 deferred=50"
     },
     {
-      "criterion": "false-positive regression set (Chinese-only not flagged)",
+      "criterion": "apply_term_fixes.py --dry-run shows diffs without writes",
       "pass": true,
-      "evidence": "5 SOURCE_RESIDUAL_FALSE_POSITIVES samples"
+      "evidence": "applied=0 on real data (no rule patches pending)"
     },
     {
-      "criterion": "severity grading in output (blocking/warning/info)",
-      "pass": true
-    },
-    {
-      "criterion": "report contains no source_text or draft_text",
-      "pass": true
-    },
-    {
-      "criterion": "tests/test_draft_structure_audit.py",
+      "criterion": "apply does not touch source or checkpoint history",
       "pass": true,
-      "evidence": "14 passed; full suite 449 passed"
+      "evidence": "test_apply_does_not_touch_source_or_checkpoint"
+    },
+    {
+      "criterion": "task_planner consistency subtasks wired",
+      "pass": true,
+      "evidence": "consistency_build_fix_plan, consistency_apply_term_fixes, retranslate→FS-037"
+    },
+    {
+      "criterion": "tests/test_local_fix_plan.py",
+      "pass": true,
+      "evidence": "12 passed; full suite 461 passed"
     }
   ],
   "blockers": [],
-  "next_recommended_round": "FS-036",
+  "next_recommended_round": "FS-037",
   "gate_status": "warning",
   "severity_summary": {
     "p0": 0,
@@ -51,32 +49,32 @@
     "p3": 0
   },
   "tools_used": [
-    {"tool": "shell", "purpose": "run audit_draft_structure, pytest, agent_gate", "result": "ok"},
-    {"tool": "read", "purpose": "inspect segment_index and conflict_audit patterns", "result": "ok"},
-    {"tool": "write", "purpose": "implement draft_structure_audit module and tests", "result": "ok"}
+    {"tool": "shell", "purpose": "build_local_fix_plan, apply_term_fixes dry-run, pytest, agent_gate", "result": "ok"},
+    {"tool": "read", "purpose": "FS-034/035 audit schemas and task_planner patterns", "result": "ok"},
+    {"tool": "write", "purpose": "local_fix_plan module, scripts, tests, planner wiring", "result": "ok"}
   ],
   "tools_not_used": [
     {"tool": "playwright", "reason": "no UI changes this round"},
     {"tool": "chrome-devtools", "reason": "no UI changes this round"},
     {"tool": "stitch", "reason": "no UI design this round"},
     {"tool": "context7", "reason": "stdlib-only implementation"},
-    {"tool": "github", "reason": "commit handled separately"}
+    {"tool": "github", "reason": "push after commit"}
   ],
   "ui_checked": {
     "checked": false
   },
   "human_decisions_required": [],
-  "draft_structure_audit": {
+  "local_fix_plan": {
     "status": "PASS",
-    "findings_total": 1079,
-    "blocking_count": 0,
-    "non_blocking_count": 1079,
-    "by_kind": {
-      "source_residual": 1079
+    "term_fix_count": 0,
+    "retranslate_task_count": 1,
+    "retranslate_segment_count": 1079,
+    "deferred_count": 50,
+    "categorization": {
+      "term_replace": {},
+      "segment_retranslate": {"source_residual": 1},
+      "deferred": {"unlisted_high_freq": 50}
     },
-    "by_severity": {
-      "warning": 1079
-    },
-    "output": "workspace/consistency_audit/draft_structure_audit.json"
+    "output": "workspace/consistency_audit/local_fix_plan.json"
   }
 }

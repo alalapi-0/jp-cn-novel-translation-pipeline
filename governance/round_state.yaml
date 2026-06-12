@@ -1,24 +1,23 @@
-round_id: fs_035_20260612
-round_name: "FS-035 draft structure audit"
-round_number_human: "FS-035 / Phase B Level 2"
+round_id: fs_036_20260612
+round_name: "FS-036 local fix plan"
+round_number_human: "FS-036 / Phase B Level 3"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/consistency/draft_structure_audit.py with four issue kinds + severity grading"
-  - "Integrated FS-032 segment index (missing/misalignment/missing_draft blocking)"
-  - "Kana-only source_residual heuristic (P1 Han false-positive fix) + 5-sample regression set"
-  - "Added scripts/audit_draft_structure.py CLI; output workspace/consistency_audit/"
-  - "Added tests/test_draft_structure_audit.py (14 passed); npm run test:py 449 passed"
-  - "audit_draft_structure.py --json PASS blocking=0; real data 1079 source_residual warnings"
+  - "Added src/consistency/local_fix_plan.py: aggregate FS-034/035 into term_fixes / retranslate_tasks / deferred"
+  - "Added scripts/build_local_fix_plan.py and scripts/apply_term_fixes.py (dry-run default)"
+  - "Wired task_planner consistency subtasks: build_fix_plan, apply_term_fixes, retranslate→FS-037"
+  - "Real data: term_fixes=0, retranslate_segments=1079 (source_residual), deferred=50 (unlisted_high_freq)"
+  - "Added tests/test_local_fix_plan.py (12 passed); npm run test:py 461 passed"
 
 next_recommended_round:
-  id: FS-036
-  title: "Phase B local fix plan + selective retranslate tasks"
+  id: FS-037
+  title: "Level 4 model arbitration + Phase B completion gate"
 
 blockers:
   hard: []
   soft:
     - "throughput_gate WARN: refine_pending + diagnostic checkpoints (expected post-Phase A)"
-    - "1079 source_residual warnings (non-blocking) — may feed FS-036 fix plan / FS-037 retranslate"
+    - "1079 source_residual segments queued for FS-037 selective retranslate (non-blocking warnings)"

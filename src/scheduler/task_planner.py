@@ -40,11 +40,32 @@ BUDGET_FLAGS = {
 }
 
 _NOT_IMPLEMENTED_ROUNDS = {
-    "consistency": ("consistency_audit", "consistency tooling lands in FS-031..FS-037"),
     "baseline_lock": ("baseline_lock", "baseline lock lands in FS-038"),
     "refinement": ("refine_micro_round", "refinement pipeline lands in FS-040+"),
     "final_review": ("final_review", "final review tooling lands in FS-046+"),
     "production_candidate": ("production_candidate", "candidate build lands in FS-050"),
+}
+
+BUILD_FIX_PLAN_REL = "scripts/build_local_fix_plan.py"
+APPLY_TERM_FIXES_REL = "scripts/apply_term_fixes.py"
+
+_CONSISTENCY_TASKS: dict[str, tuple[str, str, str]] = {
+    # next_task -> (task_type, script_rel, human reason)
+    "draft_consistency_audit": (
+        "consistency_build_fix_plan",
+        BUILD_FIX_PLAN_REL,
+        "build local fix plan from FS-034/035 audits",
+    ),
+    "consistency_build_fix_plan": (
+        "consistency_build_fix_plan",
+        BUILD_FIX_PLAN_REL,
+        "build local fix plan from FS-034/035 audits",
+    ),
+    "consistency_apply_term_fixes": (
+        "consistency_apply_term_fixes",
+        APPLY_TERM_FIXES_REL,
+        "apply deterministic term patches (dry-run unless real mode)",
+    ),
 }
 
 
@@ -177,6 +198,24 @@ def _draft_command(
     return cmd
 
 
+def _consistency_command(
+    *,
+    script_rel: str,
+    mode: str,
+    python_executable: str,
+) -> list[str]:
+    cmd = [python_executable, script_rel]
+    if script_rel.endswith("build_local_fix_plan.py"):
+        cmd.append("--json")
+    elif script_rel.endswith("apply_term_fixes.py"):
+        if mode == "real":
+            cmd.append("--apply")
+        else:
+            cmd.append("--dry-run")
+        cmd.append("--json")
+    return cmd
+
+
 def plan_next_task(
     status: dict[str, Any],
     *,
@@ -248,6 +287,37 @@ def plan_next_task(
             budget=budgets,
             mode=mode,
             resume_run_id=resume_run_id,
+        )
+
+    if phase == "consistency":
+        next_task = str(status.get("next_task") or "")
+        if next_task == "consistency_retranslate":
+            return TaskPlan(
+                task_type="consistency_retranslate",
+                implemented=False,
+                reason="not_implemented: segment retranslate execution lands in FS-037",
+                mode=mode,
+            )
+        spec = _CONSISTENCY_TASKS.get(next_task)
+        if spec:
+            task_type, script_rel, reason = spec
+            return TaskPlan(
+                task_type=task_type,
+                implemented=True,
+                reason=reason,
+                command=_consistency_command(
+                    script_rel=script_rel,
+                    mode=mode,
+                    python_executable=python_executable,
+                ),
+                budget=budgets,
+                mode=mode,
+            )
+        return TaskPlan(
+            task_type="consistency_audit",
+            implemented=False,
+            reason=f"not_implemented: unknown consistency next_task {next_task!r}",
+            mode=mode,
         )
 
     if phase in _NOT_IMPLEMENTED_ROUNDS:

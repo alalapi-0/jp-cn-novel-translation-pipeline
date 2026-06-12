@@ -193,8 +193,8 @@ def test_tick_plan_carries_run_micro_round_command(tmp_path: Path) -> None:
     assert cmd[cmd.index("--max-api-calls") + 1] == "5"
 
 
-def test_tick_reports_not_implemented_explicitly(tmp_path: Path) -> None:
-    """All chapters done -> consistency phase -> explicit not_implemented."""
+def test_tick_consistency_phase_plans_fix_plan(tmp_path: Path) -> None:
+    """All chapters done -> consistency phase -> build_local_fix_plan (FS-036)."""
     repo = make_repo(tmp_path, chapters=3)
     root = repo / "workspace" / "runs" / "run_all"
     root.mkdir(parents=True, exist_ok=True)
@@ -207,12 +207,13 @@ def test_tick_reports_not_implemented_explicitly(tmp_path: Path) -> None:
     progress = {"run_id": "run_all", "total_segments": 30, "completed_segments": 30}
     (root / "run_progress.json").write_text(json.dumps(progress), encoding="utf-8")
 
-    result = run_tick(repo)  # default dispatcher: must not run anything
+    calls: list[dict] = []
+    result = run_tick(repo, executor=fake_executor(calls))
     assert result["status"] == "completed"
-    assert result["plan"]["implemented"] is False
-    assert result["plan"]["task_type"] == "consistency_audit"
-    assert result["execution"]["not_implemented"] is True
-    assert result["execution"]["executed"] is False
+    assert result["plan"]["implemented"] is True
+    assert result["plan"]["task_type"] == "consistency_build_fix_plan"
+    assert len(calls) == 1
+    assert calls[0]["task_type"] == "consistency_build_fix_plan"
 
 
 def test_dispatched_command_failure_is_tick_error(tmp_path: Path) -> None:

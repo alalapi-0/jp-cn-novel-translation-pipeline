@@ -1,3 +1,5 @@
+> ✅ **FS-036 local fix plan 完成**（2026-06-12）：`build_local_fix_plan.py --json` status=PASS；真实数据 term_fixes=0、retranslate_tasks=1（1079 source_residual segments）、deferred=50（unlisted_high_freq）；`apply_term_fixes.py --dry-run` applied=0（无规则补丁）；task_planner consistency 分支接入 build/apply；`tests/test_local_fix_plan.py` 12 passed；npm run test:py 461 passed。**推荐下一闸门：FS-037 模型仲裁 + Phase B 收尾**。
+
 > ✅ **FS-035 draft structure audit 完成**（2026-06-12）：`audit_draft_structure.py --json` status=PASS；blocking=0；真实数据 findings=1079（均为 source_residual warning；kana-only P1 修正）；四类 issue fixture 全覆盖 + 5 条误判回归集；severity blocking/warning/info；`tests/test_draft_structure_audit.py` 14 passed；npm run test:py 449 passed。**推荐下一闸门：FS-036 local fix plan**。
 
 > ✅ **FS-034 glossary conflict audit 完成**（2026-06-12）：`audit_glossary_conflicts.py --json` status=PASS；blocking=0；真实数据 findings=50（均为 unlisted_high_freq top-N；6987 candidates 已索引）；locked/approved=blocking 规则文档化于 `conflict_audit.py`；fixture 同源多译/locked/approved/unlisted 全覆盖；`tests/test_conflict_audit.py` 12 passed；npm run test:py 435 passed。**推荐下一闸门：FS-035 source residual / structure audit**。
@@ -950,6 +952,8 @@ fix plan 工具链。
 ### 下一轮衔接
 FS-037 模型仲裁与 Phase B 收尾。
 
+> ✅ 完成于 2026-06-12。`src/consistency/local_fix_plan.py`：聚合 FS-034/035 → term_fixes（规则替换）/ retranslate_tasks（segment 重译）/ deferred（unlisted 等）；source_residual 进重译清单、unlisted_high_freq 进 deferred。`scripts/build_local_fix_plan.py` + `scripts/apply_term_fixes.py`（dry-run 默认）；task_planner consistency 子任务（build_fix_plan / apply_term_fixes / retranslate→FS-037）。真实数据：term_fixes=0、retranslate_segments=1079、deferred=50。测试 +12（全套 461 passed）。
+
 ## Round FS-037：Level 4 模型仲裁与 Phase B 完成闸门
 
 ### 目标
@@ -1550,7 +1554,8 @@ FS-070。
 | FS-033 | S6 Phase B | completed（2026-06-12，entity index + unlisted top-N PASS） |
 | FS-034 | S6 Phase B | completed（2026-06-12，glossary conflict audit blocking=0 PASS） |
 | FS-035 | S6 Phase B | completed（2026-06-12，draft structure audit blocking=0 PASS） |
-| FS-036…FS-037 | S6 Phase B | not_started |
+| FS-036 | S6 Phase B | done |
+| FS-037 | S6 Phase B | not_started |
 | FS-038…FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |

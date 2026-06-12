@@ -70,7 +70,7 @@ def test_draft_gap_backfill_takes_first_block_only() -> None:
     assert plan.command[plan.command.index("--chapter-range") + 1] == "191-193"
 
 
-def test_consistency_phase_not_implemented() -> None:
+def test_consistency_phase_plans_build_fix_plan() -> None:
     status = make_status(
         phase="consistency",
         next_task="draft_consistency_audit",
@@ -78,10 +78,24 @@ def test_consistency_phase_not_implemented() -> None:
         chapter_range=None,
     )
     plan = plan_next_task(status)
+    assert plan.implemented is True
+    assert plan.task_type == "consistency_build_fix_plan"
+    assert plan.command is not None
+    assert plan.command[1].endswith("build_local_fix_plan.py")
+    assert "--json" in plan.command
+
+
+def test_consistency_unknown_task_not_implemented() -> None:
+    status = make_status(
+        phase="consistency",
+        next_task="consistency_unknown_step",
+        round_id=None,
+        chapter_range=None,
+    )
+    plan = plan_next_task(status)
     assert plan.implemented is False
     assert plan.task_type == "consistency_audit"
     assert "not_implemented" in plan.reason
-    assert plan.command is None
 
 
 def test_baseline_lock_phase_not_implemented() -> None:
