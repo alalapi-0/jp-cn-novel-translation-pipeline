@@ -1,3 +1,5 @@
+> ✅ **FS-033 entity index 完成**（2026-06-12）：`build_entity_index.py --json` status=PASS；148 segment files（增量二跑 reused=148）；同源多译/同译多源 fixture 检出；unlisted top-N=50（真实数据 6987 candidates）；索引无正文；`tests/test_entity_index.py` 12 passed；glossary 当前全为 `other` 类别故 entities_indexed=0（待 FS-034 前归类）。**推荐下一闸门：FS-034 glossary conflict audit**。
+
 > ✅ **FS-032 segment index 完成**（2026-06-12）：`build_segment_index.py --json` status=PASS；79632 segments / 612 chapters；missing=0 misalign=0；增量重建 148 segment files reused；索引无正文；`tests/test_segment_index.py` 10 passed。**推荐下一闸门：FS-033 entity index**。
 
 > ✅ **FS-031 chapter manifest 完成**（2026-06-12）：`build_chapter_manifest.py --json` status=PASS；612/612 编号章全覆盖（README 排除）；missing/duplicate 显式统计；增量重建 148 segment files reused；manifest 无正文；`tests/test_chapter_manifest.py` 8 passed。**推荐下一闸门：FS-032 segment index**。
@@ -887,6 +889,8 @@ entity index + 测试。
 ### 下一轮衔接
 FS-034 冲突统计。
 
+> ✅ 完成于 2026-06-12。`src/consistency/entity_index.py`：六类实体（person/place/org/skill/item/title）+ FS-015 流式指纹增量；per-entity source→target mappings 频次；divergent_translation + shared_target 冲突；片假名/方括号启发式 unlisted top-N（无正文泄漏）。`scripts/build_entity_index.py`：--chapter-range/--runs-dir/--rebuild/--top-n-unlisted/--json。验收：✅fixture 同源多译/同译多源✅unlisted top-N✅增量 reused=148✅输出 workspace/indexes/（gitignore）。真实数据：entities_indexed=0（glossary 均为 other）、unlisted_candidates=6987、top3 プレイヤー/ライラ/スキル。测试 +12（全套 423 passed）。
+
 ## Round FS-034：glossary conflict audit（Level 2）
 
 ### 目标
@@ -1535,7 +1539,8 @@ FS-070。
 | FS-023…FS-030 | S5 UI MVP | not_started |
 | FS-031 | S6 Phase B | completed（2026-06-12，chapter manifest 612/612 PASS） |
 | FS-032 | S6 Phase B | completed（2026-06-12，segment index 79632/612 PASS） |
-| FS-033…FS-037 | S6 Phase B | not_started |
+| FS-033 | S6 Phase B | completed（2026-06-12，entity index + unlisted top-N PASS） |
+| FS-034…FS-037 | S6 Phase B | not_started |
 | FS-038…FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |

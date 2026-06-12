@@ -1,22 +1,23 @@
-round_id: fs_032_20260612
-round_name: "FS-032 segment index builder"
-round_number_human: "FS-032 / Phase B Level 0-1"
+round_id: fs_033_20260612
+round_name: "FS-033 entity index builder"
+round_number_human: "FS-033 / Phase B Level 1"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/consistency/segment_index.py metadata-only segment index builder"
-  - "Added scripts/build_segment_index.py CLI with incremental rebuild"
-  - "Added tests/test_segment_index.py (10 passed)"
-  - "build_segment_index.py --json PASS 79632 segments / 612 chapters missing=0 misalign=0"
-  - "Incremental rebuild: 148 segment files reused on second run"
+  - "Added src/consistency/entity_index.py entity index with source→target mappings + unlisted top-N"
+  - "Added scripts/build_entity_index.py CLI with incremental rebuild"
+  - "Added tests/test_entity_index.py (12 passed)"
+  - "build_entity_index.py --json PASS 148 files reused on incremental; unlisted_top=50"
+  - "Fixture: divergent_translation + shared_target + unlisted high-freq detected"
 
 next_recommended_round:
-  id: FS-033
-  title: "Phase B entity index builder (Level 1)"
+  id: FS-034
+  title: "Phase B glossary conflict audit (Level 2)"
 
 blockers:
   hard: []
   soft:
     - "throughput_gate WARN: refine_pending + diagnostic checkpoints (expected post-Phase A)"
+    - "glossary entity categories empty (all other) — entity hits=0 until categories assigned; unlisted index active"
