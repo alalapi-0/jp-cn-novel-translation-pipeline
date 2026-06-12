@@ -40,7 +40,6 @@ BUDGET_FLAGS = {
 }
 
 _NOT_IMPLEMENTED_ROUNDS = {
-    "baseline_lock": ("baseline_lock", "baseline lock lands in FS-038"),
     "refinement": ("refine_micro_round", "refinement pipeline lands in FS-040+"),
     "final_review": ("final_review", "final review tooling lands in FS-046+"),
     "production_candidate": ("production_candidate", "candidate build lands in FS-050"),
@@ -51,6 +50,7 @@ APPLY_TERM_FIXES_REL = "scripts/apply_term_fixes.py"
 ARBITRATE_CONFLICTS_REL = "scripts/arbitrate_conflicts.py"
 RUN_CONSISTENCY_RETRANSLATE_REL = "scripts/run_consistency_retranslate.py"
 BUILD_CONSISTENCY_REPORT_REL = "scripts/build_draft_consistency_report.py"
+LOCK_BASELINE_REL = "scripts/lock_baseline.py"
 
 _CONSISTENCY_TASKS: dict[str, tuple[str, str, str]] = {
     # next_task -> (task_type, script_rel, human reason)
@@ -360,6 +360,16 @@ def plan_next_task(
             task_type="consistency_audit",
             implemented=False,
             reason=f"not_implemented: unknown consistency next_task {next_task!r}",
+            mode=mode,
+        )
+
+    if phase == "baseline_lock":
+        return TaskPlan(
+            task_type="baseline_lock",
+            implemented=True,
+            reason="lock draft_full_baseline snapshot after Phase A/B pass (FS-038)",
+            command=[python_executable, LOCK_BASELINE_REL, "--json"],
+            budget=budgets,
             mode=mode,
         )
 

@@ -1,4 +1,4 @@
-> ✅ **FS-037 Phase B 收尾完成**（2026-06-12）：`arbitrate_conflicts.py`（0 候选/0 API）；`run_consistency_retranslate.py` pilot dry-run 24/1079（checkpoint 续跑）；`phase_b_completion_check.py --json` overall_pass=true（B1–B8 PASS）；`draft_consistency_report.json` blocking=0；471 passed。**推荐下一闸门：FS-038 baseline lock**。
+> ✅ **FS-038 baseline lock 完成**（2026-06-12）：`lock_baseline.py` + `baseline_guard.py`/`baseline_lock.py`；612 章 `draft_full_baseline/` 快照 + metadata（aggregate hash + 148 source runs）；写保护（管线拒绝 + 文件只读）；477 passed。**推荐下一闸门：FS-039 go decision**。
 
 > ✅ **FS-036 local fix plan 完成**（2026-06-12）：`build_local_fix_plan.py --json` status=PASS；真实数据 term_fixes=0、retranslate_tasks=1（1079 source_residual segments）、deferred=50（unlisted_high_freq）；`apply_term_fixes.py --dry-run` applied=0（无规则补丁）；task_planner consistency 分支接入 build/apply；`tests/test_local_fix_plan.py` 12 passed；npm run test:py 461 passed。**推荐下一闸门：FS-037 模型仲裁 + Phase B 收尾**。
 
@@ -998,6 +998,8 @@ baseline + 保护机制。
 ### 下一轮衔接
 FS-039 go decision。
 
+> ✅ 完成于 2026-06-12。`scripts/lock_baseline.py` + `src/translation/baseline_guard.py` + `src/translation/baseline_lock.py` + `tests/test_baseline_lock.py`；task_planner `baseline_lock` 已实现。真实数据：612 章 baseline 锁定；aggregate_sha256=`c8617f9cc81393e4…`；148 source runs；Phase A/B prerequisite PASS；1055 source_residual retranslations 未阻塞 lock；测试 +6（全套 477 passed）。
+
 ## Round FS-039：baseline go decision 与 Phase D handoff
 
 ### 目标
@@ -1560,7 +1562,8 @@ FS-070。
 | FS-035 | S6 Phase B | completed（2026-06-12，draft structure audit blocking=0 PASS） |
 | FS-036 | S6 Phase B | done |
 | FS-037 | S6 Phase B | completed（2026-06-12，Phase B PASS；retranslate pilot 24/1079） |
-| FS-038…FS-039 | S7 Phase C | not_started |
+| FS-038 | S7 Phase C | completed（2026-06-12，612 章 baseline lock + 写保护 PASS） |
+| FS-039 | S7 Phase C | not_started |
 | FS-040…FS-045 | S8 Phase D | not_started |
 | FS-046…FS-050 | S9 Phase E | not_started |
 | FS-051…FS-053 | S10 资产 UI | not_started |

@@ -6,20 +6,32 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .baseline_guard import assert_baseline_writable, guarded_mkdir, guarded_write_text
 from .chapter_parser import ParsedChapter
 
 
-def export_chapter_markdown(chapter: ParsedChapter, out_dir: Path) -> Path:
-    out_dir.mkdir(parents=True, exist_ok=True)
+def export_chapter_markdown(
+    chapter: ParsedChapter,
+    out_dir: Path,
+    *,
+    repo_root: Path | None = None,
+) -> Path:
+    assert_baseline_writable(out_dir, repo_root)
+    guarded_mkdir(out_dir, repo_root, parents=True, exist_ok=True)
     path = out_dir / f"{chapter.chapter_id}_draft_zh.md"
     lines = [f"# {chapter.chapter_label}", ""]
     for seg in chapter.segments:
         lines.extend([f"<!-- {seg.segment_id} -->", seg.draft_text or "", ""])
-    path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    guarded_write_text(path, "\n".join(lines).strip() + "\n", repo_root=repo_root)
     return path
 
 
-def export_segments_doc(chapters: list[ParsedChapter], path: Path) -> None:
+def export_segments_doc(
+    chapters: list[ParsedChapter],
+    path: Path,
+    *,
+    repo_root: Path | None = None,
+) -> None:
     doc: dict[str, Any] = {
         "language_direction": "JP_TO_CN",
         "pipeline_stage": "draft",
@@ -42,5 +54,6 @@ def export_segments_doc(chapters: list[ParsedChapter], path: Path) -> None:
                 ],
             }
         )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    assert_baseline_writable(path, repo_root)
+    guarded_mkdir(path.parent, repo_root, parents=True, exist_ok=True)
+    guarded_write_text(path, json.dumps(doc, ensure_ascii=False, indent=2) + "\n", repo_root=repo_root)

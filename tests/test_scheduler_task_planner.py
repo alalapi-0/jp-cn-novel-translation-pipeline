@@ -98,12 +98,13 @@ def test_consistency_unknown_task_not_implemented() -> None:
     assert "not_implemented" in plan.reason
 
 
-def test_baseline_lock_phase_not_implemented() -> None:
+def test_baseline_lock_phase_implemented() -> None:
     status = make_status(phase="baseline_lock", next_task="baseline_lock", round_id=None, chapter_range=None)
     plan = plan_next_task(status)
-    assert plan.implemented is False
+    assert plan.implemented is True
     assert plan.task_type == "baseline_lock"
-    assert "not_implemented" in plan.reason
+    assert plan.command is not None
+    assert "lock_baseline.py" in " ".join(plan.command)
 
 
 def test_refinement_phase_not_implemented() -> None:

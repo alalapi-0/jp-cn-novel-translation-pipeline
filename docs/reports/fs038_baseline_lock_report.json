@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-06-12T20:30:00Z",
+  "round": "FS-038",
+  "phase": "C",
+  "overall_pass": true,
+  "baseline_stats": {
+    "chapter_count": 612,
+    "total_source_chapters": 612,
+    "source_run_count": 148,
+    "aggregate_sha256": "c8617f9cc81393e421e53d9dcb326535720ecf4060219223218239b613ed5192",
+    "hash_summary_prefix": {
+      "1": "ab7a5ad1691a369d",
+      "2": "6e5ff71cab44bbd4",
+      "3": "0f86e57cd5801531",
+      "4": "4b4e46087afaf4f0",
+      "5": "9e6710b8ea31bcc5"
+    },
+    "consistency_report_ref": "workspace/consistency_audit/draft_consistency_report.json",
+    "read_only": true
+  },
+  "prerequisites": {
+    "phase_a_pass": true,
+    "phase_b_pass": true,
+    "source_residual_retranslations_remaining": 1055,
+    "source_residual_blocked_lock": false
+  },
+  "acceptance": {
+    "C2_baseline_dir": true,
+    "C3_metadata_complete": true,
+    "C5_write_protection": true,
+    "C4_go_decision": false,
+    "note": "C4 (go decision) is FS-039 scope"
+  },
+  "tests": {
+    "test_baseline_lock": "6 passed",
+    "full_suite": "477 passed"
+  },
+  "gate_status": "warning",
+  "next_round": "FS-039"
+}

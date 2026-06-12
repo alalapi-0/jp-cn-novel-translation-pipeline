@@ -116,6 +116,8 @@ workspace/watchdog_production_poll.sh
 output_draft/
 output_refined/
 output_final/
+draft_full_baseline/
+draft_full_baseline_metadata.json
 
 # Temporary files
 tmp/

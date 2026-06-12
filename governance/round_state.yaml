@@ -1,25 +1,25 @@
-round_id: fs_037_20260612
-round_name: "FS-037 Level 4 arbitration + Phase B gate"
-round_number_human: "FS-037 / Phase B Level 4-5"
+round_id: fs_038_20260612
+round_name: "FS-038 baseline lock and read-only protection"
+round_number_human: "FS-038 / Phase C baseline lock"
 status: completed
 type: implementation
 real_api_called: false
 
 completed_tasks:
-  - "Added src/consistency/arbitration.py + scripts/arbitrate_conflicts.py (max-api-calls cap, dry-run default)"
-  - "Added src/consistency/retranslate.py + scripts/run_consistency_retranslate.py (batched checkpoint/resume)"
-  - "Added src/consistency/draft_consistency_report.py + build_draft_consistency_report.py + phase_b_completion_check.py"
-  - "Implemented task_planner consistency_retranslate + consistency_arbitrate commands"
-  - "Real data: arbitration candidates=0; retranslate pilot dry-run 24/1079 (1055 remaining in checkpoint)"
-  - "phase_b_completion_check overall_pass=true (B1-B8); npm run test:py 471 passed"
+  - "Added src/translation/baseline_guard.py (pipeline write refusal + filesystem read-only)"
+  - "Added src/translation/baseline_lock.py + scripts/lock_baseline.py (snapshot + metadata)"
+  - "Integrated write guard into src/translation/exporter.py"
+  - "Implemented task_planner baseline_lock -> lock_baseline.py --json"
+  - "Added tests/test_baseline_lock.py (6 tests); npm run test:py 477 passed"
+  - "Real data: draft_full_baseline 612 chapters locked; aggregate_sha256 c8617f9cc81393e4…; 148 source runs"
+  - "Phase A/B prerequisite gates PASS; 1055 source_residual retranslations non-blocking"
 
 next_recommended_round:
-  id: FS-038
-  title: "baseline lock and read-only protection"
+  id: FS-039
+  title: "baseline go decision and Phase D handoff"
 
 blockers:
   hard: []
   soft:
     - "1055 source_residual segments remain in retranslate checkpoint (non-blocking; resume via run_consistency_retranslate.py)"
-    - "Real API retranslate blocked this session (DEEPSEEK_API_KEY unset); dry-run pilot validated pipeline"
-    - "throughput_gate WARN: refine_pending + diagnostic checkpoints (expected post-Phase A)"
+    - "agent_gate warning: vector inspect warnings (pre-existing)"

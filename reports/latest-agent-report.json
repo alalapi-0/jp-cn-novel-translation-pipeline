@@ -1,10 +1,10 @@
 {
-  "round_id": "FS-036",
-  "timestamp": "2026-06-12T12:20:00Z",
+  "round_id": "FS-038",
+  "timestamp": "2026-06-12T20:30:00Z",
   "agent": "cursor",
   "agent_surface": "cursor",
   "mode": "implement",
-  "goal": "Local fix plan from FS-034/035 audits: term patches vs segment retranslate tasks; dry-run apply; scheduler consistency branch",
+  "goal": "FS-038 baseline lock: draft_full_baseline snapshot, metadata hashes, write protection",
   "tool_probe_status": "not_run",
   "real_api_used": {
     "used": false,
@@ -14,33 +14,38 @@
   },
   "acceptance_result": [
     {
-      "criterion": "build_local_fix_plan.py --json produces categorized plan",
+      "criterion": "lock_baseline.py --dry-run then real lock",
       "pass": true,
-      "evidence": "term_fixes=0 retranslate_segments=1079 deferred=50"
+      "evidence": "612 chapters; aggregate_sha256 c8617f9cc81393e4…; 148 source runs"
     },
     {
-      "criterion": "apply_term_fixes.py --dry-run shows diffs without writes",
+      "criterion": "draft_full_baseline_metadata.json complete",
       "pass": true,
-      "evidence": "applied=0 on real data (no rule patches pending)"
+      "evidence": "per-chapter sha256, source_runs, consistency_report_ref"
     },
     {
-      "criterion": "apply does not touch source or checkpoint history",
+      "criterion": "pipeline refuses baseline writes when locked",
       "pass": true,
-      "evidence": "test_apply_does_not_touch_source_or_checkpoint"
+      "evidence": "test_pipeline_refuses_baseline_write_when_locked"
     },
     {
-      "criterion": "task_planner consistency subtasks wired",
+      "criterion": "Phase A/B prerequisite gate",
       "pass": true,
-      "evidence": "consistency_build_fix_plan, consistency_apply_term_fixes, retranslate→FS-037"
+      "evidence": "phase_a_pass=true phase_b_pass=true; rejects when phase_b false"
     },
     {
-      "criterion": "tests/test_local_fix_plan.py",
+      "criterion": "tests/test_baseline_lock.py + full suite",
       "pass": true,
-      "evidence": "12 passed; full suite 461 passed"
+      "evidence": "6 passed; full suite 477 passed"
+    },
+    {
+      "criterion": "baseline body not committed",
+      "pass": true,
+      "evidence": "draft_full_baseline/ and metadata gitignored"
     }
   ],
   "blockers": [],
-  "next_recommended_round": "FS-037",
+  "next_recommended_round": "FS-039",
   "gate_status": "warning",
   "severity_summary": {
     "p0": 0,
@@ -49,32 +54,26 @@
     "p3": 0
   },
   "tools_used": [
-    {"tool": "shell", "purpose": "build_local_fix_plan, apply_term_fixes dry-run, pytest, agent_gate", "result": "ok"},
-    {"tool": "read", "purpose": "FS-034/035 audit schemas and task_planner patterns", "result": "ok"},
-    {"tool": "write", "purpose": "local_fix_plan module, scripts, tests, planner wiring", "result": "ok"}
+    {"tool": "shell", "purpose": "lock_baseline dry-run + lock, pytest, agent_gate", "result": "ok"},
+    {"tool": "read", "purpose": "FS-038 spec, manifest/export patterns, phase gates", "result": "ok"},
+    {"tool": "write", "purpose": "baseline_guard, baseline_lock, lock script, tests, planner", "result": "ok"}
   ],
   "tools_not_used": [
     {"tool": "playwright", "reason": "no UI changes this round"},
     {"tool": "chrome-devtools", "reason": "no UI changes this round"},
     {"tool": "stitch", "reason": "no UI design this round"},
     {"tool": "context7", "reason": "stdlib-only implementation"},
-    {"tool": "github", "reason": "push after commit"}
+    {"tool": "github", "reason": "commit/push via git CLI after user request"},
+    {"tool": "filesystem-mcp", "reason": "IDE Read/Write tools used instead"}
   ],
-  "ui_checked": {
-    "checked": false
+  "baseline_stats": {
+    "chapter_count": 612,
+    "aggregate_sha256": "c8617f9cc81393e421e53d9dcb326535720ecf4060219223218239b613ed5192",
+    "source_run_count": 148
   },
-  "human_decisions_required": [],
-  "local_fix_plan": {
-    "status": "PASS",
-    "term_fix_count": 0,
-    "retranslate_task_count": 1,
-    "retranslate_segment_count": 1079,
-    "deferred_count": 50,
-    "categorization": {
-      "term_replace": {},
-      "segment_retranslate": {"source_residual": 1},
-      "deferred": {"unlisted_high_freq": 50}
-    },
-    "output": "workspace/consistency_audit/local_fix_plan.json"
+  "fs039_readiness": {
+    "ready": true,
+    "pending": ["draft_full_baseline_go_decision.md", "Phase D handoff doc", "task_planner phase switch to refinement"],
+    "non_blocking": ["1055 source_residual retranslations in checkpoint"]
   }
 }
