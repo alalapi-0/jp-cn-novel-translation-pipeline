@@ -1,6 +1,6 @@
 {
   "status": "warning",
-  "timestamp": "2026-06-12T09:01:59Z",
+  "timestamp": "2026-06-12T09:51:10Z",
   "passed": [
     "docs_exist_readme",
     "docs_exist_agents",
@@ -429,7 +429,7 @@
     {
       "id": "git_status_dirty",
       "severity": "warn",
-      "message": "working tree has 7 uncommitted change(s) on branch main"
+      "message": "working tree has 8 uncommitted change(s) on branch main"
     }
   ],
   "commands": [

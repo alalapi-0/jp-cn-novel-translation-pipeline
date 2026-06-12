@@ -4,20 +4,20 @@
 > 旧 20 章任务清单（deprecated）：`docs/translation_recovery_task_list.md`  
 > 生成时间：2026-06-07（治理轮，未执行真实 API）
 >
-> **2026-06-12 live override**：D-MR-001…122 已完成；当前连续完成 568/613 章。下一任务固定为 **D-MR-123（569–571）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
+> **2026-06-12 live override**：D-MR-001…127 已完成；当前连续完成 583/613 章。下一任务固定为 **D-MR-128（584–586）**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。
 
 ## Current State
 
 - **total chapters**: 613（`input_jp/*.md`）
-- **draft completed chapters**: **568**（第 1–568 章连续完成）
+- **draft completed chapters**: **583**（第 1–583 章连续完成）
 - **current partial run**: 无
 - **refinement completed chapters**: **170**（可导出 refined）
 - **active worker**: 0
 - **orphan worker**: 0（`check_orphan_workers.py` → CLEAN）
 - **stale lock**: 0
 - **default model**: `deepseek/deepseek-v4-pro`（Nemotron 暂不启用）
-- **next draft micro round**: **D-MR-123**（第 569–571 章）
-- **remaining draft MRs**: 15（D-MR-123 … D-MR-137）
+- **next draft micro round**: **D-MR-128**（第 584–586 章）
+- **remaining draft MRs**: 10（D-MR-128 … D-MR-137）
 - **state source**: `local_scheduler_status.py --json`（当前唯一执行真值）
 
 ### Legacy T-002 映射

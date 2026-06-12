@@ -70,3 +70,4 @@
 {"ts": "2026-06-12T06:46:15Z", "round_id": "FS-008-block22", "event": "block_complete", "progress": "538/613", "next": "D-MR-113"}
 {"ts": "2026-06-12T07:53:05Z", "round_id": "FS-008-block23", "event": "block_complete", "progress": "553/613", "next": "D-MR-118", "ticks": 6}
 {"ts": "2026-06-12T09:02:11Z", "round_id": "FS-008-block24", "event": "block_complete", "progress": "568/613", "cost_usd": 0.17069478}
+{"ts": "2026-06-12T09:51:10Z", "round_id": "FS-008-block25", "progress": "583/613", "cost_usd": 0.1306034}

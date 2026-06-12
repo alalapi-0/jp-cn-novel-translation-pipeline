@@ -1,3 +1,5 @@
+> ✅ Block #25 收口于 2026-06-12（D-MR-123 → 124 → 125 → 126 → 127，15 章）。**进度 583/613（95.11%），ch1-583 连续**，next D-MR-128（584-586）。五轮 1927/1927 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 MR metrics 汇总成本 $0.1306034（91 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
+
 > ✅ Block #24 收口于 2026-06-12（D-MR-118 → 119 → 120 → 121 → 122，15 章；D-MR-121 大 MR 占 2 tick slot，本 block 共 6 次 tick）。**进度 568/613（92.66%），ch1-568 连续**，next D-MR-123（569-571）。五轮 2708/2708 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.17069478（86 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[].
 
 > ✅ Block #22 收口于 2026-06-12（D-MR-108 → 109 → 110 → 111 → 112，15 章）。**进度 538/613（87.77%），ch1-538 连续**，next D-MR-113（539-541）。五轮 1727/1727 segments completed，15/15 chapters 唯一且连续，failed=0、blocking validation_failed=0、coverage=1.0、orphan CLEAN；按 checkpoint 切片去重成本 $0.11871376（82 个已完成 API calls）。throughput WARN 仅预期 refine_pending + diagnostic checkpoints，blocks=[]。
