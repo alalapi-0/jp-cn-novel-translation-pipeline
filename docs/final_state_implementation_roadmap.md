@@ -21,7 +21,7 @@
 | 维度 | 现状 | 证据 |
 | --- | --- | --- |
 | 全书章节 | 613 章（input_jp） | `translation_recovery_3ch_roadmap.md` |
-| 初翻进度 | **553/613 连续完成（90.21%）**；下一轮 `D-MR-118`（554–556） | `local_scheduler_status.py --json` |
+| 初翻进度 | **568/613 连续完成（92.66%）**；下一轮 `D-MR-123`（569–571） | `local_scheduler_status.py --json` |
 | Phase | Phase A in_progress；B/C/D/E 未开始 | scheduler status + FS 状态表 |
 | Worker 状态 | 0 active / 0 orphan；throughput_gate WARN 但 blocks=[] | `check_orphan_workers.py` / `throughput_gate.py` 实测 |
 | 初翻执行器 | `scripts/run_micro_round.py`（supervised、checkpoint、budget、--dry-run 完备） | `--help` 实测 |
@@ -43,7 +43,7 @@
 | # | 规格要求（章节） | 现状 | 差距等级 |
 | --- | --- | --- | --- |
 | G1 | 本地调度系统（§9：tick / status / launchd / pause / lock） | **已完成 S1**；待 S5 接入 Web UI | 小（UI 接线） |
-| G2 | Phase A 全书初翻（§12） | 553/613 连续完成，执行链路成熟 | 中（剩余 D-MR-118…137） |
+| G2 | Phase A 全书初翻（§12） | 568/613 连续完成，执行链路成熟 | 中（剩余 D-MR-123…137） |
 | G3 | Phase B 一致性检查（§13：manifest / entity index / progressive disclosure） | 仅有 quality_review 雏形与 consistency 设计文档，无 manifest/entity index 工具链 | **大** |
 | G4 | Phase C baseline lock（§14） | 无 | 中（工具量小，依赖 B） |
 | G5 | Phase D 全书润色（§15） | refine_runner / refine_prompt_builder 存在，R-MR 队列未启动，over-refinement checker 缺失 | 大 |
@@ -80,7 +80,7 @@
 | S14 | Web UI Final 打磨与全量用户视角测试 | FS-065…FS-068 | 否 | **是** | **是** | S5–S13 |
 | S15 | 端到端 DoD 验收 | FS-069…FS-070 | 验证性 | **是** | **是** | 全部 |
 
-当前状态：S0、S1、S3 completed；S2 in_progress（553/613）；S4–S15 not_started。首个可继续的生产任务是 D-MR-118；首个可并行工程任务是 FS-017。
+当前状态：S0、S1、S3 completed；S2 in_progress（568/613）；S4–S15 not_started。首个可继续的生产任务是 D-MR-123；首个可并行工程任务是 FS-017。
 
 > 并行建议：S2（真实 API 初翻批量执行）与 S3 / S4（资产层、UI 基座）可交替推进——初翻轮消耗 API 与时间，工程轮消耗 Agent 实现能力，二者交错可最大化吞吐。
 
