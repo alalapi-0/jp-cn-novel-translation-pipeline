@@ -1,6 +1,6 @@
 {
-  "status": "warning",
-  "timestamp": "2026-06-18T04:14:05Z",
+  "status": "passed",
+  "timestamp": "2026-06-18T04:16:58Z",
   "passed": [
     "docs_exist_readme",
     "docs_exist_agents",
@@ -71,7 +71,8 @@
     "input_sources_ignored",
     "input_sources_ignored",
     "outputs_ignored",
-    "outputs_ignored"
+    "outputs_ignored",
+    "git_status_clean"
   ],
   "failed": [],
   "skipped": [],
@@ -428,17 +429,17 @@
       "message": "git ignores synthetic path output_jp/translated/out.txt"
     },
     {
-      "id": "git_status_dirty",
-      "severity": "warn",
-      "message": "working tree has 55 uncommitted change(s) on branch main"
+      "id": "git_status_clean",
+      "severity": "pass",
+      "message": "working tree clean on branch main"
     }
   ],
   "commands": [
     {
       "name": "agent_gate",
       "command": "python3 scripts/agent_gate.py",
-      "exit_code": 1,
-      "summary": "warning"
+      "exit_code": 0,
+      "summary": "passed"
     }
   ],
   "tool_usage": [
