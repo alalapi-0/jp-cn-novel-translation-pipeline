@@ -54,7 +54,6 @@ python3 scripts/run_quality_review.py --workspace
 | Skill | Path |
 |-------|------|
 | MCP usage | `docs/agent_skills/mcp_usage_skill.md` |
-| Polish (novel-specific) | `.cursor/skills/polish-light-novel/SKILL.md` |
 
 ## Related roadmap
 

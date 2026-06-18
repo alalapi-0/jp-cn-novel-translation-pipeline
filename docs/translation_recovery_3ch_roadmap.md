@@ -2,7 +2,7 @@
 
 > 主路线图（2026-06-07 治理轮）：将执行单位从 **20 章/轮** 重构为 **3 章 micro round**，采用 supervised tick loop 与渐进式披露一致性/质量检查。  
 > 配套任务清单：`docs/translation_recovery_3ch_task_list.md`  
-> 旧 20 章路线（已 deprecated）：`docs/translation_recovery_20ch_roadmap.md`
+> 旧 20 章路线（已 deprecated，已归档）：`docs/archive/legacy_roadmaps/translation_recovery_20ch_roadmap.md`
 >
 > **2026-06-12 live override**：Phase A **已完成（FS-010）**。612 编号章 ch1–612 连续 draft 完成；`README.md` 不计入章节总数。调度器 phase=consistency、draft 612/612。下一闸门 **FS-031（Phase B）**。后续 Agent 必须先运行 `python3 scripts/local_scheduler_status.py --json` 与 `python3 scripts/phase_a_completion_check.py --json`，不得按历史定义回退。
 

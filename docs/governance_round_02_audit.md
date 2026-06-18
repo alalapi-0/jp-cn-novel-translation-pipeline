@@ -47,7 +47,7 @@ Round 00（治理轮）核心成果**已存在**：
 - 系统设计：术语、角色、世界观、翻译记忆、embedding、API、数据 schema、目录演进
 - 工作流：批量翻译、润色、质量审核、前端工作台
 - 治理：`governance_rules.md`、`migration_notes.md`、`index.md`
-- 历史参考：`translation_pipeline_design.md`、`embedding_memory_design.md`、`roadmap_translation_pipeline.md`
+- 历史参考：`translation_pipeline_design.md`、`embedding_memory_design.md`、`docs/archive/legacy_roadmaps/roadmap_translation_pipeline.md`
 
 ## 已存在 Prompt 模板
 
@@ -85,7 +85,7 @@ Round 00（治理轮）核心成果**已存在**：
 
 - `docs/roadmap_rounds_00_40.md`（仅追加引用，不删改正文）
 - 第一轮全部设计文档正文
-- `round_state/translation_pipeline_governance_round.yaml`（保留为 legacy）
+- `docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml`（已归档，非权威）
 - 本地 `input_jp/`、`output_cn/`、`notes/` 中的真实内容
 - 外部源协议：`novel-continuation-agent/governance/repo_protocol_standard.yaml`
 

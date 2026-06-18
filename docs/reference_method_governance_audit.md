@@ -39,7 +39,7 @@
 
 - `docs/roadmap_rounds_00_40.md`：长期产品与流水线路线。
 - `docs/roadmap_rounds_41_50_tooling_and_workbench.md`：工具链、Agent Gate、Playwright/MCP、受控 API 与 Workbench 路线。
-- `docs/roadmap_translation_pipeline.md`：早期日译中路线，保留为历史资料。
+- `docs/archive/legacy_roadmaps/roadmap_translation_pipeline.md`：早期日译中路线（已归档）。
 
 本轮新增 RM 路线必须与既有 Round 00-50 不互相覆盖。RM 只表示 Reference Method Absorption，不替代原路线。
 
@@ -112,7 +112,7 @@
 
 ## 建议归档或合并的文件
 
-本轮不建议直接归档或删除文件。`docs/roadmap_translation_pipeline.md`、`docs/translation_pipeline_design.md`、`docs/embedding_memory_design.md` 等早期文档仍有历史价值，应继续由 `docs/index.md` 标记为历史资料。若后续要合并，需先写迁移报告并确认不包含真实原文或真实译文。
+早期路线图（`docs/archive/legacy_roadmaps/`）已于 2026-06-12 归档。`docs/translation_pipeline_design.md`、`docs/embedding_memory_design.md` 等设计文档仍有历史价值，由 `docs/index.md` 标记为历史资料。
 
 ## 不应修改的文件
 
@@ -121,7 +121,7 @@
 - `output_cn/`、`output_jp/` 内真实译文。
 - `governance/repo_protocol_standard.yaml` 正文，除非同步通用协议本体。
 - `docs/archive/governance/repo_protocol_standard_truncated_backup.yaml`。
-- `round_state/translation_pipeline_governance_round.yaml`，除非后续写迁移报告。
+- `docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml`（已归档）。
 
 ## 本轮治理策略
 

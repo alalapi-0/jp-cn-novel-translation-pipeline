@@ -8,6 +8,7 @@
 - `docs/next_agent_execution_protocol.md`：每轮标准执行流程
 - `docs/final_state_implementation_roadmap.md`：S0–S15 总路线
 - `docs/final_state_round_task_list.md`：FS-000…FS-070 任务与状态
+- `docs/translation_pipeline_consistency_redesign_proposal.md`：【提案/待裁决】翻译流水线一致性问题诊断与简化改造方案——基于 ch001-040 QA 报告（135 issues）对 Phase B/D 现有 bug 与 148 轮 R-MR 计划的调整建议，落地前需先完成本文件第9节开放问题
 - `docs/phase_acceptance_criteria.md`：阶段验收条件
 - `docs/definition_of_done.md`：Done 定义
 - `docs/non_goals_and_guardrails.md`：非目标与防跑偏
@@ -105,7 +106,7 @@ RM 轮次表示 Reference Method Absorption，用于落地参考仓库方法，�
 - `docs/translation_pipeline_design.md`
 - `docs/embedding_memory_design.md`
 - `docs/openrouter_api_test_plan.md`
-- `docs/roadmap_translation_pipeline.md`
+- `docs/archive/legacy_roadmaps/`：早期 Round T 与 20 章恢复路线（已 deprecated，主线见 `docs/final_state_implementation_roadmap.md`）
 - `docs/reports/`：本地报告目录，项目专有报告默认不提交公开仓库。
 
 ## Prompt 模板目录
@@ -166,6 +167,6 @@ RM 轮次表示 Reference Method Absorption，用于落地参考仓库方法，�
 ## 其他资源
 
 - `CHANGELOG.md`：项目变更记录。
-- `round_state/translation_pipeline_governance_round.yaml`：历史治理状态文件。
+- `docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml`：历史治理状态文件（已归档，非权威）。
 - `config/openrouter.example.yaml`：历史 OpenRouter 示例配置。
 - `.env.example`：仅包含环境变量名，不包含真实密钥。

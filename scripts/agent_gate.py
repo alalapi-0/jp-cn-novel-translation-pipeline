@@ -326,6 +326,43 @@ VECTOR_INSPECT_SCRIPT = REPO_ROOT / "scripts" / "vector_db_inspect.py"
 VECTOR_SCHEMA = REPO_ROOT / "data" / "schemas" / "vector_index_metadata.schema.json"
 DEFAULT_VECTOR_INDEX = REPO_ROOT / "workspace" / "vector_store" / "index.json"
 
+
+def _load_json_object(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _vector_manifest_compatible(index_data: dict | None, manifest_path: Path) -> bool:
+    """Return True when manifest_path is suitable for vector orphan checks."""
+    manifest = _load_json_object(manifest_path)
+    if not manifest:
+        return False
+    segments = manifest.get("segments")
+    if not isinstance(segments, list) or not segments:
+        return False
+    if not any(isinstance(item, dict) and item.get("chapter_id") and item.get("segment_id") for item in segments):
+        return False
+
+    if not index_data:
+        return True
+    meta = index_data.get("index_metadata") if isinstance(index_data.get("index_metadata"), dict) else {}
+    index_project = str(meta.get("project_id") or "").strip()
+    if not index_project:
+        projects = {
+            str((item.get("metadata") or {}).get("project_id") or "").strip()
+            for item in index_data.get("vectors", [])
+            if isinstance(item, dict) and isinstance(item.get("metadata"), dict)
+        }
+        projects.discard("")
+        if len(projects) == 1:
+            index_project = next(iter(projects))
+    manifest_project = str(manifest.get("project_id") or "").strip()
+    return not index_project or not manifest_project or index_project == manifest_project
+
+
 QUALITY_REVIEW_SCRIPT = REPO_ROOT / "scripts" / "run_quality_review.py"
 REVIEW_ISSUE_SCHEMA = REPO_ROOT / "data" / "schemas" / "review_issue.schema.json"
 REVIEW_EXAMPLE_REPORT = REPO_ROOT / "data" / "examples" / "review_issue_report.example.json"
@@ -396,7 +433,14 @@ def check_vector_store_tooling() -> list[CheckResult]:
         mod = importlib.util.module_from_spec(spec)
         sys.modules["light_novel_vector_db_inspect_gate"] = mod
         spec.loader.exec_module(mod)
+        index_data = _load_json_object(DEFAULT_VECTOR_INDEX)
         manifest_path = REPO_ROOT / "workspace" / "manifests" / "project_manifest.json"
+        meta = index_data.get("index_metadata") if isinstance(index_data, dict) and isinstance(index_data.get("index_metadata"), dict) else {}
+        source_manifest = str(meta.get("source_manifest") or "").strip()
+        if source_manifest:
+            candidate = (REPO_ROOT / source_manifest).resolve()
+            if candidate.is_file() and _vector_manifest_compatible(index_data, candidate):
+                manifest_path = candidate
         try:
             wb_spec = importlib.util.spec_from_file_location(
                 "light_novel_workbench_registry_gate",
@@ -407,7 +451,7 @@ def check_vector_store_tooling() -> list[CheckResult]:
                 sys.modules["light_novel_workbench_registry_gate"] = wb_mod
                 wb_spec.loader.exec_module(wb_mod)
                 resolved = wb_mod.resolve_active_manifest_path(REPO_ROOT)
-                if resolved and resolved.is_file():
+                if resolved and resolved.is_file() and _vector_manifest_compatible(index_data, resolved):
                     manifest_path = resolved
         except Exception:
             pass

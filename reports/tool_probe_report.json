@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-11T20:28:04Z",
+  "timestamp": "2026-06-17T12:35:12Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M .agent_runtime/status.json\n M AGENTS.md\n M agent_layer.yaml\n M docs/final_state_implementation_roadmap.md\n M docs/final_state_round_task_list.md\n M docs/translation_recovery_3ch_roadmap.md\n M docs/translation_recovery_3ch_task_list.md\n M governance/round_state.yaml\n M project.yaml\n M reports/agent_audit_log.jsonl\n M reports/gate_result.json\n M reports/latest-agent-report.json\n M scripts/run_micro_round.py\n M tests/test_run_micro_round_progress.py",
+      "output": "M .agent_runtime/status.json\n M .cursor/mcp.json\n D .cursor/skills/polish-light-novel/SKILL.md\n M .gitignore\n M AGENTS.md\n M agent.md\n M docs/agent_skills/translation_qa_skill.md\n M docs/archive/README.md\n M docs/current_repository_audit.md\n M docs/embedding_memory_design.md\n M docs/final_state_implementation_roadmap.md\n M docs/governance_round_02_audit.md\n M docs/index.md\n M docs/reference_method_governance_audit.md\n M docs/repo_protocol_alignment.md\n D docs/reports/fs038_baseline_lock_report.j",
       "available": true
     },
     "git_branch": {
@@ -110,11 +110,13 @@
       "cursor-ide-browser",
       "plugin-supabase-supabase",
       "project-0-light_novel-chrome-devtools",
-      "project-0-light_novel-context7",
       "project-0-light_novel-filesystem",
-      "project-0-light_novel-github",
-      "project-0-light_novel-playwright",
-      "project-0-light_novel-stitch"
+      "user-chrome-devtools",
+      "user-context7",
+      "user-figma",
+      "user-github",
+      "user-playwright",
+      "user-stitch"
     ],
     "cursor_config_visibility": "limited",
     "manual_confirm_in_cursor_ui": [
@@ -138,7 +140,7 @@
     "agent_shim_note": "PATH `agent` -> /Users/alalapi/.grok/bin/agent (grok 0.2.16 (f7c09b8d8a2)); may not be Cursor CLI — use `cursor-agent` for this repo's checks",
     "mcp_list_probe": {
       "exit_code": 0,
-      "output": "chrome-devtools: not loaded (needs approval)\ncontext7: not loaded (needs approval)\nplaywright: not loaded (needs approval)\nfilesystem: not loaded (needs approval)\ngithub: not loaded (needs approval)\nstitch: not loaded (needs approval)\nPrisma-Local: not loaded (needs approval)",
+      "output": "chrome-devtools: not loaded (needs approval)\nplaywright: not loaded (needs approval)\ncontext7: not loaded (needs approval)\ngithub: not loaded (needs approval)\nstitch: not loaded (needs approval)\nfigma: not loaded (needs approval)\nfilesystem: not loaded (needs approval)",
       "available": true
     },
     "check_script": "npm run check:cursor-mcp",
@@ -165,13 +167,13 @@
       "callable_now": "true",
       "command_hint": "bash",
       "safe_probe_command": "navigate local workbench + console check",
-      "probe_result": "config=PASS; launcher=bash (ok); wrapper=scripts/chrome_devtools_mcp_light_novel.sh (exec); thread_tools=29; safe_tool=list_pages",
+      "probe_result": "config=FAIL; launcher=bash (ok); wrapper=scripts/chrome_devtools_mcp_light_novel.sh (exec); thread_tools=29; safe_tool=list_pages",
       "probe_checks": {
         "config_check": {
           "available": true,
-          "passed": true,
-          "exit_code": 0,
-          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (7): Prisma-Local, chrome-devtools, context7, filesystem, github, playwright, stitch\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - context7: command=\"npx\" args=[-y @upstash/context7-m"
+          "passed": false,
+          "exit_code": 1,
+          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (2): chrome-devtools, filesystem\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - filesystem: command=\"npx\" args=[-y @modelcontextprotocol/server-filesystem ${workspaceFolder}]\n  errors:"
         },
         "launcher": {
           "available": true,
@@ -201,102 +203,18 @@
       "fallback": "playwright MCP or npm run test:ui"
     },
     {
-      "name": "context7",
-      "configured": true,
-      "callable_now": "true",
-      "command_hint": "npx",
-      "safe_probe_command": "resolve-library-id + query-docs",
-      "probe_result": "config=PASS; launcher=npx (ok); thread_tools=2; safe_tool=resolve-library-id",
-      "probe_checks": {
-        "config_check": {
-          "available": true,
-          "passed": true,
-          "exit_code": 0,
-          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (7): Prisma-Local, chrome-devtools, context7, filesystem, github, playwright, stitch\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - context7: command=\"npx\" args=[-y @upstash/context7-m"
-        },
-        "launcher": {
-          "available": true,
-          "detail": "npx"
-        },
-        "wrapper": {
-          "present": true,
-          "executable": true,
-          "path": null
-        },
-        "thread_loaded": true,
-        "thread_tool_count": 2,
-        "thread_mcp_dir": "/Users/alalapi/.cursor/projects/Users-alalapi-PycharmProjects-light-novel/mcps/project-0-light_novel-context7",
-        "safe_tool": "resolve-library-id",
-        "env": {},
-        "offline": {}
-      },
-      "allowed_scope": "public library docs",
-      "recommended_use_cases": [
-        "library API docs",
-        "version-specific examples"
-      ],
-      "risks": [
-        "stale index vs latest release"
-      ],
-      "fallback": "web_search official docs"
-    },
-    {
-      "name": "playwright",
-      "configured": true,
-      "callable_now": "true",
-      "command_hint": "npx",
-      "safe_probe_command": "browser_snapshot on local URL",
-      "probe_result": "config=PASS; launcher=npx (ok); thread_tools=23; safe_tool=browser_snapshot; npx_playwright=ok; version=Version 1.60.0",
-      "probe_checks": {
-        "config_check": {
-          "available": true,
-          "passed": true,
-          "exit_code": 0,
-          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (7): Prisma-Local, chrome-devtools, context7, filesystem, github, playwright, stitch\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - context7: command=\"npx\" args=[-y @upstash/context7-m"
-        },
-        "launcher": {
-          "available": true,
-          "detail": "npx"
-        },
-        "wrapper": {
-          "present": true,
-          "executable": true,
-          "path": null
-        },
-        "thread_loaded": true,
-        "thread_tool_count": 23,
-        "thread_mcp_dir": "/Users/alalapi/.cursor/projects/Users-alalapi-PycharmProjects-light-novel/mcps/project-0-light_novel-playwright",
-        "safe_tool": "browser_snapshot",
-        "env": {},
-        "offline": {
-          "npx_playwright": true,
-          "version": "Version 1.60.0"
-        }
-      },
-      "allowed_scope": "local dev server",
-      "recommended_use_cases": [
-        "e2e",
-        "user-view flows",
-        "screenshots"
-      ],
-      "risks": [
-        "multitask browser control blocked by project rules"
-      ],
-      "fallback": "npm run test:ui"
-    },
-    {
       "name": "filesystem",
       "configured": true,
       "callable_now": "true",
       "command_hint": "npx",
       "safe_probe_command": "list_allowed_directories (read-only)",
-      "probe_result": "config=PASS; launcher=npx (ok); thread_tools=14; safe_tool=list_allowed_directories; scope=${workspaceFolder}",
+      "probe_result": "config=FAIL; launcher=npx (ok); thread_tools=14; safe_tool=list_allowed_directories; scope=${workspaceFolder}",
       "probe_checks": {
         "config_check": {
           "available": true,
-          "passed": true,
-          "exit_code": 0,
-          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (7): Prisma-Local, chrome-devtools, context7, filesystem, github, playwright, stitch\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - context7: command=\"npx\" args=[-y @upstash/context7-m"
+          "passed": false,
+          "exit_code": 1,
+          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (2): chrome-devtools, filesystem\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - filesystem: command=\"npx\" args=[-y @modelcontextprotocol/server-filesystem ${workspaceFolder}]\n  errors:"
         },
         "launcher": {
           "available": true,
@@ -324,142 +242,12 @@
         "must not authorize / or home directory"
       ],
       "fallback": "Read/Grep/Shell in repo"
-    },
-    {
-      "name": "github",
-      "configured": true,
-      "callable_now": "true",
-      "command_hint": "npx",
-      "safe_probe_command": "list_commits or search (read-only if token present)",
-      "probe_result": "config=PASS; launcher=npx (ok); thread_tools=26; safe_tool=list_commits; GITHUB_TOKEN=unset; token_env=no; gh_auth=ok; gh_detail=github.com\n  ✓ Logged in to github.com account alalapi-0 (keyring)\n  - Active account: true\n  - Git operations protocol:",
-      "probe_checks": {
-        "config_check": {
-          "available": true,
-          "passed": true,
-          "exit_code": 0,
-          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (7): Prisma-Local, chrome-devtools, context7, filesystem, github, playwright, stitch\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - context7: command=\"npx\" args=[-y @upstash/context7-m"
-        },
-        "launcher": {
-          "available": true,
-          "detail": "npx"
-        },
-        "wrapper": {
-          "present": true,
-          "executable": true,
-          "path": null
-        },
-        "thread_loaded": true,
-        "thread_tool_count": 26,
-        "thread_mcp_dir": "/Users/alalapi/.cursor/projects/Users-alalapi-PycharmProjects-light-novel/mcps/project-0-light_novel-github",
-        "safe_tool": "list_commits",
-        "env": {
-          "GITHUB_TOKEN": false
-        },
-        "offline": {
-          "token_env": false,
-          "gh_auth": true,
-          "gh_detail": "github.com\n  ✓ Logged in to github.com account alalapi-0 (keyring)\n  - Active account: true\n  - Git operations protocol:"
-        }
-      },
-      "allowed_scope": "repo with GITHUB_TOKEN",
-      "recommended_use_cases": [
-        "issues",
-        "PRs",
-        "remote inspection"
-      ],
-      "risks": [
-        "push/merge without user approval"
-      ],
-      "fallback": "git + gh CLI"
-    },
-    {
-      "name": "stitch",
-      "configured": true,
-      "callable_now": "true",
-      "command_hint": "node",
-      "safe_probe_command": "list_projects (requires STITCH_API_KEY)",
-      "probe_result": "config=PASS; launcher=node (ok); wrapper=scripts/stitch_mcp_proxy.mjs (exec); thread_tools=15; safe_tool=list_projects; STITCH_API_KEY=set",
-      "probe_checks": {
-        "config_check": {
-          "available": true,
-          "passed": true,
-          "exit_code": 0,
-          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (7): Prisma-Local, chrome-devtools, context7, filesystem, github, playwright, stitch\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - context7: command=\"npx\" args=[-y @upstash/context7-m"
-        },
-        "launcher": {
-          "available": true,
-          "detail": "node"
-        },
-        "wrapper": {
-          "present": true,
-          "executable": true,
-          "path": "scripts/stitch_mcp_proxy.mjs"
-        },
-        "thread_loaded": true,
-        "thread_tool_count": 15,
-        "thread_mcp_dir": "/Users/alalapi/.cursor/projects/Users-alalapi-PycharmProjects-light-novel/mcps/project-0-light_novel-stitch",
-        "safe_tool": "list_projects",
-        "env": {
-          "STITCH_API_KEY": true
-        },
-        "offline": {}
-      },
-      "allowed_scope": "docs/design/stitch exports",
-      "recommended_use_cases": [
-        "UI prototypes",
-        "design input only"
-      ],
-      "risks": [
-        "paid API",
-        "must not overwrite frontend/ blindly"
-      ],
-      "fallback": "docs/design templates + manual UI"
-    },
-    {
-      "name": "Prisma-Local",
-      "configured": true,
-      "callable_now": "config_only",
-      "command_hint": "npx",
-      "safe_probe_command": "prisma mcp launcher check (not used by this repo)",
-      "probe_result": "config=PASS; launcher=npx (ok); thread_loaded=false; npx_prisma=ok; detail=prisma               : 7.8.0\n@prisma/client       : Not found\nOperating System  ; repo_use=none; note=configured but not loaded in Cursor thread",
-      "probe_checks": {
-        "config_check": {
-          "available": true,
-          "passed": true,
-          "exit_code": 0,
-          "output": "MCP config check\n  path: .cursor/mcp.json\n  summary:\n    servers (7): Prisma-Local, chrome-devtools, context7, filesystem, github, playwright, stitch\n      - chrome-devtools: command=\"bash\" args=[scripts/chrome_devtools_mcp_light_novel.sh]\n      - context7: command=\"npx\" args=[-y @upstash/context7-m"
-        },
-        "launcher": {
-          "available": true,
-          "detail": "npx"
-        },
-        "wrapper": {
-          "present": true,
-          "executable": true,
-          "path": null
-        },
-        "thread_loaded": false,
-        "thread_tool_count": 0,
-        "thread_mcp_dir": null,
-        "safe_tool": null,
-        "env": {},
-        "offline": {
-          "npx_prisma": true,
-          "detail": "prisma               : 7.8.0\n@prisma/client       : Not found\nOperating System  "
-        }
-      },
-      "allowed_scope": "local prisma schema if present",
-      "recommended_use_cases": [],
-      "risks": [
-        "optional server; not required for pipeline"
-      ],
-      "fallback": "N/A"
     }
   ],
   "mcp_probe_summary": {
-    "total_configured": 7,
-    "callable_true": 6,
-    "callable_config_only": 1,
+    "total_configured": 2,
+    "callable_true": 2,
+    "callable_config_only": 0,
     "callable_false": 0,
     "deferred_probe_results": []
   },
@@ -476,7 +264,7 @@
   "github": {
     "has_remote": true,
     "gh_cli": true,
-    "github_mcp_configured": true,
+    "github_mcp_configured": false,
     "github_token_env": false,
     "gh_auth_ok": true,
     "commit_allowed": "user_explicit_only",

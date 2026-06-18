@@ -328,3 +328,11 @@ Schema：`schemas/agent_round_report.schema.json`
 ### Prompt 模板
 
 `docs/PROMPTS.md`
+
+## Workspace Tooling Standard
+
+本项目的通用 MCP 工具（chrome-devtools / playwright / context7 / github / stitch）与跨项目分工规则
+遵循工作区级标准，详见：
+`/Users/alalapi/PycharmProjects/.agent_workspace/docs/AGENT_TOOLING_STANDARD.md`
+
+本项目专属、不可全局化的工具（如有）：见本文件 MCP 配置章节。

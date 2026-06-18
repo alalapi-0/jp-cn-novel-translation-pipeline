@@ -1,24 +1,547 @@
-round_id: fs_043_20260612
-round_name: "FS-043 over-refinement / terminology / character voice checkers"
-round_number_human: "FS-043 / Phase D refinement quality gate"
+round_id: ca_081_612_fact_based_consistency_sync_20260617
+round_name: CA-081-612 fact-based consistency audit and sync
+round_number_human: CA-081-612 / 10-ch consistency audit series
 status: completed
-type: implementation
+type: review
 real_api_called: false
-
 completed_tasks:
-  - "src/refinement/checkers.py: over_refinement + terminology_preservation + character_voice"
-  - "scripts/check_refinement_quality.py: CLI with --json / --run-dir / fixture mode"
-  - "BLOCKING_CRITERIA documented in module + report JSON"
-  - "Positive/negative fixtures per checker in tests/fixtures/"
-  - "R-MR completion hook in run_micro_round.py (auto diff + quality report)"
-  - "tests/test_refinement_checkers.py +12; npm run test:py 516 passed"
-
-next_recommended_round:
-  id: FS-044
-  title: "R-MR-001 real API validation start"
-
+- 'Accepted user correction: old glossary/rules are hints, not correctness premise'
+- Generated content-first ch081-090 actual audit from current source_text and latest
+  CN text
+- 'Encoded user decisions: ウェルス=维尔斯; スナイパーアント=狙击蚁'
+- 'Applied source-conditioned and segment-guarded fixes: 218 initial safe + 459 user
+  decision + 1 sniper disambiguation + 4 actual residual segments'
+- Applied user policy for player/forum handles as readable romanized forms; 1223 segments
+  changed and post dry-run converged
+- Generated content-first ch091-100 actual audit from latest fixed translation
+- Supplemented ch091-100 rules and applied 223 + 4 high-confidence source-conditioned
+  fixes
+- Protected contextual アーティファクト surface 秘遗物 from automatic conversion
+- 'Fixed checker evidence issues: kana middle-dot false positive and out-of-range/empty
+  UNKNOWN_ENTITY samples'
+- 'Fixed checker noise/staleness issues: kana boundary matching, bracket-label phrase
+  filtering, stale glossary cache filtering'
+- Refreshed CA-081-090 and CA-091-100 from latest fixed translation
+- Generated content-first ch101-110 actual audit and applied 439 high-confidence source-conditioned
+  fixes
+- Refreshed CA-101-110 from latest fixed translation
+- Generated content-first ch111-120 actual audit and applied 337 high-confidence source-conditioned
+  fixes
+- Refreshed CA-111-120 from latest fixed translation
+- Generated content-first ch121-130 actual audit and applied 181 + 8 high-confidence
+  source-conditioned fixes
+- Refreshed CA-121-130 from latest fixed translation
+- Generated content-first ch131-140 actual audit and applied 702 high-confidence source-conditioned
+  fixes
+- Refreshed CA-131-140 from latest fixed translation
+- Generated content-first ch141-150 actual audit and applied 217 high-confidence source-conditioned
+  fixes
+- Refreshed CA-141-150 from latest fixed translation
+- Generated content-first ch151-160 actual audit and applied 61 + 5 + 6 high-confidence
+  source-conditioned fixes
+- Refreshed CA-151-160 from latest fixed translation
+- Generated content-first ch161-170 actual audit and applied 116 + 1 high-confidence
+  source-conditioned fixes
+- Refreshed CA-161-170 from latest fixed translation
+- Generated content-first ch171-180 actual audit and applied 496 + 3 high-confidence
+  source-conditioned fixes
+- Refreshed CA-171-180 from latest fixed translation
+- Generated content-first ch181-190 actual audit and applied 254 + 40 high-confidence
+  source-conditioned fixes
+- Refreshed CA-181-190 from latest fixed translation
+- Generated content-first ch191-200 actual audit and applied 33 high-confidence source-conditioned
+  fixes
+- Refreshed CA-191-200 from latest fixed translation
+- Updated docs/consistency_audit_progress_log.md and docs/consistency_audit_round_index.md
+  for CA-081-200
+- Generated content-first ch201-210 actual audit and applied 1089 + 55 high-confidence
+  source-conditioned fixes
+- Added placeholder residual detection to actual content audit and backfilled ch191-210
+  placeholder fixes
+- Refreshed CA-201-210 from latest fixed translation
+- Generated content-first ch211-220 actual audit and applied 82 high-confidence source-conditioned
+  fixes
+- Refreshed CA-211-220 from latest fixed translation
+- Generated content-first ch221-230 actual audit and applied 90 + 23 high-confidence
+  source-conditioned fixes
+- Refreshed CA-221-230 from latest fixed translation
+- Generated content-first ch231-240 actual audit and applied 845 + 1 high-confidence
+  source-conditioned fixes
+- Refreshed CA-231-240 from latest fixed translation
+- Generated content-first ch241-250 actual audit and applied 727 + 13 high-confidence
+  source-conditioned fixes
+- Refreshed CA-241-250 from latest fixed translation
+- Generated content-first ch251-260 actual audit and applied 427 + 322 high-confidence
+  source-conditioned fixes
+- Refreshed CA-251-260 from latest fixed translation
+- Generated content-first ch261-270 actual audit and applied 408 high-confidence source-conditioned
+  fixes
+- Refreshed CA-261-270 from latest fixed translation
+- Generated content-first ch271-280 actual audit and applied 338 + 3 high-confidence
+  source-conditioned fixes
+- Refreshed CA-271-280 from latest fixed translation
+- Generated content-first ch281-290 actual audit and applied 127 + 252 high-confidence
+  source-conditioned fixes
+- Refreshed CA-281-290 from latest fixed translation
+- Generated content-first ch291-300 actual audit and applied 130 high-confidence source-conditioned
+  fixes
+- Refreshed CA-291-300 from latest fixed translation
+- Generated content-first ch301-310 actual audit and applied 41 + 6 + 2 + 1 high-confidence
+  source-conditioned fixes
+- Refreshed CA-301-310 from latest fixed translation
+- Generated content-first ch311-320 actual audit and applied 289 + 6 high-confidence
+  source-conditioned fixes
+- Refreshed CA-311-320 from latest fixed translation
+- Generated content-first ch321-330 actual audit and applied 373 + 6 high-confidence
+  source-conditioned fixes
+- Refreshed CA-321-330 from latest fixed translation
+- Generated content-first ch331-340 actual audit and applied 145 high-confidence source-conditioned
+  fixes
+- Refreshed CA-331-340 from latest fixed translation
+- Generated content-first ch341-350 actual audit and applied 158 + 5 high-confidence
+  source-conditioned fixes
+- Refreshed CA-341-350 from latest fixed translation
+- Generated content-first ch351-360 actual audit and applied 91 + 6 high-confidence
+  source-conditioned fixes
+- Refreshed CA-351-360 from latest fixed translation
+- Generated content-first ch361-370 actual audit and applied 116 + 1 + 81 + 29 + 6
+  + 1 high-confidence source-conditioned fixes
+- Refreshed CA-361-370 from latest fixed translation
+- Generated content-first ch371-380 actual audit and applied 101 + 25 high-confidence
+  source-conditioned fixes
+- Refreshed CA-371-380 from latest fixed translation
+- Generated content-first ch381-390 actual audit and applied 148 + 5 high-confidence
+  source-conditioned fixes
+- Refreshed CA-381-390 from latest fixed translation
+- Generated content-first ch391-400 actual audit and applied 254 + 9 high-confidence
+  source-conditioned fixes
+- Refreshed CA-391-400 from latest fixed translation
+- Generated content-first ch401-410 actual audit and applied 49 high-confidence source-conditioned
+  fixes
+- Refreshed CA-401-410 from latest fixed translation
+- Generated content-first ch411-420 actual audit and applied 38 high-confidence source-conditioned
+  fixes
+- Refreshed CA-411-420 from latest fixed translation
+- Generated content-first ch421-430 actual audit and applied 370 high-confidence source-conditioned
+  fixes
+- Refreshed CA-421-430 from latest fixed translation
+- Generated content-first ch431-440 actual audit and applied 75 high-confidence source-conditioned
+  fixes
+- Refreshed CA-431-440 from latest fixed translation
+- Generated content-first ch441-450 actual audit and applied 161 + 2 high-confidence
+  source-conditioned fixes
+- Refreshed CA-441-450 from latest fixed translation
+- 'Normalized actual evidence terms: Indigo, 席兹, 阿克拉吉奥, 奥克塔维亚, 贝尔塔萨蕾娜, 斯艾尔特迪奥斯'
+- Generated content-first ch451-460 actual audit and applied 87 + 2 high-confidence
+  source-conditioned fixes
+- Refreshed CA-451-460 from latest fixed translation
+- 'Normalized actual evidence terms: Bambu, Peikouken, 佩尔佩托·卡斯帕尔, 海啸三叉戟, 黑暗精灵, 邪恶制裁'
+- Generated content-first ch461-470 actual audit and applied 168 high-confidence source-conditioned
+  fixes
+- Refreshed CA-461-470 from latest fixed translation
+- 'Normalized actual evidence names/handles: Beam-chan, Janet, Oh-No田, TKDSG, 加斯帕尔,
+  莫妮卡'
+- Generated content-first ch471-480 actual audit and applied 98 high-confidence source-conditioned
+  fixes
+- Refreshed CA-471-480 from latest fixed translation
+- 'Normalized actual evidence terms/names: 耶修克, 莱斯巴赫, 涅克拉索夫, 灭族蟋蟀, Sono Te ga Attaka,
+  阿哈·伊什凯, 布弗里, 泽诺比亚'
+- Generated content-first ch481-490 actual audit and applied 122 high-confidence source-conditioned
+  fixes
+- Refreshed CA-481-490 from latest fixed translation
+- 'Normalized actual evidence terms/names: Joe, 塞普腾特里昂, 乌鲁鲁, Septem, TKDSG, 神圣阿玛莉埃帝国,
+  长枪冲锋, 神之吐息'
+- Generated content-first ch491-500 actual audit and applied 301 high-confidence source-conditioned
+  fixes
+- Refreshed CA-491-500 from latest fixed translation
+- 'Normalized actual evidence player handles/names: Andy, School Hadagi, Jeans, Nadenade
+  Shikoshiko, Arafubuki, Omiotsukenai, Suama, Farm'
+- Generated content-first ch501-510 actual audit and applied 18 high-confidence source-conditioned
+  fixes
+- Refreshed CA-501-510 from latest fixed translation
+- 'Normalized actual evidence terms/names: 登出, 真爱, 伊亚拉, 闪光之枪'
+- Generated content-first ch511-520 actual audit and applied 62 high-confidence source-conditioned
+  fixes
+- Refreshed CA-511-520 from latest fixed translation
+- 'Normalized actual evidence names/places/terms: 苏莱曼, 西特莉, 维基努斯联邦, 安莉, 弗雷斯贝尔格, 尤克,
+  尤克·奥莱恩'
+- Generated content-first ch521-530 actual audit and applied 74 high-confidence source-conditioned
+  fixes
+- Refreshed CA-521-530 from latest fixed translation
+- 'Normalized actual evidence handles/names/terms: Autumn, Oh-No田, Septem, 丹扎, 阿里库比,
+  乌特尔, 看破单片镜, 雪狒狒, 奥罗拉, 天变地异, 慈悲一击'
+- Generated content-first ch551-560 actual audit and applied 263 high-confidence source-conditioned
+  fixes
+- Refreshed CA-551-560 from latest fixed translation
+- 'Normalized actual evidence handles/names/skills: Thermos, Nanashi no Elf-san, Ginoregamesh,
+  Mentai List, Joubu de Hagarenikui, Macky, 奥克·奥莱恩, 死之舞踏, 终极投掷'
+- Generated content-first ch561-570 actual audit and applied 57 high-confidence source-conditioned
+  fixes
+- Refreshed CA-561-570 from latest fixed translation
+- 'Normalized actual evidence handles/names/places/skills: Amatein, Arafubuki, Hana
+  Eleboo, Mari Ookami, 泽诺比亚, 小布兰, 希尔斯, 佩亚雷, 波特利, 维尔斯, 慈悲一击, 赛莫格尔托拉'
+- Fixed ch561-seg092..094 segment-distribution drift and protected ch569 mojibake
+  literals
+- Generated content-first ch571-580 actual audit and applied 284 high-confidence source-conditioned
+  fixes
+- Refreshed CA-571-580 from latest fixed translation
+- 'Normalized actual evidence names/places/monster terms: 梅莉桑德, 大艾吉尔海, 艾吉尔海, 糖龙, 哈拉赫里科普里昂'
+- Generated content-first ch581-590 actual audit and applied 42 high-confidence source-conditioned
+  fixes
+- Refreshed CA-581-590 from latest fixed translation
+- 'Normalized actual evidence forum/player handles: Kouki, Kondo Roi Chin, Oishii
+  Munou, Titanium Nugget, Okappiki Nobu, Multi-Pull'
+- CA-591-600 content-first audit completed from latest fixed translations
+- CA-601-610 content-first audit completed from latest fixed translations
+- CA-611-612 content-first audit completed from latest fixed translations; CA-081-612
+  loop complete
+- Reopened CA-081-120 after user challenge and refreshed from latest fixed translations
+- 'Applied ch081-120 refresh rules and whole-book source-conditioned sync: 256 segments
+  changed, post dry-run 0'
+- Fixed fixer idempotency for short aliases inside canonical targets (王车易位, 骷髅兵)
+- 'Resolved user-specified ウェルス compound residuals: 韦尔斯玩家/威尔斯专楼 -> 维尔斯玩家/维尔斯专楼'
+- Verified スナイパーアント effective fields retain 狙击蚁 and final whole-book dry-run changed
+  0 segments
+latest_stats: &id001
+  content_first_refreshed_through: CA-611-612
+  ca_081_120_refresh_issues_total: 0
+  ca_081_120_refresh_blocking: 0
+  ca_081_120_refresh_source_residual: 0
+  ch081_120_changed_segments_whole_book: 256
+  ch081_120_changed_segments_current_range: 36
+  ch081_120_post_dry_run_changed_segments: 0
+  aggregate_remaining_issues_from_current_ca_json: 0
+  user_wells_compound_changed_segments: 2
+  user_wells_bad_effective_hits: 0
+  user_sniper_ant_bad_effective_hits: 0
+  whole_book_fix_goal_completion_dry_run_changed_segments: 0
+next_recommended_round: None - CA-081-612 consistency audit/fix loop complete
 blockers:
   hard: []
   soft:
-    - "1055 source_residual segments remain in retranslate checkpoint (non-blocking)"
-    - "agent_gate warning: vector inspect warnings (pre-existing)"
+  - Policy decision pending for contextual アンデッド renderings
+  - 'agent_gate warning: dirty tree + pre-existing vector inspect warnings'
+recent_updates:
+- Generated content-first ch381-390 actual audit and applied 153 high-confidence whole-book
+  source-conditioned fixes
+- Refreshed CA-381-390 from latest fixed translation
+- Generated content-first ch371-380 actual audit and applied 126 high-confidence whole-book
+  source-conditioned fixes
+- Refreshed CA-371-380 from latest fixed translation
+- Generated content-first ch361-370 actual audit and applied 234 high-confidence whole-book
+  source-conditioned fixes
+- Refreshed CA-361-370 from latest fixed translation
+- Generated content-first ch351-360 actual audit and applied 91 + 6 high-confidence
+  source-conditioned fixes
+- Refreshed CA-351-360 from latest fixed translation
+- 2026-06-17T21:17:07Z CA-391-400 content-first refresh complete; formal CA=0, post-fix
+  dry-run=0; next CA-401-410.
+- 2026-06-17T21:30:40Z CA-401-410 content-first refresh complete; formal CA=0, post-fix
+  dry-run=0; next CA-411-420.
+- 2026-06-17T21:42:28Z CA-411-420 content-first refresh complete; formal CA=0, post-fix
+  dry-run=0; next CA-421-430.
+- 2026-06-17T22:03:53Z CA-421-430 content-first refresh complete; formal CA=0, post-fix
+  dry-run=0; next CA-431-440.
+- 2026-06-17T22:17:32Z CA-431-440 content-first refresh complete; formal CA=0, post-fix
+  dry-run=0; next CA-441-450.
+- timestamp: '2026-06-17T22:37:08Z'
+  round_id: CA-441-450
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-441-450
+    ca_441_450_issues_total: 0
+    ca_441_450_source_residual: 0
+    ca_441_450_blocking: 0
+    ch441_450_target_kana_residuals: 0
+    ch441_450_target_placeholder_residuals: 0
+    ch441_450_registry_hint_observations: 3
+    ch441_450_changed_segments_whole_book: 163
+    ch441_450_changed_segments_current_range: 86
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 441
+- timestamp: '2026-06-17T22:55:46Z'
+  round_id: CA-451-460
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-451-460
+    ca_451_460_issues_total: 0
+    ca_451_460_source_residual: 0
+    ca_451_460_blocking: 0
+    ch451_460_target_kana_residuals: 0
+    ch451_460_target_placeholder_residuals: 0
+    ch451_460_registry_hint_observations: 5
+    ch451_460_changed_segments_whole_book: 89
+    ch451_460_changed_segments_current_range: 55
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 410
+- timestamp: '2026-06-17T23:14:06Z'
+  round_id: CA-461-470
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-461-470
+    ca_461_470_issues_total: 0
+    ca_461_470_source_residual: 0
+    ca_461_470_blocking: 0
+    ch461_470_target_kana_residuals: 0
+    ch461_470_target_placeholder_residuals: 0
+    ch461_470_registry_hint_observations: 4
+    ch461_470_changed_segments_whole_book: 168
+    ch461_470_changed_segments_current_range: 85
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 385
+- timestamp: '2026-06-17T23:40:00Z'
+  round_id: CA-471-480
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-471-480
+    ca_471_480_issues_total: 0
+    ca_471_480_source_residual: 0
+    ca_471_480_blocking: 0
+    ch471_480_target_kana_residuals: 0
+    ch471_480_target_placeholder_residuals: 0
+    ch471_480_target_english_residuals: 0
+    ch471_480_registry_hint_observations: 5
+    ch471_480_changed_segments_whole_book: 98
+    ch471_480_changed_segments_current_range: 43
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 349
+- timestamp: '2026-06-18T00:05:00Z'
+  round_id: CA-481-490
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-481-490
+    ca_481_490_issues_total: 0
+    ca_481_490_source_residual: 0
+    ca_481_490_blocking: 0
+    ch481_490_target_kana_residuals: 0
+    ch481_490_target_placeholder_residuals: 0
+    ch481_490_target_english_residuals: 0
+    ch481_490_registry_hint_observations: 2
+    ch481_490_changed_segments_whole_book: 122
+    ch481_490_changed_segments_current_range: 45
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 320
+- timestamp: '2026-06-18T00:02:44Z'
+  round_id: CA-491-500
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-491-500
+    ca_491_500_issues_total: 0
+    ca_491_500_source_residual: 0
+    ca_491_500_blocking: 0
+    ch491_500_target_kana_residuals: 0
+    ch491_500_target_placeholder_residuals: 0
+    ch491_500_target_english_residuals: 0
+    ch491_500_registry_hint_observations: 3
+    ch491_500_changed_segments_whole_book: 301
+    ch491_500_changed_segments_current_range: 50
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 277
+- timestamp: '2026-06-18T00:19:00Z'
+  round_id: CA-501-510
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-501-510
+    ca_501_510_issues_total: 0
+    ca_501_510_source_residual: 0
+    ca_501_510_blocking: 0
+    ch501_510_target_kana_residuals: 0
+    ch501_510_target_placeholder_residuals: 0
+    ch501_510_target_english_residuals: 0
+    ch501_510_registry_hint_observations: 2
+    ch501_510_changed_segments_whole_book: 18
+    ch501_510_changed_segments_current_range: 7
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 256
+- timestamp: '2026-06-18T00:42:00Z'
+  round_id: CA-511-520
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-511-520
+    ca_511_520_issues_total: 0
+    ca_511_520_source_residual: 0
+    ca_511_520_blocking: 0
+    ch511_520_target_kana_residuals: 0
+    ch511_520_target_placeholder_residuals: 0
+    ch511_520_target_english_residuals: 0
+    ch511_520_registry_hint_observations: 3
+    ch511_520_changed_segments_whole_book: 62
+    ch511_520_changed_segments_current_range: 7
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 238
+- timestamp: '2026-06-18T01:23:00Z'
+  round_id: CA-521-530
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-521-530
+    ca_521_530_issues_total: 0
+    ca_521_530_source_residual: 0
+    ca_521_530_blocking: 0
+    ch521_530_target_kana_residuals: 0
+    ch521_530_target_placeholder_residuals: 0
+    ch521_530_target_english_residuals: 0
+    ch521_530_registry_hint_observations: 0
+    ch521_530_changed_segments_whole_book: 74
+    ch521_530_changed_segments_current_range: 22
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 216
+- timestamp: '2026-06-18T00:55:00Z'
+  round_id: CA-531-540
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-531-540
+    ca_531_540_issues_total: 0
+    ca_531_540_source_residual: 0
+    ca_531_540_blocking: 0
+    ch531_540_target_kana_residuals: 0
+    ch531_540_target_placeholder_residuals: 0
+    ch531_540_target_english_residuals: 0
+    ch531_540_registry_hint_observations: 3
+    ch531_540_changed_segments_whole_book: 259
+    ch531_540_changed_segments_current_range: 56
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 181
+- timestamp: '2026-06-18T01:11:00Z'
+  round_id: CA-541-550
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-541-550
+    ca_541_550_issues_total: 0
+    ca_541_550_source_residual: 0
+    ca_541_550_blocking: 0
+    ch541_550_target_kana_residuals: 0
+    ch541_550_target_placeholder_residuals: 0
+    ch541_550_target_english_residuals: 0
+    ch541_550_registry_hint_observations: 3
+    ch541_550_changed_segments_whole_book: 94
+    ch541_550_changed_segments_current_range: 56
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 159
+- timestamp: '2026-06-18T01:26:22Z'
+  round_id: CA-551-560
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-551-560
+    ca_551_560_issues_total: 0
+    ca_551_560_source_residual: 0
+    ca_551_560_blocking: 0
+    ch551_560_target_kana_residuals: 0
+    ch551_560_target_placeholder_residuals: 0
+    ch551_560_target_english_residuals: 0
+    ch551_560_registry_hint_observations: 2
+    ch551_560_changed_segments_whole_book: 263
+    ch551_560_changed_segments_current_range: 46
+    ch551_560_post_dry_run_changed_segments: 0
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 139
+- timestamp: '2026-06-18T01:45:00Z'
+  round_id: CA-561-570
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-561-570
+    ca_561_570_issues_total: 0
+    ca_561_570_source_residual: 0
+    ca_561_570_blocking: 0
+    ch561_570_target_kana_residuals: 0
+    ch561_570_target_placeholder_residuals: 0
+    ch561_570_target_english_residuals: 0
+    ch561_570_registry_hint_observations: 2
+    ch561_570_changed_segments_whole_book: 57
+    ch561_570_changed_segments_current_range: 28
+    ch561_570_post_dry_run_changed_segments: 0
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 118
+- timestamp: '2026-06-18T01:58:50Z'
+  round_id: CA-571-580
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-571-580
+    ca_571_580_issues_total: 0
+    ca_571_580_source_residual: 0
+    ca_571_580_blocking: 0
+    ch571_580_target_kana_residuals: 0
+    ch571_580_target_placeholder_residuals: 0
+    ch571_580_target_english_residuals: 0
+    ch571_580_registry_hint_observations: 1
+    ch571_580_changed_segments_whole_book: 284
+    ch571_580_changed_segments_current_range: 50
+    ch571_580_post_dry_run_changed_segments: 0
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 81
+- timestamp: '2026-06-18T02:16:38Z'
+  round_id: CA-581-590
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-581-590
+    ca_581_590_issues_total: 0
+    ca_581_590_source_residual: 0
+    ca_581_590_blocking: 0
+    ch581_590_target_kana_residuals: 0
+    ch581_590_target_placeholder_residuals: 0
+    ch581_590_target_english_residuals: 0
+    ch581_590_registry_hint_observations: 3
+    ch581_590_changed_segments_whole_book: 42
+    ch581_590_changed_segments_current_range: 35
+    ch581_590_post_dry_run_changed_segments: 0
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 48
+- timestamp: '2026-06-18T02:51:40Z'
+  round_id: CA-591-600
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-591-600
+    ca_591_600_issues_total: 0
+    ca_591_600_source_residual: 0
+    ca_591_600_blocking: 0
+    ch591_600_target_kana_residuals: 0
+    ch591_600_target_placeholder_residuals: 0
+    ch591_600_target_english_residuals: 0
+    ch591_600_registry_hint_observations: 4
+    ch591_600_changed_segments_whole_book: 19
+    ch591_600_changed_segments_current_range: 14
+    ch591_600_post_dry_run_changed_segments: 0
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 0
+- timestamp: '2026-06-18T02:51:40Z'
+  round_id: CA-601-610
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-601-610
+    ca_601_610_issues_total: 0
+    ca_601_610_source_residual: 0
+    ca_601_610_blocking: 0
+    ch601_610_target_kana_residuals: 0
+    ch601_610_target_placeholder_residuals: 0
+    ch601_610_target_english_residuals: 0
+    ch601_610_registry_hint_observations: 2
+    ch601_610_changed_segments_whole_book: 30
+    ch601_610_changed_segments_current_range: 20
+    ch601_610_post_dry_run_changed_segments: 0
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 0
+- timestamp: '2026-06-18T02:51:40Z'
+  round_id: CA-611-612
+  status: completed
+  summary:
+    content_first_refreshed_through: CA-611-612
+    ca_611_612_issues_total: 0
+    ca_611_612_source_residual: 0
+    ca_611_612_blocking: 0
+    ch611_612_target_kana_residuals: 0
+    ch611_612_target_placeholder_residuals: 0
+    ch611_612_target_english_residuals: 0
+    ch611_612_registry_hint_observations: 0
+    ch611_612_changed_segments_whole_book: 15
+    ch611_612_changed_segments_current_range: 13
+    ch611_612_post_dry_run_changed_segments: 0
+    whole_book_fix_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 0
+- timestamp: '2026-06-18T03:11:07Z'
+  round_id: CA-081-120-refresh-recheck
+  status: completed
+  summary: *id001
+- timestamp: '2026-06-18T03:18:56Z'
+  round_id: user-wells-sniper-regression-cleanup
+  status: completed
+  summary: *id001
+updated_at: '2026-06-18T03:18:56Z'

@@ -1,6 +1,6 @@
 {
   "status": "warning",
-  "timestamp": "2026-06-12T12:57:58Z",
+  "timestamp": "2026-06-18T04:14:05Z",
   "passed": [
     "docs_exist_readme",
     "docs_exist_agents",
@@ -29,6 +29,7 @@
     "frontend_mvp_exists",
     "vector_inspect_script_exists",
     "vector_metadata_schema_exists",
+    "vector_index_health",
     "quality_review_script_exists",
     "review_issue_schema_exists",
     "review_issue_example_exists",
@@ -213,8 +214,8 @@
     },
     {
       "id": "vector_index_health",
-      "severity": "warn",
-      "message": "index present with 3 vector(s); inspect warnings: manifest_empty_segments, orphan_vectors"
+      "severity": "pass",
+      "message": "index present; 3 vector(s) metadata OK"
     },
     {
       "id": "quality_review_script_exists",
@@ -429,7 +430,7 @@
     {
       "id": "git_status_dirty",
       "severity": "warn",
-      "message": "working tree has 14 uncommitted change(s) on branch main"
+      "message": "working tree has 55 uncommitted change(s) on branch main"
     }
   ],
   "commands": [

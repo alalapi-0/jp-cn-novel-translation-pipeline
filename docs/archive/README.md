@@ -7,3 +7,4 @@
 ## 归档文件
 
 - `governance/repo_protocol_standard_truncated_backup.yaml`：Round 02 前仓库内 134 行截断版备份。
+- `legacy_roadmaps/`：早期 20 章恢复路线、Round T 流水线路线与 legacy 治理状态（见该目录 README）。

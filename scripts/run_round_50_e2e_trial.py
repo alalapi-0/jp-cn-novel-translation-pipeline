@@ -367,10 +367,10 @@ def step_vector_index(segments_doc: dict[str, Any]) -> StepResult:
     for seg in _segment_list(segments_doc):
         vectors.append(
             {
-                "id": seg["segment_id"],
+                "embedding_id": f"emb-{CHAPTER_ID}-{seg['segment_id']}",
                 "metadata": {
                     "project_id": PROJECT_ID,
-                    "language_direction": LANGUAGE_DIRECTION,
+                    "language_direction": LANGUAGE_DIRECTION.lower(),
                     "chapter_id": CHAPTER_ID,
                     "segment_id": seg["segment_id"],
                     "model": "mock-embedding-v0",
@@ -379,10 +379,15 @@ def step_vector_index(segments_doc: dict[str, Any]) -> StepResult:
             }
         )
     index = {
-        "backend": "json_mock",
-        "schema_version": "1.0.0",
-        "embedding_model": "mock-embedding-v0",
-        "embedding_dimension": 384,
+        "index_metadata": {
+            "backend": "json_mock",
+            "schema_version": "1.0.0",
+            "project_id": PROJECT_ID,
+            "language_direction": LANGUAGE_DIRECTION.lower(),
+            "embedding_model": "mock-embedding-v0",
+            "embedding_dimension": 384,
+            "source_manifest": "workspace/manifests/project_manifest.json",
+        },
         "vectors": vectors,
     }
     VECTOR_INDEX_PATH.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

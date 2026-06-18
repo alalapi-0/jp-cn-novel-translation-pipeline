@@ -46,7 +46,7 @@
 
 ## 当前仓库可能冲突的部分
 
-1. **Round 状态路径**：协议默认 `governance/round_state.yaml`；仓库另有 legacy `round_state/translation_pipeline_governance_round.yaml`。已在 `project.yaml` 记录 override，legacy 文件保留不删。
+1. **Round 状态路径**：协议默认 `governance/round_state.yaml`；legacy 治理状态已归档至 `docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml`。已在 `project.yaml` 记录 override。
 2. **提交策略**：原 `governance_rules.md` 写“每轮结束应 commit/push”；协议 `commit_policy.default` 为“用户明确要求才 commit”。Round 02 已修正治理规则为“用户或轮次 Prompt 明确要求时 commit”；push 仍需用户授权（协议 `approval_required`）。
 3. **项目定位**：协议 `project_specific_extensions.current_reference_project` 偏中文生成仓库；本仓库定位为**中日互译流水线**。差异写入 `novel_pipeline_contract.yaml` 与 `project.yaml`，不修改协议正文。
 4. **Round 编号**：用户 Step 4.2 与 Step 7 对 Round 41–43 语义略有不同；以 `docs/roadmap_rounds_41_50_tooling_and_workbench.md`（Step 7）为准。
@@ -139,6 +139,6 @@ Round 02 已新增或更新：
 
 ## 待人工确认事项
 
-1. 是否将 legacy `round_state/translation_pipeline_governance_round.yaml` 内容迁移合并到 `governance/round_state.yaml`（当前保留双轨）。
+1. 是否将已归档 legacy `docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml` 内容迁移合并到 `governance/round_state.yaml`。
 2. 本地 `input_jp/`、`output_cn/` 历史 tracked 文件是否需从 Git 历史中清理（当前依赖 `.gitignore`，未改历史）。
 3. 协议引用的 `docs/protocols/generated_asset_lifecycle.md` 等待实现轮按需创建，或在本仓库用 `docs/quality_review_workflow.md` 作为 interim 引用。

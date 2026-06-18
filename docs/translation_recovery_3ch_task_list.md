@@ -1,7 +1,7 @@
 # Translation Recovery 3-Chapter Task List
 
-> 配套主路线图：`docs/translation_recovery_3ch_roadmap.md`  
-> 旧 20 章任务清单（deprecated）：`docs/translation_recovery_task_list.md`  
+> 配套主路线图：`docs/translation_recovery_3ch_roadmap.md`
+> 旧 20 章任务清单（deprecated，已归档）：`docs/archive/legacy_roadmaps/translation_recovery_task_list.md`
 > 生成时间：2026-06-07（治理轮，未执行真实 API）
 >
 > **2026-06-12 live override**：D-MR-001…137 已执行；编号章 612/612 连续；调度器 612/613（README 计入总数）。下一任务 **FS-010 Phase A 收尾**，除非 `local_scheduler_status.py --json` 给出更新结果。下方 D-MR-001 内容仅作历史定义。

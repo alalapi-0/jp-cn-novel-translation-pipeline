@@ -10,7 +10,7 @@
 >
 > 与既有路线的关系：
 > - `docs/translation_recovery_3ch_roadmap.md`（D-MR / R-MR 3 章 micro round 体系）**继续有效**，作为本路线图 Phase A / Phase D 的"批量执行子路线"。
-> - `docs/translation_recovery_20ch_roadmap.md` 维持 deprecated。
+> - `docs/archive/legacy_roadmaps/translation_recovery_20ch_roadmap.md` 已归档（deprecated）。
 > - `docs/AGENT_ROADMAP.md`（AL-xxx Agent Layer 轮）的剩余项并入本路线图对应阶段，优先级以本文件为准。
 > - 若任何旧文档与 `docs/product_final_state_spec.md` 冲突，以最终规格为准。
 

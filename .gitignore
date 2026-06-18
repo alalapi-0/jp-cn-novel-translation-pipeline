@@ -52,6 +52,7 @@ output_cn/review/*
 notes/*.md
 !notes/README.md
 docs/reports/*.md
+docs/reports/*.json
 !docs/reports/README.md
 
 output_jp/translated/*
@@ -63,6 +64,7 @@ output_jp/review/*
 !output_jp/review/.gitkeep
 
 # Workspace generated data
+workspace/handoff/
 workspace/embeddings/*
 workspace/vector_store/*
 workspace/model_runs/*

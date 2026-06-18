@@ -29,7 +29,7 @@
 - `docs/terminology_system_design.md`
 - `docs/embedding_memory_design.md`
 - `docs/openrouter_api_test_plan.md`
-- `docs/roadmap_translation_pipeline.md`
+- `docs/archive/legacy_roadmaps/roadmap_translation_pipeline.md`（已归档）
 - `docs/reports/translation_project_scan_report.md`
 
 未发现但旧 prompt 中提到的文档：
@@ -42,8 +42,8 @@
 ## 已存在 Prompt
 
 - `prompts/openclaw_translation_governance.md`
-- `prompts/cursor_translation_pipeline_round.md`
-- `prompts/codex_translation_pipeline_round.md`
+- ~~`prompts/cursor_translation_pipeline_round.md`~~（已删除，2026-06-12 清理）
+- ~~`prompts/codex_translation_pipeline_round.md`~~（已删除，2026-06-12 清理）
 
 未发现但旧 README 中提到的 Prompt：
 

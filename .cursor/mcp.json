@@ -3,17 +3,10 @@
     "chrome-devtools": {
       "type": "stdio",
       "command": "bash",
-      "args": ["scripts/chrome_devtools_mcp_light_novel.sh"],
+      "args": [
+        "scripts/chrome_devtools_mcp_light_novel.sh"
+      ],
       "description": "Project-isolated Chrome DevTools MCP (light_novel profile + port 9321)"
-    },
-    "context7": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
-    },
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
     },
     "filesystem": {
       "command": "npx",
@@ -22,25 +15,6 @@
         "@modelcontextprotocol/server-filesystem",
         "${workspaceFolder}"
       ]
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
-      }
-    },
-    "stitch": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["scripts/stitch_mcp_proxy.mjs"],
-      "env": {
-        "STITCH_API_KEY": "${env:STITCH_API_KEY}"
-      }
-    },
-    "Prisma-Local": {
-      "command": "npx",
-      "args": ["-y", "prisma", "mcp"]
     }
   }
 }

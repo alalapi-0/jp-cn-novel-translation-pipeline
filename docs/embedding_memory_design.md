@@ -97,7 +97,7 @@ Embedding 可以帮助我们 **快速召回** 这些上下文信息，提供给�
 | **M2** | 切块规则实现：编写脚本将上述文件切块并生成向量（占位实现）。 |
 | **M3** | Embedding 小样本索引：使用示例模型对少量块生成向量，生成索引文件。 |
 | **M4** | 检索 CLI：实现 `scripts/search_translation_memory.py`，支持关键词检索。 |
-| **M5** | 润色 Prompt 接入检索结果：在 `polish_pipeline.py` 中加入检索返回的上下文块。 |
+| **M5** | 润色 Prompt 接入检索结果：在 refine pipeline（`src/`）中加入检索返回的上下文块。 |
 | **M6** | 审核报告展示召回依据：在 `output_cn/review/polish_validation.md` 中列出检索引用的块 ID 与摘要。 |
 
 **备注**：所有实现均保持 **dry‑run** 模式，真实向量生成与持久化仅在后续阶段通过显式用户授权后执行。

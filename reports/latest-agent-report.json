@@ -1,78 +1,131 @@
 {
-  "round_id": "FS-043",
-  "timestamp": "2026-06-12T13:00:00Z",
-  "agent": "cursor-composer",
-  "agent_surface": "cursor",
-  "mode": "implement",
-  "goal": "Phase D refinement quality checkers (FS-043)",
+  "round_id": "final-consistency-vector-worktree-governance-20260618",
+  "timestamp": "2026-06-18T04:20:00Z",
+  "agent": "codex",
+  "agent_surface": "codex",
+  "mode": "fix",
+  "goal": "Final consistency export plus vector index health and dirty worktree governance",
   "scope": [
-    "src/refinement/checkers.py",
-    "scripts/check_refinement_quality.py",
-    "tests/test_refinement_checkers.py",
-    "scripts/run_micro_round.py R-MR hook"
+    "ch001-612",
+    "fullbook consistency",
+    "final export"
   ],
-  "repo_status_before": "main at 413f6c9 FS-042 diff/change_log complete",
   "tool_probe_status": "not_run",
   "tools_used": [
     {
-      "tool": "shell",
-      "purpose": "npm run test:py + agent_gate",
-      "result": "516 passed; gate warning (dirty tree pre-commit)",
-      "fallback_used": false
-    }
-  ],
-  "tools_not_used": [
-    {
-      "tool": "playwright",
-      "reason": "no UI code changed this round"
+      "tool": "translation-qa skill",
+      "purpose": "quality review workflow guidance",
+      "result": "loaded and smoke-tested"
     },
     {
-      "tool": "chrome-devtools",
-      "reason": "no UI code changed this round"
-    },
-    {
-      "tool": "stitch",
-      "reason": "no UI design work"
-    },
-    {
-      "tool": "github",
-      "reason": "commit/push via git CLI after gate"
+      "tool": "local python scripts",
+      "purpose": "audit, fix, export, and finalize reports",
+      "result": "passed"
     }
   ],
   "changed_files": [
-    "src/refinement/checkers.py",
-    "src/refinement/__init__.py",
-    "scripts/check_refinement_quality.py",
-    "scripts/run_micro_round.py",
-    "tests/test_refinement_checkers.py",
-    "tests/fixtures/refinement_check_*.json/yaml",
-    "governance/round_state.yaml",
-    "docs/final_state_round_task_list.md",
-    "docs/phase_d_handoff.md"
+    "workspace/configs/glossary.yaml",
+    "scripts/audit_actual_chapter_content.py",
+    "scripts/build_term_variant_report.py",
+    "scripts/fix_terminology_consistency.py",
+    "scripts/run_consistency_fix_all.py",
+    "scripts/supplement_fullbook_regen_rules.py",
+    "scripts/export_consistency_final_volume.py",
+    "scripts/finalize_consistency_run.py",
+    "output_cn/translated/",
+    "output_cn/bilingual/",
+    "docs/final_consistency_report.md",
+    "workspace/review/final_consistency_report_20260618.json",
+    "workspace/review/final_consistency_patch_log_20260618.json"
   ],
   "commands_run": [
-    "npm run test:py",
-    "python3 scripts/agent_gate.py --json"
+    "python3 scripts/run_quality_review.py --write-example",
+    "python3 scripts/audit_actual_chapter_content.py --chapters 1 612",
+    "python3 scripts/build_term_variant_report.py --chapters 1 612",
+    "python3 scripts/run_consistency_fix_all.py --dry-run",
+    "python3 scripts/run_consistency_fix_all.py",
+    "python3 scripts/export_consistency_final_volume.py --json",
+    "python3 scripts/finalize_consistency_run.py"
   ],
   "test_results": [
     {
-      "command": "npm run test:py",
-      "passed": 516,
-      "failed": 0
+      "name": "final fixer dry-run",
+      "changed_segments": 0
+    },
+    {
+      "name": "final term variant report",
+      "terms_with_variance": 0,
+      "terms_with_unrecognized_variants": 0
+    },
+    {
+      "name": "final actual content audit",
+      "target_kana_residuals": {
+        "count": 0,
+        "items": []
+      },
+      "target_placeholder_residuals": {
+        "count": 0,
+        "items": []
+      },
+      "target_english_residuals": {
+        "count": 0,
+        "items": []
+      }
+    },
+    {
+      "name": "final export",
+      "chapters_exported": 612,
+      "chapters_missing": 0
+    },
+    {
+      "name": "agent_gate",
+      "exit_code": 1,
+      "warnings": [
+        "vector_index_health",
+        "git_status_dirty"
+      ],
+      "hard_blockers": 0
+    },
+    {
+      "name": "vector_db_inspect",
+      "exit_code": 0,
+      "result": "index_ok, 3 vectors, 0 orphans"
+    },
+    {
+      "name": "agent_gate_before_commit",
+      "exit_code": 1,
+      "result": "vector_index_health pass; remaining warning is git_status_dirty before commit"
     }
   ],
-  "gate_status": "warning",
+  "issues_found": [
+    "stale reports and overbroad legacy aliases could mislead consistency decisions",
+    "fixer hit accounting counted no-op replacement cycles",
+    "ダンジョン実装 could be reverted by short ダンジョン rule without suffix protection"
+  ],
+  "issues_fixed": [
+    "removed/cleaned stale consistency report artifacts",
+    "fixed high-confidence consistency issues across 332 segments",
+    "regenerated final full-book export from canonical fixed translations",
+    "removed 57 obsolete per-range supplement scripts after consolidating fullbook rules",
+    "fixed vector gate false warning by matching vector index to its source manifest instead of unrelated active Workbench manifest",
+    "migrated workspace/vector_store/index.json to vector_index_metadata schema shape",
+    "updated run_round_50_e2e_trial.py to emit schema-compliant vector index records",
+    "removed obsolete per-range consistency runner scripts and pycache noise",
+    "restored baseline-named reports from deletion before staging to respect protected artifact policy"
+  ],
+  "remaining_issues": [],
   "severity_summary": {
     "p0": 0,
     "p1": 0,
     "p2": 0,
     "p3": 0
   },
-  "next_recommended_round": "FS-044",
-  "fs_044_readiness": "READY — three checkers + R-MR auto-run hook; baseline locked; next: real API R-MR-001 (1-2 MR validation)",
-  "checker_rules_summary": {
-    "over_refinement": "BLOCK when flagged/refined > 5% or segment diff_ratio>=0.35 / length_expansion / length_ratio>=1.20",
-    "terminology_preservation": "BLOCK on first locked glossary target_term missing from refined when present in draft",
-    "character_voice": "BLOCK when first_person or speech_tic marker in draft is lost in refined"
-  }
+  "gate_status": "warning",
+  "blockers": [],
+  "risks": [
+    "No human literary review was performed for style beyond deterministic consistency checks.",
+    "agent_gate reported warnings for pre-existing vector index health and dirty working tree; consistency/export validation passed."
+  ],
+  "next_recommended_round": "verify clean worktree after local commit; no push without user approval",
+  "human_decisions_required": []
 }

@@ -78,7 +78,7 @@ ignored_content_directories:
   - workspace/vector_store/
 
 legacy:
-  - path: round_state/translation_pipeline_governance_round.yaml
+  - path: docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml
     role: historical_round_state
     treat_as_authority: false
 
