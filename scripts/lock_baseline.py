@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-"""Lock draft baseline snapshot + metadata (FS-038)."""
+"""Legacy baseline lock entrypoint.
+
+The current production line no longer writes or requires ``draft_full_baseline``.
+This wrapper is disabled by default so old prompts or Cursor runs cannot
+recreate a second body-text surface. Set ``ALLOW_LEGACY_BASELINE_LOCK=1`` only
+for audited historical diagnostics in a throwaway workspace.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -21,6 +28,20 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     args = parser.parse_args()
+
+    if os.environ.get("ALLOW_LEGACY_BASELINE_LOCK") != "1":
+        payload = {
+            "status": "disabled",
+            "error": (
+                "legacy baseline lock is disabled; use "
+                "scripts/export_consistency_final_volume.py for singleton final export"
+            ),
+        }
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        else:
+            print(f"lock_baseline: DISABLED — {payload['error']}", file=sys.stderr)
+        return 2
 
     try:
         result = lock_baseline(args.repo_root, dry_run=args.dry_run, force=args.force)

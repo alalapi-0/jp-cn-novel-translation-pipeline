@@ -457,8 +457,8 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
 
             if path == "/api/export/run":
                 source = str(body.get("source") or "manifest").strip().lower()
-                if source not in {"manifest", "runs"}:
-                    self._bad_request("source must be 'manifest' or 'runs'")
+                if source != "manifest":
+                    self._bad_request("source must be 'manifest'")
                     return
                 try:
                     project_id: str | None = None
@@ -479,7 +479,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._send_json(HTTPStatus.OK, result)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
-                except (ValueError, KeyError, FileNotFoundError) as exc:
+                except (ValueError, KeyError, FileNotFoundError, RuntimeError) as exc:
                     self._bad_request(str(exc))
                 return
 

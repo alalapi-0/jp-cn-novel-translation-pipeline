@@ -252,7 +252,7 @@
     if (prodCta) prodCta.classList.toggle("primary-cta", hasRun);
     if (nextHint) {
       nextHint.textContent = hasRun
-        ? "生产批次已就绪：可续跑翻译、精修或进入对照审核。"
+        ? "生产批次已就绪：可续跑翻译或进入对照审核。"
         : "创建 dry-run 项目 → 粘贴样本文本 → 进入对照审核。";
     }
     if (!hasRun) {
@@ -265,7 +265,7 @@
         ? [
             {
               run_id: ps.run_id,
-              task_label: ps.phase === "refine" ? "精修 Stage C" : "初译 Stage B",
+              task_label: ps.phase === "refine" ? "历史润色任务（已禁用）" : "翻译批次",
               chapter_range_label: ps.chapter_range_label,
               status: ps.status,
               segment_progress_label: ps.segment_progress_label,
@@ -1025,11 +1025,9 @@
           pipelineSummary.textContent = [
             `决策：${gate.decision || "—"}`,
             gate.draft_completed_chapters != null
-              ? `草稿完成章：${gate.draft_completed_chapters}（Stage B 初译齐）`
+              ? `翻译完成章：${gate.draft_completed_chapters}`
               : null,
-            gate.refined_exportable_chapters != null
-              ? `可精修/导出章：${gate.refined_exportable_chapters}（初译+精修均齐）`
-              : `可导出章：${gate.exportable_chapters ?? "—"}`,
+            `可导出章：${gate.exportable_chapters ?? gate.draft_completed_chapters ?? "—"}`,
             `活跃 worker：${gate.active_worker_count ?? 0}`,
             gate.stage_state_run_id ? `stage_state：${gate.stage_state_run_id} (${gate.stage_state_source || "—"})` : "",
           ]
@@ -2374,7 +2372,8 @@
       if (prodSummaryEl && status.production_summary) {
         const ps = status.production_summary;
         const parts = [
-          `output_cn 已译章节：${ps.output_cn_translated_count ?? totalZh}`,
+          `唯一终稿：${ps.canonical_final_exists ? ps.canonical_final_translation : "未生成"}`,
+          `Workbench 临时导出：${ps.workbench_translated_count ?? totalZh}`,
           ps.last_export_at ? `最近导出：${ps.last_export_at}` : null,
         ].filter(Boolean);
         prodSummaryEl.textContent = parts.join(" · ");
@@ -2600,38 +2599,13 @@
     const runsBtn = document.getElementById("export-runs-btn");
     if (runsBtn && runsBtn.dataset.bound !== "1") {
       runsBtn.dataset.bound = "1";
+      runsBtn.disabled = true;
+      runsBtn.title = "历史 runs 导出已停用；请使用 manifest 导出或唯一最终译文导出。";
       runsBtn.addEventListener("click", async () => {
-        const runId = document.getElementById("export-production-run")?.value || "";
-        const confirmed = window.confirm(
-          runId
-            ? `将导出生产 run「${runId}」到 output_cn/。继续？`
-            : "将合并 workspace/runs 下所有 Stage B run 并导出到 output_cn/。若无 run 将失败。继续？"
-        );
-        if (!confirmed) return;
-        const overwrite = document.getElementById("export-overwrite")?.checked !== false;
         const resultEl = document.getElementById("export-result");
-        try {
-          const body = {
-            source: "runs",
-            overwrite,
-          };
-          if (runId) body.run_id = runId;
-          const res = await fetch("/api/export/run", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          const payload = await res.json();
-          if (!res.ok) throw new Error(payload.error || `export ${res.status}`);
-          highlightPaths = new Set(exportHighlightPaths(payload));
-          showExportSuccessCard(payload);
-          if (resultEl) resultEl.textContent = formatExportResult(payload);
-          await refreshStatus();
-          log("runs export OK");
-        } catch (err) {
-          if (resultEl) resultEl.textContent = String(err.message);
-          log(`runs export failed: ${err.message}`);
-        }
+        const message = "历史 runs 导出已停用；请使用 manifest 导出或唯一最终译文导出。";
+        if (resultEl) resultEl.textContent = message;
+        log(message);
       });
     }
 

@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Run fix_terminology_consistency.py across every canonical draft_stage_b
-segments.json file covering the whole book (ch1-612), resolving duplicate
-chapter-range coverage by latest mtime.
+"""Run fix_terminology_consistency.py across draft/run segments files.
+
+By default this only processes the canonical draft_stage_b segments.json
+files covering the whole book (ch1-612), resolving duplicate chapter-range
+coverage by latest mtime. Use --scope all-runs for explicit workspace cleanup
+rounds that must repair stale target text in historical runs too.
 
 Usage:
     python3 scripts/run_consistency_fix_all.py --dry-run
     python3 scripts/run_consistency_fix_all.py            # writes changes
+    python3 scripts/run_consistency_fix_all.py --scope all-runs --update-all-target-fields --dry-run
 """
 
 from __future__ import annotations
@@ -50,14 +54,34 @@ def discover_canonical_files() -> list[Path]:
     return chosen
 
 
+def discover_all_run_files() -> list[Path]:
+    files: set[Path] = set()
+    for base in ("workspace/runs", "workspace/archived_runs"):
+        root = REPO_ROOT / base
+        if root.is_dir():
+            files.update(path for path in root.rglob("segments.json") if path.is_file())
+    return sorted(files)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--diff-log", type=Path, default=None)
+    parser.add_argument(
+        "--scope",
+        choices=("canonical", "all-runs"),
+        default="canonical",
+        help="canonical final-export inputs by default; all-runs repairs stale workspace run targets",
+    )
+    parser.add_argument(
+        "--update-all-target-fields",
+        action="store_true",
+        help="forward to fix_terminology_consistency.py for explicit full workspace cleanup",
+    )
     args = parser.parse_args()
 
-    canonical_files = discover_canonical_files()
-    print(f"canonical files: {len(canonical_files)}", file=sys.stderr)
+    target_files = discover_canonical_files() if args.scope == "canonical" else discover_all_run_files()
+    print(f"{args.scope} files: {len(target_files)}", file=sys.stderr)
 
     total_changed = 0
     total_segments = 0
@@ -65,7 +89,7 @@ def main() -> int:
     total_skipped_hits: dict[str, int] = {}
     per_file = []
     diff_logs = []
-    for f in sorted(canonical_files):
+    for f in sorted(target_files):
         tmp_diff = None
         if args.diff_log:
             tmp_diff = args.diff_log.with_name(f"{args.diff_log.stem}.{len(diff_logs):03d}.json")
@@ -77,6 +101,8 @@ def main() -> int:
         ]
         if tmp_diff:
             cmd.extend(["--diff-log", str(tmp_diff)])
+        if args.update_all_target_fields:
+            cmd.append("--update-all-target-fields")
         if args.dry_run:
             cmd.append("--dry-run")
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)
@@ -103,22 +129,26 @@ def main() -> int:
             tmp.unlink()
         args.diff_log.parent.mkdir(parents=True, exist_ok=True)
         combined["summary"] = {
-            "files_processed": len(canonical_files),
+            "files_processed": len(target_files),
             "total_segments": total_segments,
             "total_changed_segments": total_changed,
             "rule_hits": dict(sorted(total_rule_hits.items(), key=lambda kv: -kv[1])),
             "skipped_ambiguous_hits": dict(sorted(total_skipped_hits.items(), key=lambda kv: -kv[1])),
+            "scope": args.scope,
+            "target_field_mode": "all_target_fields" if args.update_all_target_fields else "effective_text",
             "dry_run": args.dry_run,
         }
         args.diff_log.write_text(json.dumps(combined, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     print(json.dumps({
-        "files_processed": len(canonical_files),
+        "files_processed": len(target_files),
         "total_segments": total_segments,
         "total_changed_segments": total_changed,
         "files_with_changes": per_file,
         "rule_hits": dict(sorted(total_rule_hits.items(), key=lambda kv: -kv[1])),
         "skipped_ambiguous_hits": dict(sorted(total_skipped_hits.items(), key=lambda kv: -kv[1])),
+        "scope": args.scope,
+        "target_field_mode": "all_target_fields" if args.update_all_target_fields else "effective_text",
         "dry_run": args.dry_run,
     }, ensure_ascii=False, indent=2))
     return 0

@@ -69,9 +69,9 @@
         <pre id="translation-assets-result" class="export-result">尚未检查资产状态。</pre>
       </div>
       <div class="card">
-        <h2>生产 run 导出</h2>
+        <h2>历史 run 导出（已停用）</h2>
         <p class="meta" id="export-production-summary">加载生产导出摘要…</p>
-        <p class="meta">选择 <code>workspace/runs</code> 下的 Stage B 生产 run；生产模式下默认选取 stage_state 默认 run 或最新 in_progress 初译批次。</p>
+        <p class="meta">旧 <code>workspace/runs</code> 导出属于 refinement 时代路径；manifest 导出仅写入 <code>workspace/workbench_exports/</code>，唯一最终译文以 singleton final export 为准。</p>
         <label>
           生产 run
           <select id="export-production-run">
@@ -79,7 +79,7 @@
           </select>
         </label>
         <div class="actions">
-          <button type="button" class="danger" id="export-runs-btn">导出所选生产 run（需确认）</button>
+          <button type="button" class="danger" id="export-runs-btn" disabled>历史 runs 导出已停用</button>
         </div>
       </div>
       <details class="card" id="export-history-details">

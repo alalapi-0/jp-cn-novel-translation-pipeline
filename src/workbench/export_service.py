@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 VALID_MANIFEST_EXPORT_MODES = {"approved", "draft"}
+CANONICAL_FINAL_REL = Path("output_cn/translated/full_volume_cn.md")
+CANONICAL_MANIFEST_REL = Path("output_cn/final_export_manifest.json")
+WORKBENCH_EXPORT_ROOT_REL = Path("workspace/workbench_exports")
 
 
 def _count_md_files(directory: Path) -> int:
@@ -18,24 +20,9 @@ def _count_md_files(directory: Path) -> int:
     return sum(1 for p in directory.glob("*.md") if p.is_file())
 
 
-def _latest_export_mtime(directory: Path) -> str | None:
-    if not directory.is_dir():
-        return None
-    latest: float | None = None
-    for path in directory.glob("*.md"):
-        if not path.is_file():
-            continue
-        mtime = path.stat().st_mtime
-        if latest is None or mtime > latest:
-            latest = mtime
-    if latest is None:
-        return None
-    return datetime.fromtimestamp(latest, tz=timezone.utc).replace(microsecond=0).isoformat()
-
-
 def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str, Any]:
-    zh_dir = repo_root / "output_cn" / "translated"
-    bi_dir = repo_root / "output_cn" / "bilingual"
+    zh_dir = repo_root / WORKBENCH_EXPORT_ROOT_REL / "translated"
+    bi_dir = repo_root / WORKBENCH_EXPORT_ROOT_REL / "bilingual"
     zh_files = sorted(p.name for p in zh_dir.glob("*.md") if p.is_file()) if zh_dir.is_dir() else []
     bi_files = sorted(p.name for p in bi_dir.glob("*.md") if p.is_file()) if bi_dir.is_dir() else []
     if project_id:
@@ -45,6 +32,16 @@ def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str
     runs_root = repo_root / "workspace" / "runs"
     run_count = sum(1 for _ in runs_root.glob("run_*_draft_stage_b_50ch/run_metadata.json")) if runs_root.is_dir() else 0
     total_zh = _count_md_files(zh_dir) if zh_dir.is_dir() else 0
+    final_path = repo_root / CANONICAL_FINAL_REL
+    manifest_path = repo_root / CANONICAL_MANIFEST_REL
+    manifest = {}
+    if manifest_path.is_file():
+        try:
+            doc = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if isinstance(doc, dict):
+                manifest = doc
+        except (OSError, json.JSONDecodeError):
+            manifest = {}
     return {
         "translated_dir": str(zh_dir.relative_to(repo_root)),
         "bilingual_dir": str(bi_dir.relative_to(repo_root)),
@@ -57,8 +54,18 @@ def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str
         "total_bilingual_count": _count_md_files(bi_dir) if bi_dir.is_dir() else 0,
         "draft_runs_available": run_count,
         "production_summary": {
-            "output_cn_translated_count": total_zh,
-            "last_export_at": _latest_export_mtime(zh_dir),
+            "canonical_final_translation": str(CANONICAL_FINAL_REL),
+            "canonical_final_exists": final_path.is_file(),
+            "canonical_final_translation_count": manifest.get("canonical_final_translation_count"),
+            "final_translation_policy": manifest.get("final_translation_policy"),
+            "last_export_at": (
+                datetime.fromtimestamp(final_path.stat().st_mtime, tz=timezone.utc)
+                .replace(microsecond=0)
+                .isoformat()
+                if final_path.is_file()
+                else None
+            ),
+            "workbench_translated_count": total_zh,
         },
         "checked_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }
@@ -85,8 +92,8 @@ def export_from_manifest(
     if not isinstance(review_segments, dict):
         review_segments = {}
 
-    zh_dir = repo_root / "output_cn" / "translated"
-    bi_dir = repo_root / "output_cn" / "bilingual"
+    zh_dir = repo_root / WORKBENCH_EXPORT_ROOT_REL / "translated"
+    bi_dir = repo_root / WORKBENCH_EXPORT_ROOT_REL / "bilingual"
     zh_dir.mkdir(parents=True, exist_ok=True)
     bi_dir.mkdir(parents=True, exist_ok=True)
 
@@ -201,23 +208,9 @@ def run_export(
         result["status"] = export_status(repo_root)
         return result
 
-    if source != "runs":
-        raise ValueError("source must be 'manifest' or 'runs'")
-
-    import importlib.util
-
-    script = repo_root / "scripts" / "export_refined_runs.py"
-    spec = importlib.util.spec_from_file_location("export_refined_runs", script)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("export_refined_runs.py unavailable")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    summary = module.export_all(
-        repo_root,
-        require_refined=require_refined,
-        run_id=str(run_id).strip() or None,
-        overwrite=overwrite,
-    )
-    summary["source"] = "runs"
-    summary["status"] = export_status(repo_root)
-    return summary
+    if source == "runs":
+        raise RuntimeError(
+            "workspace/runs export is disabled in the singleton-final pipeline; "
+            "use manifest workbench export or scripts/export_consistency_final_volume.py"
+        )
+    raise ValueError("source must be 'manifest'")

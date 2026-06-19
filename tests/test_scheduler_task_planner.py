@@ -98,24 +98,23 @@ def test_consistency_unknown_task_not_implemented() -> None:
     assert "not_implemented" in plan.reason
 
 
-def test_baseline_lock_phase_implemented() -> None:
+def test_baseline_lock_phase_is_legacy_disabled() -> None:
     status = make_status(phase="baseline_lock", next_task="baseline_lock", round_id=None, chapter_range=None)
     plan = plan_next_task(status)
-    assert plan.implemented is True
-    assert plan.task_type == "baseline_lock"
-    assert plan.command is not None
-    assert "lock_baseline.py" in " ".join(plan.command)
+    assert plan.implemented is False
+    assert plan.task_type == "legacy_baseline_lock_disabled"
+    assert plan.command is None
 
 
-def test_baseline_go_decision_awaits_doc() -> None:
+def test_baseline_go_decision_phase_is_legacy_disabled() -> None:
     status = make_status(phase="baseline_lock", next_task="baseline_go_decision", round_id=None, chapter_range=None)
     plan = plan_next_task(status)
     assert plan.implemented is False
-    assert plan.task_type == "baseline_go_decision"
-    assert "go_decision" in plan.reason
+    assert plan.task_type == "legacy_baseline_lock_disabled"
+    assert "deprecated" in plan.reason
 
 
-def test_refinement_phase_plans_micro_round_command() -> None:
+def test_refinement_phase_is_legacy_disabled() -> None:
     status = make_status(
         phase="refinement",
         next_task="refine_micro_round",
@@ -123,47 +122,52 @@ def test_refinement_phase_plans_micro_round_command() -> None:
         chapter_range="171-173",
     )
     plan = plan_next_task(status, mode="dry_run")
-    assert plan.implemented is True
-    assert plan.task_type == "refine_micro_round"
-    assert plan.round_id == "R-MR-001"
-    assert plan.chapter_range == "171-173"
-    cmd = plan.command
-    assert cmd is not None
-    assert cmd[1].endswith("run_micro_round.py")
-    assert cmd[cmd.index("--phase") + 1] == "refine"
-    assert cmd[cmd.index("--round-id") + 1] == "R-MR-001"
-    assert cmd[cmd.index("--chapter-range") + 1] == "171-173"
-    assert "--supervised" in cmd
-    assert "--dry-run" in cmd
-    assert "--no-real-api" in cmd
-    assert "--real-api" not in cmd
+    assert plan.implemented is False
+    assert plan.task_type == "legacy_refinement_disabled"
+    assert "deprecated" in plan.reason
+    assert plan.command is None
 
 
-def test_refinement_complete_is_explicit() -> None:
+def test_final_export_phase_plans_singleton_export() -> None:
     status = make_status(
-        phase="refinement",
-        next_task="refinement_complete",
+        phase="final_export",
+        next_task="final_export",
+        round_id=None,
+        chapter_range=None,
+    )
+    plan = plan_next_task(status)
+    assert plan.implemented is True
+    assert plan.task_type == "final_export"
+    assert plan.command is not None
+    assert plan.command[1].endswith("export_consistency_final_volume.py")
+    assert "--json" in plan.command
+
+
+def test_final_ready_phase_is_noop() -> None:
+    status = make_status(
+        phase="final_ready",
+        next_task="none",
         round_id=None,
         chapter_range=None,
     )
     plan = plan_next_task(status)
     assert plan.implemented is False
-    assert plan.task_type == "refinement_complete"
-    assert "complete" in plan.reason
+    assert plan.task_type == "final_ready"
+    assert "already exported" in plan.reason
 
 
 def test_final_review_phase_not_implemented() -> None:
     status = make_status(phase="final_review", next_task="final_review", round_id=None, chapter_range=None)
     plan = plan_next_task(status)
     assert plan.implemented is False
-    assert plan.task_type == "final_review"
+    assert plan.task_type == "legacy_final_review_disabled"
 
 
 def test_production_candidate_phase_not_implemented() -> None:
     status = make_status(phase="production_candidate", next_task="production_candidate", round_id=None, chapter_range=None)
     plan = plan_next_task(status)
     assert plan.implemented is False
-    assert plan.task_type == "production_candidate"
+    assert plan.task_type == "legacy_production_candidate_disabled"
 
 
 def test_unknown_phase_is_explicit() -> None:

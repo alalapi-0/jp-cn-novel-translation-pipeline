@@ -43,6 +43,7 @@ def test_pipeline_status_completed_segments_max_checkpoint(tmp_path: Path) -> No
     status = build_pipeline_status(repo)
     assert status["completed_segments"] == 55
     assert status["segment_progress_label"] == "55/100"
+    assert status["resume_command"] == "python3 scripts/local_scheduler_tick.py --dry-run --json"
 
 
 def test_list_production_runs_uses_checkpoint_max(tmp_path: Path) -> None:
@@ -75,7 +76,7 @@ def test_list_production_runs_uses_checkpoint_max(tmp_path: Path) -> None:
     assert rows[0]["segment_progress_label"] == "399/6984"
 
 
-def test_active_run_cards_parallel_refine_and_draft(tmp_path: Path) -> None:
+def test_active_run_cards_ignore_legacy_refine_state(tmp_path: Path) -> None:
     repo = tmp_path
     workspace = repo / "workspace"
     refine_id = "run_20260605_111734_draft_stage_b_50ch"
@@ -110,11 +111,11 @@ def test_active_run_cards_parallel_refine_and_draft(tmp_path: Path) -> None:
     status = build_pipeline_status(repo)
     cards = status["active_run_cards"]
     run_ids = {c["run_id"] for c in cards}
-    assert refine_id in run_ids
     assert draft_id in run_ids
-    refine_card = next(c for c in cards if c["run_id"] == refine_id)
-    assert refine_card["phase"] == "refine"
-    assert refine_card["task_label"] == "精修 Stage C"
+    assert refine_id not in run_ids
+    assert status["legacy_refinement_state"] is True
+    assert status["refine_blocked"] is False
+    assert all("resume_production.py" not in c["resume_command"] for c in cards)
 
 
 def test_resolve_segment_progress_helper(tmp_path: Path) -> None:

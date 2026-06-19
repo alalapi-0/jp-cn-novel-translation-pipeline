@@ -171,12 +171,13 @@ def _build_fix_paths(
                 f"恢复缺失产物: python3 scripts/hydrate_checkpoint.py --run-id {rid} --apply"
             )
             steps.append(
-                f"续跑翻译: python3 scripts/resume_production.py --run-id {rid} --hydrate-apply"
+                "续跑翻译: python3 scripts/local_scheduler_tick.py --dry-run --json；"
+                "确认后再用 --real-api --max-api-calls <N>"
             )
     if any("state_conflict" in b for b in blocks):
         steps.append(
             "诊断 run 冲突: 确认 workspace/stage_state.json 为测试状态；"
-            "生产请用 workspace/stage_state_production.json（见 scripts/resume_production.py）"
+            "生产请用 local_scheduler_tick.py 的受控 tick，不要直连 translate.py"
         )
     if any("completed_run_missing_artifacts" in b for b in blocks):
         steps.append(
@@ -188,7 +189,8 @@ def _build_fix_paths(
             "--request-stop --run-id <run_id> --json"
         )
         steps.append(
-            "受控续跑: python3 scripts/translation_autopilot_loop.py --round-id T-00X --supervised"
+            "受控续跑: python3 scripts/local_scheduler_tick.py --dry-run --json；"
+            "确认后再用 --real-api --max-api-calls <N>"
         )
     if any("stale_lock" in w for w in warnings):
         steps.append(

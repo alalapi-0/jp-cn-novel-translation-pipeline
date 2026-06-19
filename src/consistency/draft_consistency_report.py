@@ -136,9 +136,9 @@ def build_draft_consistency_report(repo_root: Path) -> dict[str, Any]:
         "artifacts_present": artifacts_present,
         "progressive_disclosure": levels,
         "recommendation": (
-            "ready_for_baseline_lock"
+            "ready_for_final_export"
             if blocking == 0 and artifacts_present.get("chapter_manifest")
-            else "resolve_blocking_before_baseline_lock"
+            else "resolve_blocking_before_final_export"
         ),
     }
 

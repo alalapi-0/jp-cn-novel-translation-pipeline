@@ -6,7 +6,7 @@
 
 参考仓库方法吸收后，架构还必须遵守以下补充原则：
 
-1. 原文只读，所有翻译、校验、重试、润色和审核状态写入 JSONL 中间态。
+1. 原文只读，所有翻译、校验、重试、一致性校对和审核状态写入 JSONL 中间态。
 2. `paragraph_id` 与 `segment_id` 是跨 parser、context、Prompt、Validator、ReviewIssue、TranslationMemory 和 Exporter 的稳定定位键。
 3. Prompt 必须分层和版本化，`prompt_version` 写入 JSONL、ModelRun、cache、TM 和 review report。
 4. 模型输出必须先经过 ResponseExtractor 与 Validator，校验失败不得进入 translated / final。
@@ -18,8 +18,8 @@
 | 层/能力 | 当前实现 | 后续扩展 |
 |---|---|---|
 | Workbench API | 多项目清单、审核状态、生成/导出端点、错误码映射 | 完整任务编排、权限与协作模型 |
-| 生成链路 | dry-run 与真实 API 小样本；请求幂等 + 持久化 generation job 状态 | 后台 worker、队列调度、可中断恢复 |
-| 审核导出 | 导出前合并 manifest 与 review_state，默认仅导出 approved | 复杂审核策略、发布前 Gate 与签审 |
+| 生成链路 | API Mode / Agent Quota Mode 双路径协议；请求幂等 + 持久化 generation job 状态 | 后台 worker、队列调度、可中断恢复 |
+| 审核导出 | 导出前合并 manifest 与 review_state；singleton final export 为唯一最终译文入口 | 复杂审核策略、发布前 Gate 与签审 |
 | 前端页面 | 首页/审核/Issue/导出的 MVP，支持状态提示和基础轮询恢复 | 统一状态中心、批量操作、可视化报表 |
 | 测试与门控 | Python 单测、Playwright UI 测试、agent_gate | 全链路回归矩阵、并发稳定性与压测 |
 
@@ -32,7 +32,7 @@
 | 静态工作台 | `npm run dev:frontend` → `http://127.0.0.1:5174/` | 首页 Quickstart、项目列表、API 状态卡片 |
 | 对照审核 | `/review.html?project=<id>` | segment 通过/拒绝、`review_state` 持久化 |
 | 质量 Issue | `/issues.html?project=<id>` | quality-review API + fixture fallback |
-| 导出中心 | `/export.html?project=<id>` | manifest `approved`/`draft` 导出至 `output_cn/` |
+| 导出中心 | `/export.html?project=<id>` | manifest `approved`/`draft` 临时导出至 `workspace/workbench_exports/`；最终稿仍只在 `output_cn/translated/full_volume_cn.md` |
 | Workbench API | `src/workbench/server.py`（由 `serve_frontend.py` 挂载） | `/api/projects`、`dry-run-generate`、`real-api-generate` 等 |
 | Python 单测 | `npm run test:py` 或 `.venv/bin/pytest tests/` | 含 server、export、api_status 等 |
 | UI 测试 | `npm run test:ui` | Playwright smoke + workbench 场景 |
@@ -225,7 +225,7 @@ approved glossary、角色设定、世界观设定、翻译记忆、章节摘要
 
 ### 与其他层的关系
 
-被初翻、润色、审核、前端、向量检索共同使用。
+被翻译、一致性校对、审核、前端、向量检索共同使用。
 
 ### 当前阶段是否实现
 
@@ -261,7 +261,7 @@ segments、translation memory、术语例句、角色台词、世界观证据、
 
 ### 与其他层的关系
 
-为 context pack、初翻、润色和审核提供辅助信息。
+为 context pack、翻译、一致性校对和审核提供辅助信息。
 
 ### 当前阶段是否实现
 
@@ -287,7 +287,6 @@ Embedding 是为了提升上下文检索能力。向量库不能替代术语表�
 - Embedding Model Adapter
 - Reasoning Model Adapter
 - Translation Model Adapter
-- Refinement Model Adapter
 - Review Model Adapter
 
 ### 输入
@@ -300,7 +299,7 @@ provider config、model config、request payload、context pack、预算限制�
 
 ### 与其他层的关系
 
-被 embedding、术语抽取、初翻、润色和审核 pipeline 调用。
+被 embedding、术语抽取、翻译、一致性校对和审核 pipeline 调用。
 
 ### 当前阶段是否实现
 
@@ -322,7 +321,7 @@ Provider 应通过配置选择。API Key 只从 `.env` 或系统环境变量读�
 
 ### 职责
 
-组织从准备、知识资产抽取、context pack、初翻、润色、一致性检查到导出的流水线。
+组织从准备、知识资产抽取、context pack、翻译、一致性检查到唯一最终译文导出的流水线。
 
 ### 主要模块
 
@@ -330,8 +329,7 @@ Provider 应通过配置选择。API Key 只从 `.env` 或系统环境变量读�
 - Terminology Extraction Pipeline
 - Character Extraction Pipeline
 - World Bible Extraction Pipeline
-- Initial Translation Pipeline
-- Refinement Pipeline
+- Translation Pipeline
 - Consistency Check Pipeline
 - Export Pipeline
 
@@ -341,7 +339,7 @@ project config、segments、knowledge assets、retrieval results、provider conf
 
 ### 输出
 
-初翻草稿、润色稿、双语对照、审核 issue、translation memory、导出结果。
+翻译中间态、双语对照、审核 issue、translation memory、唯一最终译文和辅助导出结果。
 
 ### 与其他层的关系
 
@@ -353,11 +351,11 @@ project config、segments、knowledge assets、retrieval results、provider conf
 
 ### 后续轮次如何推进
 
-Round 20 Fake Provider 跑通初翻；Round 23 单章初翻；Round 24 批量初翻；Round 31 润色 pipeline。
+后续按 `docs/translation_production_protocol.md` 推进 API / Agent 额度双路径 writer、状态 UI 和最终导出。
 
 ### 原则
 
-初翻和润色必须分离。初翻优先忠实、完整、术语一致；润色优先自然、风格统一、保留信息。一致性检查贯穿两者之后。
+翻译与一致性校对必须分离。翻译优先忠实、完整、术语一致；一致性校对只定位并修复可验证问题，不做全书文风润色；最终阅读文件只由 exporter 生成。
 
 ## Review Pipeline Layer
 
@@ -399,7 +397,7 @@ Round 26 术语一致性；Round 27 角色语气；Round 28 世界观冲突；Ro
 
 ### 职责
 
-把草稿、润色稿、双语对照、审核报告和项目数据导出为可复查文件。
+把翻译中间态、双语对照、审核报告、项目数据和唯一最终译文导出为可复查文件。
 
 ### 主要模块
 
@@ -412,7 +410,7 @@ Round 26 术语一致性；Round 27 角色语气；Round 28 世界观冲突；Ro
 
 ### 输入
 
-draft、refined translation、alignment、issues、metadata、project state。
+translation draft/intermediate、final translation manifest、alignment、issues、metadata、project state。
 
 ### 输出
 

@@ -257,6 +257,7 @@ def test_build_draft_consistency_report_fixture(fixture_repo: Path) -> None:
     report = build_draft_consistency_report(fixture_repo)
     assert report["status"] == "PASS"
     assert report["blocking_conflicts"] == 0
+    assert report["recommendation"] == "ready_for_final_export"
 
 
 def test_arbitrate_conflicts_cli(tmp_path: Path, monkeypatch) -> None:

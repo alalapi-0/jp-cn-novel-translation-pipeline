@@ -80,19 +80,14 @@ def resolve_segment_progress(
 
 
 def _resume_command(run_id: str, chapter_offset: int | None, limit_chapters: int | None) -> str:
-    off = int(chapter_offset or 0)
-    batch = int(limit_chapters or 50)
-    return (
-        f"python3 scripts/resume_production.py --run-id {run_id} "
-        f"--chapter-offset {off} --target-new-chapters {batch} --hydrate-apply"
-    )
+    return "python3 scripts/local_scheduler_tick.py --dry-run --json"
 
 
 def _task_label(phase: str | None) -> str:
     if phase == "refine":
-        return "精修 Stage C"
+        return "历史润色任务（已禁用）"
     if phase == "draft":
-        return "初译 Stage B"
+        return "翻译批次"
     return "生产任务"
 
 
@@ -203,11 +198,16 @@ def _collect_active_run_cards(
     stage: dict[str, Any],
     default_run_id: str,
 ) -> list[dict[str, Any]]:
-    """Return progress cards for all in-progress production runs (parallel refine + draft)."""
+    """Return progress cards for in-progress translation runs.
+
+    Legacy refinement state may still exist in old workspaces, but it is not an
+    active production task in the v2 route.
+    """
     cards: list[dict[str, Any]] = []
     seen: set[str] = set()
 
-    if default_run_id:
+    legacy_refinement_state = str(stage.get("phase") or "") == "refine"
+    if default_run_id and not legacy_refinement_state:
         card = _build_run_card(
             repo_root,
             default_run_id,
@@ -222,6 +222,8 @@ def _collect_active_run_cards(
     for row in list_production_runs(repo_root):
         run_id = str(row.get("run_id") or "")
         if not run_id or run_id in seen:
+            continue
+        if legacy_refinement_state and run_id == default_run_id:
             continue
         if str(row.get("status") or "") != "in_progress":
             continue
@@ -270,7 +272,12 @@ def build_pipeline_status(repo_root: Path) -> dict[str, Any]:
         "last_heartbeat": seg.get("heartbeat_at"),
         "checkpoint_status": seg.get("checkpoint_status"),
         "resume_command": resume_cmd,
-        "refine_blocked": bool(stage.get("refine_blocked")),
+        "refine_blocked": False,
+        "legacy_refinement_state": bool(
+            str(stage.get("phase") or "") == "refine"
+            or str(stage.get("stage") or "").startswith("refine_")
+            or stage.get("refine_blocked")
+        ),
         "checked_at": _utc_now(),
         "has_production_run": bool(run_id and run_root and run_root.is_dir()),
         "production_runs": list_production_runs(repo_root),

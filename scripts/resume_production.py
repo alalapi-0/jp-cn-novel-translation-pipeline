@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Controlled production resume: gate check → optional hydrate → translate Stage B."""
+"""Compatibility wrapper for governed production resume.
+
+Older Cursor prompts used this script to call ``translate.py --stage stage_b``
+directly. That bypasses the current singleton-final scheduler gates, so the
+entrypoint now delegates to ``scripts/local_scheduler_tick.py`` instead.
+"""
 
 from __future__ import annotations
 
@@ -15,8 +20,6 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from local_env import apply_local_env  # noqa: E402
-from translation.run_progress import PRODUCTION_STAGE_STATE_REL  # noqa: E402
-
 DEFAULT_ASSET_CONTEXT = "workspace/assets/translation_memory/pw-user-assets-flow.json"
 DEFAULT_RESUME_RUN = "run_20260605_111734_draft_stage_b_50ch"
 DEFAULT_OFFSET = 150
@@ -73,24 +76,42 @@ def _run_gate_json(py: str) -> dict:
     return json.loads(raw)
 
 
+def _scheduler_tick_command(py: str, args: argparse.Namespace) -> list[str]:
+    cmd = [py, "scripts/local_scheduler_tick.py", "--json"]
+    if args.real_api:
+        cmd.append("--real-api")
+    else:
+        cmd.append("--dry-run")
+    for attr, flag in (
+        ("max_api_calls", "--max-api-calls"),
+        ("max_segments", "--max-segments"),
+        ("max_wall_time_minutes", "--max-wall-time-minutes"),
+        ("batch_token_budget", "--batch-token-budget"),
+        ("max_segments_per_call", "--max-segments-per-call"),
+    ):
+        value = getattr(args, attr, None)
+        if value is not None:
+            cmd.extend([flag, str(value)])
+    return cmd
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Resume production draft translation with gate + hydrate safeguards",
+        description="Resume governed production translation via local_scheduler_tick.py",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-示例（从第 151 章续跑 20 章）::
+示例（先 dry-run 检查下一步，不调用 API）::
 
-  python3 scripts/resume_production.py \\
-    --run-id run_20260605_111734_draft_stage_b_50ch \\
-    --chapter-offset 150 \\
-    --target-new-chapters 20 \\
-    --hydrate-apply
+  python3 scripts/resume_production.py --dry-run
 
-续跑后精修 Stage C（151–170，需 gate ALLOW 且用户授权预算）::
+示例（真实 API 只允许显式预算）::
 
-  python3 scripts/resume_production.py --refine --run-id <run_id>
+  python3 scripts/resume_production.py --real-api --max-api-calls 5
 
-环境要求: .env 中 OPENROUTER_API_KEY 非空、REAL_API_TESTS_ENABLED=true、MAX_TEST_COST_USD>0
+历史 `--refine` 入口默认禁用。当前路线为翻译 -> 一致性校对 -> 唯一最终译文导出。
+
+旧的 --run-id / --chapter-offset / --target-new-chapters / hydrate 参数仍被接受，
+但不再直接驱动 translate.py；恢复与续跑由 scheduler 根据当前状态自行决定。
         """,
     )
     parser.add_argument("--run-id", default=DEFAULT_RESUME_RUN, help="Resume existing run (omit with --new-run)")
@@ -113,84 +134,38 @@ def main() -> int:
     parser.add_argument(
         "--refine",
         action="store_true",
-        help="Run Stage C refine on completed draft run (scripts/refine_stage_c.py)",
+        help="Legacy refinement route; disabled unless ALLOW_LEGACY_REFINEMENT=1",
     )
     parser.add_argument("--dry-run", action="store_true", help="Only gate + hydrate plan, no translate/refine")
+    parser.add_argument("--real-api", action="store_true", help="Delegate a real scheduler tick; requires --max-api-calls > 0")
+    parser.add_argument("--max-api-calls", type=int, default=None)
+    parser.add_argument("--max-segments", type=int, default=None)
+    parser.add_argument("--max-wall-time-minutes", type=float, default=None)
+    parser.add_argument("--batch-token-budget", type=int, default=None)
+    parser.add_argument("--max-segments-per-call", type=int, default=None)
     args = parser.parse_args()
 
-    apply_local_env(REPO_ROOT)
-    _ensure_production_env()
     py = _python()
 
-    if not args.skip_gate:
-        try:
-            gate_doc = _run_gate_json(py)
-        except json.JSONDecodeError as exc:
-            print(f"throughput_gate: invalid JSON output ({exc})", file=sys.stderr)
-            return 2
-        decision = gate_doc.get("decision")
-        print(f"throughput_gate: {decision}")
-        if decision == "BLOCK":
-            for step in gate_doc.get("fix_paths") or []:
-                print(f"  → {step}")
-            return 2
-
-    if not args.no_hydrate and not args.new_run:
-        hydrate_cmd = [
-            py,
-            "scripts/hydrate_checkpoint.py",
-            "--run-id",
-            args.run_id,
-            "--chapter-offset",
-            str(args.chapter_offset),
-            "--limit-chapters",
-            str(args.target_new_chapters),
-            "--json",
-        ]
-        if args.hydrate_apply:
-            hydrate_cmd.append("--apply")
-        _run(hydrate_cmd, with_production_env=True)
-
     if args.refine:
-        refine_cmd = [
-            py,
-            "scripts/refine_stage_c.py",
-            "--run-id",
-            args.run_id,
-            "--stage-state-path",
-            str(REPO_ROOT / PRODUCTION_STAGE_STATE_REL),
-        ]
-        if args.dry_run:
-            refine_cmd.append("--dry-run")
-        return _run(refine_cmd, with_production_env=True).returncode
+        print(
+            "resume_production --refine is deprecated and disabled; "
+            "current production path is scheduler -> consistency -> singleton final export.",
+            file=sys.stderr,
+        )
+        return 2
+    if args.real_api and int(args.max_api_calls or 0) <= 0:
+        print("--real-api requires --max-api-calls > 0", file=sys.stderr)
+        return 2
 
-    if args.dry_run:
-        print("resume_production: dry-run complete (no translate/refine)")
-        return 0
-
-    asset = args.asset_context
-    if not asset.is_absolute():
-        asset = REPO_ROOT / asset
-
-    translate_cmd = [
-        py,
-        "scripts/translate.py",
-        "--phase",
-        "draft",
-        "--stage",
-        "stage_b",
-        "--chapter-offset",
-        str(args.chapter_offset),
-        "--limit-chapters",
-        str(args.target_new_chapters),
-        "--asset-context",
-        str(asset),
-        "--stage-state-path",
-        PRODUCTION_STAGE_STATE_REL,
-    ]
-    if not args.new_run:
-        translate_cmd.extend(["--run-id", args.run_id])
-    return _run(translate_cmd, with_production_env=True).returncode
+    if args.skip_gate or args.no_hydrate or args.hydrate_apply or args.new_run:
+        print(
+            "resume_production: legacy gate/hydrate/run-id flags are ignored; "
+            "local_scheduler_tick.py owns pause, lock, orphan and resume decisions.",
+            file=sys.stderr,
+        )
+    apply_local_env(REPO_ROOT)
+    return _run(_scheduler_tick_command(py, args), check=False).returncode
 
 
 if __name__ == "__main__":

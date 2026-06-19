@@ -359,18 +359,45 @@ def main() -> int:
     parser.add_argument("--run-id", default="", help="Override resume run_id")
     parser.add_argument("--chapter-range", default="", help="Override chapter range e.g. 203-205")
     parser.add_argument("--model-profile", default="draft_translation_primary")
-    parser.add_argument("--real-api", action="store_true", default=True)
-    parser.add_argument("--supervised", action="store_true", default=True)
-    parser.add_argument("--auto-resume", action="store_true", default=True)
+    parser.add_argument("--real-api", action="store_true")
+    parser.add_argument("--supervised", action="store_true")
+    parser.add_argument("--auto-resume", action="store_true")
     parser.add_argument("--auto-report-on-complete", action="store_true")
     parser.add_argument("--draft-model", default=DEFAULT_DRAFT_MODEL)
     parser.add_argument("--tick-max-segments", type=int, default=DEFAULT_TICK_MAX_SEGMENTS)
     parser.add_argument("--tick-max-wall-time-seconds", type=float, default=DEFAULT_TICK_MAX_WALL_SECONDS)
+    parser.add_argument("--max-api-calls", type=int, default=None)
     parser.add_argument("--skip-gate", action="store_true")
     args = parser.parse_args()
 
+    if os.environ.get("ALLOW_LEGACY_AUTOPILOT") != "1":
+        cmd = [_python(), "scripts/local_scheduler_tick.py", "--json"]
+        if args.real_api:
+            if int(args.max_api_calls or 0) <= 0:
+                print("--real-api requires --max-api-calls > 0", file=sys.stderr)
+                return 2
+            cmd.extend(["--real-api", "--max-api-calls", str(args.max_api_calls)])
+        else:
+            cmd.append("--dry-run")
+        print(
+            "translation_autopilot_loop.py is deprecated; delegating to local_scheduler_tick.py",
+            file=sys.stderr,
+        )
+        return subprocess.run(cmd, cwd=REPO_ROOT).returncode
+
+    if os.environ.get("ALLOW_DIRECT_TRANSLATE_ENTRYPOINT") != "1":
+        print(
+            "legacy autopilot direct translate path is disabled; unset ALLOW_LEGACY_AUTOPILOT "
+            "or set ALLOW_DIRECT_TRANSLATE_ENTRYPOINT=1 only in an audited throwaway workspace.",
+            file=sys.stderr,
+        )
+        return 2
+
     if not args.supervised:
         print("ERROR: --supervised is required for real API production", file=sys.stderr)
+        return 2
+    if not args.real_api:
+        print("ERROR: legacy autopilot only exists for explicit real API reproduction; use local_scheduler_tick.py --dry-run", file=sys.stderr)
         return 2
 
     draft_model = (args.draft_model or DEFAULT_DRAFT_MODEL).strip()

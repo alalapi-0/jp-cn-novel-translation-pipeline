@@ -197,6 +197,7 @@ def test_lock_cli_json_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, 
     _write_completed_run(tmp_path, "run_cli_draft_stage_b_50ch", [1, 2])
     _write_phase_reports(tmp_path)
     _stub_phase_gates(monkeypatch, phase_a=True, phase_b=True)
+    monkeypatch.setenv("ALLOW_LEGACY_BASELINE_LOCK", "1")
 
     monkeypatch.setattr(
         "sys.argv",
@@ -211,6 +212,21 @@ def test_lock_cli_json_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, 
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "dry_run"
     assert payload["chapter_count"] == 2
+
+
+def test_lock_cli_disabled_without_legacy_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    monkeypatch.delenv("ALLOW_LEGACY_BASELINE_LOCK", raising=False)
+    monkeypatch.setattr("sys.argv", ["lock_baseline.py", "--json", "--repo-root", str(tmp_path)])
+    spec = importlib.util.spec_from_file_location("lock_baseline_cli_disabled", LOCK_SCRIPT)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["lock_baseline_cli_disabled"] = mod
+    spec.loader.exec_module(mod)
+
+    assert mod.main() == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "disabled"
+    assert not (tmp_path / "draft_full_baseline").exists()
 
 
 def test_assert_writable_allows_non_baseline_paths(tmp_path: Path) -> None:

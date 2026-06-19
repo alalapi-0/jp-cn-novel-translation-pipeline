@@ -321,7 +321,11 @@ def main() -> int:
             f"{'APPLIED' if args.apply else 'DRY-RUN'}"
         )
         if not args.apply:
-            print("  下一步: 确认后加 --apply，再运行 scripts/resume_production.py 或 translate.py --run-id ...")
+            print(
+                "  下一步: 确认后加 --apply，再运行 "
+                "scripts/local_scheduler_tick.py --dry-run --json；"
+                "真实 API 需显式 --real-api --max-api-calls <N>"
+            )
     return 0
 
 

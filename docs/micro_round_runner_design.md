@@ -105,9 +105,9 @@ Compact summary 字段：`progress`, `api_calls`, `segments_per_call_avg`, `cost
 
 ## 8. 与旧 Autopilot 关系
 
-- `translation_autopilot_loop.py` **保留** 作为单 tick 兼容入口。
-- 生产推荐：**Agent 启动一次 `run_micro_round.py`**，读 summary 后继续治理。
-- Tick loop 仅用于 fallback 或极长 MR 人工切片。
+- `translation_autopilot_loop.py` 仅作为旧命令兼容壳；默认委托 `local_scheduler_tick.py`，不得直连 `translate.py`。
+- 生产推荐：使用 `local_scheduler_tick.py` 规划并调度 `run_micro_round.py`；Agent 读取 summary 后继续治理。
+- 真实 API 运行必须显式预算（例如 `--real-api --max-api-calls 5`）。
 
 ## 9. 验收清单
 

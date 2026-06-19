@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Export the consistency-audited canonical translation as the final volume."""
+"""Export the consistency-audited canonical translation.
+
+The default export is intentionally a singleton final handoff: one Chinese
+full-volume file plus a manifest. Per-chapter and bilingual files are useful
+working artifacts, but they create extra "final" copies that can mislead later
+agents. Recreate them only with explicit flags.
+"""
 
 from __future__ import annotations
 
@@ -123,16 +129,31 @@ def _render_bilingual(ch: dict) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def export_final(output_root: Path) -> dict:
+def export_final(
+    output_root: Path,
+    *,
+    include_chapters: bool = False,
+    include_bilingual: bool = False,
+) -> dict:
     chapters, sources = _load_canonical_chapters()
     zh_dir = output_root / "translated"
     bi_dir = output_root / "bilingual"
     removed = {
         "translated": _cleanup_generated(zh_dir, ("chapter_*_cn.md", "full_volume_cn.md")),
-        "bilingual": _cleanup_generated(bi_dir, ("chapter_*_bilingual.md", "full_volume_bilingual.md")),
+        "bilingual": _cleanup_generated(
+            bi_dir,
+            (
+                "chapter_*_bilingual.md",
+                "full_volume_bilingual.md",
+                "workbench_*_bilingual.md",
+            ),
+        ),
+        "root": _cleanup_generated(output_root, (".DS_Store",)),
     }
 
     exported = 0
+    chapter_files_exported = 0
+    bilingual_chapter_files_exported = 0
     incomplete: list[str] = []
     full_cn: list[str] = []
     full_bilingual: list[str] = []
@@ -143,23 +164,34 @@ def export_final(output_root: Path) -> dict:
             continue
         num = _chapter_num(cid)
         cn = _render_cn(ch)
-        bilingual = _render_bilingual(ch)
-        _atomic_write_text(zh_dir / f"chapter_{num:03d}_cn.md", cn)
-        _atomic_write_text(bi_dir / f"chapter_{num:03d}_bilingual.md", bilingual)
+        if include_chapters:
+            _atomic_write_text(zh_dir / f"chapter_{num:03d}_cn.md", cn)
+            chapter_files_exported += 1
         full_cn.append(cn.strip())
-        full_bilingual.append(bilingual.strip())
+        if include_bilingual:
+            bilingual = _render_bilingual(ch)
+            if include_chapters:
+                _atomic_write_text(bi_dir / f"chapter_{num:03d}_bilingual.md", bilingual)
+                bilingual_chapter_files_exported += 1
+            full_bilingual.append(bilingual.strip())
         exported += 1
 
+    full_volume_cn = zh_dir / "full_volume_cn.md"
+    full_volume_bilingual = bi_dir / "full_volume_bilingual.md"
     if full_cn:
-        _atomic_write_text(zh_dir / "full_volume_cn.md", "\n\n".join(full_cn).strip() + "\n")
-    if full_bilingual:
-        _atomic_write_text(bi_dir / "full_volume_bilingual.md", "\n\n".join(full_bilingual).strip() + "\n")
+        _atomic_write_text(full_volume_cn, "\n\n".join(full_cn).strip() + "\n")
+    if include_bilingual and full_bilingual:
+        _atomic_write_text(full_volume_bilingual, "\n\n".join(full_bilingual).strip() + "\n")
 
     missing = [f"ch-{num:03d}" for num in range(1, 613) if f"ch-{num:03d}" not in chapters]
+    canonical_final_translation = str(full_volume_cn.relative_to(REPO_ROOT))
     manifest = {
-        "schema": "consistency_final_export_v1",
+        "schema": "consistency_final_export_v2",
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "output_root": str(output_root.relative_to(REPO_ROOT)),
+        "canonical_final_translation": canonical_final_translation,
+        "canonical_final_translation_count": 1 if full_volume_cn.is_file() else 0,
+        "final_translation_policy": "singleton_full_volume_cn",
         "chapters_discovered": len(chapters),
         "chapters_exported": exported,
         "chapters_incomplete": incomplete,
@@ -168,8 +200,15 @@ def export_final(output_root: Path) -> dict:
         "removed_old_generated_files": removed,
         "translated_dir": str(zh_dir.relative_to(REPO_ROOT)),
         "bilingual_dir": str(bi_dir.relative_to(REPO_ROOT)),
-        "full_volume_cn": str((zh_dir / "full_volume_cn.md").relative_to(REPO_ROOT)),
-        "full_volume_bilingual": str((bi_dir / "full_volume_bilingual.md").relative_to(REPO_ROOT)),
+        "full_volume_cn": canonical_final_translation,
+        "full_volume_bilingual": (
+            str(full_volume_bilingual.relative_to(REPO_ROOT)) if full_volume_bilingual.is_file() else None
+        ),
+        "include_chapters": include_chapters,
+        "include_bilingual": include_bilingual,
+        "chapter_files_exported": chapter_files_exported,
+        "bilingual_chapter_files_exported": bilingual_chapter_files_exported,
+        "auxiliary_files_policy": "chapter and bilingual exports are regenerable only with explicit CLI flags",
         "sources": sources,
     }
     _atomic_write_text(output_root / "final_export_manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
@@ -179,10 +218,24 @@ def export_final(output_root: Path) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Export consistency-audited final volume")
     parser.add_argument("--output-root", type=Path, default=REPO_ROOT / "output_cn")
+    parser.add_argument(
+        "--include-chapters",
+        action="store_true",
+        help="also write per-chapter files; default keeps a singleton final volume",
+    )
+    parser.add_argument(
+        "--include-bilingual",
+        action="store_true",
+        help="also write bilingual output; default removes old bilingual final copies",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     output_root = args.output_root if args.output_root.is_absolute() else REPO_ROOT / args.output_root
-    manifest = export_final(output_root)
+    manifest = export_final(
+        output_root,
+        include_chapters=args.include_chapters,
+        include_bilingual=args.include_bilingual,
+    )
     if args.json:
         print(json.dumps(manifest, ensure_ascii=False, indent=2))
     else:

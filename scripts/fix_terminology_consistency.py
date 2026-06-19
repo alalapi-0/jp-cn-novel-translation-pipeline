@@ -11,12 +11,17 @@ Replacement rules are derived from two sources of truth:
     so newly-migrated/unreviewed terms can't silently become global
     replacement rules.
 
-For each segment in the given chapter range, the base text is
-refined_text (if refine_status == machine_refined) or draft_text
-otherwise. All rules are applied to the base text; if the result differs,
-refined_text is updated in place. draft_text/source_text/refine_status are
-left untouched so draft_full_baseline (rendered from draft_text) stays a
-faithful Phase A snapshot.
+For each segment in the given chapter range, the default base text is
+refined_text if present, falling back to draft_text. All rules are applied
+to the base text; if the result differs, refined_text is updated in place.
+draft_text/source_text/refine_status are left untouched by default. The
+current production contract is singleton-final-first: obsolete baseline body
+exports must not be treated as another canonical translation.
+
+Use --update-all-target-fields only for explicit workspace cleanup rounds.
+It applies the same source-guarded rules to every target text field in each
+segment, including stale draft_text values that can leak back into Workbench
+or translation-memory assets.
 
 Usage:
   python scripts/fix_terminology_consistency.py \
@@ -82,10 +87,41 @@ AUTO_FIX_DENYLIST = {
 
 Rule = tuple[str, str, str]
 SpecialRule = tuple[str, str, str, tuple[str, ...], tuple[str, ...]]
+TARGET_TEXT_FIELDS = ("draft_text", "refined_text", "target_text", "translation")
 
 # Collision repair rules that are too narrow for glossary aliases. Segment
 # guards keep legitimate ant-species renderings intact.
 SPECIAL_SOURCE_RULES: tuple[SpecialRule, ...] = (
+    # Segment-id-only rules are allowed only for inspected cases where the JP
+    # segment omits a repeated subject, but neighboring segments establish the
+    # referent. They must never be generalized into a target-only replacement.
+    (
+        "蕾亚",
+        "蕾雅",
+        "",
+        (),
+        (
+            "ch-341-seg-015", "ch-277-seg-019", "ch-404-seg-023", "ch-390-seg-040", "ch-168-seg-029", "ch-247-seg-067",
+            "ch-247-seg-070", "ch-247-seg-072", "ch-247-seg-074", "ch-247-seg-078", "ch-260-seg-014", "ch-611-seg-018",
+            "ch-051-seg-030", "ch-072-seg-006", "ch-608-seg-047", "ch-387-seg-076", "ch-428-seg-041", "ch-429-seg-007",
+            "ch-429-seg-014", "ch-429-seg-072", "ch-611-seg-041", "ch-356-seg-074", "ch-333-seg-058", "ch-599-seg-031",
+            "ch-460-seg-074", "ch-415-seg-032", "ch-009-seg-004", "ch-009-seg-006", "ch-011-seg-033", "ch-021-seg-071",
+            "ch-024-seg-052", "ch-027-seg-082", "ch-035-seg-011", "ch-049-seg-032", "ch-569-seg-083", "ch-513-seg-008",
+            "ch-115-seg-033", "ch-117-seg-125", "ch-117-seg-127", "ch-118-seg-019", "ch-279-seg-075", "ch-279-seg-076",
+            "ch-279-seg-080", "ch-280-seg-075", "ch-280-seg-078", "ch-551-seg-022", "ch-372-seg-093", "ch-489-seg-040",
+            "ch-296-seg-078", "ch-222-seg-012", "ch-236-seg-126", "ch-587-seg-024",
+        ),
+    ),
+    ("蕾亚你也挺不容易", "玛蕾也挺不容易", "マーレも大変", (), ("ch-276-seg-004",)),
+    ("蕾亚兽", "稀有怪", "レアモンゲット", (), ("ch-444-seg-107",)),
+    ("蕾雅兽", "稀有怪", "レアモンゲット", (), ("ch-444-seg-107",)),
+    ("韦恩独自", "Wayne独自", "サポートと言いながらも", (), ("ch-031-seg-073",)),
+    ("班布从自己迷宫", "Bambu从自己迷宫", "自分のダンジョン", (), ("ch-252-seg-165",)),
+    ("班布从蕾雅手中", "Bambu从蕾雅手中", "レアから", (), ("ch-252-seg-170",)),
+    ("班布用『缩地』", "Bambu用『缩地』", "縮地", (), ("ch-346-seg-101",)),
+    ("班布也想", "Bambu也想", "マグナメルム", (), ("ch-401-seg-019",)),
+    ("班布尼基", "Bambu大哥", "バンブニキ", (), ("ch-556-seg-094",)),
+    ("邦布邦布系统", "Bambu Bambu System", "バンブバンブシステム", (), ("ch-492-seg-149",)),
     ("凯莉『酱』", "小蕾雅", "レア『ちゃん』", ("ケリー",), ()),
     ("韦尔斯玩家", "维尔斯玩家", "ウェルスプレイヤー", (), ("ch-245-seg-107",)),
     ("威尔斯专楼", "维尔斯专楼", "ウェルススレ", (), ("ch-367-seg-246",)),
@@ -1998,6 +2034,24 @@ def _collapse_redundant_gloss(text: str) -> str:
 
 _KATAKANA = set(chr(c) for c in range(0x30A0, 0x3100))
 _KATAKANA.discard("・")
+RARE_COMMON_SOURCE_PREFIXES = (
+    "レアリティ",
+    "レアケース",
+    "レアスキル",
+    "レアアイテム",
+    "レアドロップ",
+    "レアモン",
+    "レアボス",
+    "レア素材",
+    "レア装備",
+    "レアカード",
+    "レア品",
+)
+RARE_NAME_LIKE_NA_PREFIXES = (
+    "レアなら",
+    "レアなの",
+    "レアなど",
+)
 PROTECTED_VARIANT_PREFIXES = {
     "佐助": ("猿飞", "Sasuke……", "Sasuke…", "Sasuke..."),
     "吉尔": ("艾", "埃", "大艾", "大埃", "麦·"),
@@ -2038,6 +2092,17 @@ def _source_occurs(source: str, text: str) -> bool:
         before = text[idx - 1] if idx > 0 else ""
         after_idx = idx + len(source)
         after = text[after_idx] if after_idx < len(text) else ""
+        if source == "レア":
+            if any(text.startswith(prefix, idx) for prefix in RARE_COMMON_SOURCE_PREFIXES):
+                start = idx + len(source)
+                continue
+            # "レアなX" is usually the common adjective "rare", while
+            # "レアなら/レアなの/レアなど" are name-like grammar in this novel.
+            if text.startswith("レアな", idx) and not any(
+                text.startswith(prefix, idx) for prefix in RARE_NAME_LIKE_NA_PREFIXES
+            ):
+                start = idx + len(source)
+                continue
         if before not in _KATAKANA and after not in _KATAKANA:
             return True
         start = idx + len(source)
@@ -2088,48 +2153,64 @@ def apply_rules(
     segment_id: str = "",
 ) -> tuple[str, Counter]:
     """Apply longest variants first so a short variant (e.g. raw レア) cannot
-    eat into a longer one that contains it as a substring (e.g. フレアアロー)."""
-    hits: Counter = Counter()
-    for variant, target, source, blocker_sources, segment_ids in SPECIAL_SOURCE_RULES:
-        count = text.count(variant)
-        if not count:
-            continue
-        if variant == "凯莉" and target in {"蕾雅", "小蕾雅"} and "蕾雅" in text:
-            continue
-        if variant == "蕾雅" and target == "小蕾雅" and "小蕾雅" in text:
-            continue
-        if variant == "蕾雅，你教了她什么" and target in text:
-            continue
-        if variant in {"话说蕾雅", "蕾雅说的", "蕾雅，先不论脚踏两条船的说法"} and target in text:
-            continue
-        if variant == "如果海带延伸的长度就是『魔眼』的感知范围，那么那片雾气弥漫的区域，全都在Octo的『魔眼』感知之内吧。" and target in text:
-            continue
-        if segment_ids and segment_id not in segment_ids:
-            continue
-        if not _source_occurs(source, source_text):
-            continue
-        if any(_source_occurs(blocker, source_text) for blocker in blocker_sources):
-            continue
-        text, replaced = _replace_variant(text, variant, target)
-        if replaced:
-            hits[variant] += replaced
+    eat into a longer one that contains it as a substring (e.g. フレアアロー).
 
-    for variant, candidates in sorted(rules.items(), key=lambda kv: -len(kv[0])):
-        if variant in AUTO_FIX_DENYLIST:
-            continue
-        count = text.count(variant)
-        if not count:
-            continue
-        target = None
-        for candidate_target, _label, source in candidates:
-            if _source_occurs(source, source_text):
-                target = candidate_target
-                break
-        if target is None:
-            continue
-        text, replaced = _replace_variant(text, variant, target)
-        if replaced:
-            hits[variant] += replaced
+    A single replacement can expose a second, narrower rule. For example,
+    character_profile can normalize "蕾亚酱" to "蕾雅酱", after which the
+    source-guarded special rule for レアちゃん must still normalize it to
+    "小蕾雅". Iterate inside the segment until stable so callers do not need
+    to run the whole-book fixer repeatedly.
+    """
+    hits: Counter = Counter()
+    for _pass in range(5):
+        pass_hits: Counter = Counter()
+        before_pass = text
+        for variant, target, source, blocker_sources, segment_ids in SPECIAL_SOURCE_RULES:
+            count = text.count(variant)
+            if not count:
+                continue
+            if variant == "凯莉" and target in {"蕾雅", "小蕾雅"} and "蕾雅" in text:
+                continue
+            if variant == "蕾雅" and target == "小蕾雅" and "小蕾雅" in text:
+                continue
+            if variant == "蕾雅，你教了她什么" and target in text:
+                continue
+            if variant in {"话说蕾雅", "蕾雅说的", "蕾雅，先不论脚踏两条船的说法"} and target in text:
+                continue
+            if variant == "如果海带延伸的长度就是『魔眼』的感知范围，那么那片雾气弥漫的区域，全都在Octo的『魔眼』感知之内吧。" and target in text:
+                continue
+            if segment_ids and segment_id not in segment_ids:
+                continue
+            if source:
+                if not _source_occurs(source, source_text):
+                    continue
+            elif not segment_ids:
+                continue
+            if any(_source_occurs(blocker, source_text) for blocker in blocker_sources):
+                continue
+            text, replaced = _replace_variant(text, variant, target)
+            if replaced:
+                pass_hits[variant] += replaced
+
+        for variant, candidates in sorted(rules.items(), key=lambda kv: -len(kv[0])):
+            if variant in AUTO_FIX_DENYLIST:
+                continue
+            count = text.count(variant)
+            if not count:
+                continue
+            target = None
+            for candidate_target, _label, source in candidates:
+                if _source_occurs(source, source_text):
+                    target = candidate_target
+                    break
+            if target is None:
+                continue
+            text, replaced = _replace_variant(text, variant, target)
+            if replaced:
+                pass_hits[variant] += replaced
+        if not pass_hits or text == before_pass:
+            break
+        hits.update(pass_hits)
     if hits:
         text = _collapse_redundant_gloss(text)
     return text, hits
@@ -2141,6 +2222,14 @@ def main() -> int:
     parser.add_argument("--chapters", type=int, nargs=2, metavar=("START", "END"), required=True)
     parser.add_argument("--diff-log", type=Path, default=None)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--update-all-target-fields",
+        action="store_true",
+        help=(
+            "also rewrite draft_text/target_text/translation fields when they "
+            "exist; default only updates the effective final text into refined_text"
+        ),
+    )
     args = parser.parse_args()
 
     rules = build_rules(REPO_ROOT)
@@ -2151,6 +2240,7 @@ def main() -> int:
     rule_hits: Counter = Counter()
     skipped_hits: Counter = Counter()
     changed_segments = 0
+    changed_fields = 0
     total_segments = 0
 
     for ch in doc.get("chapters", []):
@@ -2163,30 +2253,48 @@ def main() -> int:
             continue
         for seg in ch.get("segments", []):
             total_segments += 1
-            # Mirrors export_refined_runs.py::_cn_text: prefer refined_text
-            # whenever present (covers both real machine-refined output and
-            # mojibake-recovered text written back without the
-            # machine_refined flag), falling back to draft_text otherwise.
-            base = seg.get("refined_text") or seg.get("draft_text") or ""
-            fixed, hits = apply_rules(base, seg.get("source_text") or "", rules, seg.get("segment_id") or "")
-            for variant in AUTO_FIX_DENYLIST:
-                if variant in fixed:
-                    skipped_hits[variant] += fixed.count(variant)
-            if fixed != base:
+            if args.update_all_target_fields:
+                field_values = [
+                    (field, seg.get(field) or "")
+                    for field in TARGET_TEXT_FIELDS
+                    if isinstance(seg.get(field), str) and (seg.get(field) or "")
+                ]
+            else:
+                # Mirrors export_refined_runs.py::_cn_text: prefer refined_text
+                # whenever present (covers both real machine-refined output and
+                # mojibake-recovered text written back without the
+                # machine_refined flag), falling back to draft_text otherwise.
+                field_values = [("effective_text", seg.get("refined_text") or seg.get("draft_text") or "")]
+
+            segment_changed = False
+            for field, base in field_values:
+                fixed, hits = apply_rules(base, seg.get("source_text") or "", rules, seg.get("segment_id") or "")
+                for variant in AUTO_FIX_DENYLIST:
+                    if variant in fixed:
+                        skipped_hits[variant] += fixed.count(variant)
+                if fixed == base:
+                    continue
                 if hits:
                     rule_hits.update(hits)
-                changed_segments += 1
+                changed_fields += 1
+                segment_changed = True
                 diffs.append(
                     {
                         "chapter_id": ch["chapter_id"],
                         "segment_id": seg["segment_id"],
+                        "field": field,
                         "before": base,
                         "after": fixed,
                         "hits": dict(hits),
                     }
                 )
                 if not args.dry_run:
-                    seg["refined_text"] = fixed
+                    if args.update_all_target_fields:
+                        seg[field] = fixed
+                    else:
+                        seg["refined_text"] = fixed
+            if segment_changed:
+                changed_segments += 1
 
     if not args.dry_run:
         args.segments_file.write_text(
@@ -2200,8 +2308,10 @@ def main() -> int:
         "chapter_range": [start, end],
         "total_segments": total_segments,
         "changed_segments": changed_segments,
+        "changed_fields": changed_fields,
         "rule_hits": dict(sorted(rule_hits.items(), key=lambda kv: -kv[1])),
         "skipped_ambiguous_hits": dict(sorted(skipped_hits.items(), key=lambda kv: -kv[1])),
+        "target_field_mode": "all_target_fields" if args.update_all_target_fields else "effective_text",
         "rules_used": {variant: [target for target, _label, _source in candidates] for variant, candidates in rules.items()},
         "auto_fix_denylist": sorted(AUTO_FIX_DENYLIST),
         "special_source_rules": [

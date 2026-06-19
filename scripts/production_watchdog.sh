@@ -5,6 +5,12 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+if [[ "${ALLOW_LEGACY_PRODUCTION_PIPELINE:-0}" != "1" ]]; then
+  echo "production_watchdog.sh is deprecated and disabled by default."
+  echo "Use launchd/local_scheduler_tick.py instead; legacy watchdog restart loops are not part of final governance."
+  exit 2
+fi
+
 PYTHON="${PYTHON:-/Users/alalapi/.local/bin/python3.12}"
 LOG="$REPO_ROOT/workspace/watchdog_poll.log"
 PIDFILE="$REPO_ROOT/workspace/.production_watchdog.pid"
@@ -182,15 +188,14 @@ EOF
   if [[ -z "$resume_run" ]]; then
     return 0
   fi
-  wlog "AUTO_RESUME draft translate run_id=$resume_run offset=$offset limit=$limit"
+  wlog "AUTO_RESUME governed scheduler tick run_id=$resume_run offset=$offset limit=$limit"
   nohup env PYTHON="$PYTHON" REAL_API_TESTS_ENABLED=1 CONTROLLED_RUN_ENABLED=1 \
     TRANSLATE_MAX_TEST_COST_USD="${TRANSLATE_MAX_TEST_COST_USD}" \
     MAX_TEST_COST_USD="${MAX_TEST_COST_USD}" \
-    "$PYTHON" scripts/resume_production.py \
-    --run-id "$resume_run" \
-    --chapter-offset "$offset" \
-    --target-new-chapters "$limit" \
-    --no-hydrate >>"$REPO_ROOT/workspace/production_pipeline.log" 2>&1 &
+    "$PYTHON" scripts/local_scheduler_tick.py \
+    --real-api \
+    --max-api-calls "${WATCHDOG_MAX_API_CALLS:-5}" \
+    --json >>"$REPO_ROOT/workspace/production_pipeline.log" 2>&1 &
   sleep 5
 }
 

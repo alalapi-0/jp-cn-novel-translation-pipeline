@@ -26,7 +26,7 @@ SPEC_FIELDS = [
     "last_successful_tick",
     "last_blocked_reason",
     "draft_progress",
-    "refinement_progress",
+    "final_translation_progress",
     "safe_to_run",
 ]
 
@@ -174,13 +174,14 @@ def test_legacy_run_without_progress_uses_metadata_summary(tmp_path: Path) -> No
     assert report["draft_progress"]["completed_chapters"] == 3
 
 
-def test_refine_runs_feed_refinement_progress(tmp_path: Path) -> None:
+def test_legacy_refine_runs_do_not_create_pending_refinement(tmp_path: Path) -> None:
     repo = make_repo(tmp_path, chapters=9)
     set_queue(repo, anchor=1)
     add_run(repo, "run_d", [1, 2, 3])
     add_run(repo, "run_r", [1, 2], phase="refine")
     report = collect_status(repo)
-    assert report["refinement_progress"]["completed_chapters"] == 2
+    assert report["refinement_progress"]["completed_chapters"] == 9
+    assert report["detail"]["refinement_deprecated"] is True
     assert report["draft_progress"]["completed_chapters"] == 3
 
 
@@ -337,7 +338,7 @@ def test_tick_state_defaults_to_none(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Post-draft phase ladder (FS-039: baseline_lock → refinement)
+# Post-draft phase ladder: consistency pass -> final export/singleton ready
 # ---------------------------------------------------------------------------
 
 def _write_phase_b_pass(repo: Path) -> None:
@@ -345,6 +346,15 @@ def _write_phase_b_pass(repo: Path) -> None:
     reports.mkdir(parents=True, exist_ok=True)
     (reports / "phase_b_completion_report.json").write_text(
         json.dumps({"overall_pass": True}),
+        encoding="utf-8",
+    )
+
+
+def _write_phase_b_pass_markdown(repo: Path) -> None:
+    reports = repo / "docs" / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase_b_completion_report.md").write_text(
+        "# Phase B Completion Report\n\n- overall_pass: True\n",
         encoding="utf-8",
     )
 
@@ -364,31 +374,61 @@ def _write_go_decision(repo: Path, *, go: bool = True) -> None:
     )
 
 
-def test_phase_b_pass_transitions_to_baseline_lock(tmp_path: Path) -> None:
+def _write_final_export(repo: Path) -> None:
+    final_path = repo / "output_cn" / "translated" / "full_volume_cn.md"
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    final_path.write_text("# Final\n\ntext\n", encoding="utf-8")
+    manifest = repo / "output_cn" / "final_export_manifest.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema": "consistency_final_export_v2",
+                "canonical_final_translation": "output_cn/translated/full_volume_cn.md",
+                "canonical_final_translation_count": 1,
+                "final_translation_policy": "singleton_full_volume_cn",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_phase_b_pass_transitions_to_final_export(tmp_path: Path) -> None:
     repo = make_repo(tmp_path, chapters=6)
     set_queue(repo, anchor=1)
     add_run(repo, "run_a", [1, 2, 3, 4, 5, 6])
     _write_phase_b_pass(repo)
     report = collect_status(repo)
-    assert report["current_phase"] == "baseline_lock"
-    assert report["next_task"] == "baseline_lock"
+    assert report["current_phase"] == "final_export"
+    assert report["next_task"] == "final_export"
     assert report["detail"]["phase_b_pass"] is True
 
 
-def test_baseline_locked_awaits_go_decision(tmp_path: Path) -> None:
+def test_phase_b_markdown_report_counts_as_pass(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path, chapters=6)
+    set_queue(repo, anchor=1)
+    add_run(repo, "run_a", [1, 2, 3, 4, 5, 6])
+    _write_phase_b_pass_markdown(repo)
+    report = collect_status(repo)
+    assert report["current_phase"] == "final_export"
+    assert report["next_task"] == "final_export"
+    assert report["detail"]["phase_b_pass"] is True
+
+
+def test_legacy_baseline_locked_transitions_to_final_export(tmp_path: Path) -> None:
     repo = make_repo(tmp_path, chapters=6)
     set_queue(repo, anchor=1)
     add_run(repo, "run_a", [1, 2, 3, 4, 5, 6])
     _write_phase_b_pass(repo)
     _write_baseline_locked(repo)
     report = collect_status(repo)
-    assert report["current_phase"] == "baseline_lock"
-    assert report["next_task"] == "baseline_go_decision"
+    assert report["current_phase"] == "final_export"
+    assert report["next_task"] == "final_export"
     assert report["detail"]["baseline_locked"] is True
     assert report["detail"]["go_decision_approved"] is False
 
 
-def test_go_decision_approved_transitions_to_refinement(tmp_path: Path) -> None:
+def test_go_decision_approved_transitions_to_final_export(tmp_path: Path) -> None:
     repo = make_repo(tmp_path, chapters=9)
     set_queue(repo, anchor=1)
     (repo / "workspace" / "control" / "scheduler_queue.json").write_text(
@@ -400,8 +440,26 @@ def test_go_decision_approved_transitions_to_refinement(tmp_path: Path) -> None:
     _write_baseline_locked(repo)
     _write_go_decision(repo, go=True)
     report = collect_status(repo)
-    assert report["current_phase"] == "refinement"
-    assert report["next_task"] == "refine_micro_round"
-    assert report["next_round_id"] == "R-MR-001"
-    assert report["next_chapter_range"] == "1-3"
+    assert report["current_phase"] == "final_export"
+    assert report["next_task"] == "final_export"
+    assert report["next_round_id"] is None
+    assert report["next_chapter_range"] is None
     assert report["detail"]["go_decision_approved"] is True
+    assert report["detail"]["final_translation_ready"] is False
+
+
+def test_final_export_manifest_transitions_to_final_ready(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path, chapters=9)
+    set_queue(repo, anchor=1)
+    add_run(repo, "run_d", [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    _write_phase_b_pass(repo)
+    _write_baseline_locked(repo)
+    _write_go_decision(repo, go=True)
+    _write_final_export(repo)
+    report = collect_status(repo)
+    assert report["current_phase"] == "final_ready"
+    assert report["next_task"] == "none"
+    assert report["next_round_id"] is None
+    assert report["next_chapter_range"] is None
+    assert report["final_translation_progress"]["percent"] == 100.0
+    assert report["detail"]["final_translation_ready"] is True

@@ -46,9 +46,19 @@ def main() -> int:
     parser.add_argument("--round-id", default="T-001")
     parser.add_argument("--phase", choices=["draft"], default="draft")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--real-api", action="store_true")
+    parser.add_argument("--max-api-calls", type=int, default=None)
     parser.add_argument("--skip-gate", action="store_true")
     parser.add_argument("--skip-heal", action="store_true")
     args = parser.parse_args()
+    if os.environ.get("ALLOW_LEGACY_RECOVERY_ROUND") != "1":
+        print(
+            "run_translation_recovery_round.py is deprecated and disabled by default; "
+            "use scripts/local_scheduler_tick.py or the API/Agent quota path in "
+            "docs/translation_production_protocol.md.",
+            file=sys.stderr,
+        )
+        return 2
     apply_local_env(REPO_ROOT)
 
     plan = ROUND_PLAN.get(args.round_id)
@@ -98,21 +108,19 @@ def main() -> int:
         )
         return 0
 
-    autopilot_cmd = [
+    scheduler_cmd = [
         py,
-        "scripts/translation_autopilot_loop.py",
-        "--phase",
-        "draft",
-        "--round-id",
-        args.round_id,
-        "--round-size",
-        str(limit),
-        "--supervised",
-        "--real-api",
+        "scripts/local_scheduler_tick.py",
+        "--json",
     ]
-    if args.skip_gate:
-        autopilot_cmd.append("--skip-gate")
-    return _run(autopilot_cmd)
+    if args.real_api:
+        if int(args.max_api_calls or 0) <= 0:
+            print("--real-api requires --max-api-calls > 0", file=sys.stderr)
+            return 2
+        scheduler_cmd.extend(["--real-api", "--max-api-calls", str(args.max_api_calls)])
+    else:
+        scheduler_cmd.append("--dry-run")
+    return _run(scheduler_cmd)
 
 
 if __name__ == "__main__":

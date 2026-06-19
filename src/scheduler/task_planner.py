@@ -1,20 +1,15 @@
 """Phase -> next-task decision table for scheduler ticks (FS-004, spec §9.1).
 
 Maps a status snapshot (FS-002 ``collect_status`` output shape) onto exactly
-one next task. Six task families exist across the production line:
+one next task. The current production line has four task families:
 
     draft           -> next D-MR micro round, or a gap backfill micro round
     consistency     -> consistency audit sub-task        (lands FS-031..037)
-    baseline_lock   -> baseline lock                     (lands FS-038)
-    refinement      -> next R-MR micro round             (lands FS-040+)
-    final_review    -> final review sub-task             (lands FS-046+)
-    production_candidate -> candidate build              (lands FS-050)
+    final_export    -> singleton final translation export
 
-Only the draft and refinement families spawn a *supervised*
-``run_micro_round.py`` child process (never detached). Every other branch
-returns an explicit ``implemented=False`` plan with ``not_implemented``
-semantics so a tick can report it instead of silently skipping — and so a
-future real-mode tick cannot accidentally run machinery that does not exist.
+Only the draft family spawns a *supervised* ``run_micro_round.py`` child
+process (never detached). Refinement / R-MR and production_candidate are
+legacy routes and deliberately produce non-executing plans.
 
 The planner itself never executes anything and never spends API budget;
 it only decides and (for the draft family) renders the exact command line,
@@ -29,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 RUN_MICRO_ROUND_REL = "scripts/run_micro_round.py"
+EXPORT_FINAL_REL = "scripts/export_consistency_final_volume.py"
 
 # Budget keys accepted from callers, mapped to run_micro_round CLI flags.
 BUDGET_FLAGS = {
@@ -40,8 +36,9 @@ BUDGET_FLAGS = {
 }
 
 _NOT_IMPLEMENTED_ROUNDS = {
-    "final_review": ("final_review", "final review tooling lands in FS-046+"),
-    "production_candidate": ("production_candidate", "candidate build lands in FS-050"),
+    "refinement": ("legacy_refinement_disabled", "refinement/R-MR route is deprecated"),
+    "final_review": ("legacy_final_review_disabled", "standalone final review route is deprecated"),
+    "production_candidate": ("legacy_production_candidate_disabled", "production_candidate route is deprecated"),
 }
 
 BUILD_FIX_PLAN_REL = "scripts/build_local_fix_plan.py"
@@ -49,8 +46,6 @@ APPLY_TERM_FIXES_REL = "scripts/apply_term_fixes.py"
 ARBITRATE_CONFLICTS_REL = "scripts/arbitrate_conflicts.py"
 RUN_CONSISTENCY_RETRANSLATE_REL = "scripts/run_consistency_retranslate.py"
 BUILD_CONSISTENCY_REPORT_REL = "scripts/build_draft_consistency_report.py"
-LOCK_BASELINE_REL = "scripts/lock_baseline.py"
-
 _CONSISTENCY_TASKS: dict[str, tuple[str, str, str]] = {
     # next_task -> (task_type, script_rel, human reason)
     "draft_consistency_audit": (
@@ -217,38 +212,6 @@ def _draft_command(
     return cmd
 
 
-def _refine_command(
-    *,
-    round_id: str,
-    chapter_range: str,
-    mode: str,
-    budgets: dict[str, Any],
-    python_executable: str,
-    resume_run_id: str = "",
-) -> list[str]:
-    cmd = [
-        python_executable,
-        RUN_MICRO_ROUND_REL,
-        "--phase",
-        "refine",
-        "--round-id",
-        round_id,
-        "--chapter-range",
-        chapter_range,
-        "--supervised",
-    ]
-    if resume_run_id:
-        cmd.extend(["--run-id", resume_run_id])
-    if mode == "real":
-        cmd.append("--real-api")
-    else:
-        cmd.extend(["--dry-run", "--no-real-api"])
-    for key, flag in BUDGET_FLAGS.items():
-        if key in budgets and budgets[key] is not None:
-            cmd.extend([flag, str(budgets[key])])
-    return cmd
-
-
 def _consistency_command(
     *,
     script_rel: str,
@@ -402,62 +365,32 @@ def plan_next_task(
         )
 
     if phase == "baseline_lock":
-        next_task = str(status.get("next_task") or "")
-        if next_task == "baseline_go_decision":
-            return TaskPlan(
-                task_type="baseline_go_decision",
-                implemented=False,
-                reason="awaiting draft_full_baseline_go_decision.md (FS-039 gate; human/agent doc step)",
-                mode=mode,
-            )
         return TaskPlan(
-            task_type="baseline_lock",
+            task_type="legacy_baseline_lock_disabled",
+            implemented=False,
+            reason=(
+                "baseline_lock route is deprecated; current production goes "
+                "directly to singleton final export"
+            ),
+            mode=mode,
+        )
+
+    if phase == "final_export":
+        return TaskPlan(
+            task_type="final_export",
             implemented=True,
-            reason="lock draft_full_baseline snapshot after Phase A/B pass (FS-038)",
-            command=[python_executable, LOCK_BASELINE_REL, "--json"],
+            reason="export one canonical final translation after consistency pass",
+            command=[python_executable, EXPORT_FINAL_REL, "--json"],
             budget=budgets,
             mode=mode,
         )
 
-    if phase == "refinement":
-        next_task = str(status.get("next_task") or "")
-        if next_task == "refinement_complete":
-            return TaskPlan(
-                task_type="refinement_complete",
-                implemented=False,
-                reason="all refinement chapters complete; awaiting Phase D gate (FS-045)",
-                mode=mode,
-            )
-        chapter_range = status.get("next_chapter_range")
-        if not chapter_range:
-            return TaskPlan(
-                task_type="refine_micro_round",
-                implemented=False,
-                reason="refinement phase but no next chapter range in status snapshot",
-                mode=mode,
-            )
-        block = str(chapter_range)
-        round_id = str(status.get("next_round_id") or f"R-MR-{block}")
-        block_start, _ = _parse_range(block)
-        resume_run_id = find_resumable_run(repo_root, block_start, phase="refine")
+    if phase == "final_ready":
         return TaskPlan(
-            task_type="refine_micro_round",
-            implemented=True,
-            reason="next R-MR micro round per status snapshot (baseline read-only input)"
-            + (f" (resuming interrupted run {resume_run_id})" if resume_run_id else ""),
-            round_id=round_id,
-            chapter_range=block,
-            command=_refine_command(
-                round_id=round_id,
-                chapter_range=block,
-                mode=mode,
-                budgets=budgets,
-                python_executable=python_executable,
-                resume_run_id=resume_run_id,
-            ),
-            budget=budgets,
+            task_type="final_ready",
+            implemented=False,
+            reason="final singleton translation already exported; no production task remains",
             mode=mode,
-            resume_run_id=resume_run_id,
         )
 
     if phase in _NOT_IMPLEMENTED_ROUNDS:
