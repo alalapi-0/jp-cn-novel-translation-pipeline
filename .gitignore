@@ -44,6 +44,7 @@ output
 output_cn/translated/*
 output_cn/bilingual/*
 output_cn/review/*
+output_cn/chapter_md/*
 !output_cn/translated/.gitkeep
 !output_cn/bilingual/.gitkeep
 !output_cn/review/.gitkeep

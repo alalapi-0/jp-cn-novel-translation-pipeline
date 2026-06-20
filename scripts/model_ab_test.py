@@ -158,7 +158,19 @@ def main() -> int:
     parser.add_argument("--max-segments", type=int, default=20)
     parser.add_argument("--chapter-offset", type=int, default=190)
     parser.add_argument("--isolated", action="store_true", default=True)
+    parser.add_argument(
+        "--user-confirmed-model-ab",
+        action="store_true",
+        help="required for any real model comparison; model switches/A-B tests need explicit user confirmation",
+    )
     args = parser.parse_args()
+    if not args.user_confirmed_model_ab and os.environ.get("ALLOW_MODEL_AB_TEST") != "1":
+        print(
+            "model_ab_test: blocked; real model A/B requires --user-confirmed-model-ab "
+            "or ALLOW_MODEL_AB_TEST=1",
+            file=sys.stderr,
+        )
+        return 2
     apply_local_env(REPO_ROOT)
     os.environ["MODEL_AB_MAX_SEGMENTS"] = str(args.max_segments)
 

@@ -16,21 +16,23 @@
 6. `docs/definition_of_done.md` —— 各级 Done 定义
 7. `docs/non_goals_and_guardrails.md` —— 非目标与防跑偏约束
 8. `docs/local_scheduler_runbook.md` —— 本地调度（S1 完成后存在）
+9. `docs/translation_production_protocol.md` —— API / Agent 额度双路径翻译协议
+10. `docs/translation_consistency_protocol.md` —— 一致性治理 / 唯一最终译文协议
 
 执行要点：
 
 - **下一轮做什么**：在 `final_state_round_task_list.md` 中找第一个未完成的 FS 轮，按其"输入 / 文件 / 命令 / 验收 / 禁止 / 产物"执行；不重新发明路线。
-- **当前状态以探针为准**：先运行 `python3 scripts/local_scheduler_status.py --json`、`python3 scripts/check_orphan_workers.py --json`；叙述性快照若与探针冲突，先修正文档再推进。2026-06-12 Block #23 后的 Phase A 安全入口是 `D-MR-108`（524–526 章）。
-- **真实 API 是生产目标的一部分**，按轮次任务的"是否允许真实 API"字段执行（cost guard + 预算限制 + pause file 尊重），不得永久禁用，也不得无限制连续调用。生产模型切换 / 并发 / 提价需用户确认。
+- **当前状态以探针为准**：先运行 `python3 scripts/local_scheduler_status.py --json`、`python3 scripts/check_orphan_workers.py --json`、`python3 scripts/check_final_translation_singleton.py --json`；叙述性快照若与探针冲突，先修正文档再推进。2026-06-18 v2.0 实测为 `current_phase=final_ready`、scheduler paused、`next_round_id=null`、0 active / 0 orphan worker、singleton final PASS。
+- **生产翻译有两条合法路径**：外部真实 API（cost guard + 预算限制 + pause file 尊重）或 Agent 自身额度（结构化写入 + 一致性校对 + 报告记录）。生产模型切换 / 并发 / 提价需用户确认。
 - **Web UI 是主线**而非附属：UI 轮必须真实浏览器 before/after 检查（页面、console、network），中文优先，统一设计系统，危险操作二次确认。
-- **Phase A / D 批量执行**沿用 `docs/translation_recovery_3ch_roadmap.md` 的 D-MR / R-MR 3 章 micro round 体系。
-- **永远不得**：自动标记 human_approved_final、自动发布、覆盖 baseline / production_candidate / 原文、提交真实正文或密钥、`git add .`、留下 orphan worker。
+- **旧 R-MR / refinement / production_candidate 路线已废弃**：不得作为下一轮主任务；旧文档只可作历史参考。
+- **永远不得**：自动标记 human_approved_final、自动发布、覆盖 baseline / 原文、提交真实正文或密钥、`git add .`、留下 orphan worker。
 - **门禁串行执行**：`agent_gate.py` 会运行诊断 worker；不要与 `local_scheduler_tick.py` 并行启动，避免安全门禁把瞬时诊断进程判为并发 worker。
 - P0 / P1 未清零不做 P2 / P3；硬阻塞时停止并输出 BLOCKED（见 `non_goals_and_guardrails.md` §7）。
 
 ## Repo Mission
 
-中日文小说互译生产流水线：双向翻译、术语/角色一致性、批量初翻、润色、审核与前端 Workbench。最终成品：本地 Web UI 驱动的全书"初翻 → 一致性检查 → baseline → 润色 → 终检 → production_candidate"生产系统（见最终规格）。默认非生产发布。
+中日文小说互译生产流水线：双向翻译、术语/角色一致性、批量翻译、一致性校对、唯一最终译文导出与前端 Workbench。最终成品：本地 Web UI 驱动的全书"翻译 → 一致性检查 → baseline → singleton final export"生产系统（见最终规格 v2.0）。默认非生产发布。
 
 ## Tool-aware 每轮必读（Layer 2.0）
 
@@ -62,11 +64,13 @@
 11. `docs/architecture_overview.md`
 12. `docs/governance_rules.md`
 13. `docs/repo_protocol_alignment.md`
-14. `docs/roadmap_rounds_00_40.md`
-15. `docs/roadmap_rounds_41_50_tooling_and_workbench.md`（工具链轮次）
-16. `docs/agent_operating_manual.md`
-17. `docs/agent_tooling_strategy.md`
+14. `docs/agent_operating_manual.md`
+15. `docs/agent_tooling_strategy.md`
+16. `docs/translation_production_protocol.md`
+17. `docs/translation_consistency_protocol.md`
 18. 当前轮 Prompt（`prompts/round_XX_*.md` 或对应模板）
+
+旧 Round 路线图已移入 `docs/archive/legacy_roadmaps/`，仅作历史参考；与 v2 最终规格冲突时不得作为任务来源。
 
 ## 编辑前检查
 

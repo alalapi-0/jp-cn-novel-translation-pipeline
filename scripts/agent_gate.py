@@ -13,7 +13,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -68,11 +67,15 @@ REQUIRED_DOCS: Sequence[tuple[str, Path]] = (
 )
 
 ROADMAP_DOCS: Sequence[tuple[str, Path, bool]] = (
-    ("roadmap_exists_00_40", REPO_ROOT / "docs" / "roadmap_rounds_00_40.md", True),
     (
-        "roadmap_exists_41_50",
-        REPO_ROOT / "docs" / "roadmap_rounds_41_50_tooling_and_workbench.md",
-        False,
+        "roadmap_exists_final_state",
+        REPO_ROOT / "docs" / "final_state_implementation_roadmap.md",
+        True,
+    ),
+    (
+        "roadmap_exists_final_state_tasks",
+        REPO_ROOT / "docs" / "final_state_round_task_list.md",
+        True,
     ),
 )
 
@@ -685,96 +688,101 @@ def check_round_51_openrouter_smoke() -> list[CheckResult]:
     return results
 
 
-def check_round_52_refine_stage_c() -> list[CheckResult]:
-    """Round 52 Stage C refine pilot — dry-run subprocess when Stage B run exists."""
+def check_legacy_refinement_disabled() -> list[CheckResult]:
+    """Legacy refinement entrypoints must fail closed by default."""
     refine_script = REPO_ROOT / "scripts" / "refine_stage_c.py"
-    if not refine_script.is_file():
-        return [
-            CheckResult(
-                "round_52_refine_script_exists",
-                Severity.WARN,
-                "missing scripts/refine_stage_c.py",
-            )
-        ]
-    results = [
-        CheckResult(
-            "round_52_refine_script_exists",
-            Severity.PASS,
-            f"found: {_rel_path(refine_script)}",
-        )
-    ]
-    stage_b = REPO_ROOT / "workspace" / "runs" / "run_20260602_203645_draft_stage_b_50ch" / "segments.json"
-    if not stage_b.is_file():
-        results.append(
-            CheckResult(
-                "round_52_refine_dry_run",
-                Severity.WARN,
-                "Stage B segments.json not present; refine dry-run skipped",
-            )
-        )
-        return results
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            suffix=".stage_state.json",
-            delete=False,
-        ) as tmp_state:
-            tmp_state_path = tmp_state.name
-        proc = subprocess.run(
+    plan_script = REPO_ROOT / "scripts" / "plan_refine_micro_rounds.py"
+    run_script = REPO_ROOT / "scripts" / "run_micro_round.py"
+    diff_script = REPO_ROOT / "scripts" / "build_refine_diff.py"
+    results: list[CheckResult] = []
+
+    commands = [
+        (
+            "legacy_refine_stage_c_disabled",
             [
                 sys.executable,
                 str(refine_script),
                 "--run-id",
-                "run_20260602_203645_draft_stage_b_50ch",
-                "--limit-segments",
-                "2",
+                "legacy_refinement_probe",
                 "--dry-run",
-                "--stage-state-path",
-                tmp_state_path,
+                "--json",
             ],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=180,
-            env={**os.environ, "REAL_API_TESTS_ENABLED": "false"},
-        )
-        try:
-            os.unlink(tmp_state_path)
-        except OSError:
-            pass
-        if proc.returncode == 0:
+            "legacy_refinement_disabled",
+        ),
+        (
+            "legacy_refine_planner_disabled",
+            [sys.executable, str(plan_script), "--queue-stats", "--json"],
+            "legacy_refinement_disabled",
+        ),
+        (
+            "legacy_run_micro_round_refine_disabled",
+            [
+                sys.executable,
+                str(run_script),
+                "--phase",
+                "refine",
+                "--round-id",
+                "R-MR-001",
+                "--dry-run",
+            ],
+            "legacy_refinement_disabled",
+        ),
+        (
+            "legacy_refine_diff_disabled",
+            [
+                sys.executable,
+                str(diff_script),
+                "--run-id",
+                "legacy_refinement_probe",
+                "--json",
+            ],
+            "legacy_refinement_disabled",
+        ),
+    ]
+
+    for check_id, cmd, expected in commands:
+        if not Path(cmd[1]).is_file():
             results.append(
                 CheckResult(
-                    "round_52_refine_dry_run",
-                    Severity.PASS,
-                    "Stage C refine dry-run OK",
+                    check_id,
+                    Severity.WARN,
+                    f"missing entrypoint: {_rel_path(Path(cmd[1]))}",
                 )
             )
+            continue
+        try:
+            env = os.environ.copy()
+            env.pop("ALLOW_LEGACY_REFINEMENT", None)
+            proc = subprocess.run(
+                cmd,
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            results.append(CheckResult(check_id, Severity.WARN, "legacy disabled probe timed out"))
+            continue
+        except Exception as exc:  # noqa: BLE001
+            results.append(CheckResult(check_id, Severity.WARN, f"legacy disabled probe skipped: {exc}"))
+            continue
+
+        output = f"{proc.stdout}\n{proc.stderr}"
+        output_lower = output.lower()
+        if proc.returncode == 2 and (
+            expected in output or "legacy refinement" in output_lower
+        ):
+            results.append(CheckResult(check_id, Severity.PASS, "legacy refinement entrypoint is disabled"))
         else:
             results.append(
                 CheckResult(
-                    "round_52_refine_dry_run",
+                    check_id,
                     Severity.WARN,
-                    f"refine dry-run failed: {proc.stderr.strip() or proc.stdout.strip()}",
+                    f"expected disabled exit=2 with {expected}; got exit={proc.returncode}",
                 )
             )
-    except subprocess.TimeoutExpired:
-        results.append(
-            CheckResult(
-                "round_52_refine_dry_run",
-                Severity.WARN,
-                "refine dry-run timed out after 180s",
-            )
-        )
-    except Exception as exc:  # noqa: BLE001
-        results.append(
-            CheckResult(
-                "round_52_refine_dry_run",
-                Severity.WARN,
-                f"refine dry-run skipped: {exc}",
-            )
-        )
     return results
 
 
@@ -1246,7 +1254,7 @@ def run_all_checks(*, strict: bool = False, strict_layer: bool = False) -> list[
     results.extend(check_quality_review_tooling())
     results.extend(check_round_50_e2e_trial())
     results.extend(check_round_51_openrouter_smoke())
-    results.extend(check_round_52_refine_stage_c())
+    results.extend(check_legacy_refinement_disabled())
     results.extend(check_round_53_multi_project_manifest())
     results.extend(check_round_54_semantic_checker_mvp())
     results.extend(check_round_55_ci_tooling_integration())

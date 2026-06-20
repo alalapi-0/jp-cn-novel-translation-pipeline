@@ -119,9 +119,9 @@
 
 ## 10. 对现有路线图的影响
 
-RM 路线不取代 `docs/roadmap_rounds_00_40.md` 和 `docs/roadmap_rounds_41_50_tooling_and_workbench.md`。它是参考方法吸收后的落地路线，用于补强原路线中未明确的稳定 ID、JSONL、Prompt 契约、Extractor、Validator、cache/checkpoint/TM 与 exporter-only 原则。
+RM 路线已归档为历史参考，不取代 `docs/final_state_implementation_roadmap.md` 与 `docs/final_state_round_task_list.md`。后续吸收参考方法时，必须先映射到 v2 production / consistency / singleton export 协议。
 
-后续 Agent 应把 RM 轮次作为方法落地路线，把 Round 00-50 作为仓库总体建设路线。两套编号必须明确区分。
+后续 Agent 不再从 RM 或 Round 00-50 编号取下一轮任务；只从 FS-v2 任务列表取任务。
 
 ## 11. 与通用协议的关系
 

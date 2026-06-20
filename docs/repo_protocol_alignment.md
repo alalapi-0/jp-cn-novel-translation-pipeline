@@ -49,7 +49,7 @@
 1. **Round 状态路径**：协议默认 `governance/round_state.yaml`；legacy 治理状态已归档至 `docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml`。已在 `project.yaml` 记录 override。
 2. **提交策略**：原 `governance_rules.md` 写“每轮结束应 commit/push”；协议 `commit_policy.default` 为“用户明确要求才 commit”。Round 02 已修正治理规则为“用户或轮次 Prompt 明确要求时 commit”；push 仍需用户授权（协议 `approval_required`）。
 3. **项目定位**：协议 `project_specific_extensions.current_reference_project` 偏中文生成仓库；本仓库定位为**中日互译流水线**。差异写入 `novel_pipeline_contract.yaml` 与 `project.yaml`，不修改协议正文。
-4. **Round 编号**：用户 Step 4.2 与 Step 7 对 Round 41–43 语义略有不同；以 `docs/roadmap_rounds_41_50_tooling_and_workbench.md`（Step 7）为准。
+4. **Round 编号**：旧 Round 00–50 / RM 编号仅作历史；当前推进以 `docs/final_state_round_task_list.md` 的 FS-v2 任务为准。
 5. **本地 tracked 内容**：`input_jp/` 等目录在磁盘有原文但 `.gitignore` 应阻止提交；Agent Gate 未来需验证 Git 索引不含敏感文件。
 
 ## 需要新增的治理规则
@@ -67,7 +67,8 @@ Round 02 已新增或更新：
 - `docs/mcp_playwright_setup_plan.md`
 - `docs/agent_operating_manual.md`
 - `docs/agent_gate_and_protocol_check.md`
-- `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
+- `docs/final_state_implementation_roadmap.md`
+- `docs/final_state_round_task_list.md`
 - 工具链 Prompt 模板与 Round 41–50 任务书
 
 ## 后续轮次执行要求

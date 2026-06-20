@@ -1,10 +1,19 @@
-round_id: ca_081_612_fact_based_consistency_sync_20260617
-round_name: CA-081-612 fact-based consistency audit and sync
-round_number_human: CA-081-612 / 10-ch consistency audit series
+round_id: governance_final_ready_v2_cleanup_20260618
+round_name: Final-ready v2 governance, singleton export, and legacy route cleanup
+round_number_human: 2026-06-18 governance cleanup
 status: completed
-type: review
+type: governance
 real_api_called: false
 completed_tasks:
+- Verified scheduler truth: phase=final_ready, paused=true, next_round_id=null,
+  next_chapter_range=null, active=0, orphan=0
+- Removed refinement/R-MR/production_candidate from the active production route
+- Added docs/translation_production_protocol.md for API mode and Agent quota mode
+- Consolidated final translation handoff to a singleton file under output_cn/translated/full_volume_cn.md
+- Removed old generated final/export copies and old local round logs while preserving runs,
+  checkpoints, source, baseline, and final patch logs
+- Added docs/translation_consistency_protocol.md for future works and future agents
+- Made legacy production/autopilot launchers fail closed unless explicitly unlocked
 - 'Accepted user correction: old glossary/rules are hints, not correctness premise'
 - Generated content-first ch081-090 actual audit from current source_text and latest
   CN text
@@ -203,6 +212,19 @@ completed_tasks:
 - Verified スナイパーアント effective fields retain 狙击蚁 and final whole-book dry-run changed
   0 segments
 latest_stats: &id001
+  governance_cleanup_at: '2026-06-18T00:00:00Z'
+  scheduler_phase: final_ready
+  scheduler_paused: true
+  next_round_id: null
+  next_chapter_range: null
+  active_worker_count: 0
+  orphan_worker_count: 0
+  canonical_final_translation: output_cn/translated/full_volume_cn.md
+  canonical_final_translation_count: 1
+  singleton_check_report: reports/final_translation_singleton_check.json
+  production_protocol: docs/translation_production_protocol.md
+  consistency_protocol: docs/translation_consistency_protocol.md
+  legacy_refinement_route: deprecated
   content_first_refreshed_through: CA-611-612
   ca_081_120_refresh_issues_total: 0
   ca_081_120_refresh_blocking: 0
@@ -215,7 +237,7 @@ latest_stats: &id001
   user_wells_bad_effective_hits: 0
   user_sniper_ant_bad_effective_hits: 0
   whole_book_fix_goal_completion_dry_run_changed_segments: 0
-next_recommended_round: None - CA-081-612 consistency audit/fix loop complete
+next_recommended_round: FS-v2-001 Agent Quota Translation Writer, or UI v2 status vocabulary cleanup
 blockers:
   hard: []
   soft:

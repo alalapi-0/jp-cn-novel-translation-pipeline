@@ -20,7 +20,7 @@
 14. 中文残留。
 15. 目标语言不自然。
 16. 机翻腔。
-17. 润色过度。
+17. 表达改写过度（仅用于用户修改稿或局部重译对比）。
 18. 伏笔被提前解释。
 19. 暧昧表达被强行明确化。
 20. 敬语处理错误。
@@ -81,7 +81,7 @@ human_edited_segment:
 |------|---------|----------|------|
 | 术语一致性 | `checker.term_consistency` | `LOCKED_TERM_VIOLATION`, `INCONSISTENT_TERM` | 对照 glossary fixture；locked 禁止自动改译文 |
 | 段落对齐 / 漏译启发 | `checker.segment_alignment` | `SEGMENT_ALIGNMENT_ERROR`, `OMISSION` | expected/orphan segment_id；词数比例启发式 |
-| 润色 diff | `checker.refinement_diff` | `OVER_REFINEMENT` | draft vs refined 表面差异（不写入正文） |
+| 改写 diff | `checker.refinement_diff`（legacy name） | `OVER_REFINEMENT` | draft vs revised/final 表面差异（不写入正文） |
 
 CLI：`python3 scripts/run_quality_review.py --write-example`。Workbench：`frontend/issues.html` 读取 `frontend/assets/review-issue-report.json`；状态仅写 localStorage，**不覆盖** `human_edited` 段落。
 
@@ -96,7 +96,7 @@ CLI：`python3 scripts/run_quality_review.py --write-example`。Workbench：`fro
 - `voice_conflict`
 - `world_conflict`
 - `style_issue`
-- `refined`
+- `final_ready`
 - `human_reviewed`
 - `final`
 

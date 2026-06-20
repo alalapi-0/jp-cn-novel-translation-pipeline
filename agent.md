@@ -10,7 +10,7 @@
 4. 运行 `python3 scripts/local_scheduler_status.py --json`
 5. 按首个可执行未完成轮推进，不从旧 Round 00–57 文档重新推导路线
 
-2026-06-11 治理复核时：Phase A 连续完成 355/613 章，下一安全 micro round 为 `D-MR-052`（356–358 章）；S1 调度器与 S3 资产层已完成，S4 UI 基座未开始。
+2026-06-18 v2 治理复核时：当前作品为 `final_ready`，`next_round_id=null`，`next_chapter_range=null`，唯一最终译文为 `output_cn/translated/full_volume_cn.md`。旧 D-MR / R-MR 快照只作历史，不得作为下一轮入口。
 
 ## UI / 设计任务
 

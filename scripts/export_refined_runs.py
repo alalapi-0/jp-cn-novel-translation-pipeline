@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Export refined workspace runs to output_cn/translated (zh-only) and output_cn/bilingual."""
+"""Legacy export for refined workspace runs.
+
+The active exporter is scripts/export_consistency_final_volume.py, which writes
+the singleton final translation. This module is disabled unless
+ALLOW_LEGACY_REFINEMENT=1 is set for audited historical reproduction.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +21,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED_SEGMENT_STATUSES = frozenset(
     {"validation_failed", "failed", "retry_pending"}
 )
+
+
+def _legacy_refinement_allowed() -> bool:
+    return os.environ.get("ALLOW_LEGACY_REFINEMENT") == "1"
 
 
 def _chapter_num(chapter_id: str) -> int:
@@ -169,6 +178,12 @@ def export_all(
     output_root: Path | None = None,
     overwrite: bool = True,
 ) -> dict:
+    if not _legacy_refinement_allowed():
+        raise RuntimeError(
+            "export_refined_runs.py is deprecated and disabled by default; "
+            "use scripts/export_consistency_final_volume.py for singleton final export"
+        )
+
     runs_root = repo_root / "workspace" / "runs"
     runs = _load_runs(runs_root, run_id=run_id, up_to_offset=up_to_offset)
     if not runs:
@@ -223,7 +238,7 @@ def export_all(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Export refined runs to output_cn")
+    parser = argparse.ArgumentParser(description="Legacy refined-runs export (disabled by default)")
     parser.add_argument(
         "--require-refined",
         action="store_true",
@@ -252,7 +267,7 @@ def main() -> int:
             up_to_offset=args.up_to_offset,
             output_root=args.fixture_dir,
         )
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, RuntimeError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
     if args.json:

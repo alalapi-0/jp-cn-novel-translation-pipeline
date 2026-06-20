@@ -10,7 +10,7 @@
 #
 # 字段说明（schema: schemas/model_profiles.schema.json）：
 #   profile_id   配置 ID（唯一）
-#   role         用途（draft / refine / review / embedding / other）
+#   role         用途（draft / translation / review / consistency / embedding / other）
 #   provider     提供方路由（model_router / openrouter / deepseek …）
 #   model        模型标识
 #   temperature  采样温度 0~2（可为 null = 用 provider 默认）
@@ -58,17 +58,17 @@ profiles:
       max_api_calls_per_round: 50
     notes: "A/B 2026-06-07：质量达标但延迟 ~195s vs 8s，用户决定不切换，保持 disabled"
 
-  - profile_id: refine_primary
-    role: refine
+  - profile_id: consistency_review_primary
+    role: consistency
     provider: model_router
     model: deepseek/deepseek-v4-pro
-    temperature: 0.4
+    temperature: 0.2
     max_tokens: null
     enabled: true
     fallback:
       - provider: deepseek
         model: deepseek-chat
     cost_guard:
-      max_cost_per_round_usd: 1.5
+      max_cost_per_round_usd: 1.0
       max_api_calls_per_round: 200
-    notes: "Phase D 润色占位配置，S8 启动前按 R-MR 实测调整"
+    notes: "一致性校对主配置；不用于全书润色或 R-MR"

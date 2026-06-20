@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# Full production pipeline: refine ch1-50, translate+refine batches 50..560, export.
+# Legacy production pipeline (disabled): historical translate+refine batches.
 # Requires user-authorized real API env (OPENROUTER_API_KEY in .env or environment).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
+
+if [[ "${ALLOW_LEGACY_PRODUCTION_PIPELINE:-0}" != "1" ]]; then
+  echo "production_pipeline.sh is deprecated and disabled by default."
+  echo "Use scripts/local_scheduler_tick.py with explicit --real-api --max-api-calls after pause/lock/orphan gates pass."
+  echo "Set ALLOW_LEGACY_PRODUCTION_PIPELINE=1 only for audited historical reproduction."
+  exit 2
+fi
 
 export PYTHONUNBUFFERED=1
 export DRAFT_MODEL="${DRAFT_MODEL:-deepseek/deepseek-v4-pro}"

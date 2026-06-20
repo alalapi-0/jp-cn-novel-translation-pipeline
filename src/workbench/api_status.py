@@ -126,7 +126,7 @@ def _pipeline_gate_summary(repo_root: Path) -> dict[str, Any] | None:
             "decision": result.get("decision"),
             "exportable_chapters": result.get("exportable_chapters"),
             "draft_completed_chapters": result.get("draft_completed_chapters"),
-            "refined_exportable_chapters": result.get("refined_exportable_chapters"),
+            "legacy_refined_exportable_chapters": result.get("refined_exportable_chapters"),
             "active_worker_count": result.get("active_worker_count"),
             "blocks": result.get("blocks") or [],
             "soft_blocks": result.get("soft_blocks") or [],

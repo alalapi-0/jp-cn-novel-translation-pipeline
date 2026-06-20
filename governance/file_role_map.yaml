@@ -29,8 +29,17 @@ agent_entry:
 roadmaps:
   - docs/final_state_implementation_roadmap.md
   - docs/final_state_round_task_list.md
-  - docs/roadmap_rounds_00_40.md
-  - docs/roadmap_rounds_41_50_tooling_and_workbench.md
+
+legacy_roadmaps:
+  - path: docs/archive/legacy_roadmaps/roadmap_rounds_00_40.md
+    role: historical_round_roadmap
+    treat_as_authority: false
+  - path: docs/archive/legacy_roadmaps/roadmap_rounds_41_50_tooling_and_workbench.md
+    role: historical_tooling_roadmap
+    treat_as_authority: false
+  - path: docs/archive/legacy_roadmaps/roadmap_rounds_reference_method_01_40.md
+    role: historical_reference_method_roadmap
+    treat_as_authority: false
 
 final_state_governance:
   - path: docs/product_final_state_spec.md
@@ -47,6 +56,10 @@ final_state_governance:
     role: scope_and_safety_guardrails
   - path: docs/next_agent_execution_protocol.md
     role: standard_round_execution_protocol
+  - path: docs/translation_production_protocol.md
+    role: api_and_agent_quota_translation_production_protocol
+  - path: docs/translation_consistency_protocol.md
+    role: reusable_translation_consistency_and_singleton_export_protocol
 
 tooling_docs:
   - docs/agent_tooling_strategy.md
@@ -55,9 +68,9 @@ tooling_docs:
   - docs/repo_protocol_alignment.md
 
 alignment_and_audit:
-  - docs/governance_round_02_audit.md
+  - docs/archive/governance/governance_round_02_audit.md
   - docs/repo_protocol_alignment.md
-  - docs/current_repository_audit.md
+  - docs/archive/governance/current_repository_audit.md
 
 secret_files:
   - .env
@@ -99,6 +112,16 @@ quality_review_round_49:
     role: workbench_wireup_doc
   - path: docs/round_50_e2e_acceptance_checklist.md
     role: round_50_e2e_checklist
+
+final_consistency_handoff:
+  - path: docs/final_consistency_report.md
+    role: tracked_sanitized_final_consistency_summary
+  - path: output_cn/final_export_manifest.json
+    role: tracked_manifest_for_local_singleton_final_translation
+  - path: reports/final_translation_singleton_check.json
+    role: tracked_singleton_final_translation_check
+  - path: scripts/check_final_translation_singleton.py
+    role: local_final_translation_artifact_gate
 
 generated_future:
   - path: governance/repo_inventory.generated.json

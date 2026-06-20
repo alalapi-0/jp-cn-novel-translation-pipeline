@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Phase D refinement quality checkers (FS-043).
+"""Legacy Phase D refinement quality checkers (disabled by default).
 
 Three deterministic checkers (no LLM, no real API):
   - over_refinement (FS-042 change_log diff_ratio / length expansion)
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -40,7 +41,7 @@ def _resolve_run_root(repo_root: Path, run_id: str | None, run_dir: Path | None)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Refinement quality checkers (FS-043)")
+    parser = argparse.ArgumentParser(description="Legacy refinement quality checkers (disabled by default)")
     parser.add_argument("--run-id", default="", help="Run id under workspace/runs/")
     parser.add_argument("--run-dir", type=Path, default=None, help="Explicit run directory")
     parser.add_argument(
@@ -69,6 +70,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--json", action="store_true", help="Print report JSON to stdout")
     args = parser.parse_args(argv)
+
+    if os.environ.get("ALLOW_LEGACY_REFINEMENT") != "1":
+        payload = {
+            "status": "blocked",
+            "reason": "legacy_refinement_disabled",
+            "message": (
+                "check_refinement_quality.py belongs to the deprecated refinement route. "
+                "Use docs/translation_consistency_protocol.md for current consistency checks."
+            ),
+        }
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        else:
+            print(payload["message"], file=sys.stderr)
+        return 2
 
     repo_root = args.repo_root if args.repo_root.is_absolute() else REPO_ROOT / args.repo_root
 

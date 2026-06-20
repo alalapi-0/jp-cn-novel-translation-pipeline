@@ -1,12 +1,13 @@
 # 中日文小说互译生产流水线
 
-本仓库用于规划和逐步建设一个面向长篇小说与轻小说的中日文互译生产流水线。它不再只是一次性的“日文小说翻译成中文”任务目录，而是面向长期项目管理、双向翻译、术语一致性、角色语气控制、世界观设定管理、检索增强、批量初翻、二次润色和人工审核工作台的治理仓库。
+本仓库用于规划和逐步建设一个面向长篇小说与轻小说的中日文互译生产流水线。它不再只是一次性的“日文小说翻译成中文”任务目录，而是面向长期项目管理、双向翻译、术语一致性、角色语气控制、世界观设定管理、检索增强、批量翻译、一致性校对、唯一最终译文导出和人工审核工作台的治理仓库。
 
-当前仓库处于最终成品路线的 **Phase A 全书初翻阶段**。截至 2026-06-11 的治理复核，连续完成 355/613 章，下一安全 micro round 为 `D-MR-052`（356–358 章）；S1 本地调度器与 S3 配置/术语资产内核已完成。它仍不是公开 SaaS 或自动发布工具。
+当前仓库的运行真值以本地探针为准。2026-06-18 v2.0 治理后实测：全书翻译 612/612 完成，一致性检查与 baseline lock 已完成，调度器处于 `final_ready` 且已暂停，`next_round_id=null`、`next_chapter_range=null`，0 active / 0 orphan worker。当前最终译文只保留一份：`output_cn/translated/full_volume_cn.md`。它未标记 `human_approved_final`，也不是公开 SaaS 或自动发布工具。
 
 最终目标与当前唯一主路线：
 
 - `docs/product_final_state_spec.md`
+- `docs/translation_production_protocol.md`
 - `docs/final_state_implementation_roadmap.md`
 - `docs/final_state_round_task_list.md`
 - `docs/next_agent_execution_protocol.md`
@@ -91,7 +92,17 @@ python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
 
 ## 当前阶段
 
-当前主线为 Phase A 初翻批量推进，同时允许按总路线与 S2 交错完成工程轮。真实 API 是生产能力的一部分，只能由允许真实 API 的轮次在 pause/lock/orphan/cost guard 全部通过后使用。治理轮默认不启动真实翻译。
+当前主线为 `final_ready`。调度器暂停只是安全开关，不表示还有 R-MR 或待润色任务。后续新作品可选择外部真实 API 或 Agent 自身额度翻译，但都必须写入同构中间态、执行一致性校对并导出唯一最终译文。
+
+## 当前最终译文交付物
+
+一致性治理后的唯一最终译文文件为：
+
+- `output_cn/translated/full_volume_cn.md`
+- `output_cn/final_export_manifest.json`
+- `reports/final_translation_singleton_check.json`
+
+分章译文、双语导出和旧 Workbench 导出均视为可再生成的工作产物，不作为最终译文版本保留。后续作品的生产翻译规则见 `docs/translation_production_protocol.md`，一致性治理规则见 `docs/translation_consistency_protocol.md`。
 
 ## 当前 Workbench 功能状态（现有能力 vs 最终路线）
 
@@ -124,10 +135,10 @@ python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
 
 1. 本地调度器与 Phase A 全书初翻。
 2. 配置/术语资产与 Web UI 基座、MVP。
-3. Phase B 一致性检查与 Phase C baseline lock。
-4. Phase D 全书润色与 Phase E 终检。
-5. production_candidate、用户修改稿同步、完整导出。
-6. 15 页最终 Web UI、Playwright 用户旅程与项目级 DoD 验收。
+3. Phase B 一致性检查与 Phase C baseline lock + singleton final export。
+4. API Mode / Agent Quota Mode 统一写入器。
+5. 用户修改稿同步、辅助导出包。
+6. 最终 Web UI、Playwright 用户旅程与项目级 DoD 验收。
 
 ## 目录说明
 
@@ -161,7 +172,7 @@ python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
 
 ## 为什么需要角色设定
 
-角色设定用于维护姓名、别名、称呼关系、说话风格、第一人称、敬语等级和典型台词。它的目标不是写百科，而是防止初翻和润色阶段把不同角色处理成同一种声音。
+角色设定用于维护姓名、别名、称呼关系、说话风格、第一人称、敬语等级和典型台词。它的目标不是写百科，而是防止翻译和一致性修正阶段把不同角色处理成同一种声音。
 
 ## 为什么需要世界观设定
 
@@ -169,15 +180,15 @@ python3 scripts/translate.py --phase draft --stage stage_a --limit-chapters 1 \
 
 ## 为什么需要 embedding
 
-Embedding 用于检索相似段落、术语上下文、角色台词、世界观证据、翻译记忆和润色前后对比。向量库是检索辅助，不替代术语库、角色表、世界观设定或人工确认规则。
+Embedding 用于检索相似段落、术语上下文、角色台词、世界观证据和翻译记忆。向量库是检索辅助，不替代术语库、角色表、世界观设定或人工确认规则。
 
-## 为什么初翻和润色要分开
+## 为什么不再保留润色主流程
 
-初翻优先完整、忠实、不漏译、术语和人名一致；润色优先自然、风格统一、保留信息和修正机翻腔。二者分离可以降低成本、减少不可控重写，并保留可复查的 change log。
+当前项目的自动化终点改为“翻译完成后一致性校对 + baseline lock + 唯一最终译文导出”。润色、R-MR 和 production_candidate 不再是主流程，避免多版本竞争、状态误导和后续 agent 误跑旧路线。表达优化应通过用户修改稿同步或明确的局部重译处理。
 
 ## 为什么未来需要前端
 
-前端工作台用于让用户创建项目、选择方向、配置模型、查看章节、审核术语、维护角色和世界观、对照原文译文、处理冲突、启动润色和导出结果。前端目标是提升审核效率，不是炫酷展示。
+前端工作台用于让用户创建项目、选择方向、配置 API 或 Agent 额度模式、查看章节、审核术语、维护角色和世界观、对照原文译文、处理冲突、执行一致性校对和导出结果。前端目标是提升审核效率，不是炫酷展示。
 
 ## 安全与版权提醒
 
@@ -192,6 +203,8 @@ Embedding 用于检索相似段落、术语上下文、角色台词、世界观�
 每轮 Agent 应先读取：
 
 - `docs/product_final_state_spec.md`
+- `docs/translation_production_protocol.md`
+- `docs/translation_consistency_protocol.md`
 - `docs/next_agent_execution_protocol.md`
 - `docs/final_state_implementation_roadmap.md`
 - `docs/final_state_round_task_list.md`
@@ -201,12 +214,9 @@ Embedding 用于检索相似段落、术语上下文、角色台词、世界观�
 - `README.md`
 - `docs/project_vision.md`
 - `docs/architecture_overview.md`
-- `docs/roadmap_rounds_00_40.md`
-- `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
 - `docs/governance_rules.md`
 - `docs/repo_protocol_alignment.md`
 - `docs/agent_operating_manual.md`
-- `docs/current_repository_audit.md`
 
 ## Agent 工具链与推进方式
 
@@ -357,7 +367,7 @@ Prompt 模板：`docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`
 
 ## 稳定 ID 与 JSONL 中间态
 
-后续实现应以 `paragraph_id` 和 `segment_id` 作为段落与分段的稳定标识。原文目录保持只读，翻译、校验、重试、人工审核和润色状态进入 JSONL 中间态，最终阅读文件由 exporter 生成。
+后续实现应以 `paragraph_id` 和 `segment_id` 作为段落与分段的稳定标识。原文目录保持只读，翻译、校验、重试、人工审核和用户修改状态进入 JSONL 中间态，最终阅读文件由 exporter 生成。
 
 ## 动态术语、角色与世界观注入
 
@@ -387,9 +397,9 @@ Checkpoint 解决“任务中断后从哪里继续”；LLM Response Cache 解�
 
 Exporter 是唯一负责生成最终阅读文件的模块。Exporter 不调用模型，不修改原文，不导出 `validation_failed` 到 final，并保留 `paragraph_id` 以支持审核回链。
 
-## 后续 RM-01 到 RM-40 路线
+## 历史 RM-01 到 RM-40 路线
 
-参考仓库方法吸收后的 40 轮推进路线见 `docs/roadmap_rounds_reference_method_01_40.md`。RM 轮次只表示 Reference Method Absorption，不取代既有 Round 00–50 路线。
+参考仓库方法吸收路线已归档到 `docs/archive/legacy_roadmaps/roadmap_rounds_reference_method_01_40.md`。它只作历史参考，不取代 v2 final-state 路线。
 
 ## 后续推进轮如何工作
 
@@ -463,4 +473,4 @@ python3 scripts/run_browser_inspection.py
 
 ## 下一轮建议
 
-建议进入 **Round 41：Agent Gate MVP**（实现 `scripts/agent_gate.py`），或 **Round 42：Repo Protocol Checker**（实现协议合规检查脚本）。详见 `docs/roadmap_rounds_41_50_tooling_and_workbench.md`。
+下一步从 `docs/final_state_round_task_list.md` 选择第一个未完成的 FS-v2 任务；当前优先级通常是 Agent Quota Translation Writer 或 UI Status Vocabulary v2。

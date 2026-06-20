@@ -6,15 +6,16 @@
 
 - `docs/product_final_state_spec.md`：最终成品规格 / 最高项目目标锚点
 - `docs/next_agent_execution_protocol.md`：每轮标准执行流程
-- `docs/final_state_implementation_roadmap.md`：S0–S15 总路线
-- `docs/final_state_round_task_list.md`：FS-000…FS-070 任务与状态
-- `docs/translation_pipeline_consistency_redesign_proposal.md`：【提案/待裁决】翻译流水线一致性问题诊断与简化改造方案——基于 ch001-040 QA 报告（135 issues）对 Phase B/D 现有 bug 与 148 轮 R-MR 计划的调整建议，落地前需先完成本文件第9节开放问题
+- `docs/final_state_implementation_roadmap.md`：v2 总路线
+- `docs/final_state_round_task_list.md`：v2 任务与状态
+- `docs/translation_production_protocol.md`：API / Agent 额度双路径翻译协议
+- `docs/translation_consistency_protocol.md`：一致性治理与唯一最终译文协议；后续作品复用此方法，不复用本书具体术语
 - `docs/phase_acceptance_criteria.md`：阶段验收条件
 - `docs/definition_of_done.md`：Done 定义
 - `docs/non_goals_and_guardrails.md`：非目标与防跑偏
 - `docs/local_scheduler_runbook.md`：本地调度运维
 
-旧 Round / RM 文档继续作为历史设计和子路线参考；与上述最终成品主线冲突时，不得覆盖主线。
+旧 Round / RM / R-MR / refinement 文档只作为历史参考；与上述最终成品主线冲突时，不得覆盖主线。
 
 ## 必读治理入口
 
@@ -22,8 +23,6 @@
 - `AGENTS.md`
 - `project.yaml`
 - `governance/repo_protocol_standard.yaml`
-- `docs/current_repository_audit.md`
-- `docs/governance_round_02_audit.md`
 - `docs/repo_protocol_alignment.md`
 - `docs/project_vision.md`
 - `docs/architecture_overview.md`
@@ -31,9 +30,6 @@
 - `docs/governance_rules.md`
 - `docs/agent_operating_manual.md`
 - **Tool-aware Agent Layer 2.0：** `agent_layer.yaml`、`agent_tools.yaml`、`docs/AGENT_RUNBOOK.md`、`docs/TOOL_USAGE_POLICY.md`、`docs/AGENT_ROADMAP.md`、`reports/latest-agent-report.json`
-- `docs/roadmap_rounds_00_40.md`
-- `docs/roadmap_rounds_41_50_tooling_and_workbench.md`
-- `docs/roadmap_phase2_rounds_51_plus.md`
 - `docs/migration_notes.md`
 
 ## 设计输入层（Stitch）
@@ -81,6 +77,8 @@
 - `docs/provider_adapter_reference_inspired.md`
 - `docs/exporter_reference_inspired_design.md`
 - `docs/translation_quality_taxonomy_reference_inspired.md`
+- `docs/translation_production_protocol.md`
+- `docs/translation_consistency_protocol.md`
 - `docs/terminology_system_design.md`
 - `docs/character_profile_system.md`
 - `docs/world_bible_system.md`
@@ -90,15 +88,8 @@
 - `docs/data_schema_plan.md`
 - `docs/directory_evolution_plan.md`
 - `docs/batch_translation_workflow.md`
-- `docs/refinement_workflow.md`
 - `docs/quality_review_workflow.md`
 - `docs/frontend_workbench_plan.md`
-
-## 参考方法吸收路线
-
-- `docs/roadmap_rounds_reference_method_01_40.md`
-
-RM 轮次表示 Reference Method Absorption，用于落地参考仓库方法，不替代 Round 00–50 总体路线。
 
 ## 历史与早期文档
 
@@ -106,7 +97,8 @@ RM 轮次表示 Reference Method Absorption，用于落地参考仓库方法，�
 - `docs/translation_pipeline_design.md`
 - `docs/embedding_memory_design.md`
 - `docs/openrouter_api_test_plan.md`
-- `docs/archive/legacy_roadmaps/`：早期 Round T 与 20 章恢复路线（已 deprecated，主线见 `docs/final_state_implementation_roadmap.md`）
+- `docs/archive/governance/`：早期治理审计与 rebaseline 快照
+- `docs/archive/legacy_roadmaps/`：旧 Round / RM / Phase 2 / 恢复路线图（已 deprecated，主线见 `docs/final_state_implementation_roadmap.md`）
 - `docs/reports/`：本地报告目录，项目专有报告默认不提交公开仓库。
 
 ## Prompt 模板目录

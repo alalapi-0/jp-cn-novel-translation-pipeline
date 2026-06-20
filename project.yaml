@@ -6,9 +6,9 @@ project:
   owner: user
   primary_language: zh-CN
   output_language: bilingual_zh_ja
-  stage: phase_a_draft_translation
-  current_round_human: "FS-008 Phase A batch execution; FS-010 Phase A completion (612/613; ch613 README)"
-  current_round_machine: fs_008_phase_a_batch
+  stage: final_ready_singleton_export_v2
+  current_round_human: "2026-06-18 v2 governance: refinement/R-MR/production_candidate removed from mainline; singleton final translation ready"
+  current_round_machine: governance_final_ready_v2_cleanup_20260618
 
 repository:
   entry_points:
@@ -20,14 +20,14 @@ repository:
     - docs/next_agent_execution_protocol.md
     - docs/final_state_implementation_roadmap.md
     - docs/final_state_round_task_list.md
+    - docs/translation_production_protocol.md
+    - docs/translation_consistency_protocol.md
     - docs/phase_acceptance_criteria.md
     - docs/definition_of_done.md
     - docs/non_goals_and_guardrails.md
     - governance/repo_protocol_standard.yaml
     - project.yaml
     - governance/round_state.yaml
-    - docs/roadmap_rounds_00_40.md
-    - docs/roadmap_rounds_41_50_tooling_and_workbench.md
 
 translation_pipeline:
   directions:

@@ -193,7 +193,7 @@ python3 scripts/throughput_gate.py --json   # 不应再报 stale_lock
 | tick `error`（exit 1）`dispatched_command_failed` | run_micro_round 失败 | 看 tick report `execution.stdout_tail` / `stderr_tail`；修复后重试 |
 | status `last_blocked_reason=paused` 但已恢复 | 历史记录（最近一次非成功 tick 的原因） | 跑一次成功 tick 自动清零 |
 | gate `stage_state_stale` | stage_state 指向无 worker 的 in_progress run | 核对该 run 的 `run_progress.json` 真值后对齐 status（参考 FS-006：013940 run 实际 487/487 completed，已对齐） |
-| gate `refine_pending` | draft 完成但 refine 未开始 | 预期状态（Phase D / S8 才开始 refine），无需处理 |
+| gate `refine_pending` | legacy checker 仍看到旧 refine 路线 | v2 主线已废弃 refine；以 `local_scheduler_status.py --json` 的 `final_ready` 和 singleton check 为准 |
 | launchd job 不触发 | plist 未加载 / 电脑休眠 | `status` 检查 loaded；`launchctl kickstart` 手动触发验证 |
 | 日志无输出 | LOG_DIR 不存在或权限 | `run-tick` 自动 mkdir；检查 `workspace/logs/scheduler/launchd_stderr.log` |
 

@@ -1,7 +1,7 @@
 # =============================================================================
 # style_profile.yaml — 风格配置模板（脱敏，规格 §10 / §15.1）
 # =============================================================================
-# 本文件是提交 Git 的【模板】。风格配置供初翻 / 润色 / 终检 prompt 复用。
+# 本文件是提交 Git 的【模板】。风格配置供翻译 / 一致性校对 / 终检 prompt 复用。
 # 项目专属的真实风格数据存放于 workspace/configs/style_profile.yaml（已 gitignore）。
 #
 # 字段说明（schema: schemas/style_profile.schema.json）：
@@ -31,7 +31,7 @@ meta:
 profiles:
   - profile_id: ln_default
     name: "轻小说默认风格"
-    description: "虚构示例：日译中轻小说全书初翻与润色的默认风格基线"
+    description: "虚构示例：日译中轻小说全书翻译与一致性校对的默认风格基线"
     tone: "轻快、贴近角色"
     register: casual
     pacing: "保持轻小说节奏：短段落、对话密集处不合并"

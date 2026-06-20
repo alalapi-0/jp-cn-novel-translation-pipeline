@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve 3-chapter draft/refinement micro-round plans (D-MR-XXX / R-MR-XXX)."""
+"""Resolve legacy 3-chapter micro-round plans for historical reports."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 FIRST_DRAFT_MR_CHAPTER = 203
 FIRST_REFINE_MR_CHAPTER = 171
 TOTAL_CHAPTERS = 612
-REFINE_MODEL_PROFILE = "refine_primary"
+REFINE_MODEL_PROFILE = "legacy_refinement"
 # NOTE (FS-008 incident, 2026-06-11): the old LEGACY_PARTIAL_RUN_ID auto-resume
 # pointed D-MR-001/002 at run_20260607_095821 and the hydrate step rewrote that
 # run's segments window (209-211 -> 206-208), orphaning the ch209-211 records.

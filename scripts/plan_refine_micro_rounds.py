@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -253,6 +254,13 @@ def plan_round(
 
 
 def main() -> int:
+    if os.environ.get("ALLOW_LEGACY_REFINEMENT") != "1":
+        print(
+            "plan_refine_micro_rounds: legacy refinement/R-MR route is disabled. "
+            "Use docs/translation_production_protocol.md and singleton final export. "
+            "Set ALLOW_LEGACY_REFINEMENT=1 only for historical diagnostics."
+        )
+        return 2
     parser = argparse.ArgumentParser(description="Plan R-MR refinement micro-rounds (FS-040)")
     parser.add_argument("--round-id", default="", help="R-MR-NNN round id")
     parser.add_argument("--chapter-range", default="", help="Override chapter range e.g. 171-173")

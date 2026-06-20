@@ -21,15 +21,15 @@ from scheduler.status import collect_status  # noqa: E402
 
 def _human(report: dict) -> str:
     draft = report["draft_progress"]
-    refine = report["refinement_progress"]
+    final_translation = report.get("final_translation_progress") or {}
     lines = [
         f"phase={report['current_phase']} next_task={report['next_task']}"
         f" next_round={report['next_round_id'] or '-'}"
         f" range={report['next_chapter_range'] or '-'}",
         f"draft={draft['completed_chapters']}/{draft['total_chapters']}"
         f" ({draft['percent']}%)"
-        f" refine={refine['completed_chapters']}/{refine['total_chapters']}"
-        f" ({refine['percent']}%)",
+        f" final={final_translation.get('completed_chapters', 0)}/{final_translation.get('total_chapters', 0)}"
+        f" ({final_translation.get('percent', 0)}%)",
         f"workers active={report['active_worker_count']}"
         f" orphan={report['orphan_worker_count']}"
         f" lock={report['scheduler_lock_status']}"

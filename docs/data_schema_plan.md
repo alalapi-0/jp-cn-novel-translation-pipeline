@@ -160,11 +160,11 @@ Round 08。
 
 ### 用途
 
-作为 parser、translation、validation、review、refinement 和 exporter 之间的可读中间态。
+作为 parser、translation、validation、review、consistency 和 exporter 之间的可读中间态。
 
 ### 核心字段
 
-见 `docs/stable_id_and_jsonl_design.md`。必须包含 `paragraph_id`、`segment_id`、`status`、`translation_draft`、`refined_translation`、`prompt_version`、知识资产版本、provider/model metadata、validation_errors 与 review_issues。
+见 `docs/stable_id_and_jsonl_design.md`。必须包含 `paragraph_id`、`segment_id`、`status`、`translation_draft`、`final_translation`、`prompt_version`、知识资产版本、provider/model metadata、validation_errors 与 review_issues。
 
 ### 关系
 
@@ -186,11 +186,11 @@ RM-04。
 
 ### 用途
 
-记录原文、初翻、润色之间的段落对齐。
+记录原文、翻译中间态、最终译文之间的段落对齐。
 
 ### 核心字段
 
-`alignment_id`、`project_id`、`chapter_id`、`segment_id`、`source_ref`、`draft_ref`、`refined_ref`、`alignment_status`、`risk_flags`、`updated_at`。
+`alignment_id`、`project_id`、`chapter_id`、`segment_id`、`source_ref`、`draft_ref`、`final_ref`、`alignment_status`、`risk_flags`、`updated_at`。
 
 ### 关系
 
@@ -338,15 +338,15 @@ Round 18。
 
 Round 20。
 
-## RefinedTranslation
+## FinalTranslation
 
 ### 用途
 
-记录润色稿。
+记录一致性校对后的最终译文引用。
 
 ### 核心字段
 
-`refined_id`、`project_id`、`chapter_id`、`segment_id`、`draft_id`、`refined_text_ref`、`change_log`、`risk_notes`、`model_run_id`、`version`。
+`final_id`、`project_id`、`chapter_id`、`segment_id`、`draft_id`、`final_text_ref`、`change_log`、`risk_notes`、`model_run_id`、`version`。
 
 ### 关系
 
@@ -474,7 +474,7 @@ Round 12、Round 34。
 
 ### 用途
 
-记录某次翻译或润色的上下文包。
+记录某次翻译或一致性校对的上下文包。
 
 ### 核心字段
 

@@ -35,7 +35,7 @@
         "profile_id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9_\\-]+$"},
         "role": {
           "type": "string",
-          "enum": ["draft", "refine", "review", "embedding", "other"]
+          "enum": ["draft", "translation", "review", "consistency", "embedding", "other"]
         },
         "provider": {"type": "string", "minLength": 1},
         "model": {"type": "string", "minLength": 1},

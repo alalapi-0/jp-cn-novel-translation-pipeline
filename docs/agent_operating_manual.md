@@ -10,15 +10,16 @@
 
 后续 Agent 在涉及工具、前端、浏览器、MCP、Playwright、Chrome DevTools 时必须先读取该 Runbook。
 
-## 真实 API 翻译：Supervised Autopilot（强制）
+## 生产翻译：Supervised Execution（强制）
 
-1. 真实 API 初翻/润色 **必须** 使用 `scripts/translation_autopilot_loop.py --supervised`。
-2. **执行单位 = 3 章 micro round**（`--round-size 3`）；20 章/轮已废弃。见 `docs/translation_recovery_3ch_roadmap.md`。
-3. **supervised tick loop**：每个 tick 必须返回控制权给 Agent；长 foreground worker 已废弃。
-4. **禁止** `nohup` / 裸后台 `&` / detached background worker 启动无人监管翻译；Agent 停止时 worker 必须停止。
-5. Worker 须绑定 `controller_pid`；`throughput_gate` 对 orphan worker 返回 BLOCK。
-6. 每个 micro round 完成后：报告 → 修复 → gate →（授权时）commit → 下一 MR，无硬阻塞自动衔接。
-7. 详见 `docs/continuous_translation_autopilot_rules.md`、`docs/model_switching_policy.md`。
+1. 外部真实 API 翻译必须走 supervised runner / scheduler tick，并受 cost guard 控制。
+2. Agent 额度翻译必须按 `docs/translation_production_protocol.md` 写入同构 segment/run schema。
+3. 执行单位由当前 v2 任务定义：受控章节范围或 segment batch；不再绑定 3 章 R-MR。
+4. **supervised tick loop**：每个 tick 必须返回控制权给 Agent；长 foreground worker 已废弃。
+5. **禁止** `nohup` / 裸后台 `&` / detached background worker 启动无人监管翻译；Agent 停止时 worker 必须停止。
+6. Worker 须绑定 `controller_pid`；`throughput_gate` 对 orphan worker 返回 BLOCK。
+7. 每个受控 batch 完成后：报告 → 一致性检查 / 修复 → gate →（授权时）commit → 下一任务。
+8. 详见 `docs/continuous_translation_autopilot_rules.md`、`docs/model_switching_policy.md`。
 
 ## 工具隔离原则
 
@@ -90,8 +91,8 @@
 
 | 项 | 说明 |
 |----|------|
-| 职责 | 术语/角色/世界观/漏译/润色 diff 审核 |
-| 必读 | quality_review_workflow、refinement_workflow |
+| 职责 | 术语/角色/世界观/漏译/改写 diff 审核 |
+| 必读 | quality_review_workflow、translation_consistency_protocol |
 | 允许修改 | review 报告、issue 列表 |
 | 禁止 | 静默覆盖 human_edited 内容 |
 | 必须输出 | issue report、一致性检查结果 |

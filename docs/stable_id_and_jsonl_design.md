@@ -2,12 +2,12 @@
 
 ## 6.1 为什么不能直接改原文
 
-参考仓库的共同经验是：原文保持只读，译文进入中间态，校对、重译、润色围绕中间态进行，最终文件由 exporter 生成。
+参考仓库的共同经验是：原文保持只读，译文进入中间态，校对、重译、一致性修复和用户修改围绕中间态进行，最终文件由 exporter 生成。
 
 这样做可以避免三类风险：
 
 1. 原文被清洗、替换或模型输出污染。
-2. 重译、润色、人工校对失去可追溯依据。
+2. 重译、一致性修复、人工校对失去可追溯依据。
 3. 导出格式变化时反复改正文源文件。
 
 当前项目应把 `input_jp/` 与 `input_cn/` 视为 source of record，把 JSONL 中间态视为 pipeline 工作对象，把 `output_cn/` 与 `output_jp/` 视为 exporter 产物。
@@ -82,7 +82,7 @@ seg_001_0001_02
   "matched_world_bible_ids": [],
   "status": "untranslated",
   "translation_draft": null,
-  "refined_translation": null,
+  "final_translation": null,
   "locked": false,
   "human_reviewed": false,
   "prompt_version": null,
@@ -106,14 +106,13 @@ seg_001_0001_02
 | `untranslated` | 解析生成，尚未进入队列 | 被选入任务后进入 `queued` |
 | `queued` | 等待翻译 | provider 开始调用进入 `translating` |
 | `translating` | 正在调用模型或等待输出 | 成功解析校验后进入 `translated`，异常进入 `failed` |
-| `translated` | 初翻通过 Validator | 进入 `review_needed`、`refining` 或 `final` |
+| `translated` | 翻译通过 Validator | 进入 `review_needed` 或 `final_ready` |
 | `validation_failed` | 模型输出解析成功但校验失败 | 进入 `retry_pending` 或 `review_needed` |
 | `failed` | provider 错误、超时、解析失败 | 进入 `retry_pending` 或 `review_needed` |
 | `retry_pending` | 需要重试 | 重试开始进入 `queued` 或 `translating` |
-| `review_needed` | 需要人工或强模型审核 | 审核后进入 `human_reviewed`、`refining` 或 `skipped` |
-| `human_reviewed` | 人工确认过 | 可进入 `final` 或 `locked` |
-| `refining` | 正在润色 | 通过校验进入 `refined`，失败进入 `validation_failed` |
-| `refined` | 润色稿通过校验 | 人工确认后进入 `final` |
+| `review_needed` | 需要人工或一致性审核 | 审核后进入 `human_reviewed`、`final_ready` 或 `skipped` |
+| `human_reviewed` | 人工确认过 | 可进入 `final_ready` 或 `locked` |
+| `final_ready` | 一致性校对通过，可导出唯一最终译文 | exporter 生成 `final` |
 | `final` | 可进入最终导出 | 锁定后进入 `locked`，否则仅由人工/明确轮次回退 |
 | `locked` | 用户锁定，不得自动覆盖 | 只能人工解锁 |
 | `skipped` | 用户或规则跳过 | 只能人工恢复 |
@@ -123,4 +122,4 @@ seg_001_0001_02
 1. `validation_failed`、`failed` 和 `retry_pending` 不得写入 `translation_draft` 作为成功译文。
 2. 可写入 `raw_output`、`validation_errors`、`review_issues`、`last_error` 和 `retry_count`。
 3. `locked: true` 与 `human_reviewed: true` 默认跳过自动覆盖。
-4. exporter 生成 final 文件时只能读取 `translated`、`refined`、`human_reviewed`、`final` 等允许状态。
+4. exporter 生成 final 文件时只能读取 `translated`、`human_reviewed`、`final_ready`、`final` 等允许状态。

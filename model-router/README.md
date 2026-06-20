@@ -52,8 +52,8 @@ print(result.content, result.provider, result.model, result.usage.to_dict())
 
 Pipeline 专用 profile：
 
-- `draft_translation` — Stage A/B 初翻
-- `refinement` — Stage C 润色
+- `draft_translation` — 翻译执行
+- `legacy_refinement` — 历史 Stage C 复现入口（默认流程不使用）
 - `coding` / `fast` / `reasoning` — 通用场景
 
 ### 环境变量
@@ -79,7 +79,7 @@ Pipeline 专用 profile：
 `src/providers/router_provider.py` 将 legacy `provider.generate()` 桥接到 model router：
 
 - `get_provider(ProviderMode.REAL)` → `RouterProvider`
-- `draft_runner` / `refine_runner` / workbench 真实 API 样本均已迁移
+- `draft_runner` / workbench 真实 API 样本均已迁移；legacy `refine_runner` 仅用于显式历史复现
 
 保留 `OpenRouterProvider` 作为兼容层（内部使用 `openaiCompatible` adapter）。
 

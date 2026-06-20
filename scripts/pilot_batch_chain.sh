@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# Chain Stage B translate (50-ch batches) + Stage C refine until input_jp exhausted.
-# Skips work when translate/refine locks are held by live PIDs. Requires user-authorized real API env.
+# Legacy Stage B + Stage C shell chain (disabled by production_pipeline.sh guard).
+# Skips work when legacy locks are held by live PIDs. Requires explicit historical reproduction env.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
+
+if [[ "${ALLOW_LEGACY_PRODUCTION_PIPELINE:-0}" != "1" ]]; then
+  echo "pilot_batch_chain.sh is deprecated and disabled by default."
+  echo "Use scripts/local_scheduler_tick.py; legacy 50-ch batch chaining can bypass current final-state gates."
+  exit 2
+fi
 
 export REAL_API_TESTS_ENABLED=1
 export CONTROLLED_RUN_ENABLED=1

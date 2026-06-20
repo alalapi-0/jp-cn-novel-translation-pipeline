@@ -37,8 +37,8 @@
 
 ## 已存在路线图
 
-- `docs/roadmap_rounds_00_40.md`：长期产品与流水线路线。
-- `docs/roadmap_rounds_41_50_tooling_and_workbench.md`：工具链、Agent Gate、Playwright/MCP、受控 API 与 Workbench 路线。
+- `docs/final_state_implementation_roadmap.md`：当前 v2 产品与流水线路线。
+- `docs/final_state_round_task_list.md`：当前 v2 可执行任务队列。
 - `docs/archive/legacy_roadmaps/roadmap_translation_pipeline.md`：早期日译中路线（已归档）。
 
 本轮新增 RM 路线必须与既有 Round 00-50 不互相覆盖。RM 只表示 Reference Method Absorption，不替代原路线。
@@ -63,7 +63,7 @@
 2. 已有通用协议、项目身份、Agent 策略、数据策略和流水线契约。
 3. 输入输出目录、方向目录、shared core、workspace、data、frontend、tests 等骨架齐全。
 4. `.gitignore` 已保护 `.env`、真实原文、真实译文、notes、workspace 运行产物和报告正文。
-5. 已有术语、角色、世界观、翻译记忆、embedding、provider、batch、refinement、review、frontend 等设计文档雏形。
+5. 已有术语、角色、世界观、翻译记忆、embedding、provider、batch、review、frontend 等设计文档雏形；旧 refinement 文档已归档为 legacy。
 6. 已有 Round 00-50 路线和多类 Prompt 模板，适合后续 Agent 连续推进。
 
 ## 当前仓库不足
@@ -83,7 +83,7 @@
 - `docs/architecture_overview.md`
 - `docs/shared_core_design.md`
 - `docs/batch_translation_workflow.md`
-- `docs/refinement_workflow.md`
+- `docs/archive/legacy_refinement/refinement_workflow.md`（legacy reference only）
 - `docs/quality_review_workflow.md`
 - `docs/api_provider_strategy.md`
 - `docs/data_schema_plan.md`
@@ -107,7 +107,7 @@
 - `docs/provider_adapter_reference_inspired.md`
 - `docs/exporter_reference_inspired_design.md`
 - `docs/translation_quality_taxonomy_reference_inspired.md`
-- `docs/roadmap_rounds_reference_method_01_40.md`
+- `docs/archive/legacy_roadmaps/roadmap_rounds_reference_method_01_40.md`
 - `prompts/rm_01_reference_method_overview.md` 到 `prompts/rm_10_world_bible_injection.md`
 
 ## 建议归档或合并的文件

@@ -30,7 +30,7 @@
 ## 阅读顺序
 
 1. README.md、AGENTS.md
-2. 当前 ROADMAP（如 `docs/roadmap_phase2_rounds_51_plus.md`）
+2. 当前 ROADMAP（`docs/final_state_implementation_roadmap.md` 与 `docs/final_state_round_task_list.md`）
 3. `docs/design/DESIGN.md`、`docs/design/stitch/UI_TASKS.md`
 4. 选定页面的现有实现（`frontend/`）
 

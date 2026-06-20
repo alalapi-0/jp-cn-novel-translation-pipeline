@@ -99,8 +99,9 @@ def test_refine_pilot_dry_run_module(pilot_run_dir: Path, monkeypatch: pytest.Mo
     assert (pilot_run_dir / "refine_diff.json").is_file()
 
 
-def test_refine_stage_c_cli_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def test_refine_stage_c_cli_disabled_by_default(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("ALLOW_LEGACY_REFINEMENT", raising=False)
     monkeypatch.setenv("REAL_API_TESTS_ENABLED", "false")
     run_id = "run_20260602_203645_draft_stage_b_50ch"
     stage_state = tmp_path / "stage_state.json"
@@ -115,6 +116,7 @@ def test_refine_stage_c_cli_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path: P
             "--dry-run",
             "--stage-state-path",
             str(stage_state),
+            "--json",
         ],
         cwd=REPO_ROOT,
         capture_output=True,
@@ -123,10 +125,7 @@ def test_refine_stage_c_cli_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path: P
         timeout=180,
         env={**dict(**__import__("os").environ), "REAL_API_TESTS_ENABLED": "false"},
     )
-    if not (REPO_ROOT / "workspace/runs" / run_id / "segments.json").is_file():
-        pytest.skip("Stage B run not present locally")
-    assert proc.returncode == 0, proc.stderr or proc.stdout
-    assert "refined=" in proc.stdout or "refined_segments" in proc.stdout
-    assert stage_state.is_file()
-    payload = json.loads(stage_state.read_text(encoding="utf-8"))
-    assert payload["run_id"] == run_id
+    assert proc.returncode == 2
+    payload = json.loads(proc.stdout)
+    assert payload["reason"] == "legacy_refinement_disabled"
+    assert not stage_state.exists()

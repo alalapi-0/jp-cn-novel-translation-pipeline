@@ -17,7 +17,7 @@
 - `docs/frontend_workbench_plan.md` 将 Side-by-side Translation Review 定义为连接审核和导出的核心页面。
 - `docs/design/stitch/UI_TASKS.md` 明确 Review Workbench 需要 segment 列表、双栏对照、操作栏和质量 issue 入口。
 - `docs/design/stitch/reviews/round3_ui_ux_review.md` 的后续可选项包含“审核页键盘快捷键（上一段/下一段）”。
-- `docs/roadmap_phase2_rounds_51_plus.md` 的 Round 59 建议要求强化 Review Workbench 的长文本审核体验。
+- `docs/final_state_round_task_list.md` 的 UI 状态词汇 v2 任务要求强化 Review Workbench 的长文本审核体验。
 
 不在本轮范围：
 

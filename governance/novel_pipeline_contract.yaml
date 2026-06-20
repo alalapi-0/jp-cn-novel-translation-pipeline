@@ -1,5 +1,5 @@
 contract_name: light_novel_bidirectional_translation_pipeline
-version: "0.1.0"
+version: "0.2.0"
 portable: false
 
 project_type: ai_novel_translation_pipeline
@@ -41,18 +41,16 @@ pipeline_stages:
   - character_extraction
   - world_bible_extraction
   - context_pack_build
-  - draft_translation
-  - refinement
+  - translation
   - quality_review
-  - export_and_workbench_review
+  - baseline_lock
+  - singleton_final_export
+  - workbench_review
 
 final_state_phase_order:
-  - phase_a_draft_translation
-  - phase_b_draft_consistency_audit
-  - phase_c_baseline_lock
-  - phase_d_refinement
-  - phase_e_final_quality_review
-  - production_candidate
+  - phase_a_translation
+  - phase_b_consistency_audit
+  - phase_c_baseline_lock_and_singleton_final_export
 
 final_state_anchor: docs/product_final_state_spec.md
 
@@ -64,10 +62,10 @@ artifact_types:
   - character_profiles
   - world_bible_entries
   - translation_draft
-  - translation_refined
+  - singleton_final_translation
   - bilingual_alignment
   - review_issues
-  - polish_diff
+  - user_revision_diff
 
 quality_gates:
   - terminology_consistency

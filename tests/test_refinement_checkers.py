@@ -181,7 +181,9 @@ def test_run_refinement_checks_for_run(tmp_path: Path) -> None:
 
 def test_check_refinement_quality_cli_pass_json(
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("ALLOW_LEGACY_REFINEMENT", "1")
     mod = _load_check_script()
     code = mod.main(
         [
@@ -202,7 +204,9 @@ def test_check_refinement_quality_cli_pass_json(
 
 def test_check_refinement_quality_cli_fail_json(
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("ALLOW_LEGACY_REFINEMENT", "1")
     mod = _load_check_script()
     code = mod.main(
         [

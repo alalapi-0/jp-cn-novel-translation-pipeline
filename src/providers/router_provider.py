@@ -99,7 +99,7 @@ class RouterProvider:
     def _resolve_profile(self, options: GenerateOptions) -> str:
         stage = (options.pipeline_stage or "").strip().lower()
         if stage in {"refinement", "refine", "stage_c"}:
-            return "refinement"
+            return "legacy_refinement"
         if stage in {"draft_translation", "translation", "draft"}:
             return "draft_translation"
         return self.profile

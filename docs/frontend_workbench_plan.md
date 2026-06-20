@@ -1,6 +1,6 @@
 # 前端工作台规划
 
-前端目标不是炫酷 UI，而是让用户更容易完成上传原文、创建翻译项目、选择翻译方向、配置模型、查看章节、审核术语、审核人物表、审核世界观设定、启动初翻、查看翻译进度、对照原文和译文、查看冲突问题、启动二次润色、对比初翻和润色、导出结果。
+前端目标不是炫酷 UI，而是让用户更容易完成上传原文、创建翻译项目、选择翻译方向、配置模型、查看章节、审核术语、审核人物表、审核世界观设定、启动翻译、查看翻译进度、对照原文和译文、查看一致性冲突、同步用户修改稿、导出唯一最终译文。
 
 ## 页面清单
 
@@ -71,7 +71,7 @@
 - 读取哪些数据：Chapter、ProjectState。
 - 写入哪些数据：任务状态、skip/retry 标记。
 - 是否需要人工确认：批量操作需要确认。
-- 与 pipeline 的关系：驱动批量初翻、润色和审核。
+- 与 pipeline 的关系：驱动批量翻译、一致性校对和审核。
 - 后续实现轮次：Round 38、Round 39。
 
 ### Glossary Editor
@@ -81,7 +81,7 @@
 - 读取哪些数据：Term、ReviewIssue、TermUsageExamples。
 - 写入哪些数据：Term 状态、译名、human_note、locked。
 - 是否需要人工确认：锁定和废弃需要确认。
-- 与 pipeline 的关系：影响初翻、润色和术语审核。
+- 与 pipeline 的关系：影响翻译、一致性校对和术语审核。
 - 后续实现轮次：Round 39。
 
 ### Character Profile Editor
@@ -91,7 +91,7 @@
 - 读取哪些数据：CharacterProfile、CharacterRelation、voice examples。
 - 写入哪些数据：角色字段、关系字段、状态。
 - 是否需要人工确认：姓名和称呼锁定需要确认。
-- 与 pipeline 的关系：影响台词翻译、润色和语气审核。
+- 与 pipeline 的关系：影响台词翻译、一致性校对和语气审核。
 - 后续实现轮次：Round 39。
 
 ### World Bible Editor
@@ -118,20 +118,20 @@
 
 - 页面目的：原文译文对照审核。
 - 核心组件：左右对照、segment 定位、issue 标记、术语高亮。
-- 读取哪些数据：ParagraphAlignment、TranslationDraft、RefinedTranslation、ReviewIssue。
+- 读取哪些数据：ParagraphAlignment、TranslationDraft、FinalTranslation、ReviewIssue。
 - 写入哪些数据：ReviewIssue、human_reviewed 状态。
 - 是否需要人工确认：最终确认需要人工操作。
 - 与 pipeline 的关系：连接审核和最终导出。
 - 后续实现轮次：Round 38、Round 39。
 
-### Refinement Comparison
+### User Revision Sync
 
-- 页面目的：比较初翻和润色。
+- 页面目的：比较用户修改稿与 canonical final translation。
 - 核心组件：diff、change log、风险标记、术语变化。
-- 读取哪些数据：TranslationDraft、RefinedTranslation、change_log。
-- 写入哪些数据：接受/拒绝润色、issue。
-- 是否需要人工确认：接受润色需要确认。
-- 与 pipeline 的关系：支持 refinement pipeline 审核。
+- 读取哪些数据：FinalTranslation、UserRevision、change_log。
+- 写入哪些数据：用户修改同步建议、issue。
+- 是否需要人工确认：接受用户修改需要确认。
+- 与 pipeline 的关系：支持用户回写，不恢复自动润色流程。
 - 后续实现轮次：Round 39。
 
 ### Issue Review Dashboard
@@ -148,7 +148,7 @@
 
 - 页面目的：导出译文、双语对照、报告和归档。
 - 核心组件：格式选择、范围选择、版权提醒、导出按钮。
-- 读取哪些数据：Project、TranslationDraft、RefinedTranslation、ReviewIssue。
+- 读取哪些数据：Project、TranslationDraft、FinalTranslation、ReviewIssue。
 - 写入哪些数据：ExportJob。
 - 是否需要人工确认：导出最终稿需要确认。
 - 与 pipeline 的关系：连接 Export Layer。

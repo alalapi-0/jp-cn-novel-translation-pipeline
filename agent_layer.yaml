@@ -1,5 +1,5 @@
 version: 2
-updated_at: "2026-06-09T00:00:00Z"
+updated_at: "2026-06-18T00:00:00Z"
 
 repo:
   name: light_novel
@@ -24,6 +24,8 @@ docs:
     - docs/next_agent_execution_protocol.md
     - docs/final_state_implementation_roadmap.md
     - docs/final_state_round_task_list.md
+    - docs/translation_production_protocol.md
+    - docs/translation_consistency_protocol.md
     - agent_tools.yaml
     - agent_layer.yaml
     - docs/TOOL_USAGE_POLICY.md
@@ -85,7 +87,7 @@ agent_policy:
   require_gate_before_commit: true
   max_scope_per_round: small
   prefer_incremental_changes: true
-  real_api_round_override: "Allowed only when the selected FS/D-MR/R-MR task explicitly permits it and cost/pause/lock/orphan guards pass"
+  real_api_round_override: "Allowed only when the selected v2 task explicitly permits it and cost/pause/lock/orphan guards pass; Agent quota translation must use the same structured output contract"
 
 severity:
   p0: "data loss, secret leak, app cannot start, build completely broken, destructive behavior, real publish/API misfire"
@@ -109,8 +111,12 @@ final_state:
   definition_of_done: docs/definition_of_done.md
   guardrails: docs/non_goals_and_guardrails.md
   execution_protocol: docs/next_agent_execution_protocol.md
-  current_phase: phase_a_draft_translation
-  next_micro_round: D-MR-118
+  production_protocol: docs/translation_production_protocol.md
+  consistency_protocol: docs/translation_consistency_protocol.md
+  current_phase: final_ready_singleton_export_v2
+  next_micro_round: null
+  current_final_translation: output_cn/translated/full_volume_cn.md
+  singleton_check: reports/final_translation_singleton_check.json
 
 legacy_governance:
   note: "Existing governance/*.yaml and docs/roadmap_rounds_* remain authoritative for pipeline rounds"

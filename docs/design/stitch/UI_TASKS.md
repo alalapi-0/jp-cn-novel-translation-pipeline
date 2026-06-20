@@ -13,7 +13,7 @@
 
 ### 目标
 
-- 展示项目状态与最近翻译/润色任务
+- 展示项目状态与最近翻译/一致性校对任务
 - 展示 real API / mock / dry-run 模式与 Key 配置状态（脱敏）
 - 展示最近产物（run、segment 摘要，无完整原文）
 - 展示失败任务与重试入口
@@ -94,7 +94,7 @@
 | 组件 | 说明 |
 |------|------|
 | Segment 列表 | stable ID、状态色、筛选 |
-| 双栏对照 | 原文 | 译文；支持润色前后对比（规划） |
+| 双栏对照 | 原文 | 译文；支持用户修改 / 一致性差异对比（规划） |
 | 操作栏 | 通过、驳回、备注 |
 | 元数据侧栏 | run_id、provider、prompt_version |
 | 模式与数据源标记 | fixture fallback 须可见 |
@@ -128,7 +128,7 @@
 | 队列视图 | bugfix / browser_inspection / quality_optimization |
 | Checkpoint 列表 | run 恢复点 |
 | 日志流 | 尾部 N 行，无密钥 |
-| 吞吐量指标 | 链接 `docs/throughput_metrics_summary.md` 概念 |
+| 吞吐量指标 | 链接 `workspace/diagnostics/throughput_metrics.json` 或归档吞吐报告概念 |
 
 ---
 

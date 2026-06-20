@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Stage C controlled refinement runner on a completed Stage B draft run."""
+"""Legacy Stage C refinement runner.
+
+The active production route no longer includes refinement. This script is kept
+only for audited historical reproduction and is disabled by default.
+"""
 
 from __future__ import annotations
 
@@ -131,7 +135,7 @@ def _update_stage_state(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Stage C controlled refinement")
+    parser = argparse.ArgumentParser(description="Legacy Stage C refinement (disabled by default)")
     parser.add_argument("--run-id", default="", help="Draft run id (default: workspace/stage_state.json)")
     parser.add_argument(
         "--limit-segments",
@@ -148,6 +152,27 @@ def main() -> int:
     )
     parser.add_argument("--json", action="store_true", help="Print summary JSON to stdout")
     args = parser.parse_args()
+
+    if os.environ.get("ALLOW_LEGACY_REFINEMENT") != "1":
+        message = (
+            "refine_stage_c.py is deprecated and disabled by default. "
+            "Use docs/translation_production_protocol.md: translate -> consistency -> singleton final export."
+        )
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "status": "blocked",
+                        "reason": "legacy_refinement_disabled",
+                        "message": message,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        else:
+            print(message, file=sys.stderr)
+        return 2
 
     apply_local_env(REPO_ROOT)
     run_id = args.run_id.strip() or _default_run_id()

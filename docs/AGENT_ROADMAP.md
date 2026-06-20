@@ -1,6 +1,6 @@
 # Agent Layer Roadmap
 
-Incremental Tool-aware rounds (AL-xxx). Complements `docs/roadmap_rounds_41_50_tooling_and_workbench.md`.
+Incremental Tool-aware rounds (AL-xxx). Complements `docs/final_state_implementation_roadmap.md` and the FS-v2 task list.
 
 **Legend:** `web_search_needed: true` → check `docs/SEARCH_POLICY.md` first.
 

@@ -50,7 +50,7 @@ profiles:
       - provider: openrouter
         model: deepseek/deepseek-v4-pro
 
-  refinement:
+  legacy_refinement:
     provider: openrouter
     model: x-ai/grok-4.3
     temperature: 0.3

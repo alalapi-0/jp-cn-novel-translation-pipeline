@@ -1,0 +1,11 @@
+{
+  "schema": "final_translation_singleton_check_v1",
+  "status": "passed",
+  "output_root": "output_cn",
+  "canonical_final_translation": "output_cn/translated/full_volume_cn.md",
+  "translated_markdown_files": [
+    "output_cn/translated/full_volume_cn.md"
+  ],
+  "bilingual_markdown_file_count": 0,
+  "findings": []
+}

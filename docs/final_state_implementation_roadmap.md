@@ -1,202 +1,123 @@
 # Final State Implementation Roadmap
 
-> 最终成品实现总路线图（2026-06-10 创建；2026-06-11 Codex 治理复核）
-> 最高锚点：`docs/product_final_state_spec.md`（v1.1）
-> 配套轮次任务：`docs/final_state_round_task_list.md`
-> 阶段验收：`docs/phase_acceptance_criteria.md`
-> 防跑偏：`docs/non_goals_and_guardrails.md`
-> Done 定义：`docs/definition_of_done.md`
-> 推进协议：`docs/next_agent_execution_protocol.md`
->
-> 与既有路线的关系：
-> - `docs/translation_recovery_3ch_roadmap.md`（D-MR / R-MR 3 章 micro round 体系）**继续有效**，作为本路线图 Phase A / Phase D 的"批量执行子路线"。
-> - `docs/archive/legacy_roadmaps/translation_recovery_20ch_roadmap.md` 已归档（deprecated）。
-> - `docs/AGENT_ROADMAP.md`（AL-xxx Agent Layer 轮）的剩余项并入本路线图对应阶段，优先级以本文件为准。
-> - 若任何旧文档与 `docs/product_final_state_spec.md` 冲突，以最终规格为准。
+> v2.0（2026-06-18）。最高锚点：`docs/product_final_state_spec.md` v2.0。
+> 本路线图废弃旧 Phase D refinement / R-MR / Phase E / production_candidate 主线。
 
 ---
 
-## 1. 当前仓库状态摘要（2026-06-11 实测）
+## 1. 当前仓库状态摘要（2026-06-18 实测）
 
 | 维度 | 现状 | 证据 |
 | --- | --- | --- |
-| 全书章节 | **612 编号章**（`input_jp` 含 README.md 不计入章节） | `count_source_chapters` / FS-010 |
-| 初翻进度 | **612/612（100%）**；编号章 ch1–612 连续完成 | `local_scheduler_status.py --json` |
-| Phase | **Phase A completed（FS-010）**；B/C/D/E 未开始 | `phase_a_completion_check.py` + scheduler |
-| Worker 状态 | 0 active / 0 orphan；throughput_gate WARN 但 blocks=[] | `check_orphan_workers.py` / `throughput_gate.py` 实测 |
-| 初翻执行器 | `scripts/run_micro_round.py`（supervised、checkpoint、budget、--dry-run 完备） | `--help` 实测 |
-| 批次规划 | `scripts/plan_translation_batches.py` 完备 | `--help` 实测 |
-| 本地调度器 | **S1 已完成**：tick / status / launchd / pause / lock / stale heal / runbook 均存在 | `scripts/local_scheduler_*`、`src/scheduler/`、测试 |
-| pause / lock 文件 | 协议与互斥测试已实现；当前 paused=false、lock=absent | scheduler status 实测 |
-| configs/ 目录 | **S3 已完成**：五 YAML 模板、五 schema、迁移脚本与校验器存在 | `configs/`、`schemas/`、`validate_configs.py` |
-| 术语资产 | CRUD、三格式导入导出、usage index、prompt 注入已实现 | `src/glossary/`、FS-013…016 测试 |
-| 前端 | 现有 4 页 Workbench（index / review / issues / export）+ 本地 API；尚非最终 15 页 UI | 真实浏览器检查 |
-| 前端实测 | 4 页关键请求均 HTTP 200，console 无 error/warn；首页仍为旧工作台信息架构 | 2026-06-11 Browser 检查 |
-| 前端测试 | Playwright 已配置，当前 3 个 spec 文件 | `package.json`、`tests/ui/` |
-| Python 测试 | 52 个 `test_*.py` 文件 | `tests/` |
-| 门禁 | agent_gate WARNING（无 failed/blocked）；throughput_gate WARN（blocks=[]）；orphan CLEAN | 2026-06-11 实测 |
-| 真实 API | OpenRouter / DeepSeek 走 model_router；cost guard 与 smoke 入口存在；本治理轮未调用 | 代码、测试、浏览器状态卡 |
-| Git 安全 | `.env` 未跟踪；本轮补齐 `workspace/archived_runs/` ignore | `.gitignore` + `git check-ignore` |
+| 全书章节 | **612 编号章**（`input_jp/README.md` 不计入章节） | `count_source_chapters` / scheduler status |
+| 翻译进度 | **612/612（100%）** | `local_scheduler_status.py --json` |
+| 当前 Phase | **final_ready**；scheduler paused=true | `local_scheduler_status.py --json` |
+| 下一调度 round | **无**；`next_round_id=null`、`next_chapter_range=null` | `local_scheduler_status.py --json` |
+| Worker 状态 | 0 active / 0 orphan；scheduler lock absent | `check_orphan_workers.py --json` |
+| 一致性治理 | final dry-run changed_segments=0；term variance=0；singleton export PASS | `docs/final_consistency_report.md` / `reports/final_translation_singleton_check.json` |
+| 最终译文交付 | 唯一文件：`output_cn/translated/full_volume_cn.md` | `output_cn/final_export_manifest.json` |
+| 执行方式 | 历史产物来自真实 API micro-round；未来新作品支持 API Mode 或 Agent Quota Mode | `docs/translation_production_protocol.md` |
+| 前端 | 现有 4 页 Workbench + 本地 API；仍需按 v2.0 UI 完整化 | `frontend/` / Playwright |
+| Git 安全 | `.env` 未跟踪；真实输出默认 ignored | `.gitignore` + agent_gate |
 
-## 2. 与最终规格的差距分析
+## 2. 与最终规格 v2.0 的差距分析
 
-| # | 规格要求（章节） | 现状 | 差距等级 |
+| # | 规格要求 | 现状 | 差距 |
 | --- | --- | --- | --- |
-| G1 | 本地调度系统（§9：tick / status / launchd / pause / lock） | **已完成 S1**；待 S5 接入 Web UI | 小（UI 接线） |
-| G2 | Phase A 全书初翻（§12） | **已完成**（612 编号章；FS-010 PASS） | 已关闭 |
-| G3 | Phase B 一致性检查（§13：manifest / entity index / progressive disclosure） | 仅有 quality_review 雏形与 consistency 设计文档，无 manifest/entity index 工具链 | **大** |
-| G4 | Phase C baseline lock（§14） | 无 | 中（工具量小，依赖 B） |
-| G5 | Phase D 全书润色（§15） | refine_runner / refine_prompt_builder 存在，R-MR 队列未启动，over-refinement checker 缺失 | 大 |
-| G6 | Phase E 终检 + production_candidate（§16–17） | 无 | 大 |
-| G7 | Web UI 15 页信息架构（§7） | 4 页 Workbench 可运行；无最终 Dashboard / 设置 / 控制台 / 资产管理 / 修改稿同步 | **极大** |
-| G8 | UI 视觉系统（§8：统一状态标签 / 色彩 / 反馈 / 二次确认） | 部分 Dark theme CSS 变量，未系统化 | 大 |
-| G9 | 术语库系统（§7.8：CRUD / 导入导出 / locked / approved） | 内核已完成；UI 未开始 | 中 |
-| G10 | 角色 / 世界观 / 翻译记忆管理（§7.9–7.11） | configs 模板已存在；专用 store / UI 未完成 | 中 |
-| G11 | 用户修改稿同步（§19：对齐 / diff / sync plan / 同步执行） | 完全缺失 | **大** |
-| G12 | configs/ 目录与五个 YAML（§10） | **已完成 S3** | 已关闭 |
-| G13 | 导出系统（§7.14：MD / 双语 / TXT / EPUB / package） | exporter.py 支持部分 MD 导出 | 中 |
-| G14 | 状态标签统一（§8.3） | 各处叫法不一 | 中 |
+| G1 | 本地调度系统 | 已完成；状态机已切到 `final_ready` | 小（UI 接线） |
+| G2 | 全书翻译 | 已完成 | 已关闭 |
+| G3 | 一致性检查 | 已完成；另有 final cleanup | 已关闭 |
+| G4 | baseline lock | 已完成 | 已关闭 |
+| G5 | singleton final export | 已完成；仅保留一份最终译文 | 已关闭 |
+| G6 | API / Agent Quota 双执行路径 | API 路径存在；Agent Quota 协议已定义，写入器仍需实现 | 中 |
+| G7 | Web UI v2.0 信息架构 | 现有 4 页，未完整覆盖 | 大 |
+| G8 | 用户修改稿同步 | 缺失 | 大 |
+| G9 | 导出系统完整化 | singleton final 完成；辅助包 / EPUB / TXT 未完整 | 中 |
 
-**结论**：执行内核、S1 调度器和 S3 术语资产层已成熟；当前主缺口是"Phase A 剩余批量 + Phase B-E 工具链 + Web UI 全量 + 用户修改稿同步"。后续不再回做 S1/S3，按 `D-MR-083` 继续 S2，并可与 S4 UI 基座交错推进。
+**结论**：当前作品的自动化翻译与一致性治理已收口，生产状态为 `final_ready`。后续主线不再是 R-MR 或 production_candidate，而是：
+
+```text
+新作品 API/Agent 双路径翻译能力
+→ Web UI v2.0
+→ 用户修改稿同步
+→ 导出辅助包完整化
+→ 最终 DoD 验收
+```
 
 ## 3. 阶段拆分总览
 
-| Stage | 名称 | 轮次 | 真实 API | Web UI | 浏览器测试 | 依赖 |
+| Stage | 名称 | 轮次范围 | 真实 API | Agent Quota | Web UI | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
-| S0 | 治理与基线对齐 | FS-000（本轮） | 否 | 否 | 否 | — |
-| S1 | 本地调度器主线 | FS-001…FS-007 | 仅 smoke | 否 | 否 | S0 |
-| S2 | Phase A 初翻完成 | FS-008…FS-010（+ D-MR-008…137 批量执行） | **是** | 否 | 否 | S1 |
-| S3 | configs 资产层与术语库内核 | FS-011…FS-016 | 否 | 否 | 否 | S0（可与 S2 并行） |
-| S4 | Web UI 基座与设计系统 | FS-017…FS-022 | 否 | **是** | **是** | S0（可与 S2 并行） |
-| S5 | Web UI MVP（Dashboard / 控制台 / 章节 / 术语 / 报告 / 导出入口） | FS-023…FS-030 | 否 | **是** | **是** | S1、S3、S4 |
-| S6 | Phase B 一致性检查工具链 | FS-031…FS-037 | Level 4 小规模 | 否 | 否 | S2 |
-| S7 | Phase C baseline lock | FS-038…FS-039 | 否 | 否 | 否 | S6 |
-| S8 | Phase D 润色工具链与 R-MR 推进 | FS-040…FS-045（+ R-MR 批量执行） | **是** | 否 | 否 | S7 |
-| S9 | Phase E 终检与 production_candidate | FS-046…FS-050 | Level 5 小规模 | 否 | 否 | S8 |
-| S10 | 角色 / 世界观 / 翻译记忆 UI | FS-051…FS-053 | 否 | **是** | **是** | S5 |
-| S11 | 译文对照阅读页 | FS-054…FS-056 | 否 | **是** | **是** | S5 |
-| S12 | 用户修改稿同步主线 | FS-057…FS-062 | 局部重译小规模 | **是** | **是** | S9、S11 |
-| S13 | 导出系统完整化 | FS-063…FS-064 | 否 | **是** | **是** | S9 |
-| S14 | Web UI Final 打磨与全量用户视角测试 | FS-065…FS-068 | 否 | **是** | **是** | S5–S13 |
-| S15 | 端到端 DoD 验收 | FS-069…FS-070 | 验证性 | **是** | **是** | 全部 |
+| S0 | 治理与基线对齐 | FS-000 | 否 | 否 | 否 | completed |
+| S1 | 本地调度器主线 | FS-001…FS-007 | smoke only | 否 | 否 | completed |
+| S2 | 全书翻译完成 | FS-008…FS-010 + historical D-MR | 是 | 可选 | 否 | completed |
+| S3 | configs 资产层与术语库内核 | FS-011…FS-016 | 否 | 否 | 否 | completed |
+| S4 | Web UI 基座与设计系统 | FS-017…FS-022 | 否 | 否 | 是 | pending |
+| S5 | Web UI MVP v2.0 | FS-023…FS-030 | 否 | 否 | 是 | pending |
+| S6 | 一致性检查工具链 | FS-031…FS-037 | Level 4 小规模 | 可选判断 | 否 | completed |
+| S7 | baseline lock + singleton final export | FS-038…FS-039 + 2026-06-18 cleanup | 否 | 否 | 否 | completed |
+| S8 | API / Agent Quota 统一写入器 | FS-new | 可选 | 是 | 可选 | pending |
+| S9 | 用户修改稿同步 | FS-new | 局部重译小规模 | 可选 | 是 | pending |
+| S10 | 导出辅助包完整化 | FS-new | 否 | 否 | 是 | pending |
+| S11 | Web UI Final 与 DoD 验收 | FS-new | 验证性 | 验证性 | 是 | pending |
 
-当前状态：S0、S1、S2、S3 completed；S4–S15 not_started。首个推荐闸门轮 **FS-031**（Phase B 工具链）；首个可并行工程任务是 FS-017（UI 基座）。
+Legacy，不再作为主线：
 
-> 并行建议：S2（真实 API 初翻批量执行）与 S3 / S4（资产层、UI 基座）可交替推进——初翻轮消耗 API 与时间，工程轮消耗 Agent 实现能力，二者交错可最大化吞吐。
+| Legacy Stage | 原名称 | 处理 |
+| --- | --- | --- |
+| old S8 | Phase D refinement / R-MR | deprecated；不得作为下一轮任务 |
+| old S9 | Phase E / production_candidate | deprecated；不得作为自动化终点 |
 
-## 4. 各阶段详情
+## 4. 新主线阶段详情
 
-### S1 本地调度器主线（FS-001…FS-007）
+### S8 API / Agent Quota 统一写入器
 
-- **状态**：completed（2026-06-11）。
-- **目标**：实现规格 §9 全部组件，使初翻可由 launchd 周期 tick 推进，不再依赖 Cursor 前台。
-- **输入**：`run_micro_round.py`、`throughput_gate.py`、`check_orphan_workers.py`、`workspace/control/`。
-- **输出**：`scripts/local_scheduler_tick.py`、`scripts/local_scheduler_status.py`、`scripts/local_scheduler_launchd.sh`、`scripts/launchd/com.lightnovel.translation.scheduler.plist.template`、`docs/local_scheduler_runbook.md`、pause / lock 文件协议、对应 pytest。
-- **完成标准**：`python3 scripts/local_scheduler_status.py --json` 输出规格 §9.2 全部字段；`local_scheduler_tick.py --dry-run` 干净退出且不留 orphan；pause file 存在时拒绝启动真实 API；lock 互斥与 stale 清理有测试覆盖。
-- **可验证命令**：`python3 scripts/local_scheduler_status.py --json`、`python3 scripts/local_scheduler_tick.py --dry-run`、`npm run test:py`。
-- **风险**：launchd 环境变量与 PATH 差异；tick 内 worker 超时处理。
-- **真实 API**：仅最后一轮做 1 次 supervised 真实 tick smoke（≤3 章）。
+- **目标**：实现 `docs/translation_production_protocol.md` 中的同构产物契约，让外部 API 和 Agent 额度翻译都写入同一 segment/run schema。
+- **输出**：`execution_mode` 字段、Agent quota 写入入口、报告模板、测试。
+- **完成标准**：API mode 与 Agent quota mode 的产物能被同一个一致性检查和 final exporter 消费。
+- **真实 API**：可选，小规模 smoke；默认 dry-run / fixture。
 
-### S2 Phase A 初翻完成（FS-008…FS-010 + D-MR 批量）
+### S9 用户修改稿同步
 
-- **状态**：in_progress；连续完成 ch1–553。
-- **目标**：用调度器 + supervised micro round 跑完 D-MR-083…D-MR-137（ch449–613），达到规格 §12.2 完成标准。
-- **输入**：S1 调度器、`translation_recovery_3ch_task_list.md` 的 D-MR 队列。
-- **输出**：全书 draft、`workspace/round_reports/D-MR-*/`、draft export、Phase A completion report。
-- **完成标准**：见 `docs/phase_acceptance_criteria.md` Phase A 节。
-- **可验证命令**：`python3 scripts/throughput_gate.py --json`、`python3 scripts/check_orphan_workers.py --json`。
-- **风险**：API 成本（按现行单价估算全书剩余约 \$0.6–1.5）；失败 segment 重试堆积。
-- **真实 API**：是（生产模型 `deepseek/deepseek-v4-pro`，遵守 cost guard 与 §21.3 模型切换限制）。
+- **目标**：上传用户修改稿，生成 diff / sync plan，经用户确认后同步 TM、glossary、character profile 与 revised output。
+- **禁止**：覆盖原文、baseline、human_approved_final。
+- **完成标准**：`phase_acceptance_criteria.md` User revision sync 节全部 PASS。
 
-### S3 configs 资产层与术语库内核（FS-011…FS-016）
+### S10 导出辅助包完整化
 
-- **状态**：completed（2026-06-11）。
-- **目标**：建立规格 §10 的 `configs/` 五 YAML 与术语库 CRUD 内核（无 UI）。
-- **输出**：`configs/glossary.yaml`、`character_profile.yaml`、`style_profile.yaml`、`world_bible.yaml`、`model_profiles.yaml`（模板 + 从现有资产迁移）；`src/glossary/` CRUD 模块；CSV / YAML / JSON 导入导出；locked / approved_by_user / conflict 字段；term usage index；pytest。
-- **完成标准**：glossary CRUD 全字段（规格 §7.8）可用且有测试；导入导出 roundtrip 测试通过；初翻 prompt builder 能消费 configs 资产。
-- **风险**：现有 translation_memory 资产迁移时丢字段；YAML 含真实译名是否提交需用户确认（默认不提交真实内容，提交脱敏模板）。
+- **目标**：在 singleton final translation 之外，按需生成辅助包：TXT、EPUB、双语对照、glossary、character、world、TM、报告。
+- **原则**：辅助包可再生成，不得成为第二份“最终译文”。
 
-### S4 Web UI 基座与设计系统（FS-017…FS-022）
+### S11 Web UI Final 与 DoD 验收
 
-- **目标**：确定 UI 架构（延续静态 HTML + `frontend/assets/` + workbench server，扩展为多页应用），建立规格 §8 的设计系统。
-- **输出**：`frontend/assets/design-system.css`（色彩 / 状态标签 / 卡片 / 表格 / 按钮 / toast / 确认对话框组件）；统一布局壳（侧边导航 + 顶栏）；状态标签字典（§8.3 的 11 个状态）与前后端共享常量；空状态 / loading / 错误提示规范；Stitch 设计输入流程（导出物入 `docs/design/stitch/`）。
-- **完成标准**：设计系统页（styleguide.html）经 Playwright 截图检查；所有新页面复用同一布局壳；状态标签前后端来源唯一。
-- **浏览器测试**：必须（before / after 截图入 `artifacts/`）。
+- **目标**：完整实现 v2.0 UI，跑通用户视角测试，逐条核对 `definition_of_done.md`。
 
-### S5 Web UI MVP（FS-023…FS-030）
+## 5. 推荐推进顺序
 
-- **目标**：实现规格 §12（治理 Prompt）要求的 MVP 八项：Dashboard、项目设置、API / 模型设置、Pipeline 控制台、章节状态、术语库基本 CRUD、报告查看、导出入口。
-- **输入**：S1 调度器 status JSON、S3 glossary 内核、S4 设计系统、`src/workbench/server.py`。
-- **输出**：每页一轮或两轮，含后端 API 扩展 + 页面 + Playwright 用户视角测试。
-- **完成标准**：见 `docs/phase_acceptance_criteria.md` Web UI MVP 节；每页中文、复用设计系统、危险操作二次确认、`npm run test:ui` 通过。
-- **浏览器测试**：每轮必须。
-
-### S6 Phase B 一致性检查工具链（FS-031…FS-037）
-
-- **目标**：实现规格 §13 的 progressive disclosure 六层检查。
-- **输出**：`scripts/build_chapter_manifest.py`、`scripts/build_segment_index.py`、`scripts/build_entity_index.py`、glossary conflict audit、character / place / skill / item audit、source residual audit、local fix plan 生成器、selective segment expansion、local retranslation plan、full draft consistency report。
-- **完成标准**：blocking conflicts 统计可复现；Level 0–3 全规则化（无 API）；Level 4 模型调用有 budget 与审计记录。
-- **真实 API**：仅 Level 4 小规模（按 fix plan 限定 segment 数）。
-
-### S7 Phase C baseline lock（FS-038…FS-039）
-
-- **目标**：规格 §14。生成 `draft_full_baseline/`、metadata、go decision，并实现 baseline 只读保护。
-- **完成标准**：baseline 目录写保护（脚本拒绝写入 + 测试）；go decision 文档生成且引用 Phase B 报告；handoff 文档指向 Phase D。
-
-### S8 Phase D 润色工具链与 R-MR 推进（FS-040…FS-045 + R-MR 批量）
-
-- **目标**：规格 §15。R-MR 队列、diff / change_log、over-refinement checker、terminology preservation checker、character voice checker、refined export。
-- **真实 API**：是（refinement_primary；切换更强模型需用户确认）。
-- **完成标准**：见 `phase_acceptance_criteria.md` Phase D 节。
-
-### S9 Phase E 终检与 production_candidate（FS-046…FS-050）
-
-- **目标**：规格 §16–17。final review index、diff ratio audit、over-refinement candidate selection、semantic drift review、local fix plan、production_candidate 生成与 go decision。
-- **完成标准**：`production_candidate/` + `production_candidate_metadata.json` + `production_candidate_go_decision.md` 生成；不标记 human_approved_final。
-
-### S10–S13 资产 UI、对照页、用户同步、导出
-
-- S10：角色设定页、世界观页、翻译记忆页（规格 §7.9–7.11）。
-- S11：多栏对照阅读页（规格 §7.7，6 种模式、段落对齐、标记 / 备注）。
-- S12：用户修改稿上传 → segment 对齐 → diff → sync plan → 用户确认 → 同步执行（规格 §19，禁止直接覆盖 baseline / production_candidate）。
-- S13：导出页完整化（双语 MD / TXT / EPUB / package，规格 §7.14）。
-
-### S14 Web UI Final 打磨（FS-065…FS-068）
-
-- **目标**：规格 §6–8 全量达标：15 页齐全、视觉统一、响应式、可访问性基础、全量 Playwright 用户视角测试套件。
-
-### S15 端到端 DoD 验收（FS-069…FS-070）
-
-- **目标**：逐条核对规格 §25 的 27 项 Definition of Done，生成最终验收报告。
-
-## 5. 推进顺序与路径
-
-### 最小可用路径（MVP path）
-
-S0 → S1（调度器）→ S2（初翻跑完）→ S3+S4+S5（资产层 + UI MVP，与 S2 交替）→ S6 → S7 → S8 → S9 → 最小导出。
-此路径终点：production_candidate 可生成，Web UI MVP 八页可用。
-
-### 完整最终形态路径（Final path）
-
-最小路径 + S10 + S11 + S12 + S13 + S14 + S15。
-此路径终点：规格 §25 全部 27 项满足。
-
-### 推荐执行节奏
-
-1. 从 `D-MR-083` 继续 S2；每个 Milestone Block 后执行 FS-009 健康检查。
-2. S2 初翻批量轮与 S4 工程轮**交替**：每完成若干 D-MR 即插入 1–2 个 UI 基座轮。
-3. UI 每轮只做一个页面切片（遵守 `.cursor/rules/cursor-browser-ui.mdc`）。
-4. Phase B–E 工具链在 Phase A 接近完成时提前开工（规则层 Level 0–3 不依赖全书完成）。
+1. 保持当前作品 `final_ready` 状态，不再启动 R-MR。
+2. 先做 S8：Agent Quota Mode 写入器和报告，让新作品可不依赖外部 API。
+3. 继续 S4/S5：把 UI 的 phase/status 文案改成 v2.0。
+4. 做 S9：用户修改稿同步。
+5. 做 S10/S11：辅助导出和最终验收。
 
 ## 6. 全局风险
 
 | 风险 | 等级 | 缓解 |
 | --- | --- | --- |
-| launchd 后台 tick 产生 orphan worker | P0 | tick 末尾强制 `check_orphan_workers`；lock 协议；supervised 模式 |
-| 真实 API 成本失控 | P0 | cost guard、`MAX_TEST_COST_USD`、每 tick 单 MR、Dashboard 成本显示 |
-| 真实译文 / 原文误提交 | P0 | agent_gate 已覆盖 input/output ignore；commit 前 `git diff` 三连 |
-| UI 范围膨胀拖垮主线 | P1 | 每轮一个切片；MVP 八页优先；视觉打磨后置到 S14 |
-| Phase B 全文硬扫导致上下文膨胀 | P1 | progressive disclosure 强制分层；Level 4 才允许模型 |
-| 用户修改稿同步覆盖 baseline | P0 | 同步只写 TM / glossary / fix plan / revised output，禁写 baseline（代码层拒绝 + 测试） |
-| 旧 Roadmap 与新路线冲突 | P2 | 本文件 + 最终规格优先；冲突时在轮次报告标注 |
-| 叙述性进度快照落后于运行状态 | P1 | 每轮以 `local_scheduler_status.py --json` 为真值并同步 3ch 子路线、FS 状态表与 latest report |
+| 旧 R-MR 文档误导后续 agent | P1 | 旧文档归档；AGENTS/README/roadmap/spec 全部指向 v2.0 |
+| launchd 后台 tick 产生 orphan worker | P0 | tick 末尾强制 `check_orphan_workers`；lock 协议 |
+| 真实 API 成本失控 | P0 | cost guard、`MAX_TEST_COST_USD`、每 tick 单任务 |
+| Agent Quota 输出绕过结构化产物 | P1 | 必须写入同构 segment/run schema；一致性检查后才 export |
+| 真实译文 / 原文误提交 | P0 | agent_gate + commit 前 `git diff` 三连 |
+| UI 范围膨胀拖垮主线 | P1 | 每轮一个页面切片；MVP 优先 |
+| 用户修改稿同步覆盖 baseline | P0 | 同步禁写 baseline/human_approved_final（代码层拒绝 + 测试） |
+
+## 7. 验证命令
+
+```bash
+python3 scripts/local_scheduler_status.py --json
+python3 scripts/check_orphan_workers.py --json
+python3 scripts/check_final_translation_singleton.py --json
+npm run test:py
+python3 scripts/agent_gate.py --json
+```

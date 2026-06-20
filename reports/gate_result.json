@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-06-18T04:16:58Z",
+  "timestamp": "2026-06-20T12:51:11Z",
   "passed": [
     "docs_exist_readme",
     "docs_exist_agents",
@@ -9,8 +9,8 @@
     "docs_exist_architecture",
     "docs_exist_governance_rules",
     "docs_exist_index",
-    "roadmap_exists_00_40",
-    "roadmap_exists_41_50",
+    "roadmap_exists_final_state",
+    "roadmap_exists_final_state_tasks",
     "protocol_exists",
     "protocol_alignment_exists",
     "tooling_strategy_exists",
@@ -40,8 +40,10 @@
     "round_50_e2e_trial",
     "round_51_smoke_script_exists",
     "round_51_openrouter_smoke",
-    "round_52_refine_script_exists",
-    "round_52_refine_dry_run",
+    "legacy_refine_stage_c_disabled",
+    "legacy_refine_planner_disabled",
+    "legacy_run_micro_round_refine_disabled",
+    "legacy_refine_diff_disabled",
     "round_53_registry_module_exists",
     "round_53_serve_frontend_exists",
     "round_53_example_manifests_exist",
@@ -114,14 +116,14 @@
       "message": "found: docs/index.md"
     },
     {
-      "id": "roadmap_exists_00_40",
+      "id": "roadmap_exists_final_state",
       "severity": "pass",
-      "message": "found: roadmap_rounds_00_40.md"
+      "message": "found: final_state_implementation_roadmap.md"
     },
     {
-      "id": "roadmap_exists_41_50",
+      "id": "roadmap_exists_final_state_tasks",
       "severity": "pass",
-      "message": "found: roadmap_rounds_41_50_tooling_and_workbench.md"
+      "message": "found: final_state_round_task_list.md"
     },
     {
       "id": "protocol_exists",
@@ -269,14 +271,24 @@
       "message": "dry-run smoke script OK"
     },
     {
-      "id": "round_52_refine_script_exists",
+      "id": "legacy_refine_stage_c_disabled",
       "severity": "pass",
-      "message": "found: scripts/refine_stage_c.py"
+      "message": "legacy refinement entrypoint is disabled"
     },
     {
-      "id": "round_52_refine_dry_run",
+      "id": "legacy_refine_planner_disabled",
       "severity": "pass",
-      "message": "Stage C refine dry-run OK"
+      "message": "legacy refinement entrypoint is disabled"
+    },
+    {
+      "id": "legacy_run_micro_round_refine_disabled",
+      "severity": "pass",
+      "message": "legacy refinement entrypoint is disabled"
+    },
+    {
+      "id": "legacy_refine_diff_disabled",
+      "severity": "pass",
+      "message": "legacy refinement entrypoint is disabled"
     },
     {
       "id": "round_53_registry_module_exists",

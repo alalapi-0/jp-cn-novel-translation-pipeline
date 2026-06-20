@@ -5,6 +5,12 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+if [[ "${ALLOW_LEGACY_PRODUCTION_PIPELINE:-0}" != "1" ]]; then
+  echo "start_production_detached.sh is deprecated and disabled by default."
+  echo "Use scripts/local_scheduler_launchd.sh or scripts/local_scheduler_tick.py for governed execution."
+  exit 2
+fi
+
 export PYTHON="${PYTHON:-/Users/alalapi/.local/bin/python3.12}"
 export REAL_API_TESTS_ENABLED="${REAL_API_TESTS_ENABLED:-1}"
 export CONTROLLED_RUN_ENABLED="${CONTROLLED_RUN_ENABLED:-1}"

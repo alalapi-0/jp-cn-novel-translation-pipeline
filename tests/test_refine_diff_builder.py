@@ -163,7 +163,8 @@ def test_build_refine_diff_for_run_writes_gitignored_artifacts(tmp_path: Path) -
     assert diff_payload["summary"]["avg_diff_ratio"] == log_payload["summary"]["avg_diff_ratio"]
 
 
-def test_build_refine_diff_cli_json(tmp_path: Path) -> None:
+def test_build_refine_diff_cli_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALLOW_LEGACY_REFINEMENT", "1")
     mod = _load_build_script()
     run_id = "run_cli_refine_diff"
     run_root = tmp_path / "workspace" / "runs" / run_id
@@ -174,7 +175,12 @@ def test_build_refine_diff_cli_json(tmp_path: Path) -> None:
     assert code == 0
 
 
-def test_build_refine_diff_cli_missing_run(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_build_refine_diff_cli_missing_run(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALLOW_LEGACY_REFINEMENT", "1")
     mod = _load_build_script()
     code = mod.main(
         [

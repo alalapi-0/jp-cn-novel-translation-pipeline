@@ -1,6 +1,6 @@
 # Final Consistency Report
 
-Generated: 2026-06-18T03:57:09Z
+Generated: 2026-06-18T06:13:17Z
 
 Scope: chapters 1-612, 79632 segments.
 
@@ -13,23 +13,23 @@ Scope: chapters 1-612, 79632 segments.
 - Target placeholder residuals: 0
 - Target English residuals: 0
 - Exported chapters: 612 / 612
+- Singleton final translation check: passed
 
-## What Changed
+## Canonical Output
 
-- Refreshed rules from actual full-book source/current-translation evidence, ignoring stale CA reports.
-- Applied 332 high-confidence segment fixes across two passes.
-- Corrected overbroad legacy behavior for 蕾雅/布兰/复活 by using segment-scoped fixes or contextual suppressions.
-- Preserved スナイパーアント as 狙击蚁 while fixing 狙撃兵 as 狙击兵.
-- Exported the final Chinese volume and bilingual volume from the same canonical files used by the fixer.
-
-## Final Outputs
-
-- Chinese volume: `output_cn/translated/full_volume_cn.md`
-- Bilingual volume: `output_cn/bilingual/full_volume_bilingual.md`
+- Final translation: `output_cn/translated/full_volume_cn.md`
 - Export manifest: `output_cn/final_export_manifest.json`
-- Patch log: `workspace/review/final_consistency_patch_log_20260618.json`
 - JSON report: `workspace/review/final_consistency_report_20260618.json`
+- Patch log: `workspace/review/final_consistency_patch_log_20260618.json`
+
+Only the full Chinese volume is the final translation handoff. Per-chapter and bilingual files are regenerable working artifacts and are not retained as final copies.
 
 ## Cleanup
 
-Removed stale consistency logs/reports and 57 obsolete per-range supplement scripts so future review should use this report, the final JSON/patch log, and the fullbook regenerated rules as the audit source.
+- Removed stale review files: 3
+- Removed old round/log entries: {'workspace/logs': 148, 'workspace/round_reports': 28, 'artifacts': 6}
+- Preserved source files, canonical run data, checkpoints, baseline, and API secrets.
+
+## Reuse
+
+Future works should follow `docs/translation_consistency_protocol.md`: source/current-text evidence first, glossary as locked hints only, source-conditioned rules, dry-run before apply, zero-change final dry-run, and singleton final export.

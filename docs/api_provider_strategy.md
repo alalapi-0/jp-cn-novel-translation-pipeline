@@ -9,8 +9,8 @@
 - `embedding_provider`
 - `terminology_provider`
 - `translation_provider`
-- `refinement_provider`
 - `review_provider`
+- `consistency_provider`
 
 ## Provider Adapter 字段
 
@@ -44,9 +44,9 @@ notes:
 
 - embedding：成本低、速度快、稳定。
 - 术语抽取：结构化输出稳定。
-- 初翻：成本可控、长上下文、忠实。
-- 润色：强推理、强语言能力。
+- 翻译：成本可控、长上下文、忠实、术语一致。
 - 审核：擅长对照检查和结构化问题输出。
+- 一致性校对：擅长定位术语、角色、世界观、漏译和格式冲突。
 
 ## Model Run Metadata
 
@@ -131,7 +131,7 @@ OpenRouter **无统一单价**；按模型分别标价（input / output 通常�
 ### 本项目约定
 
 1. **禁止**在治理文档或代码中写死具体模型 $/M（易过期）；`COST_PER_MILLION_TOKENS` 仅用于 dry-run 粗算。
-2. 选型 draft/refine/embedding 时查阅 Models API 或 OpenRouter 模型页；记录 `model_name` + 探测日期于 `docs/RESEARCH_NOTES.md`。
+2. 选型 translation/review/embedding 时查阅 Models API 或 OpenRouter 模型页；记录 `model_name` + 探测日期于 `docs/RESEARCH_NOTES.md`。
 3. 真实 smoke / E2E：遵守 `REAL_API_TESTS_ENABLED`、`MAX_TEST_COST_USD`；见 `docs/COST_CONTROL.md`、`docs/openrouter_api_test_plan.md`。
 4. 购买 credits 的平台费（pay-as-you-go ~5.5%）与 token 推理费分开；成本 guard 默认只约束推理侧估算。
 

@@ -235,7 +235,7 @@ def import_glossary(
         except GlossaryError:
             existing = None
         if existing is None:
-            store.add(incoming)
+            store.add(incoming, preserve_audit_fields=True)
             report.added += 1
             continue
         if not _payload_differs(existing, incoming):

@@ -103,7 +103,7 @@ Append summary line to `reports/agent_audit_log.jsonl` each round.
 | Pipeline stage | Tools |
 |----------------|-------|
 | Chapter ingest | local scripts, dry-run |
-| Draft/refine | model-router dry-run; real API gated |
+| Translation / consistency | model-router dry-run; real API gated |
 | Quality review | `run_quality_review.py`, workbench UI |
 | Terminology | glossary fixtures, review pages |
 | Continuous run | `scripts/agent.py`, `.agent_runtime/` |

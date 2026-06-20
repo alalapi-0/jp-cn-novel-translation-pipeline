@@ -33,7 +33,7 @@ def test_refine_mr_plan_first_and_last_round() -> None:
     assert first["phase"] == "refine"
     assert first["chapter_start"] == 171
     assert first["chapter_end"] == 173
-    assert first["model_profile"] == "refine_primary"
+    assert first["model_profile"] == "legacy_refinement"
     assert first["input_source"] == "draft_full_baseline"
 
     last = refine_mr_plan("R-MR-148")

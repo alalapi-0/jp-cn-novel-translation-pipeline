@@ -190,11 +190,18 @@ class GlossaryStore:
     # write API
     # ------------------------------------------------------------------
 
-    def add(self, entry: GlossaryEntry | dict[str, Any]) -> GlossaryEntry:
+    def add(
+        self,
+        entry: GlossaryEntry | dict[str, Any],
+        *,
+        preserve_audit_fields: bool = False,
+    ) -> GlossaryEntry:
         """Insert a new entry; source_term must be unique among active entries.
 
         Adding over a soft-deleted term replaces the tombstone with the new
-        entry (the deleted record is superseded, not resurrected).
+        entry (the deleted record is superseded, not resurrected). Normal
+        interactive adds refresh updated_at; import/migration callers can
+        preserve exported audit fields for lossless roundtrips.
         """
         new_entry = entry if isinstance(entry, GlossaryEntry) else GlossaryEntry.from_dict(entry)
         with self._write_lock():
@@ -211,7 +218,8 @@ class GlossaryStore:
                         )
                     continue  # drop tombstone, superseded by the new entry
                 kept.append(raw)
-            new_entry.touch()
+            if not preserve_audit_fields:
+                new_entry.touch()
             kept.append(new_entry.to_dict())
             doc["entries"] = kept
             self._save_doc(doc)

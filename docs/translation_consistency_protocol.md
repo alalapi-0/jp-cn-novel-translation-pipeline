@@ -102,6 +102,18 @@ At minimum, future projects need these deterministic checks:
 
 The checker output should be structured JSON with counts, segment IDs, and short references only. Do not store full real text in tracked reports.
 
+### 7.1 Punctuation Style Rules
+
+For Chinese final exports, deterministic punctuation cleanup must follow these rules:
+
+- Role speech and dialogue use Chinese curved quotation marks: `“...”`.
+- Quoted non-skill text nested inside dialogue uses Chinese single quotation marks: `‘...’`.
+- Japanese dialogue brackets `「...」`, Japanese emphasis/title brackets `『...』`, and ASCII dialogue quotes should not remain in Chinese body text.
+- Skill names use only `〈...〉`, including magic and active ability names. Do not use `『...』`, `「...」`, `“...”`, or `《...》` for skill names.
+- System messages, UI notices, and world announcements keep `《...》` and must be bolded in Markdown: `**《...》**`.
+- Chapter headings may preserve a user-specified title format, but body text must follow the Chinese punctuation rules above.
+- Ambiguous brackets that could be either a title, item, nickname, or skill must be reported for human review instead of being globally rewritten.
+
 ## 8. Fix Execution Protocol
 
 Use this sequence for every full-book consistency pass:

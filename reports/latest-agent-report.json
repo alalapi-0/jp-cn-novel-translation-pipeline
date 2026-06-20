@@ -1,117 +1,265 @@
 {
-  "round_id": "final-consistency-vector-worktree-governance-20260618",
-  "timestamp": "2026-06-18T04:20:00Z",
+  "round_id": "governance-final-ready-v2-cleanup-20260618",
+  "timestamp": "2026-06-18T07:31:28Z",
   "agent": "codex",
   "agent_surface": "codex",
-  "mode": "fix",
-  "goal": "Final consistency export plus vector index health and dirty worktree governance",
+  "mode": "audit",
+  "goal": "Full governance cleanup: remove active refinement/R-MR/production_candidate route, preserve one final translation, and define reusable v2 translation protocol",
   "scope": [
-    "ch001-612",
-    "fullbook consistency",
-    "final export"
+    "north-star v2 docs",
+    "scheduler final_ready truth",
+    "legacy refinement entrypoints disabled",
+    "API and Agent quota production protocol",
+    "stale docs and prompt archive cleanup",
+    "Workbench status/export wording",
+    "model/profile schema cleanup"
   ],
-  "tool_probe_status": "not_run",
+  "repo_status_before": "main working tree already dirty; no commit requested",
+  "tool_probe_status": "passed",
   "tools_used": [
     {
       "tool": "translation-qa skill",
-      "purpose": "quality review workflow guidance",
-      "result": "loaded and smoke-tested"
+      "purpose": "protocol-safe consistency/final handling",
+      "result": "loaded"
     },
     {
       "tool": "local python scripts",
-      "purpose": "audit, fix, export, and finalize reports",
+      "purpose": "scheduler, singleton, gate, report validation",
       "result": "passed"
+    },
+    {
+      "tool": "pytest",
+      "purpose": "full regression suite",
+      "result": "519 passed"
+    },
+    {
+      "tool": "git",
+      "purpose": "inventory moves and working-tree review",
+      "result": "dirty tree warning only"
     }
   ],
+  "tools_not_used": [
+    {
+      "tool": "real API providers",
+      "reason": "governance cleanup only; no authorized production translation call needed"
+    },
+    {
+      "tool": "web browser/Playwright UI run",
+      "reason": "no dev server/UI visual implementation requested in this governance pass"
+    }
+  ],
+  "web_research": [],
   "changed_files": [
-    "workspace/configs/glossary.yaml",
-    "scripts/audit_actual_chapter_content.py",
-    "scripts/build_term_variant_report.py",
-    "scripts/fix_terminology_consistency.py",
-    "scripts/run_consistency_fix_all.py",
-    "scripts/supplement_fullbook_regen_rules.py",
-    "scripts/export_consistency_final_volume.py",
-    "scripts/finalize_consistency_run.py",
-    "output_cn/translated/",
-    "output_cn/bilingual/",
+    ".agent_runtime/status.json",
+    "AGENTS.md",
+    "README.md",
+    "agent.md",
+    "agent_layer.yaml",
+    "configs/character_profile.yaml",
+    "configs/model_profiles.yaml",
+    "configs/style_profile.yaml",
+    "configs/world_bible.yaml",
+    "directions/cn_to_jp/README.md",
+    "directions/jp_to_cn/README.md",
+    "docs/AGENT_ROADMAP.md",
+    "docs/TOOL_USAGE_POLICY.md",
+    "docs/agent_operating_manual.md",
+    "docs/agent_tooling_strategy.md",
+    "docs/agent_workflow/quality_gate.md",
+    "docs/api_provider_strategy.md",
+    "docs/architecture_overview.md",
+    "docs/archive/governance/current_repository_audit.md",
+    "docs/archive/governance/final_state_governance_rebaseline_20260611.md",
+    "docs/archive/governance/governance_round_02_audit.md",
+    "docs/archive/governance/repo_unrelated_content_audit_2026-06-12.md",
+    "docs/archive/legacy_refinement/README.md",
+    "docs/archive/legacy_refinement/draft_full_baseline_go_decision.md",
+    "docs/archive/legacy_refinement/fs039_baseline_go_decision_report.json",
+    "docs/archive/legacy_refinement/phase_d_handoff.md",
+    "docs/archive/legacy_refinement/prompts/round_52_stage_c_refine_pilot.md",
+    "docs/archive/legacy_refinement/prompts/throughput_fix_round_prompt.md",
+    "docs/archive/legacy_refinement/prompts/throughput_recovery_execution_prompt.md",
+    "docs/archive/legacy_refinement/refinement_workflow.md",
+    "docs/archive/legacy_refinement/throughput_bottleneck_audit.md",
+    "docs/archive/legacy_refinement/throughput_metrics_summary.md",
+    "docs/archive/legacy_refinement/throughput_optimization_task_list.md",
+    "docs/archive/legacy_refinement/translation_throughput_optimization_report.md",
+    "docs/archive/legacy_roadmaps/README.md",
+    "docs/archive/legacy_roadmaps/prompts/round_51_phase2_smoke_and_checkers.md",
+    "docs/archive/legacy_roadmaps/roadmap_phase2_rounds_51_plus.md",
+    "docs/archive/legacy_roadmaps/roadmap_rounds_00_40.md",
+    "docs/archive/legacy_roadmaps/roadmap_rounds_41_50_tooling_and_workbench.md",
+    "docs/archive/legacy_roadmaps/roadmap_rounds_reference_method_01_40.md",
+    "docs/archive/legacy_roadmaps/translation_recovery_3ch_roadmap.md",
+    "docs/archive/legacy_roadmaps/translation_recovery_3ch_task_list.md",
+    "docs/character_profile_system.md",
+    "docs/continuous_translation_autopilot_rules.md",
+    "docs/data_schema_plan.md",
+    "docs/definition_of_done.md",
+    "docs/design/stitch/PROMPT_TEMPLATES.md",
+    "docs/design/stitch/UI_TASKS.md",
+    "docs/embedding_memory_design.md",
     "docs/final_consistency_report.md",
-    "workspace/review/final_consistency_report_20260618.json",
-    "workspace/review/final_consistency_patch_log_20260618.json"
+    "docs/final_state_implementation_roadmap.md",
+    "docs/final_state_round_task_list.md",
+    "docs/frontend_workbench_plan.md",
+    "docs/governance_rules.md",
+    "docs/index.md",
+    "docs/local_scheduler_runbook.md",
+    "docs/mcp_playwright_setup_plan.md",
+    "docs/next_agent_execution_protocol.md",
+    "docs/non_goals_and_guardrails.md",
+    "docs/phase_acceptance_criteria.md",
+    "docs/product_final_state_spec.md",
+    "docs/project_vision.md",
+    "docs/prompts/CONTINUOUS_FS_ADVANCE_PROMPT.md",
+    "docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md",
+    "docs/quality_review_workflow.md",
+    "docs/reference_method_governance_audit.md",
+    "docs/reference_repo_methodology_integration.md",
+    "docs/repo_protocol_alignment.md",
+    "docs/rounds/STITCH_UI_IMPLEMENTATION_ROUND.md",
+    "docs/shared_core_design.md",
+    "docs/stable_id_and_jsonl_design.md",
+    "docs/terminology_system_design.md",
+    "docs/translation_consistency_protocol.md",
+    "docs/translation_memory_design.md",
+    "docs/translation_pipeline_design.md",
+    "docs/translation_production_protocol.md",
+    "frontend/assets/app.js",
+    "frontend/export.html",
+    "governance/file_role_map.yaml",
+    "governance/novel_pipeline_contract.yaml",
+    "governance/repo_inventory.example.json",
+    "governance/round_state.yaml",
+    "model-router/README.md",
+    "model-router/config/models.yaml",
+    "output_cn/final_export_manifest.json",
+    "project.yaml",
+    "reports/agent_audit_log.jsonl",
+    "reports/final_translation_singleton_check.json",
+    "reports/gate_result.json",
+    "reports/latest-agent-report.json",
+    "reports/tool_probe_report.json",
+    "schemas/model_profiles.schema.json",
+    "scripts/README.md",
+    "scripts/agent_gate.py",
+    "scripts/arbitrate_conflicts.py",
+    "scripts/build_refine_diff.py",
+    "scripts/check_final_translation_singleton.py",
+    "scripts/check_refinement_quality.py",
+    "scripts/diagnose_throughput.py",
+    "scripts/export_consistency_final_volume.py",
+    "scripts/export_refined_runs.py",
+    "scripts/finalize_consistency_run.py",
+    "scripts/local_scheduler_status.py",
+    "scripts/micro_round_plan.py",
+    "scripts/model_ab_test.py",
+    "scripts/pilot_batch_chain.sh",
+    "scripts/plan_refine_micro_rounds.py",
+    "scripts/production_pipeline.sh",
+    "scripts/production_watchdog.sh",
+    "scripts/refine_stage_c.py",
+    "scripts/resume_production.py",
+    "scripts/run_micro_round.py",
+    "scripts/run_translation_recovery_round.py",
+    "scripts/start_production_detached.sh",
+    "scripts/translation_autopilot_loop.py",
+    "src/providers/router_provider.py",
+    "src/scheduler/status.py",
+    "src/scheduler/task_planner.py",
+    "src/workbench/api_status.py",
+    "src/workbench/export_service.py",
+    "src/workbench/pipeline_status.py",
+    "src/workbench/server.py",
+    "tests/test_export_refined_runs.py",
+    "tests/test_local_scheduler_status.py",
+    "tests/test_pipeline_status.py",
+    "tests/test_plan_refine_micro_rounds.py",
+    "tests/test_refine_diff_builder.py",
+    "tests/test_refine_stage_c.py",
+    "tests/test_refinement_checkers.py",
+    "tests/test_resume_production.py",
+    "tests/test_scheduler_task_planner.py"
   ],
   "commands_run": [
-    "python3 scripts/run_quality_review.py --write-example",
-    "python3 scripts/audit_actual_chapter_content.py --chapters 1 612",
-    "python3 scripts/build_term_variant_report.py --chapters 1 612",
-    "python3 scripts/run_consistency_fix_all.py --dry-run",
-    "python3 scripts/run_consistency_fix_all.py",
-    "python3 scripts/export_consistency_final_volume.py --json",
-    "python3 scripts/finalize_consistency_run.py"
+    "python3 -m py_compile scripts/refine_stage_c.py scripts/check_refinement_quality.py scripts/export_refined_runs.py scripts/resume_production.py scripts/build_refine_diff.py scripts/agent_gate.py scripts/local_scheduler_status.py src/workbench/pipeline_status.py src/workbench/api_status.py src/workbench/export_service.py src/workbench/server.py src/providers/router_provider.py src/scheduler/status.py src/scheduler/task_planner.py",
+    "npm run test:py -- tests/test_configs_schema.py tests/test_agent_gate.py tests/test_refine_stage_c.py tests/test_refine_diff_builder.py tests/test_refinement_checkers.py tests/test_export_refined_runs.py tests/test_resume_production.py tests/test_pipeline_status.py tests/test_local_scheduler_status.py tests/test_scheduler_task_planner.py tests/test_plan_refine_micro_rounds.py tests/test_run_micro_round_refine.py -q",
+    "python3 scripts/scan_repo_inventory.py",
+    "npm run test:py",
+    "python3 scripts/local_scheduler_status.py --json",
+    "python3 scripts/check_orphan_workers.py --json",
+    "python3 scripts/check_final_translation_singleton.py --json",
+    "python3 scripts/plan_refine_micro_rounds.py --queue-stats --json",
+    "python3 scripts/refine_stage_c.py --run-id legacy_probe --dry-run --json",
+    "python3 scripts/agent_gate.py --json",
+    "git diff --check"
   ],
   "test_results": [
     {
-      "name": "final fixer dry-run",
-      "changed_segments": 0
+      "name": "scheduler runtime truth",
+      "status": "passed",
+      "current_phase": "final_ready",
+      "next_task": "paused",
+      "next_round_id": null,
+      "next_chapter_range": null,
+      "draft_progress": "612/612",
+      "final_translation_progress": "612/612",
+      "active_worker_count": 0,
+      "orphan_worker_count": 0
     },
     {
-      "name": "final term variant report",
-      "terms_with_variance": 0,
-      "terms_with_unrecognized_variants": 0
+      "name": "final translation singleton",
+      "status": "passed",
+      "canonical": "output_cn/translated/full_volume_cn.md",
+      "bilingual_markdown_file_count": 0
     },
     {
-      "name": "final actual content audit",
-      "target_kana_residuals": {
-        "count": 0,
-        "items": []
-      },
-      "target_placeholder_residuals": {
-        "count": 0,
-        "items": []
-      },
-      "target_english_residuals": {
-        "count": 0,
-        "items": []
-      }
+      "name": "focused governance regression suite",
+      "status": "passed",
+      "tests": 126
     },
     {
-      "name": "final export",
-      "chapters_exported": 612,
-      "chapters_missing": 0
+      "name": "full python regression suite",
+      "status": "passed",
+      "tests": 519
+    },
+    {
+      "name": "legacy R-MR planner CLI",
+      "status": "blocked_as_expected",
+      "exit_code": 2
+    },
+    {
+      "name": "legacy refine_stage_c CLI",
+      "status": "blocked_as_expected",
+      "exit_code": 2
     },
     {
       "name": "agent_gate",
-      "exit_code": 1,
-      "warnings": [
-        "vector_index_health",
-        "git_status_dirty"
-      ],
-      "hard_blockers": 0
+      "status": "warning",
+      "note": "all functional checks pass; warning is dirty working tree"
     },
     {
-      "name": "vector_db_inspect",
-      "exit_code": 0,
-      "result": "index_ok, 3 vectors, 0 orphans"
-    },
-    {
-      "name": "agent_gate_before_commit",
-      "exit_code": 1,
-      "result": "vector_index_health pass; remaining warning is git_status_dirty before commit"
+      "name": "git diff --check",
+      "status": "passed"
     }
   ],
   "issues_found": [
-    "stale reports and overbroad legacy aliases could mislead consistency decisions",
-    "fixer hit accounting counted no-op replacement cycles",
-    "ダンジョン実装 could be reverted by short ダンジョン rule without suffix protection"
+    "Scheduler could be pushed back to baseline_lock if old draft_full_baseline_go_decision.md was archived despite singleton final being ready",
+    "Agent gate still checked successful Round 52 refine dry-run instead of requiring legacy refinement to fail closed",
+    "Root docs and prompts still exposed old Round/RM/Phase2/throughput/refinement routes as active references",
+    "Workbench UI and export path still presented production runs/refined export as active actions",
+    "Model profile schema and router config still exposed refine/refinement as normal model roles"
   ],
   "issues_fixed": [
-    "removed/cleaned stale consistency report artifacts",
-    "fixed high-confidence consistency issues across 332 segments",
-    "regenerated final full-book export from canonical fixed translations",
-    "removed 57 obsolete per-range supplement scripts after consolidating fullbook rules",
-    "fixed vector gate false warning by matching vector index to its source manifest instead of unrelated active Workbench manifest",
-    "migrated workspace/vector_store/index.json to vector_index_metadata schema shape",
-    "updated run_round_50_e2e_trial.py to emit schema-compliant vector index records",
-    "removed obsolete per-range consistency runner scripts and pycache noise",
-    "restored baseline-named reports from deletion before staging to respect protected artifact policy"
+    "Scheduler now treats singleton final export manifest as final_ready truth; next_round_id and next_chapter_range remain null",
+    "Refinement/R-MR/production_candidate planner phases are legacy disabled; refine_stage_c, plan_refine_micro_rounds, build_refine_diff, export_refined_runs and resume --refine fail closed by default",
+    "New docs/translation_production_protocol.md defines API Mode and Agent Quota Mode with one shared artifact contract",
+    "North-star, roadmap, round task list, acceptance criteria, DoD, AGENTS, README, agent.md, project.yaml, agent_layer.yaml and governance state now point to v2 flow",
+    "Old roadmaps, throughput/refinement reports and stale prompts moved to docs/archive/legacy_*; root old audit snapshots moved to docs/archive/governance",
+    "Workbench wording and runs export UI no longer suggest active refinement/refined export",
+    "Model config/schema now uses translation/consistency/review roles and legacy_refinement only as explicit historical reproduction profile",
+    "repo_inventory regenerated after structural moves; latest audit log cleaned to current round only"
   ],
   "remaining_issues": [],
   "severity_summary": {
@@ -123,9 +271,13 @@
   "gate_status": "warning",
   "blockers": [],
   "risks": [
-    "No human literary review was performed for style beyond deterministic consistency checks.",
-    "agent_gate reported warnings for pre-existing vector index health and dirty working tree; consistency/export validation passed."
+    "Working tree is intentionally dirty because no commit was requested.",
+    "Legacy refinement modules/tests remain for historical diagnostics, but active CLI and planner entrypoints fail closed unless ALLOW_LEGACY_REFINEMENT=1.",
+    "No real API calls were made."
   ],
-  "next_recommended_round": "verify clean worktree after local commit; no push without user approval",
-  "human_decisions_required": []
+  "next_recommended_round": "FS-v2-001 Agent Quota Translation Writer, then FS-v2-002 UI Status Vocabulary v2.0",
+  "human_decisions_required": [
+    "Whether to prioritize Agent quota translation writer or UI v2 status cleanup next",
+    "Whether to commit the governance cleanup changes"
+  ]
 }

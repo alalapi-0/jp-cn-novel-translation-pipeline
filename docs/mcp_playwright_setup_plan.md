@@ -36,7 +36,7 @@
 
 | 轮次 | 内容 |
 |------|------|
-| Round 36 | 前端信息架构落地（见 `docs/roadmap_rounds_00_40.md`） |
+| FS-v2 UI | 前端信息架构落地（见 `docs/final_state_round_task_list.md`） |
 | Round 37 | 前端静态 MVP |
 | Round 38 | 前端与本地数据连接 |
 | Round 39 | 前端编辑能力 MVP |

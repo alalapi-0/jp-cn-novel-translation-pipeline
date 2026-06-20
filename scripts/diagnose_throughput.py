@@ -22,7 +22,7 @@ from translation.run_progress import classify_run_recovery, safe_load_json as lo
 
 WORKSPACE = REPO_ROOT / "workspace"
 DIAG_DIR = WORKSPACE / "diagnostics"
-SUMMARY_PATH = REPO_ROOT / "docs" / "throughput_metrics_summary.md"
+SUMMARY_PATH = REPO_ROOT / "docs" / "archive" / "legacy_refinement" / "throughput_metrics_summary.md"
 JSON_PATH = DIAG_DIR / "throughput_metrics.json"
 
 

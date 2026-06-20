@@ -1095,6 +1095,24 @@ def main() -> int:
     parser.add_argument("--skip-gate", action="store_true")
     args = parser.parse_args()
 
+    if args.phase == "refine" and os.environ.get("ALLOW_LEGACY_REFINEMENT") != "1":
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "error": "legacy_refinement_disabled",
+                    "message": (
+                        "refinement/R-MR is no longer part of the production route; "
+                        "use docs/translation_production_protocol.md and singleton final export. "
+                        "Set ALLOW_LEGACY_REFINEMENT=1 only for historical diagnostics."
+                    ),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 2
+
     code, payload = run_micro_round(
         phase=args.phase,
         round_id=args.round_id,

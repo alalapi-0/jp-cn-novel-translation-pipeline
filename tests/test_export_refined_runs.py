@@ -35,7 +35,8 @@ def _make_run(tmp_path: Path, run_id: str, offset: int, chapters: list[dict]) ->
     )
 
 
-def test_export_up_to_offset_fixture(tmp_path):
+def test_export_up_to_offset_fixture(tmp_path, monkeypatch):
+    monkeypatch.setenv("ALLOW_LEGACY_REFINEMENT", "1")
     exp = _load_exporter()
     _make_run(
         tmp_path,
@@ -78,7 +79,8 @@ def test_export_up_to_offset_fixture(tmp_path):
     assert not (out_dir / "translated" / "chapter_051_cn.md").is_file()
 
 
-def test_export_skips_failed_segments(tmp_path):
+def test_export_skips_failed_segments(tmp_path, monkeypatch):
+    monkeypatch.setenv("ALLOW_LEGACY_REFINEMENT", "1")
     exp = _load_exporter()
     _make_run(
         tmp_path,
@@ -100,7 +102,8 @@ def test_export_skips_failed_segments(tmp_path):
     assert summary["chapters_incomplete"] == 1
 
 
-def test_export_idempotent_preserves_human_edited(tmp_path):
+def test_export_idempotent_preserves_human_edited(tmp_path, monkeypatch):
+    monkeypatch.setenv("ALLOW_LEGACY_REFINEMENT", "1")
     exp = _load_exporter()
     _make_run(
         tmp_path,

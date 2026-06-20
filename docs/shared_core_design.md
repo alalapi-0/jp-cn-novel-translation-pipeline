@@ -76,8 +76,8 @@ shared/
 
 ### alignment
 
-- 职责：维护原文、初翻、润色之间的段落对齐。
-- 输入：segments、draft、refined translation。
+- 职责：维护原文、翻译中间态、最终译文之间的段落对齐。
+- 输入：segments、draft translation、final translation。
 - 输出：ParagraphAlignment。
 - 语言无关：是。
 - 方向适配：不直接适配，只使用 direction metadata。
@@ -207,7 +207,7 @@ shared/
 ### exporter
 
 - 职责：导出纯译文、双语对照、审核报告和前端数据。
-- 输入：draft、refined、alignment、issues、project metadata。
+- 输入：draft/final translation、alignment、issues、project metadata。
 - 输出：Markdown、JSON、archive。
 - 语言无关：是。
 - 方向适配：输出目录和标点格式可按 direction 配置。
