@@ -34,6 +34,104 @@ PLACEHOLDER_RE = re.compile(r"[□�]")
 PLAYER_EN_RE = re.compile(r"(?<![A-Za-z])Player(?![A-Za-z])")
 CHAPTER_ID_RE = re.compile(r"ch-(\d+)")
 KANA_CHARS = set(chr(c) for c in range(0x3040, 0x3100))
+ASCII_QUOTE_RE = re.compile(r"[\"“”‘’]")
+ASCII_ELLIPSIS_RE = re.compile(r"\.\.\.")
+ENGLISH_TOKEN_RE = re.compile(r"\b([A-Za-z]{3,})\b")
+_ENGLISH_IN_QUOTES_OR_PARENS_RE = re.compile(
+    r'("[^"]*"|“[^”]*”|‘[^’]*’|\'[^\']*\'|\([^)]*\)|（[^）]*）|「[^」]*」|『[^』]*』|《[^》]*》)',
+)
+DIALOGUE_MARKERS = ("「", "『", "」", "』")
+WORK_ROOT_PROFILE = REPO_ROOT / "workspace" / "configs"
+TEMPLATE_PROFILE = REPO_ROOT / "configs"
+ENGLISH_RESIDUAL_ALLOWLIST = {
+    "HP",
+    "MP",
+    "AP",
+    "DEF",
+    "EXP",
+    "NPC",
+    "PVP",
+    "PVE",
+    "MMO",
+    "RPG",
+    "ARPG",
+    "Boss",
+    "Bosses",
+    "boss",
+    "bosses",
+    "Lv",
+    "LV",
+    "UI",
+    "ATK",
+    "SPD",
+    "AGI",
+    "STR",
+    "INT",
+    "MVP",
+    "GM",
+    "DM",
+    "MOB",
+    "AOE",
+    "DPS",
+    "MPC",
+    "VIT",
+    "MND",
+    "DEX",
+    "RPG",
+    "ARPG",
+    "PVP",
+    "PVE",
+    "DPS",
+    "BLIZZARD",
+    "CRYO",
+    "DEUS",
+    "MATRIX",
+    "ANT",
+    "INFANTRY",
+    "RAID",
+    "RISING",
+    "RIVER",
+    "MATH",
+    "SKELETOY",
+    "JAPPER",
+    "RICK",
+    "LEVELER",
+    "OREISO",
+    "ENANT",
+    "NOUR",
+    "SHIMO",
+    "SHITA",
+    "ITTE",
+    "OKONATTE",
+    "ITAIKENA",
+    "BLANK",
+    "MOST",
+    "PLAYER",
+    "TREMBLE",
+    "TAKUMA",
+    "AMATEINTEIN",
+    "BOOKS",
+    "MANY",
+    "ORICHALCUM",
+    "DIVINE",
+    "MAIL",
+    "MAGNOSUKE",
+    "ORCMAN",
+    "RURURU",
+    "RURURURU",
+    "MAGNA",
+    "MERUM",
+}
+ENGLISH_RESIDUAL_TERM_ALLOWLIST: set[str] = set()
+ENGLISH_RESIDUAL_DYNAMIC_BLOCKWORDS = {
+    "https",
+    "http",
+    "www",
+    "com",
+    "net",
+    "viewimagebig",
+    "userpageimage",
+}
 PLAYER_EN_EXEMPTIONS = (
     "Most Valuable Player",
     "Monster Players",
@@ -124,6 +222,78 @@ def is_protected_literal_source_residual(src: str, tgt: str, tokens: list[str]) 
     return any(literal in src and literal in tgt and all(token in literal for token in tokens) for literal in PROTECTED_LITERAL_SOURCE_RESIDUALS)
 
 
+def _read_yaml(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return doc if isinstance(doc, dict) else {}
+
+
+def _collect_english_tokens(text: str) -> set[str]:
+    return {token.lower() for token in ENGLISH_TOKEN_RE.findall(text or "")}
+
+
+def _load_english_term_allowlist() -> set[str]:
+    global ENGLISH_RESIDUAL_TERM_ALLOWLIST
+    if ENGLISH_RESIDUAL_TERM_ALLOWLIST:
+        return ENGLISH_RESIDUAL_TERM_ALLOWLIST
+
+    terms: set[str] = {t.lower() for t in ENGLISH_RESIDUAL_ALLOWLIST}
+    terms.update(ENGLISH_RESIDUAL_DYNAMIC_BLOCKWORDS)
+
+    cp = _read_yaml(WORK_ROOT_PROFILE / "character_profile.yaml")
+    if not cp:
+        cp = _read_yaml(TEMPLATE_PROFILE / "character_profile.yaml")
+    for c in cp.get("characters", []) if isinstance(cp, dict) else []:
+        if not isinstance(c, dict):
+            continue
+        terms.update(_collect_english_tokens(str(c.get("name") or "")))
+        terms.update(_collect_english_tokens(str(c.get("target_name") or "")))
+        for alias in c.get("aliases") or []:
+            terms.update(_collect_english_tokens(str(alias or "")))
+        terms.update(_collect_english_tokens(str(c.get("first_person") or "")))
+        for marker in c.get("speech_tics") or []:
+            terms.update(_collect_english_tokens(str(marker or "")))
+
+    store = GlossaryStore(REPO_ROOT / "workspace" / "configs" / "glossary.yaml")
+    for entry in store.entries():
+        terms.update(_collect_english_tokens(entry.source_term))
+        terms.update(_collect_english_tokens(entry.target_term))
+        for alias in entry.aliases or []:
+            terms.update(_collect_english_tokens(alias))
+        if entry.description:
+            terms.update(_collect_english_tokens(entry.description))
+        if entry.notes:
+            terms.update(_collect_english_tokens(entry.notes))
+        if entry.category:
+            terms.update(_collect_english_tokens(entry.category))
+
+    ENGLISH_RESIDUAL_TERM_ALLOWLIST = terms
+    return terms
+
+
+def _load_style_punctuation_rules() -> list[str]:
+    cp = _read_yaml(WORK_ROOT_PROFILE / "style_profile.yaml")
+    if cp:
+        profiles = cp.get("profiles") or []
+    else:
+        cp = _read_yaml(TEMPLATE_PROFILE / "style_profile.yaml")
+        profiles = cp.get("profiles") or []
+    rules: list[str] = []
+    for profile in profiles:
+        if not isinstance(profile, dict):
+            continue
+        for rule in profile.get("punctuation_rules") or []:
+            text = str(rule or "").strip()
+            if text and text not in rules:
+                rules.append(text)
+    return rules
+
+
+def _contains_dialogue_markup(text: str) -> bool:
+    return any(marker in text for marker in DIALOGUE_MARKERS)
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -156,6 +326,14 @@ def clip(text: str, needle: str = "", *, width: int = 140) -> str:
     return text[: width - 3] + "..."
 
 
+def _mask_quoted_english_for_scan(text: str) -> str:
+    def _mask(match: re.Match[str]) -> str:
+        block = match.group(0)
+        return " " * len(block)
+
+    return _ENGLISH_IN_QUOTES_OR_PARENS_RE.sub(_mask, text)
+
+
 def load_segments(start: int, end: int) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for path in sorted(discover_canonical_files()):
@@ -174,6 +352,137 @@ def load_segments(start: int, end: int) -> dict[str, dict[str, Any]]:
                 row["_run_file"] = str(path.relative_to(REPO_ROOT))
                 out[sid] = row
     return out
+
+
+def target_punctuation_residuals(segments: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for sid, seg in segments.items():
+        tgt = cn_text(seg)
+        issues: list[str] = []
+        if ASCII_QUOTE_RE.search(tgt):
+            issues.append("ascii_dialogue_quotes")
+        if ASCII_ELLIPSIS_RE.search(tgt) and "…" not in tgt:
+            issues.append("ascii_ellipsis")
+        if "《" in tgt or "》" in tgt:
+            issues.append("system_notice_brackets_present")
+            if "《" in tgt and "》" not in tgt:
+                issues.append("unmatched_system_brackets")
+            if "》" in tgt and "《" not in tgt:
+                issues.append("unmatched_system_brackets")
+        if not issues:
+            continue
+        rows.append(
+            {
+                "chapter_id": seg["_chapter_id"],
+                "segment_id": sid,
+                "issues": issues,
+                "source_ref": clip(seg.get("source_text") or ""),
+                "target_ref": clip(tgt),
+            }
+        )
+    return rows
+
+
+def target_english_residuals(segments: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    allowed_lower = _load_english_term_allowlist()
+    for sid, seg in segments.items():
+        src = seg.get("source_text") or ""
+        tgt = cn_text(seg)
+        if not tgt:
+            continue
+        masked_tgt = _mask_quoted_english_for_scan(tgt)
+        tokens = sorted(set(ENGLISH_TOKEN_RE.findall(masked_tgt)))
+        src_tokens = _collect_english_tokens(src)
+        suspicious = [
+            token
+            for token in tokens
+            if token.lower() not in allowed_lower and token.lower() not in src_tokens
+        ]
+        player_hits = []
+        if "プレイヤー" in src and PLAYER_EN_RE.search(tgt):
+            player_hits.append("Player")
+        if not player_hits and not suspicious:
+            continue
+        rows.append(
+            {
+                "chapter_id": seg["_chapter_id"],
+                "segment_id": sid,
+                "english_tokens": sorted(set(player_hits + suspicious)),
+                "source_ref": clip(src),
+                "target_ref": clip(tgt),
+                "recommended_action": "review_untranslated_or_overshifted_english",
+            }
+        )
+    return rows
+
+
+def _load_character_voice_profiles() -> list[dict[str, Any]]:
+    cp_path = WORK_ROOT_PROFILE / "character_profile.yaml"
+    doc = _read_yaml(cp_path)
+    if not doc:
+        doc = _read_yaml(TEMPLATE_PROFILE / "character_profile.yaml")
+    return [c for c in (doc.get("characters") or []) if isinstance(c, dict)]
+
+
+def _character_hit(character: dict[str, Any], text: str) -> bool:
+    name = str(character.get("name") or "")
+    if name and name in text:
+        return True
+    target = str(character.get("target_name") or "")
+    if target and target in text:
+        return True
+    return any(a and str(a) in text for a in character.get("aliases") or [])
+
+
+def _voice_markers(character: dict[str, Any]) -> list[str]:
+    markers: list[str] = []
+    first_person = str(character.get("first_person") or "").strip()
+    if first_person:
+        markers.append(first_person)
+    for tic in character.get("speech_tics") or []:
+        t = str(tic or "").strip()
+        if t:
+            markers.append(t)
+    return markers
+
+
+def detect_voice_style_drift(segments: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    characters = _load_character_voice_profiles()
+    if not characters:
+        return rows
+    for sid, seg in segments.items():
+        src = seg.get("source_text") or ""
+        tgt = cn_text(seg)
+        if not src or not tgt:
+            continue
+        if not _contains_dialogue_markup(src):
+            continue
+        char_hits = [c for c in characters if _character_hit(c, src)]
+        if not char_hits:
+            continue
+        for char in char_hits:
+            markers = _voice_markers(char)
+            source_markers = [m for m in markers if m and m in src]
+            if not source_markers:
+                continue
+            missing = [m for m in source_markers if m not in tgt]
+            if not missing:
+                continue
+            rows.append(
+                {
+                    "chapter_id": seg["_chapter_id"],
+                    "segment_id": sid,
+                    "character": char.get("name"),
+                    "character_target_name": char.get("target_name") or char.get("name"),
+                    "source_markers": source_markers,
+                    "missing_markers": missing,
+                    "source_ref": clip(src),
+                    "target_ref": clip(tgt),
+                }
+            )
+    return rows
 
 
 def build_registry_hints() -> list[dict[str, Any]]:
@@ -285,29 +594,6 @@ def target_placeholder_residuals(segments: dict[str, dict[str, Any]]) -> list[di
                 "placeholder_tokens": tokens,
                 "source_ref": clip(seg.get("source_text") or ""),
                 "target_ref": clip(tgt, tokens[0]),
-            }
-        )
-    return rows
-
-
-def target_english_residuals(segments: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    rows = []
-    for sid, seg in segments.items():
-        src = seg.get("source_text") or ""
-        tgt = cn_text(seg)
-        if "プレイヤー" not in src or not PLAYER_EN_RE.search(tgt):
-            continue
-        joined = src + "\n" + tgt
-        if any(exempt in joined for exempt in PLAYER_EN_EXEMPTIONS):
-            continue
-        rows.append(
-            {
-                "chapter_id": seg["_chapter_id"],
-                "segment_id": sid,
-                "english_tokens": sorted(set(PLAYER_EN_RE.findall(tgt))),
-                "source_ref": clip(src, "プレイヤー"),
-                "target_ref": clip(tgt, "Player"),
-                "recommended_action": "replace_plain_player_term_with_cn_player",
             }
         )
     return rows
@@ -461,10 +747,13 @@ def main() -> int:
     segments = load_segments(start, end)
     previous = revalidate_previous_issues(segments, args.previous_issues)
     kana_residuals = target_kana_residuals(segments)
+    punctuation_residuals = target_punctuation_residuals(segments)
     placeholder_residuals = target_placeholder_residuals(segments)
     english_residuals = target_english_residuals(segments)
+    voice_residuals = detect_voice_style_drift(segments)
     kana_candidates = actual_kana_candidates(segments)
     registry_observations = registry_hint_observations(segments, build_registry_hints())
+    style_rules = _load_style_punctuation_rules()
 
     report = {
         "schema": "actual_chapter_content_audit.v1",
@@ -484,6 +773,18 @@ def main() -> int:
         "target_english_residuals": {
             "count": len(english_residuals),
             "items": english_residuals,
+        },
+        "target_punctuation_residuals": {
+            "count": len(punctuation_residuals),
+            "items": punctuation_residuals,
+        },
+        "character_voice_style_residuals": {
+            "count": len(voice_residuals),
+            "items": voice_residuals,
+        },
+        "style_profile_snippet": {
+            "count": len(style_rules),
+            "items": style_rules[:50],
         },
         "source_katakana_candidates": {
             "unique_terms": len(kana_candidates),
@@ -505,6 +806,8 @@ def main() -> int:
                 "target_kana_residuals": len(kana_residuals),
                 "target_placeholder_residuals": len(placeholder_residuals),
                 "target_english_residuals": len(english_residuals),
+                "target_punctuation_residuals": len(punctuation_residuals),
+                "character_voice_style_residuals": len(voice_residuals),
                 "source_katakana_candidates": len(kana_candidates),
                 "registry_hint_observations": len(registry_observations),
                 "output": str(args.output),

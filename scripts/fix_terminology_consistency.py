@@ -48,6 +48,11 @@ import yaml  # noqa: E402
 from glossary.store import GlossaryStore  # noqa: E402
 
 BRACKETS = "【】"  # 【】
+DOUBLE_QUOTE_OPEN = "「"
+DOUBLE_QUOTE_CLOSE = "」"
+SINGLE_QUOTE_OPEN = "『"
+SINGLE_QUOTE_CLOSE = "』"
+ELLIPSIS_RE = re.compile(r"\.\.\.")
 
 # Variants below are known to collide with another approved canonical term.
 # Keep them visible in audit reports, but exclude them from mechanical
@@ -2032,6 +2037,61 @@ def _collapse_redundant_gloss(text: str) -> str:
     return _GLOSS_RE.sub(r"\1", text)
 
 
+def _normalize_ascii_double_quotes(text: str) -> str:
+    out: list[str] = []
+    is_open = True
+    for ch in text:
+        if ch == '"' or ch == "“":
+            out.append(DOUBLE_QUOTE_OPEN if is_open else DOUBLE_QUOTE_CLOSE)
+            is_open = not is_open
+            continue
+        if ch == "”":
+            out.append(DOUBLE_QUOTE_CLOSE)
+            is_open = False
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
+def _normalize_ascii_single_quotes(text: str) -> str:
+    out: list[str] = []
+    is_open = True
+    n = len(text)
+    for idx, ch in enumerate(text):
+        if ch == "\'" or ch == "‘":
+            prev_char = text[idx - 1] if idx > 0 else ""
+            next_char = text[idx + 1] if idx + 1 < n else ""
+            if prev_char.isalnum() and next_char.isalnum():
+                out.append(ch)
+                continue
+            out.append(SINGLE_QUOTE_OPEN if is_open else SINGLE_QUOTE_CLOSE)
+            is_open = not is_open
+            continue
+        if ch == "’":
+            out.append(SINGLE_QUOTE_CLOSE)
+            is_open = False
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
+def _normalize_quoted_punctuation(text: str) -> str:
+    text = text.replace("《", DOUBLE_QUOTE_OPEN).replace("》", DOUBLE_QUOTE_CLOSE)
+    text = _normalize_ascii_double_quotes(text)
+    text = _normalize_ascii_single_quotes(text)
+    return text
+
+
+def _normalize_ellipsis(text: str) -> str:
+    return ELLIPSIS_RE.sub("……", text)
+
+
+def normalize_text_punctuation(text: str) -> str:
+    text = _normalize_quoted_punctuation(text)
+    text = _normalize_ellipsis(text)
+    return text
+
+
 _KATAKANA = set(chr(c) for c in range(0x30A0, 0x3100))
 _KATAKANA.discard("・")
 RARE_COMMON_SOURCE_PREFIXES = (
@@ -2238,6 +2298,7 @@ def main() -> int:
     start, end = args.chapters
     diffs: list[dict] = []
     rule_hits: Counter = Counter()
+    normalization_hits: Counter = Counter()
     skipped_hits: Counter = Counter()
     changed_segments = 0
     changed_fields = 0
@@ -2269,6 +2330,10 @@ def main() -> int:
             segment_changed = False
             for field, base in field_values:
                 fixed, hits = apply_rules(base, seg.get("source_text") or "", rules, seg.get("segment_id") or "")
+                normalized = normalize_text_punctuation(fixed)
+                if normalized != fixed:
+                    normalization_hits["normalized_text_punctuation"] += 1
+                fixed = normalized
                 for variant in AUTO_FIX_DENYLIST:
                     if variant in fixed:
                         skipped_hits[variant] += fixed.count(variant)
@@ -2310,6 +2375,7 @@ def main() -> int:
         "changed_segments": changed_segments,
         "changed_fields": changed_fields,
         "rule_hits": dict(sorted(rule_hits.items(), key=lambda kv: -kv[1])),
+        "normalization_hits": dict(sorted(normalization_hits.items(), key=lambda kv: -kv[1])),
         "skipped_ambiguous_hits": dict(sorted(skipped_hits.items(), key=lambda kv: -kv[1])),
         "target_field_mode": "all_target_fields" if args.update_all_target_fields else "effective_text",
         "rules_used": {variant: [target for target, _label, _source in candidates] for variant, candidates in rules.items()},

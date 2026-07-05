@@ -41,6 +41,29 @@ ENTITY_CATEGORIES: tuple[str, ...] = (
 _KATAKANA_RE = re.compile(r"[ァ-ヴー]{3,}(?:[・ァ-ヴー]{0,3})?(?:[一-龯]{0,2})?")
 _BRACKET_RE = re.compile(r"【([^】]{1,32})】")
 _CJK_CHUNK_RE = re.compile(r"[\u4e00-\u9fff]{2,6}")
+_KANA_CHARS = set(chr(c) for c in range(0x3040, 0x30a0))
+
+
+def _contains_standalone_term(term: str, text: str) -> bool:
+    """Match a term against `text` with Japanese-kana boundary protection.
+
+    Avoid noisy hits like ``レア`` inside ``レアスキル`` / ``レアアイテム`` by
+    requiring surrounding chars not to be kana for kana-heavy terms.
+    """
+    if not term:
+        return False
+    if not any(ch in _KANA_CHARS for ch in term):
+        return term in text
+    start = 0
+    while True:
+        idx = text.find(term, start)
+        if idx == -1:
+            return False
+        before = text[idx - 1] if idx > 0 else ""
+        after = text[idx + len(term)] if idx + len(term) < len(text) else ""
+        if before not in _KANA_CHARS and after not in _KANA_CHARS:
+            return True
+        start = idx + len(term)
 
 
 def utc_now_iso() -> str:
@@ -114,18 +137,24 @@ def infer_target_variant(
     """Heuristic target guess when canonical translation is absent in draft."""
     if canonical_target and canonical_target in draft_text:
         return canonical_target
+    bracketed_target = f"【{canonical_target}】"
+    if canonical_target and bracketed_target in draft_text:
+        return canonical_target
     bracket = _BRACKET_RE.search(source_text)
     if bracket:
         draft_brackets = _BRACKET_RE.findall(draft_text)
         if draft_brackets:
             return f"【{draft_brackets[0]}】"
-    chunks = _cjk_noun_chunks(draft_text)
+    source_hit = _contains_standalone_term(source_term, source_text)
+    if source_hit and _contains_standalone_term(source_term, draft_text):
+        return source_term
+    chunks = [
+        chunk for chunk in _cjk_noun_chunks(draft_text)
+        if chunk != canonical_target and len(chunk) >= 2
+    ]
     if not chunks:
         return ""
-    candidates = [c for c in chunks if c != canonical_target]
-    if not candidates:
-        return chunks[0]
-    return max(candidates, key=len)
+    return max(chunks, key=len)
 
 
 def _empty_chapter_stats() -> dict[str, Any]:
@@ -182,8 +211,16 @@ def scan_entity_file(
             segment_id = str(segment.get("segment_id") or "")
 
             for entry in terms:
-                src_hit = bool(entry.source_term) and entry.source_term in source_text
-                tgt_hit = bool(entry.target_term) and entry.target_term in draft_text
+                src_hit = _contains_standalone_term(entry.source_term, source_text)
+                target_hit = False
+                if bool(entry.target_term):
+                    target_hit = _contains_standalone_term(entry.target_term, draft_text)
+                    if not target_hit:
+                        target_hit = (
+                            f"【{entry.target_term}】" in draft_text
+                            or f"《{entry.target_term}》" in draft_text
+                        )
+                tgt_hit = bool(entry.target_term) and target_hit
                 if not src_hit and not tgt_hit:
                     continue
                 stats = entity_bucket.setdefault(entry.source_term, _empty_entity_stats())

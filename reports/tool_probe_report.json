@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "timestamp": "2026-06-18T06:02:45Z",
+  "timestamp": "2026-06-28T13:10:33Z",
   "agent_surface": "cursor",
   "repo_root": "/Users/alalapi/PycharmProjects/light_novel",
   "status": "passed",
@@ -12,7 +12,7 @@
     },
     "git": {
       "exit_code": 0,
-      "output": "M .agent_runtime/status.json\n M data/examples/review_issue_report.example.json",
+      "output": "M reports/gate_result.json\n M reports/tool_probe_report.json\n M scripts/audit_actual_chapter_content.py\n M scripts/fix_terminology_consistency.py\n M src/consistency/entity_index.py\n M src/glossary/usage_index.py",
       "available": true
     },
     "git_branch": {
@@ -31,9 +31,9 @@
       "available": true
     },
     "pnpm": {
-      "exit_code": 127,
-      "output": "/bin/sh: pnpm: command not found",
-      "available": false
+      "exit_code": 0,
+      "output": "11.7.0",
+      "available": true
     },
     "python3": {
       "exit_code": 0,

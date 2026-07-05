@@ -13,13 +13,113 @@ _PLACEHOLDER_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\{PH_[A-Za-z0-9_]+\}"),
     re.compile(r"https?://[^\s\]}>]+"),
 )
-_JP_NEGATION_RE = re.compile(
-    r"(?:ない|ません|なかった|なく|ぬ|無い|ないで|ではない|じゃない|行かない|行かなかった|していない)"
+_JP_NEGATION_TRIGGER_RE = re.compile(
+    r"(?:しなければ|しなかった|しない|行かない|行かなかった|行けない|来ない|来なかった|来られない|できない|出来ない|なければ)"
+)
+_JP_NEGATION_SOFT_EXEMPT_RE = re.compile(
+    r"(?:しかない|かもしれない|のだろう|だろうか|じゃないか|のではない|のではないだろう|仕様|わけではない|なければならない)"
 )
 _CN_NEGATION_RE = re.compile(
     r"(?:没有|未|非|不|没|无|未能|未曾|不会|不是|没去|没有去|未能)"
 )
-_CN_AFFIRM_MOTION_RE = re.compile(r"(?:去了|会来|来到|进入了|已经去)")
+_CN_AFFIRM_MOTION_RE = re.compile(r"(?:去了|来到|到达|抵达|会来|会来吧|来到了|去到|登上|前去|回去|跑到|会来呢)")
+_AUTO_FIX_DENYLIST = {
+    "狙击蚁",
+    "秘遗物",
+    "全队",
+    "组队",
+    "团队战",
+    "派对会场",
+    "复活点",
+    "领导者",
+    "队长",
+    "老大",
+    "领队",
+    "首领",
+    "头目",
+    "领头",
+    "女兵",
+    "白袍",
+    "斗篷",
+    "黑斗篷",
+    "阿玛莉",
+    "马尔曼",
+    "马尔曼（マーマン）",
+    "马曼",
+    "吸血鬼",
+    "エルフ",
+    "コトノハ",
+    "グライテン",
+    "ドラゴン",
+    "邦布大人",
+    "班布大人",
+}
+
+
+def _is_word_char(ch: str) -> bool:
+    if not ch:
+        return False
+    return (
+        ch.isalnum()
+        or ("\u4e00" <= ch <= "\u9fff")
+        or ("\u3040" <= ch <= "\u30ff")
+        or ("ー" <= ch <= "々")
+    )
+
+
+_KATAKANA = set(chr(c) for c in range(0x30A0, 0x3100))
+
+
+def _source_occurs(source: str, text: str) -> bool:
+    if not source:
+        return False
+    source = source.strip("【】")
+    if source not in text:
+        return False
+    if not all(ch in _KATAKANA for ch in source):
+        return True
+    idx = 0
+    while True:
+        pos = text.find(source, idx)
+        if pos == -1:
+            return False
+        before = text[pos - 1] if pos > 0 else ""
+        after = text[pos + len(source)] if pos + len(source) < len(text) else ""
+        if before not in _KATAKANA and after not in _KATAKANA:
+            return True
+        idx = pos + len(source)
+
+
+def _contains_standalone_variant(text: str, variant: str) -> bool:
+    idx = text.find(variant)
+    while idx != -1:
+        before = text[idx - 1] if idx > 0 else ""
+        after = text[idx + len(variant)] if idx + len(variant) < len(text) else ""
+        if not _is_word_char(before) and not _is_word_char(after):
+            return True
+        idx = text.find(variant, idx + len(variant))
+    return False
+
+
+def _is_system_style_fragment(text: str) -> bool:
+    compact = re.sub(r"\s+", "", text or "")
+    if not compact:
+        return False
+    if compact in {
+        "ありがとうございます",
+        "Ｌ(・)Ｐ(・)が(・)減(・)って(・)い(・)た(・)。",
+        "L(・)P(・)が(・)減(・)って(・)い(・)た(・)。",
+    }:
+        return True
+
+    ascii_like_chars = sum(
+        1
+        for ch in compact
+        if ch.isascii() or ch in "・()（）[]<>／＋－−=_—【】「」『』《》"
+    )
+    if len(compact) >= 16 and ascii_like_chars / len(compact) >= 0.45:
+        return True
+    return False
 
 
 def _text_length_units(text: str, language_direction: str) -> int:
@@ -32,8 +132,16 @@ def _text_length_units(text: str, language_direction: str) -> int:
     return len(re.findall(r"\S+", stripped))
 
 
-def _likely_omission(source_len: int, target_len: int, language_direction: str) -> bool:
+def _likely_omission(
+    source_len: int,
+    target_len: int,
+    language_direction: str,
+    *,
+    source_text: str = "",
+) -> bool:
     if source_len < 8 or target_len <= 0:
+        return False
+    if _is_system_style_fragment(source_text):
         return False
     min_target = 2 if language_direction == "JP_TO_CN" else max(1, source_len // 3)
     return target_len <= max(min_target, source_len // 4)
@@ -109,17 +217,24 @@ def check_term_consistency(
         paragraph_id = para.get("paragraph_id", "")
         for seg in para.get("segments", []):
             target = seg.get("target_text", "") or ""
+            source_text = seg.get("source_text", "") or ""
             human_edited = bool(seg.get("human_edited"))
             for term in terms:
                 canonical = term.get("canonical_zh", "")
                 if not canonical:
                     continue
-                wrong_aliases = [
-                    a for a in term.get("aliases_zh", []) if a and a in target and a != canonical
-                ]
-                uses_wrong = bool(wrong_aliases)
-                if canonical not in target and any(a in target for a in term.get("aliases_zh", [])):
-                    uses_wrong = True
+                aliases = [a for a in term.get("aliases_zh", []) if a and a != canonical]
+                if canonical in target or not aliases:
+                    continue
+                wrong_aliases = [a for a in aliases if _contains_standalone_variant(target, a)]
+                if not wrong_aliases:
+                    continue
+                if not _source_occurs(term.get("source", ""), source_text):
+                    continue
+                normalized_wrong = [a for a in wrong_aliases if a not in _AUTO_FIX_DENYLIST]
+                if not normalized_wrong:
+                    continue
+                uses_wrong = True
                 if not uses_wrong:
                     continue
                 locked = bool(term.get("locked"))
@@ -217,7 +332,7 @@ def check_segment_alignment(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
             continue
         src_len = _text_length_units(source, direction)
         tgt_len = _text_length_units(target, direction)
-        if _likely_omission(src_len, tgt_len, direction):
+        if _likely_omission(src_len, tgt_len, direction, source_text=source):
             human_edited = bool(seg.get("human_edited"))
             issues.append(
                 _base_issue(
@@ -265,7 +380,9 @@ def _negation_polarity_mismatch(source: str, target: str, language_direction: st
         return False
     if not source.strip() or not target.strip():
         return False
-    if not _JP_NEGATION_RE.search(source):
+    if not _JP_NEGATION_TRIGGER_RE.search(source):
+        return False
+    if _JP_NEGATION_SOFT_EXEMPT_RE.search(source):
         return False
     if _CN_NEGATION_RE.search(target):
         return False

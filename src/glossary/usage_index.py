@@ -32,6 +32,25 @@ SCHEMA_VERSION = 1
 DIVERGENT_RATIO_THRESHOLD = 0.3
 MIN_SOURCE_HITS_FOR_CONFLICT = 2
 MAX_SAMPLE_SEGMENT_IDS = 20
+_KANA_CHARS = set(chr(c) for c in range(0x3040, 0x30a0))
+
+
+def _contains_standalone_term(term: str, text: str) -> bool:
+    """Match with kana-boundary protection for katakana-heavy terms."""
+    if not term:
+        return False
+    if not any(ch in _KANA_CHARS for ch in term):
+        return term in text
+    start = 0
+    while True:
+        idx = text.find(term, start)
+        if idx == -1:
+            return False
+        before = text[idx - 1] if idx > 0 else ""
+        after = text[idx + len(term)] if idx + len(term) < len(text) else ""
+        if before not in _KANA_CHARS and after not in _KANA_CHARS:
+            return True
+        start = idx + len(term)
 
 
 def utc_now_iso() -> str:
@@ -85,8 +104,15 @@ def scan_segments_file(
             draft_text = segment.get("draft_text") or ""
             segment_id = str(segment.get("segment_id") or "")
             for entry in terms:
-                src_hit = bool(entry.source_term) and entry.source_term in source_text
-                tgt_hit = bool(entry.target_term) and entry.target_term in draft_text
+                src_hit = _contains_standalone_term(entry.source_term, source_text)
+                tgt_hit = False
+                if bool(entry.target_term):
+                    tgt_hit = _contains_standalone_term(entry.target_term, draft_text)
+                    if not tgt_hit:
+                        tgt_hit = (
+                            f"【{entry.target_term}】" in draft_text
+                            or f"《{entry.target_term}》" in draft_text
+                        )
                 if not src_hit and not tgt_hit:
                     continue
                 stats = bucket.setdefault(entry.source_term, _empty_term_stats())
