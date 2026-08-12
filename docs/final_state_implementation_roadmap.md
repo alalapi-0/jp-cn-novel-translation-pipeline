@@ -5,12 +5,12 @@
 
 ---
 
-## 1. 当前仓库状态摘要（2026-06-18 实测）
+## 1. 当前仓库状态摘要（2026-07-13 实测）
 
 | 维度 | 现状 | 证据 |
 | --- | --- | --- |
-| 全书章节 | **612 编号章**（`input_jp/README.md` 不计入章节） | `count_source_chapters` / scheduler status |
-| 翻译进度 | **612/612（100%）** | `local_scheduler_status.py --json` |
+| 全书章节 | **609 编号章**（`input_jp/README.md` 不计入章节） | 编号源文文件 / singleton export manifest |
+| 翻译进度 | **609/609（100%）** | `output_cn/final_export_manifest.json` |
 | 当前 Phase | **final_ready**；scheduler paused=true | `local_scheduler_status.py --json` |
 | 下一调度 round | **无**；`next_round_id=null`、`next_chapter_range=null` | `local_scheduler_status.py --json` |
 | Worker 状态 | 0 active / 0 orphan；scheduler lock absent | `check_orphan_workers.py --json` |
@@ -108,7 +108,7 @@ Legacy，不再作为主线：
 | launchd 后台 tick 产生 orphan worker | P0 | tick 末尾强制 `check_orphan_workers`；lock 协议 |
 | 真实 API 成本失控 | P0 | cost guard、`MAX_TEST_COST_USD`、每 tick 单任务 |
 | Agent Quota 输出绕过结构化产物 | P1 | 必须写入同构 segment/run schema；一致性检查后才 export |
-| 真实译文 / 原文误提交 | P0 | agent_gate + commit 前 `git diff` 三连 |
+| 真实译文 / 原文误提交 | P0 | 精确 staged-diff / tracked-path / secret 检查；完整 agent_gate 仅在隔离副本运行 |
 | UI 范围膨胀拖垮主线 | P1 | 每轮一个页面切片；MVP 优先 |
 | 用户修改稿同步覆盖 baseline | P0 | 同步禁写 baseline/human_approved_final（代码层拒绝 + 测试） |
 
@@ -118,6 +118,6 @@ Legacy，不再作为主线：
 python3 scripts/local_scheduler_status.py --json
 python3 scripts/check_orphan_workers.py --json
 python3 scripts/check_final_translation_singleton.py --json
-npm run test:py
-python3 scripts/agent_gate.py --json
+# 在真实工作树只运行当前合同指定的 targeted/read-only tests。
+# 完整 agent_gate 仅在一次性隔离副本运行，输出不得写回。
 ```

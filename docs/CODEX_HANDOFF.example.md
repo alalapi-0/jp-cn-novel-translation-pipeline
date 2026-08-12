@@ -52,16 +52,17 @@ Implement AL-018 gate triage helper and wire severity into `write_agent_report.p
 ## Commands to run
 
 ```bash
-python3 scripts/tool_probe.py
-python3 scripts/agent_gate.py --json
-python3 scripts/validate_agent_report.py
-npm run check:tooling
+npm run check:tooling  # real-worktree targeted/read-only control-plane checks
+# Run a full agent_gate only when the task contract requires it, inside a
+# disposable isolated copy whose outputs are never written back.
 ```
+
+`tool_probe.py` writes a report (and `--sync-docs` writes active docs), so it is not an implicit validation command. Run it only when the scoped task explicitly owns that refresh and review its exact outputs.
 
 ## Acceptance criteria
 
 - [ ] Scope limited to stated goal
-- [ ] Gate pass or documented warnings
+- [ ] Scoped targeted checks pass; any contract-required full gate was isolated with no writeback
 - [ ] `reports/latest-agent-report.json` updated via `write_agent_report.py`
 - [ ] No secrets in diff
 

@@ -5,15 +5,15 @@
 
 ## 0. 当前真值
 
-2026-06-18 实测：
+2026-07-13 对齐当前编号源文后实测：
 
 ```text
 current_phase = final_ready
 next_task = paused
 next_round_id = null
 next_chapter_range = null
-draft_progress = 612/612
-final_translation_progress = 612/612
+draft_progress = 609/609
+final_translation_progress = 609/609
 active_worker_count = 0
 orphan_worker_count = 0
 final_translation = output_cn/translated/full_volume_cn.md
@@ -28,7 +28,7 @@ singleton_check = passed
 | --- | --- | --- |
 | FS-000 | completed | 治理与基线对齐 |
 | FS-001…FS-007 | completed | 本地调度器、pause/lock/orphan/tick/status |
-| FS-008…FS-010 | completed | 全书翻译完成，612/612 |
+| FS-008…FS-010 | completed | 全书翻译完成，当前编号源文 609/609 |
 | FS-011…FS-016 | completed | configs 资产层、术语库内核、prompt 资产注入 |
 | FS-031…FS-037 | completed | 一致性检查工具链 |
 | FS-038…FS-039 | completed | baseline lock、go decision |

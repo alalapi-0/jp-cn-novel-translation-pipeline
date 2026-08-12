@@ -56,7 +56,7 @@ python3 scripts/validate_agent_report.py
 python3 scripts/validate_agent_report.py --json
 ```
 
-Also runs in `npm run check:tooling` after `agent_gate.py`. Exit 0 = valid; 1 = schema errors; 2 = missing file or parse error.
+Also runs directly inside the live-safe `npm run check:tooling` entrypoint. That entrypoint does not run the full `agent_gate.py`; a full gate is isolated-copy-only with no output writeback. Exit 0 = valid; 1 = schema errors; 2 = missing file or parse error.
 
 ## Audit log retention (AL-014)
 
@@ -72,6 +72,8 @@ Also runs in `npm run check:tooling` after `agent_gate.py`. Exit 0 = valid; 1 = 
 Agents must not commit secrets, raw novel text, or `.env` in any report path. Large audit archives stay local unless user opts in.
 
 ## Write / update report
+
+The commands below mutate report files. They run only when the current scoped task explicitly owns the report update; they are not implicit live-tree validation and do not grant Git authority.
 
 ```bash
 # Print template JSON (stdout)

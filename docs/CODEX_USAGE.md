@@ -34,9 +34,10 @@ How OpenAI Codex should interact with this repo when Cursor is primary.
 
 - Plan first, one round scope
 - No real API, no real publish
-- Run `python3 scripts/agent_gate.py`
+- Run contract-selected targeted/read-only checks in the real tree; run a full `scripts/agent_gate.py` only in a disposable isolated copy with no output writeback
 - Update `reports/latest-agent-report.json`
 - Record `tools_used`
+- Treat Round Prompts and edit/build requests as non-authorizing for Git; commit and push each need separate explicit current-turn owner wording
 
 ## Quota-limited strategy
 

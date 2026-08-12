@@ -6,7 +6,7 @@ Template — copy and fill when transferring work from Cursor to Codex.
 
 - Name: `light_novel`
 - Type: AI novel translation pipeline + workbench
-- Root: `/Users/alalapi/PycharmProjects/light_novel`
+- Root: `${REPO_ROOT}` _(resolve from the current checkout; do not hard-code a host path)_
 
 ## Current branch
 
@@ -58,15 +58,15 @@ _One sentence objective for Codex round._
 ## Commands to run
 
 ```bash
-python3 scripts/tool_probe.py
-python3 scripts/agent_gate.py --json
-npm run check:tooling   # if code changed
+npm run check:tooling   # live-safe control-plane checks
+# Full agent_gate, when required by the task contract, runs only in a
+# disposable isolated copy and none of its outputs may be written back.
 ```
 
 ## Acceptance criteria
 
 - [ ] Scope limited to stated goal
-- [ ] Gate pass or documented warnings
+- [ ] Contract-selected targeted checks pass; isolated full-gate warnings are documented when that gate is required
 - [ ] `reports/latest-agent-report.json` updated
 - [ ] No secrets in diff
 
@@ -77,4 +77,4 @@ Codex reply should include:
 1. Summary of changes
 2. Gate/test commands run + results
 3. Remaining P0/P1
-4. Suggested next Cursor round ID from `docs/AGENT_ROADMAP.md`
+4. Suggested next scoped task from `docs/final_state_round_task_list.md` or the current approved contract (`docs/AGENT_ROADMAP.md` is historical only)

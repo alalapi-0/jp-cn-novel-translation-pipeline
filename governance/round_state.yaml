@@ -5,8 +5,8 @@ status: completed
 type: governance
 real_api_called: false
 completed_tasks:
-- Verified scheduler truth: phase=final_ready, paused=true, next_round_id=null,
-  next_chapter_range=null, active=0, orphan=0
+- 'Verified scheduler truth: phase=final_ready, paused=true, next_round_id=null,
+  next_chapter_range=null, active=0, orphan=0'
 - Removed refinement/R-MR/production_candidate from the active production route
 - Added docs/translation_production_protocol.md for API mode and Agent quota mode
 - Consolidated final translation handoff to a singleton file under output_cn/translated/full_volume_cn.md
@@ -221,6 +221,9 @@ latest_stats: &id001
   orphan_worker_count: 0
   canonical_final_translation: output_cn/translated/full_volume_cn.md
   canonical_final_translation_count: 1
+  current_numbered_source_chapters: 609
+  current_source_chapter_range: 1-609
+  current_final_translation_progress: 609/609
   singleton_check_report: reports/final_translation_singleton_check.json
   production_protocol: docs/translation_production_protocol.md
   consistency_protocol: docs/translation_consistency_protocol.md

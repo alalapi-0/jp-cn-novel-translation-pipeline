@@ -19,7 +19,7 @@
    - `documentation_sync` → Runner Agent 或文档 Agent
 7. 页面相关任务执行 `python3 scripts/run_browser_inspection.py`。
 8. 每轮结束更新 `governance/round_state.yaml`，检查 `git status` 和 `git diff`。
-9. 用户或轮次 Prompt 明确要求时 commit；push 仍需明确授权。
+9. Round Prompt、edit/build 请求不授权 Git；commit 与 push 分别需要用户当前轮明确授权，push 重试需要新授权。
 10. 无硬阻塞时等待下一轮或按定时规则继续。
 
 ## 等待与自动继续

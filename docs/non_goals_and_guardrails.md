@@ -45,7 +45,7 @@ P0 / P1 未清零时不得做 P2 / P3（定义见规格 §23）。
 ## 4. 禁止 Agent 自动执行的行为
 
 - 自动标记 human_approved_final；
-- 自动 push（commit 在轮次 Prompt 或用户要求时允许）；
+- 自动 commit / push；Round Prompt、edit/build 请求均不授权 Git，commit 与 push 分别需要用户当前轮明确授权；
 - 自动发布、公开译文；
 - 自动删除真实原文（`input_jp/` / `input_zh/`）；
 - 自动覆盖原文、baseline、human_approved_final、人工校对译文；
@@ -81,7 +81,7 @@ workspace/runs、workspace/diagnostics、workspace/archived_runs 大型内容
 
 ## 7. 必须停止并报告的情况（硬阻塞）
 
-- `agent_gate.py` 退出码 2（BLOCKED）；
+- 合同允许的一次性隔离副本中，`agent_gate.py` 退出码 2（BLOCKED）；真实工作树禁止运行完整 gate；
 - 发现 orphan worker 且无法安全回收；
 - checkpoint / run_progress 出现可能丢数据的错乱；
 - 发现密钥或真实正文已被纳入待提交内容；
@@ -92,7 +92,7 @@ workspace/runs、workspace/diagnostics、workspace/archived_runs 大型内容
 ## 8. 可以继续自动推进的情况
 
 - 上一轮完成且无 P0 / P1 遗留；
-- gate 通过（或仅 warn 且已记录）；
+- 合同指定的 targeted/read-only checks 通过；如合同要求完整 gate，则一次性隔离副本中的 gate 通过（或仅 warn 且已记录）；
 - 下一轮任务在 `final_state_round_task_list.md` 中有明确定义；
 - 所需工具可用或有已记录的 fallback；
 - 真实 API 轮：cost guard 生效、pause file 不存在、无 active worker 冲突。

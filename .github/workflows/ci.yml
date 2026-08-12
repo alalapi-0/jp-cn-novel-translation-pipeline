@@ -39,7 +39,9 @@ jobs:
           cache: npm
 
       - name: Install Python test runner
-        run: python3 -m pip install --upgrade pip pytest
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements-dev.txt
 
       - name: Install Node dependencies
         run: npm ci

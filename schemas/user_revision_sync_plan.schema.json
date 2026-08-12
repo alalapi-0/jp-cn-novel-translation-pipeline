@@ -1,0 +1,429 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "user_revision_sync_plan.schema.json",
+  "title": "User Revision Sync Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_type", "plan_only", "apply_implementation_available", "plan_id", "content_digest", "status", "confirmation_required", "side_effects_applied", "generated_at", "input_hashes", "paths", "owner_decisions", "content_policies", "chapter_coverage", "alignment", "taxonomy", "quality_gates", "readiness_gates", "needs_glossary_update", "needs_character_profile_update", "needs_world_bible_update", "needs_style_profile_update", "needs_translation_memory_update", "needs_local_retranslation", "needs_consistency_check", "affects_current_final_export", "proposed_writes", "proposed_apply_target", "apply_authorization", "forbidden_targets", "segment_changes", "term_proposals", "character_proposals", "forum_formatting_policy", "checks", "rollback", "material_preview"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "plan_type": {"const": "user_revision_sync_plan"},
+    "plan_only": {"const": true},
+    "apply_implementation_available": {"const": false},
+    "plan_id": {"type": "string", "pattern": "^user-revision-sync-[a-f0-9]{20}$"},
+    "content_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "status": {"const": "awaiting_confirmation"},
+    "confirmation_required": {"const": true},
+    "side_effects_applied": {"const": false},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "input_hashes": {
+      "type": "object", "minProperties": 2,
+      "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+    },
+    "paths": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_dir", "revision_dir", "canonical_full_volume", "glossary", "character_profile", "prompt", "report_target", "revised_output", "local_fix_plan", "audit_report"],
+      "properties": {
+        "source_dir": {"type": "string", "minLength": 1}, "revision_dir": {"type": "string", "minLength": 1},
+        "canonical_full_volume": {"type": "string", "minLength": 1}, "glossary": {"type": "string", "minLength": 1},
+        "character_profile": {"type": "string", "minLength": 1}, "prompt": {"type": "string", "minLength": 1},
+        "report_target": {"type": "string", "minLength": 1}, "revised_output": {"const": "output_cn/translated/full_volume_cn.md"},
+        "local_fix_plan": {"type": "string", "minLength": 1}, "audit_report": {"type": "string", "minLength": 1}
+      }
+    },
+    "owner_decisions": {
+      "type": "array", "minItems": 9, "maxItems": 9,
+      "prefixItems": [
+        {"$ref": "#/$defs/owner_decision_homunculus_exact_spelling"},
+        {"$ref": "#/$defs/owner_decision_homunculus_annotation_rule"},
+        {"$ref": "#/$defs/owner_decision_chapter_087_disposition"},
+        {"$ref": "#/$defs/owner_decision_handle_hana_eleboo"},
+        {"$ref": "#/$defs/owner_decision_handle_omiotsukenai"},
+        {"$ref": "#/$defs/owner_decision_duplicate_arafubuki"},
+        {"$ref": "#/$defs/owner_decision_handle_peikouken"},
+        {"$ref": "#/$defs/owner_decision_handle_maa_chan"},
+        {"$ref": "#/$defs/owner_decision_handle_kouki"}
+      ],
+      "items": false,
+      "allOf": [
+        {"contains": {"properties": {"id": {"const": "homunculus_exact_spelling"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "homunculus_annotation_rule"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "chapter_087_disposition"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "handle_hana_eleboo"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "handle_omiotsukenai"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "duplicate_arafubuki"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "handle_peikouken"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "handle_maa_chan"}}, "required": ["id"]}},
+        {"contains": {"properties": {"id": {"const": "handle_kouki"}}, "required": ["id"]}}
+      ]
+    },
+    "content_policies": {
+      "type": "object", "additionalProperties": false,
+      "required": ["player_and_forum_names", "same_source_skill_name", "great_work", "philosophers_egg", "metadata", "human_polish", "punctuation"],
+      "properties": {
+        "player_and_forum_names": {"const": "owner_confirmation_required"},
+        "same_source_skill_name": {"const": "preserve_one_canonical_name"},
+        "great_work": {"const": "preserve_owner_polish"},
+        "philosophers_egg": {"const": "preserve_exact_spelling_after_confirmation"},
+        "metadata": {"const": "remove_transport_metadata_only"},
+        "human_polish": {"const": "retain_when_source_consistent"},
+        "punctuation": {"const": "normalize_without_semantic_change"}
+      }
+    },
+    "chapter_coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["changed_chapters", "changed_segment_count", "aligned_segment_count", "manual_item_count", "chapter_87_disposition"],
+      "properties": {
+        "changed_chapters": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "changed_segment_count": {"type": "integer", "minimum": 0},
+        "aligned_segment_count": {"type": "integer", "minimum": 0},
+        "manual_item_count": {"type": "integer", "minimum": 0},
+        "chapter_87_disposition": {"type": "string", "pattern": "^awaiting_user_no_phase_a_change(?:;.*)?$"}
+      }
+    },
+    "alignment": {"$ref": "#/$defs/alignment"},
+    "quality_gates": {"$ref": "#/$defs/quality_gates"},
+    "readiness_gates": {"$ref": "#/$defs/readiness_gates"},
+    "taxonomy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["classes", "counts", "unclassified_segment_count", "classified_decisions"],
+      "properties": {
+        "classes": {"type": "array", "minItems": 6, "items": {"$ref": "#/$defs/taxonomy_class"}, "uniqueItems": true},
+        "counts": {
+          "type": "object", "additionalProperties": false,
+          "required": ["unchanged_human_polish", "source_supported_polish", "source_inconsistent_change", "terminology_only_correction", "formatting_metadata_cleanup", "unresolved_semantic_conflict"],
+          "properties": {
+            "unchanged_human_polish": {"type": "integer", "minimum": 0}, "source_supported_polish": {"type": "integer", "minimum": 0},
+            "source_inconsistent_change": {"type": "integer", "minimum": 0}, "terminology_only_correction": {"type": "integer", "minimum": 0},
+            "formatting_metadata_cleanup": {"type": "integer", "minimum": 0}, "unresolved_semantic_conflict": {"type": "integer", "minimum": 0}
+          }
+        },
+        "unclassified_segment_count": {"type": "integer", "minimum": 0},
+        "classified_decisions": {"type": "array", "items": {"type": "object", "required": ["segment_id", "classification"], "properties": {"segment_id": {"type": "string"}, "classification": {"$ref": "#/$defs/taxonomy_class"}}, "additionalProperties": true}}
+      }
+    },
+    "needs_glossary_update": {"type": "boolean"},
+    "needs_character_profile_update": {"type": "boolean"},
+    "needs_world_bible_update": {"const": false},
+    "needs_style_profile_update": {"type": "boolean"},
+    "needs_translation_memory_update": {"type": "boolean"},
+    "needs_local_retranslation": {"type": "boolean"},
+    "needs_consistency_check": {"type": "boolean"},
+    "affects_current_final_export": {"type": "boolean"},
+    "proposed_writes": {"type": "array", "items": {"enum": ["translation_memory", "glossary", "character_profile", "local_fix_plan", "revised_output", "audit_report"]}, "uniqueItems": true},
+    "proposed_apply_target": {"const": "output_cn/translated/full_volume_cn.md"},
+    "apply_authorization": {"$ref": "#/$defs/apply_authorization"},
+    "forbidden_targets": {"type": "array", "items": {"type": "string"}, "uniqueItems": true, "allOf": [
+      {"contains": {"const": "input_jp"}}, {"contains": {"const": "input_zh"}}, {"contains": {"const": "source_text"}},
+      {"contains": {"const": "human_approved_final"}}, {"contains": {"const": "draft_full_baseline"}},
+      {"contains": {"const": "legacy_baseline_body"}},
+      {"contains": {"const": "canonical_final_until_confirmed"}},
+      {"contains": {"const": "output_cn/translated/full_volume_cn.md"}}
+    ]},
+    "segment_changes": {"type": "array", "items": {"$ref": "#/$defs/segment_change"}},
+    "term_proposals": {"type": "array", "items": {"type": "object"}},
+    "character_proposals": {"type": "array", "items": {"type": "object"}},
+    "forum_formatting_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["preserve_paragraph_boundaries", "preserve_dialogue_markers", "normalize_for_alignment_only", "destructive_reflow", "chapter_id", "floor_count", "reply_count", "first_floor_op_annotation_only", "reply_targets_must_precede_post", "render_floor_template", "render_reply_template", "forum_note_once", "afterword_separator_is_system", "preserve_source_order"],
+      "properties": {
+        "preserve_paragraph_boundaries": {"const": true}, "preserve_dialogue_markers": {"const": true},
+        "normalize_for_alignment_only": {"const": true}, "destructive_reflow": {"const": false},
+        "chapter_id": {"const": "ch-088"}, "floor_count": {"const": 57}, "reply_count": {"const": 21},
+        "first_floor_op_annotation_only": {"const": true}, "reply_targets_must_precede_post": {"const": true},
+        "render_floor_template": {"const": "{floor_label}\n{body}"}, "render_reply_template": {"const": ">> {target_floor}\n{body}"},
+        "forum_note_once": {"const": true}, "afterword_separator_is_system": {"const": false},
+        "preserve_source_order": {"const": true}
+      }
+    },
+    "checks": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "rollback": {
+      "type": "object", "additionalProperties": false,
+      "required": ["strategy", "requires_pre_apply_snapshot", "automatic_rollback_performed"],
+      "properties": {
+        "strategy": {"type": "string", "minLength": 1}, "requires_pre_apply_snapshot": {"const": true},
+        "automatic_rollback_performed": {"const": false}
+      }
+    },
+    "material_preview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["changed_segment_refs", "truncated", "manual_refs"],
+      "properties": {
+        "changed_segment_refs": {"type": "array", "items": {"type": "string"}},
+        "truncated": {"type": "boolean"}, "manual_refs": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"quality_gates": {"properties": {"all_passed": {"const": true}}}}},
+      "then": {"properties": {"readiness_gates": {"properties": {"validation_complete": {"const": true}}}}},
+      "else": {"properties": {"readiness_gates": {"properties": {"validation_complete": {"const": false}}}}}
+    },
+    {
+      "if": {"properties": {"apply_authorization": {"properties": {"exact_plan_acceptance": {"properties": {"satisfied": {"const": true}}}}}}},
+      "then": {"properties": {"readiness_gates": {"properties": {"exact_plan_accepted": {"const": true}}}}},
+      "else": {"properties": {"readiness_gates": {"properties": {"exact_plan_accepted": {"const": false}}}}}
+    },
+    {
+      "if": {"properties": {"apply_authorization": {"properties": {"workspace_rebaseline": {"properties": {"satisfied": {"const": true}}}}}}},
+      "then": {"properties": {"readiness_gates": {"properties": {"workspace_rebaseline_authorized_current_turn": {"const": true}}}}},
+      "else": {"properties": {"readiness_gates": {"properties": {"workspace_rebaseline_authorized_current_turn": {"const": false}}}}}
+    },
+    {
+      "if": {"properties": {"apply_authorization": {"properties": {"owner_decisions_confirmed": {"const": true}}}}},
+      "then": {"properties": {"readiness_gates": {"properties": {"owner_decisions_confirmed": {"const": true}}}}},
+      "else": {"properties": {"readiness_gates": {"properties": {"owner_decisions_confirmed": {"const": false}}}}}
+    },
+    {
+      "if": {"properties": {"apply_authorization": {"properties": {"future_apply_candidate_eligible": {"const": true}}}}},
+      "then": {"properties": {"readiness_gates": {"properties": {"future_apply_candidate_eligible": {"const": true}}}}},
+      "else": {"properties": {"readiness_gates": {"properties": {"future_apply_candidate_eligible": {"const": false}}}}}
+    },
+    {
+      "if": {"properties": {"readiness_gates": {"properties": {"future_apply_candidate_eligible": {"const": true}}}}},
+      "then": {
+        "properties": {
+          "readiness_gates": {
+            "properties": {
+              "alignment_complete": {"const": true},
+              "manual_queue_empty": {"const": true},
+              "semantic_classification_complete": {"const": true},
+              "owner_decisions_confirmed": {"const": true},
+              "exact_plan_accepted": {"const": true},
+              "workspace_rebaseline_authorized_current_turn": {"const": true},
+              "validation_complete": {"const": true}
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "readiness_gates": {
+            "anyOf": [
+              {"properties": {"alignment_complete": {"const": false}}},
+              {"properties": {"manual_queue_empty": {"const": false}}},
+              {"properties": {"semantic_classification_complete": {"const": false}}},
+              {"properties": {"owner_decisions_confirmed": {"const": false}}},
+              {"properties": {"exact_plan_accepted": {"const": false}}},
+              {"properties": {"workspace_rebaseline_authorized_current_turn": {"const": false}}},
+              {"properties": {"validation_complete": {"const": false}}}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"readiness_gates": {"properties": {"alignment_complete": {"const": true}}}}},
+      "then": {"properties": {"alignment": {"properties": {"summary": {"properties": {"complete_alignment": {"const": true}}}}}}},
+      "else": {"properties": {"alignment": {"properties": {"summary": {"properties": {"complete_alignment": {"const": false}}}}}}}
+    },
+    {
+      "if": {"properties": {"readiness_gates": {"properties": {"manual_queue_empty": {"const": true}}}}},
+      "then": {
+        "properties": {
+          "alignment": {"properties": {"manual_queue": {"maxItems": 0}, "summary": {"properties": {"manual_item_count": {"const": 0}}}}},
+          "chapter_coverage": {"properties": {"manual_item_count": {"const": 0}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"readiness_gates": {"properties": {"semantic_classification_complete": {"const": true}}}}},
+      "then": {
+        "properties": {
+          "taxonomy": {"properties": {"unclassified_segment_count": {"const": 0}}},
+          "segment_changes": {"items": {"properties": {"classification": {"not": {"const": "unclassified"}}}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"readiness_gates": {"properties": {"owner_decisions_confirmed": {"const": true}}}}},
+      "then": {"properties": {"owner_decisions": {"items": {"properties": {"status": {"const": "confirmed"}}}}}}
+    }
+  ],
+  "$defs": {
+    "owner_decision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "question", "recommended_default", "status", "affected_terms", "affected_chapters"],
+      "properties": {
+        "id": {"enum": ["homunculus_exact_spelling", "homunculus_annotation_rule", "chapter_087_disposition", "handle_hana_eleboo", "handle_omiotsukenai", "duplicate_arafubuki", "handle_peikouken", "handle_maa_chan", "handle_kouki"]}, "question": {"type": "string", "minLength": 1},
+        "recommended_default": {"type": "string", "minLength": 1}, "status": {"enum": ["awaiting_user", "confirmed"]},
+        "affected_terms": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "affected_chapters": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "owner_decision_homunculus_exact_spelling": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "homunculus_exact_spelling"}, "question": {"const": "Confirm exact Homunculus spelling?"}, "recommended_default": {"const": "Preserve the owner-provided spelling."}, "affected_terms": {"const": ["Homunculus"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "owner_decision_homunculus_annotation_rule": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "homunculus_annotation_rule"}, "question": {"const": "Confirm the first-use annotation rule?"}, "recommended_default": {"const": "Annotate once after confirmation."}, "affected_terms": {"const": ["Homunculus"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "owner_decision_chapter_087_disposition": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "chapter_087_disposition"}, "question": {"const": "Confirm the separate long-term treatment of chapter 87?"}, "recommended_default": {"const": "Exclude and leave unchanged, pending explicit user confirmation."}, "affected_terms": {"const": []}, "affected_chapters": {"const": ["ch-087"]}}},
+    "owner_decision_handle_hana_eleboo": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "handle_hana_eleboo"}, "question": {"const": "Confirm the Hana Eleboo handle mapping?"}, "recommended_default": {"const": "Keep the mapping unresolved."}, "affected_terms": {"const": ["hana_eleboo"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "owner_decision_handle_omiotsukenai": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "handle_omiotsukenai"}, "question": {"const": "Confirm the Omiotsukenai handle mapping?"}, "recommended_default": {"const": "Keep the mapping unresolved."}, "affected_terms": {"const": ["omiotsukenai"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "owner_decision_duplicate_arafubuki": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "duplicate_arafubuki"}, "question": {"const": "Confirm duplicate Arafubuki handling?"}, "recommended_default": {"const": "Do not merge without confirmation."}, "affected_terms": {"const": ["arafubuki"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "owner_decision_handle_peikouken": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "handle_peikouken"}, "question": {"const": "Confirm the Peikouken handle mapping?"}, "recommended_default": {"const": "Keep the mapping unresolved."}, "affected_terms": {"const": ["peikouken"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "owner_decision_handle_maa_chan": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "handle_maa_chan"}, "question": {"const": "Confirm the Maa-chan handle mapping?"}, "recommended_default": {"const": "Keep the mapping unresolved."}, "affected_terms": {"const": ["maa_chan"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "owner_decision_handle_kouki": {"$ref": "#/$defs/owner_decision", "properties": {"id": {"const": "handle_kouki"}, "question": {"const": "Confirm the Kouki handle mapping?"}, "recommended_default": {"const": "Keep the mapping unresolved."}, "affected_terms": {"const": ["kouki"]}, "affected_chapters": {"const": ["ch-001"]}}},
+    "taxonomy_class": {"enum": ["unchanged_human_polish", "source_supported_polish", "source_inconsistent_change", "terminology_only_correction", "formatting_metadata_cleanup", "unresolved_semantic_conflict"]},
+    "aligned_segment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["segment_id", "chapter_id", "canonical_index", "revision_index", "alignment_method", "confidence", "change_type", "before_sha256", "after_sha256", "before_normalized_sha256", "after_normalized_sha256", "source_sha256", "before_length", "after_length", "source_length"],
+      "properties": {
+        "segment_id": {"type": "string"}, "chapter_id": {"type": "string"}, "canonical_index": {"type": "integer", "minimum": 0},
+        "revision_index": {"type": "integer", "minimum": 0}, "alignment_method": {"enum": ["explicit_segment_id", "exact_normalized_target", "monotonic_high_confidence"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "change_type": {"enum": ["unchanged", "modified"]},
+        "before_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "after_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "before_normalized_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "after_normalized_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "before_length": {"type": "integer", "minimum": 0}, "after_length": {"type": "integer", "minimum": 0},
+        "source_length": {"type": "integer", "minimum": 0}
+      }
+    },
+    "manual_item": {
+      "type": "object", "required": ["kind", "reason", "candidate_segment_ids", "chapter_id"],
+      "properties": {
+        "kind": {"enum": ["unmatched_revision", "unmatched_canonical"]}, "reason": {"type": "string"},
+        "candidate_segment_ids": {"type": "array", "items": {"type": "string"}}, "chapter_id": {"type": "string", "minLength": 1}, "revision_index": {"type": "integer", "minimum": 0},
+        "canonical_segment_id": {"type": "string"}, "canonical_index": {"type": "integer", "minimum": 0}
+      }, "additionalProperties": false
+    },
+    "alignment": {
+      "type": "object", "additionalProperties": false, "required": ["aligned_segments", "manual_queue", "summary"],
+      "properties": {
+        "aligned_segments": {"type": "array", "items": {"$ref": "#/$defs/aligned_segment"}},
+        "manual_queue": {"type": "array", "items": {"$ref": "#/$defs/manual_item"}},
+        "summary": {
+          "type": "object", "additionalProperties": false,
+          "required": ["canonical_segment_count", "revision_segment_count", "aligned_segment_count", "unchanged_segment_count", "modified_segment_count", "manual_item_count", "complete_alignment"],
+          "properties": {
+            "canonical_segment_count": {"type": "integer", "minimum": 0}, "revision_segment_count": {"type": "integer", "minimum": 0},
+            "aligned_segment_count": {"type": "integer", "minimum": 0}, "unchanged_segment_count": {"type": "integer", "minimum": 0},
+            "modified_segment_count": {"type": "integer", "minimum": 0}, "manual_item_count": {"type": "integer", "minimum": 0},
+            "complete_alignment": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "segment_change": {
+      "type": "object", "additionalProperties": false,
+      "required": ["segment_id", "chapter_id", "change_type", "alignment_method", "confidence", "before_sha256", "after_sha256", "before_normalized_sha256", "after_normalized_sha256", "before_length", "after_length", "classification"],
+      "properties": {
+        "segment_id": {"type": "string"}, "chapter_id": {"type": "string"}, "change_type": {"const": "modified"},
+        "alignment_method": {"enum": ["explicit_segment_id", "exact_normalized_target", "monotonic_high_confidence"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "before_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "after_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "before_normalized_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "after_normalized_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "before_length": {"type": "integer", "minimum": 0}, "after_length": {"type": "integer", "minimum": 0},
+        "classification": {"anyOf": [{"$ref": "#/$defs/taxonomy_class"}, {"const": "unclassified"}]}
+      }
+    },
+    "apply_authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exact_plan_acceptance", "workspace_rebaseline", "owner_decisions_confirmed", "future_apply_candidate_eligible", "gates_satisfied", "application_state"],
+      "properties": {
+        "exact_plan_acceptance": {
+          "type": "object", "additionalProperties": false,
+          "required": ["required", "accepted_plan_id", "accepted_content_digest", "acceptance_token", "expected_acceptance_token", "satisfied"],
+          "properties": {
+            "required": {"const": true},
+            "accepted_plan_id": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^user-revision-sync-[a-f0-9]{20}$"}]},
+            "accepted_content_digest": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-f0-9]{64}$"}]},
+            "acceptance_token": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-f0-9]{64}$"}]},
+            "expected_acceptance_token": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "satisfied": {"type": "boolean"}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"satisfied": {"const": true}}},
+              "then": {
+                "properties": {
+                  "accepted_plan_id": {"type": "string", "pattern": "^user-revision-sync-[a-f0-9]{20}$"},
+                  "accepted_content_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                  "acceptance_token": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+                }
+              }
+            }
+          ]
+        },
+        "workspace_rebaseline": {
+          "type": "object", "additionalProperties": false,
+          "required": ["required", "authorized_current_turn", "authorization_evidence", "satisfied"],
+          "properties": {
+            "required": {"const": true}, "authorized_current_turn": {"type": "boolean"},
+            "authorization_evidence": {"type": ["string", "null"]}, "satisfied": {"type": "boolean"}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"authorized_current_turn": {"const": true}}},
+              "then": {"properties": {"satisfied": {"const": true}, "authorization_evidence": {"type": "string", "pattern": "\\S"}}},
+              "else": {"properties": {"satisfied": {"const": false}}}
+            }
+          ]
+        },
+        "owner_decisions_confirmed": {"type": "boolean"},
+        "future_apply_candidate_eligible": {"type": "boolean"},
+        "gates_satisfied": {"const": false},
+        "application_state": {"const": "forbidden_pending_gates"}
+      }
+    },
+    "quality_gate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "evidence", "passed"],
+      "properties": {
+        "status": {"enum": ["not_run", "passed", "failed"]},
+        "evidence": {"type": ["string", "null"]}, "passed": {"type": "boolean"}
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "passed"}}}, "then": {"properties": {"passed": {"const": true}, "evidence": {"type": "string", "minLength": 1}}}},
+        {"if": {"properties": {"status": {"const": "failed"}}}, "then": {"properties": {"passed": {"const": false}, "evidence": {"type": "string", "minLength": 1}}}},
+        {"if": {"properties": {"status": {"const": "not_run"}}}, "then": {"properties": {"passed": {"const": false}, "evidence": {"const": null}}}}
+      ]
+    },
+    "quality_gates": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_hashes_unchanged", "consistency_check", "singleton_revalidated", "workspace_baseline_precheck", "schema_validation", "all_passed"],
+      "properties": {
+        "source_hashes_unchanged": {"$ref": "#/$defs/quality_gate"},
+        "consistency_check": {"$ref": "#/$defs/quality_gate"},
+        "singleton_revalidated": {"$ref": "#/$defs/quality_gate"},
+        "workspace_baseline_precheck": {"$ref": "#/$defs/quality_gate"},
+        "schema_validation": {"$ref": "#/$defs/quality_gate"},
+        "all_passed": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"all_passed": {"const": true}}},
+          "then": {
+            "properties": {
+              "source_hashes_unchanged": {"properties": {"passed": {"const": true}}},
+              "consistency_check": {"properties": {"passed": {"const": true}}},
+              "singleton_revalidated": {"properties": {"passed": {"const": true}}},
+              "workspace_baseline_precheck": {"properties": {"passed": {"const": true}}},
+              "schema_validation": {"properties": {"passed": {"const": true}}}
+            }
+          },
+          "else": {
+            "anyOf": [
+              {"properties": {"source_hashes_unchanged": {"properties": {"passed": {"const": false}}}}},
+              {"properties": {"consistency_check": {"properties": {"passed": {"const": false}}}}},
+              {"properties": {"singleton_revalidated": {"properties": {"passed": {"const": false}}}}},
+              {"properties": {"workspace_baseline_precheck": {"properties": {"passed": {"const": false}}}}},
+              {"properties": {"schema_validation": {"properties": {"passed": {"const": false}}}}}
+            ]
+          }
+        }
+      ]
+    },
+    "readiness_gates": {
+      "type": "object", "additionalProperties": false,
+      "required": ["alignment_complete", "manual_queue_empty", "semantic_classification_complete", "owner_decisions_confirmed", "exact_plan_accepted", "workspace_rebaseline_authorized_current_turn", "validation_complete", "future_apply_candidate_eligible", "overall_ready"],
+      "properties": {
+        "alignment_complete": {"type": "boolean"}, "manual_queue_empty": {"type": "boolean"},
+        "semantic_classification_complete": {"type": "boolean"}, "owner_decisions_confirmed": {"type": "boolean"},
+        "exact_plan_accepted": {"type": "boolean"}, "workspace_rebaseline_authorized_current_turn": {"type": "boolean"},
+        "validation_complete": {"type": "boolean"}, "future_apply_candidate_eligible": {"type": "boolean"},
+        "overall_ready": {"const": false}
+      }
+    }
+  }
+}

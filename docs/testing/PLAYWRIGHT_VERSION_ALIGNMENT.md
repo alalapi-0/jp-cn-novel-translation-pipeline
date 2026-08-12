@@ -47,7 +47,7 @@ Scope: `@playwright/test`（E2E CLI）与 `@playwright/mcp`（Cursor MCP）的�
 | 路径 | 命令 | 通过标准 |
 |------|------|----------|
 | CLI E2E | `npm run test:ui` | 全部 spec 绿 |
-| MCP 探针 | `python3 scripts/tool_probe.py` | `playwright` server `callable_now=true` |
+| MCP 探针刷新（显式写入任务） | `python3 scripts/tool_probe.py` | `playwright` server `callable_now=true`；会写报告，不是普通 gate |
 | 可选交互 | Cursor `playwright` MCP snapshot | 首页可 snapshot（非 gate 硬阻塞） |
 
 MCP 不可用时不阻塞文档/后端轮次，但 **UI 实现轮** 须至少 CLI E2E 通过。
@@ -61,7 +61,7 @@ MCP 不可用时不阻塞文档/后端轮次，但 **UI 实现轮** 须至少 CL
 3. `npx playwright install`（必要时 `--with-deps`）刷新浏览器二进制。
 4. `npx playwright --version` 确认 CLI 版本。
 5. `npm run test:ui` 全绿。
-6. `python3 scripts/tool_probe.py --sync-docs` 刷新 `reports/tool_probe_report.json`。
+6. 仅当当前升级任务明确拥有 probe/report/doc 刷新时，运行 `python3 scripts/tool_probe.py --sync-docs`，并审查其精确 diff；这是写操作，不是普通 live-tree 验证或隐式后置步骤。
 7. 可选：Cursor 中 reload MCP，对 `http://127.0.0.1:5174/` 做一次 snapshot。
 
 **不要** 为了对齐 MCP 而强行把 `@playwright/mcp` pin 到与 `@playwright/test` 相同数字 — 两者 semver 体系不同。
@@ -91,7 +91,7 @@ MCP 不可用时不阻塞文档/后端轮次，但 **UI 实现轮** 须至少 CL
 | `package.json` | `@playwright/test` pin |
 | `playwright.config.ts` | E2E baseURL、webServer、artifacts 输出 |
 | `.cursor/mcp.json` | `@playwright/mcp@latest` launcher |
-| `scripts/tool_probe.py` | 探测 `npx playwright --version` 与 MCP callable |
+| `scripts/tool_probe.py` | 仅探测仓库内 `node_modules/.bin/playwright --version` 与 MCP callable；本地二进制缺失/不可执行时返回 `BLOCKED_ENV`，不调用 `npx` |
 | `docs/USER_VIEW_TESTING.md` | 用户视角验收流程 |
 | `docs/mcp_playwright_setup_plan.md` | MCP 安装与隔离总览 |
 

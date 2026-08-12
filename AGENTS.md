@@ -2,6 +2,24 @@
 
 本文件告诉 Agent 如何阅读、行动和避免风险。**Cursor 与 Codex 共用本文件。** `governance/repo_protocol_standard.yaml` 管理跨仓库安全与治理规则；本项目的产品目标、阶段顺序和验收终点以 `docs/product_final_state_spec.md` 为最高锚点（项目级 override 见 `project.yaml`）。Tool-aware Agent Layer 2.0 机器配置见 `agent_layer.yaml`。
 
+## 项目级 Git 最终化覆盖（local-only）
+
+本仓库的 `project.yaml` 覆盖通用协议中的 approved-round automatic Git finalization。Judge `PASS` 且 Governor `APPROVE` 后，批准的 scoped candidate **只在本地工作树完成**；Agent 不得自动 stage、commit、checkout、merge 或 push。
+
+- edit/build 请求不隐含任何 Git 授权；任何 Round Prompt 或轮次任务书也不得授权 Git 操作。
+- commit 与 push 是两个独立授权：两者分别都必须由用户在**当前轮**明确措辞授权。push 失败后不得沿用旧授权重试，必须取得用户新的当前轮明确授权。
+- 仅由已验证 scoped task / baseline-owned changes 产生的 dirty worktree warning 是预期状态，不构成阻断；真实的 `FAIL` 或 `BLOCKED` 仍然阻断完成。
+- 即使用户授权 commit，也永远不得提交真实原文、真实译文、workspace runtime artifacts 或 secrets；只能精确暂存已批准路径，禁止使用指向当前目录或全匹配路径的 `git add` 全量暂存形式。
+
+## Workspace 逐文件基线与完整门禁隔离
+
+`workspace_file_baseline` 的机器真值同时位于 `project.yaml` 与 `governance/agent_policy.yaml`：保护根目录为 `workspace`，manifest 为 `.agent_runtime/inspection_reports/workspace_file_baseline.json`，校验器为 `scripts/workspace_file_baseline.py`，算法为逐文件 SHA-256。
+
+- 任何已知或可能写入 `workspace` 的工具，运行前必须先执行 `python3 scripts/workspace_file_baseline.py verify --json`；工具结束后必须再次执行同一 verify 命令。
+- 前置或后置 verify 发现 drift、返回非零或校验器报错时均为硬阻断：立即停止该工具链并报告，不得自动执行 `create`，不得用 create/rebaseline 覆盖 drift。
+- `auto_rebaseline=false`。只有用户在**当前轮明确授权**后，才可执行 baseline `create` 或 rebaseline；历史授权、Round Prompt、edit/build 请求均不授权该操作。
+- 禁止在真实仓库工作树运行完整 `scripts/agent_gate.py`。完整 gate 只允许在一次性隔离临时副本中运行，且隔离副本产生的 `workspace/`、`reports/`、`.agent_runtime/` 等输出不得写回真实仓库。真实工作树只运行合同指定的 targeted/read-only checks。
+
 ## 🎯 最终成品规格（最高优先级，2026-06-10 起）
 
 **`docs/product_final_state_spec.md` 是本仓库最高级别目标锚点**，优先级高于普通 Roadmap、Round Report、临时 Prompt 与单轮执行指令。任何冲突以它为准。任何 Agent 不得删除、弱化或绕过该文件。
@@ -26,8 +44,8 @@
 - **生产翻译有两条合法路径**：外部真实 API（cost guard + 预算限制 + pause file 尊重）或 Agent 自身额度（结构化写入 + 一致性校对 + 报告记录）。生产模型切换 / 并发 / 提价需用户确认。
 - **Web UI 是主线**而非附属：UI 轮必须真实浏览器 before/after 检查（页面、console、network），中文优先，统一设计系统，危险操作二次确认。
 - **旧 R-MR / refinement / production_candidate 路线已废弃**：不得作为下一轮主任务；旧文档只可作历史参考。
-- **永远不得**：自动标记 human_approved_final、自动发布、覆盖 baseline / 原文、提交真实正文或密钥、`git add .`、留下 orphan worker。
-- **门禁串行执行**：`agent_gate.py` 会运行诊断 worker；不要与 `local_scheduler_tick.py` 并行启动，避免安全门禁把瞬时诊断进程判为并发 worker。
+- **永远不得**：自动标记 human_approved_final、自动发布、覆盖 baseline / 原文、提交真实原文或真实译文、提交 workspace runtime artifacts 或 secrets、使用 `git add` 全量暂存、留下 orphan worker。
+- **完整门禁隔离**：完整 `agent_gate.py` 可能运行诊断 worker 或写运行产物，禁止在真实工作树执行；如合同要求，只能在一次性隔离临时副本中串行运行且不得回写。
 - P0 / P1 未清零不做 P2 / P3；硬阻塞时停止并输出 BLOCKED（见 `non_goals_and_guardrails.md` §7）。
 
 ## Repo Mission
@@ -78,14 +96,17 @@
 - 禁止扫描：`.git/`、`node_modules/`、`.venv/`、`.cursor/`、`cache/`、`logs/`
 - 禁止读取或打印 `.env` 内容
 - 治理轮不得启动真实翻译或调用真实 API
-- 运行 `scripts/agent_gate.py`（Round 41 起，实现前手动对照 `docs/agent_gate_and_protocol_check.md`）
+- 对任何已知或可能写入 `workspace` 的工具，先运行 `python3 scripts/workspace_file_baseline.py verify --json`；drift 或 verifier error 立即阻断并报告
+- 在真实工作树只运行当前合同指定的 targeted/read-only checks；完整 `scripts/agent_gate.py` 只能在不得回写的一次性隔离临时副本中运行
 
 ## 编辑后检查
 
 - 更新 `governance/round_state.yaml`
 - 治理变更写入 `docs/reports/`（本地，默认不提交敏感报告正文）
-- 用户或轮次 Prompt 明确要求时再 commit；commit 前确认无 `.env`/密钥/真实原文/真实译文
-- push 需用户明确授权
+- 默认在未 stage/commit/push 的工作树中本地完成；Round Prompt 不得授权任何 Git 操作
+- 仅当用户在当前轮明确要求 commit 时，才可精确暂存本轮批准路径；commit 前确认无 `.env`、密钥、真实原文、真实译文或 workspace runtime artifacts
+- push 必须另有用户当前轮明确授权；失败后不得无新授权重试
+- 已运行任何已知或可能写入 `workspace` 的工具时，结束后再次运行 `python3 scripts/workspace_file_baseline.py verify --json`；drift 或 verifier error 阻断完成，且不得自动 create/rebaseline
 
 ## 硬阻塞
 
@@ -227,7 +248,7 @@ python3 scripts/run_browser_inspection.py
 
 - 人类可读：`docs/TOOL_INVENTORY.md`
 - 机器可读：`agent_tools.yaml`、`reports/tool_probe_report.json`
-- 探针：`python3 scripts/tool_probe.py`
+- 写入型探针刷新：`python3 scripts/tool_probe.py`（会更新报告；仅在当前 scoped task 明确拥有该刷新时运行，不是普通验证命令）
 
 ### Tool Usage Policy
 
@@ -248,15 +269,14 @@ python3 scripts/run_browser_inspection.py
 
 1. 读 Layer 2.0 必读文件 + `git status`
 2. 工具探针 / 工具计划
-3. 小范围实现（`docs/AGENT_ROADMAP.md` 中一条 AL-xxx）
-4. 门禁：`python3 scripts/agent_gate.py --json`；必要时 `npm run check:tooling`
+3. 从 `docs/final_state_round_task_list.md` 与当前批准合同选择一个小范围实现；`docs/AGENT_ROADMAP.md` 仅为已完成历史快照
+4. 验证：在真实工作树只运行合同指定的 targeted/read-only checks；完整 gate 如确有要求，只能在不得回写的一次性隔离临时副本中运行
 5. 报告：`reports/latest-agent-report.json` + `reports/agent_audit_log.jsonl`
 
 ### Common Commands
 
 ```bash
-python3 scripts/tool_probe.py
-python3 scripts/agent_gate.py --json
+python3 scripts/workspace_file_baseline.py verify --json
 python3 scripts/user_view_test.py
 npm run dev:frontend
 npm run check:tooling
@@ -265,13 +285,13 @@ npm run test:ui
 python3 scripts/agent.py status
 ```
 
-### Gate Commands
+### Gate 执行边界
 
-| 命令 | 输出 |
-|------|------|
-| `python3 scripts/agent_gate.py` | exit 0/1/2；`docs/reports/agent_gate_report.md` |
-| `python3 scripts/agent_gate.py --json` | stdout JSON |
-| — | `reports/gate_result.json` |
+| 场景 | 当前规则 |
+|------|----------|
+| 真实仓库工作树 | 禁止运行完整 `scripts/agent_gate.py`；仅运行合同指定的 targeted/read-only checks |
+| 一次性隔离临时副本 | 合同确有要求时可运行完整 gate；副本产生的 workspace、reports、runtime outputs 不得写回 |
+| Workspace 敏感工具 | 前后都执行 baseline verify；drift 或 verifier error 均为硬阻断 |
 
 ### Severity Rules
 
@@ -316,17 +336,17 @@ Schema：`schemas/agent_round_report.schema.json`
 
 ### Commit / Push Policy
 
-用户或轮次 Prompt 明确要求才 commit；push 需用户授权；commit 前 `git diff` 查密钥与原文。
+本仓库默认 local-only：批准轮在本地工作树完成，不自动 stage、commit、checkout、merge 或 push。edit/build 请求和 Round Prompt 均不构成 Git 授权。commit 与 push 分别需要用户在当前轮明确授权；commit 前仅精确暂存批准路径，并用 `git diff` 检查 secrets、真实原文、真实译文和 workspace runtime artifacts。任何上述类别都永不提交；push 失败后必须取得新的当前轮用户授权才能重试。
 
 ### Next Round Policy
 
-读 `reports/latest-agent-report.json` 的 `next_recommended_round` 与 `docs/AGENT_ROADMAP.md`。
+以 `docs/final_state_round_task_list.md`、`governance/round_state.yaml` 与当前批准合同为准；`reports/latest-agent-report.json` 只作报告快照，`docs/AGENT_ROADMAP.md` 只作历史参考。
 
 ### Human Required Decisions
 
 - 是否 push / 开 PR
 - 是否启用真实 API 与成本上限
-- 是否提交含 workspace 运行产物
+- 是否保留或清理 workspace 运行产物（这些产物永远不得提交）
 - Codex 额度分配
 
 ### Prompt 模板
@@ -337,6 +357,6 @@ Schema：`schemas/agent_round_report.schema.json`
 
 本项目的通用 MCP 工具（chrome-devtools / playwright / context7 / github / stitch）与跨项目分工规则
 遵循工作区级标准，详见：
-`/Users/alalapi/PycharmProjects/.agent_workspace/docs/AGENT_TOOLING_STANDARD.md`
+`../.agent_workspace/docs/AGENT_TOOLING_STANDARD.md`（从当前仓库根目录解析）
 
 本项目专属、不可全局化的工具（如有）：见本文件 MCP 配置章节。

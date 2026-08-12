@@ -1,0 +1,108 @@
+{
+  "chapter_87_disposition": "awaiting_user_no_phase_a_change",
+  "term_proposals": [{"source_term": "サンプル語", "proposed_target": "示例术语"}],
+  "character_proposals": [],
+  "classified_decisions": [],
+  "forum_formatting_policy": {
+    "render_floor_template": "{floor_label}\n{body}",
+    "render_reply_template": ">> {target_floor}\n{body}"
+  },
+  "paths": {
+    "glossary": "configs/glossary.yaml",
+    "character_profile": "configs/character_profile.yaml",
+    "prompt": "prompts/user_revision_reconciliation.md",
+    "revised_output": "output_cn/translated/full_volume_cn.md",
+    "local_fix_plan": "workspace/consistency_audit/local_fix_plan.json",
+    "audit_report": "reports/user_revision_sync_audit.json"
+  },
+  "owner_decisions": [
+    {
+      "id": "homunculus_exact_spelling",
+      "question": "Confirm exact Homunculus spelling?",
+      "recommended_default": "Preserve the owner-provided spelling.",
+      "status": "awaiting_user",
+      "affected_terms": ["Homunculus"],
+      "affected_chapters": ["ch-001"]
+    },
+    {
+      "id": "homunculus_annotation_rule",
+      "question": "Confirm the first-use annotation rule?",
+      "recommended_default": "Annotate once after confirmation.",
+      "status": "awaiting_user",
+      "affected_terms": ["Homunculus"],
+      "affected_chapters": ["ch-001"]
+    },
+    {
+      "id": "chapter_087_disposition",
+      "question": "Confirm the separate long-term treatment of chapter 87?",
+      "recommended_default": "Exclude and leave unchanged, pending explicit user confirmation.",
+      "status": "awaiting_user",
+      "affected_terms": [],
+      "affected_chapters": ["ch-087"]
+    },
+    {
+      "id": "handle_hana_eleboo",
+      "question": "Confirm the Hana Eleboo handle mapping?",
+      "recommended_default": "Keep the mapping unresolved.",
+      "status": "awaiting_user",
+      "affected_terms": ["hana_eleboo"],
+      "affected_chapters": ["ch-001"]
+    },
+    {
+      "id": "handle_omiotsukenai",
+      "question": "Confirm the Omiotsukenai handle mapping?",
+      "recommended_default": "Keep the mapping unresolved.",
+      "status": "awaiting_user",
+      "affected_terms": ["omiotsukenai"],
+      "affected_chapters": ["ch-001"]
+    },
+    {
+      "id": "duplicate_arafubuki",
+      "question": "Confirm duplicate Arafubuki handling?",
+      "recommended_default": "Do not merge without confirmation.",
+      "status": "awaiting_user",
+      "affected_terms": ["arafubuki"],
+      "affected_chapters": ["ch-001"]
+    },
+    {
+      "id": "handle_peikouken",
+      "question": "Confirm the Peikouken handle mapping?",
+      "recommended_default": "Keep the mapping unresolved.",
+      "status": "awaiting_user",
+      "affected_terms": ["peikouken"],
+      "affected_chapters": ["ch-001"]
+    },
+    {
+      "id": "handle_maa_chan",
+      "question": "Confirm the Maa-chan handle mapping?",
+      "recommended_default": "Keep the mapping unresolved.",
+      "status": "awaiting_user",
+      "affected_terms": ["maa_chan"],
+      "affected_chapters": ["ch-001"]
+    },
+    {
+      "id": "handle_kouki",
+      "question": "Confirm the Kouki handle mapping?",
+      "recommended_default": "Keep the mapping unresolved.",
+      "status": "awaiting_user",
+      "affected_terms": ["kouki"],
+      "affected_chapters": ["ch-001"]
+    }
+  ],
+  "content_policies": {
+    "player_and_forum_names": "owner_confirmation_required",
+    "same_source_skill_name": "preserve_one_canonical_name",
+    "great_work": "preserve_owner_polish",
+    "philosophers_egg": "preserve_exact_spelling_after_confirmation",
+    "metadata": "remove_transport_metadata_only",
+    "human_polish": "retain_when_source_consistent",
+    "punctuation": "normalize_without_semantic_change"
+  },
+  "application_authorization": {
+    "accepted_plan_id": null,
+    "accepted_content_digest": null,
+    "acceptance_token": null,
+    "workspace_rebaseline_authorized_current_turn": false,
+    "workspace_rebaseline_authorization_evidence": null
+  }
+}

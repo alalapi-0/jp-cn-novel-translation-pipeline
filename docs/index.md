@@ -29,7 +29,8 @@
 - `docs/shared_core_design.md`
 - `docs/governance_rules.md`
 - `docs/agent_operating_manual.md`
-- **Tool-aware Agent Layer 2.0：** `agent_layer.yaml`、`agent_tools.yaml`、`docs/AGENT_RUNBOOK.md`、`docs/TOOL_USAGE_POLICY.md`、`docs/AGENT_ROADMAP.md`、`reports/latest-agent-report.json`
+- **Tool-aware Agent Layer 2.0 当前策略：** `agent_layer.yaml`、`agent_tools.yaml`、`docs/AGENT_RUNBOOK.md`、`docs/TOOL_USAGE_POLICY.md`
+- **历史/快照（无当前执行或授权效力）：** `docs/AGENT_ROADMAP.md` 保留已完成 AL 路线事实；`reports/latest-agent-report.json` 是报告快照。二者不得覆盖上述当前策略或授予 gate、写入、Git、API 权限。
 - `docs/migration_notes.md`
 
 ## 设计输入层（Stitch）
@@ -102,6 +103,8 @@
 - `docs/reports/`：本地报告目录，项目专有报告默认不提交公开仓库。
 
 ## Prompt 模板目录
+
+以下文件是模板/历史输入，不是当前权限来源。任何 Prompt 都必须服从 `AGENTS.md` 与 `project.yaml`；尤其不得授权真实工作树完整 gate、隐式写入或 Git，commit 与 push 仍分别需要用户当前轮明确授权。
 
 - `prompts/governance_round_template.md`
 - `prompts/implementation_round_template.md`

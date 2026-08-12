@@ -1,9 +1,9 @@
 # Agent Prompt Templates
 
-Copy-paste prompts for Tool-aware rounds. Each requires: read AGENTS.md, agent_tools.yaml, latest-agent-report; tool plan; small scope; gate; report; no real API/publish; no auto push.
+Copy-paste templates for Tool-aware rounds. A template is not an authority source: each use must obey current `AGENTS.md` and `project.yaml`. Real-worktree validation is targeted/read-only; a full gate is isolated-copy-only with no writeback. Prompt text never authorizes Git, baseline changes, API use, publication, or other external effects; commit and push each require separate explicit current-turn user wording.
 
 > **FS 连续推进轮（2026-06-11 起的主线模式）**：使用 `docs/prompts/CONTINUOUS_FS_ADVANCE_PROMPT.md`。
-> 该 Prompt 由用户授权每轮 commit + push main 与按轮次边界使用真实 API，优先级规则见其正文；与下方旧模板冲突时以其为准。
+> 该入口仅作为历史模板索引保留；其旧有 commit/push 或真实 API 表述不授予当前权限，且不得覆盖现行控制面。
 
 ---
 
@@ -15,13 +15,13 @@ You are running AL-003 tool probe round for light_novel.
 Read first: AGENTS.md, agent_tools.yaml, reports/latest-agent-report.json, docs/TOOL_USAGE_POLICY.md.
 
 Tasks:
-1. Run python3 scripts/tool_probe.py and review reports/tool_probe_report.json
+1. This round explicitly owns the writing probe refresh: run python3 scripts/tool_probe.py and review its exact report diff
 2. For each MCP in .cursor/mcp.json, run one read-only safe probe; record callable_now
 3. Update docs/TOOL_INVENTORY.md and agent_tools.yaml if changed
-4. Run python3 scripts/agent_gate.py --json
+4. Run npm run check:tooling in the real worktree; run a full gate only if the current contract requires an isolated no-writeback copy
 5. Write reports/latest-agent-report.json with tools_used / tools_not_used
 
-Constraints: no real API, no publish, no commit unless asked.
+Constraints: no real API or publish; this Prompt grants no Git authority; commit and push each require separate explicit current-turn user wording.
 ```
 
 ---
@@ -29,14 +29,14 @@ Constraints: no real API, no publish, no commit unless asked.
 ## 2. Cursor small implementation round
 
 ```
-You are running a small implementation round (one AL-xxx item from docs/AGENT_ROADMAP.md).
+You are running one scoped implementation task selected from the current final-state task authority. `docs/AGENT_ROADMAP.md` is a historical snapshot, not a task selector.
 
 Read first: AGENTS.md, agent_layer.yaml, agent_tools.yaml, reports/latest-agent-report.json.
 
 Before coding:
 - Confirm tool probe status
 - List tools you will use and why
-- Confirm web_search_needed flag for this AL round
+- Confirm whether the current scoped task requires fresh external research
 
 Implement ONE scoped change only. Run npm run check:tooling if code touched.
 Write reports/latest-agent-report.json and append agent_audit_log.jsonl.
@@ -69,7 +69,7 @@ P0/P1 fix round — clear blockers before P2/P3.
 
 Read latest-agent-report.json severity_summary and reports/gate_result.json.
 
-Fix highest severity first. Re-run agent_gate and relevant tests.
+Fix highest severity first. Re-run scoped targeted/read-only checks and relevant tests. A full agent_gate may run only when required, in a disposable isolated copy with no writeback.
 Do not delete tests to pass. Document remaining issues in report.
 ```
 
@@ -83,7 +83,7 @@ Codex session for light_novel — high-value task only.
 Read: AGENTS.md, agent_layer.yaml, agent_tools.yaml, docs/CODEX_HANDOFF.md (filled), reports/latest-agent-report.json.
 
 Task: [from handoff Current goal]
-Constraints: one round, no real API, no publish, run python3 scripts/agent_gate.py --json.
+Constraints: one round, no real API, no publish; run scoped targeted/read-only checks in the real tree. A full agent_gate is isolated-copy-only with no writeback.
 
 Return: summary, gate result, updated report fields, next Cursor AL round ID.
 ```

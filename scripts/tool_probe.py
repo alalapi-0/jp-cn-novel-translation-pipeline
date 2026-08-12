@@ -132,6 +132,36 @@ def _which(name: str) -> bool:
     return shutil.which(name) is not None
 
 
+def _probe_repo_local_node_binary(name: str) -> dict[str, Any]:
+    binary = REPO_ROOT / "node_modules" / ".bin" / name
+    display_path = f"node_modules/.bin/{name}"
+    if not binary.exists():
+        return {
+            "exit_code": 127,
+            "output": f"BLOCKED_ENV: {display_path} missing or not executable",
+            "available": False,
+        }
+    try:
+        repo_root = REPO_ROOT.resolve(strict=True)
+        node_modules_root = (REPO_ROOT / "node_modules").resolve(strict=True)
+        resolved_binary = binary.resolve(strict=True)
+        resolved_binary.relative_to(repo_root)
+        resolved_binary.relative_to(node_modules_root)
+    except (OSError, RuntimeError, ValueError):
+        return {
+            "exit_code": 127,
+            "output": f"BLOCKED_ENV: {display_path} missing, invalid, or outside repository",
+            "available": False,
+        }
+    if not resolved_binary.is_file() or not os.access(resolved_binary, os.X_OK):
+        return {
+            "exit_code": 127,
+            "output": f"BLOCKED_ENV: {display_path} missing or not executable",
+            "available": False,
+        }
+    return _run([str(resolved_binary), "--version"])
+
+
 def _env_present(name: str) -> bool:
     return bool(os.environ.get(name))
 
@@ -255,12 +285,12 @@ def _probe_github_offline() -> dict[str, Any]:
 
 
 def _probe_playwright_offline() -> dict[str, Any]:
-    pw = _run("npx playwright --version")
+    pw = _probe_repo_local_node_binary("playwright")
     return {"npx_playwright": pw["available"], "version": pw["output"][:40]}
 
 
 def _probe_prisma_offline() -> dict[str, Any]:
-    prisma = _run(["npx", "-y", "prisma", "--version"], timeout=30)
+    prisma = _probe_repo_local_node_binary("prisma")
     return {"npx_prisma": prisma["available"], "detail": prisma["output"][:80]}
 
 
@@ -422,7 +452,7 @@ def probe_local_tools() -> dict[str, Any]:
         "make": _run("make --version"),
         "gh": _run("gh --version"),
         "ffmpeg": _run("ffmpeg -version"),
-        "playwright_npx": _run("npx playwright --version"),
+        "playwright_npx": _probe_repo_local_node_binary("playwright"),
         "pytest": _run("python3 -m pytest --version"),
     }
     probes["cwd"] = str(REPO_ROOT)

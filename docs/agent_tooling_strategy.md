@@ -42,19 +42,16 @@
 
 - 每轮开始必须 `git status`
 - 每轮结束必须 `git status`
-- 每轮 commit 前必须确认没有 `.env`、密钥、未授权原文/译文
-- push 失败要记录，不要反复重试
-- push 需用户明确授权（协议要求）
+- commit 前必须确认没有 `.env`、密钥、真实原文、真实译文或 workspace runtime artifacts
+- commit 与 push 分别需要用户当前轮明确授权；push 失败后的重试需要新授权
 
 **验证：**
 
 ```bash
 git status
 git check-ignore -v .env 2>/dev/null || true
-python3 scripts/agent_gate.py
-python3 scripts/check_protocol_standard.py
-python3 scripts/scan_repo_inventory.py   # Round 43 起
-npm run check:tooling                    # 捆绑 gate + protocol + inventory + pytest
+npm run check:tooling                    # 真实工作树可用的控制面目标检查
+# 完整 agent_gate、protocol report 与 inventory 生成只可在一次性隔离副本运行，且不得写回任何输出。
 ```
 
 ---
@@ -220,8 +217,8 @@ Bulk embed 须通过 `cost_guard` / `controlled_run`（Round 47）且 `--dry-run
 
 **规则：**
 
-- commit 需用户或轮次 Prompt 明确要求
-- push 需用户授权
+- commit 需用户当前轮明确要求；Round Prompt、edit/build 请求不授权 Git
+- push 需与 commit 分离的用户当前轮明确授权；失败后重试需要新授权
 - 使用 `gh` 处理 PR 时遵循仓库 commit 风格
 
 ---
@@ -233,11 +230,10 @@ Bulk embed 须通过 `cost_guard` / `controlled_run`（Round 47）且 `--dry-run
 **每轮都应：**
 
 - 避免提交敏感信息
-- 避免提交真实版权原文（除非用户明确要求）
-- 避免提交真实译文（除非用户明确要求）
+- 永不提交真实版权原文、真实译文或 workspace runtime artifacts
 - 记录 push 失败而非反复重试
 
-**Agent Gate（Round 41）：** 统一入口 `scripts/agent_gate.py`，见 `docs/agent_gate_and_protocol_check.md`。
+**Agent Gate（Round 41）：** 完整门禁能力位于 `scripts/agent_gate.py`，但现行规则只允许在一次性隔离副本运行；真实工作树使用合同指定的 targeted/read-only checks。见 `docs/agent_gate_and_protocol_check.md`。
 
 ---
 

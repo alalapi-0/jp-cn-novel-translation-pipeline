@@ -32,16 +32,65 @@ forbidden_actions:
 network_policy:
   default: no_network_unless_required
 
+git_finalization:
+  mode: local_only
+  automatic_stage: false
+  automatic_commit: false
+  automatic_push: false
+  approved_round_local_completion_allowed: true
+  commit_requires_explicit_current_turn_user_request: true
+  push_requires_explicit_current_turn_user_authorization: true
+  push_retry_requires_new_current_turn_user_authorization: true
+  dirty_worktree:
+    scoped_verified_task_changes_are_expected: true
+    warning_is_blocking: false
+    actual_fail_or_blocked_is_blocking: true
+  authorization_sources:
+    edit_or_build_request: false
+    round_prompt: false
+  never_commit_categories:
+    - real_source_text
+    - real_translation
+    - workspace_runtime_artifacts
+    - secrets
+
 commit_policy:
-  default: commit_only_when_user_or_round_prompt_requests
+  default: local_only_no_automatic_commit
+  automatic_stage: false
+  automatic_commit: false
+  requires_explicit_current_turn_user_request: true
+  round_prompt_can_authorize: false
+  edit_or_build_request_can_authorize: false
+  exact_path_staging_only: true
   verify_before_commit:
     - no_env_tracked
     - no_secrets_in_diff
     - no_real_source_text_in_diff
-    - no_real_translation_in_diff_unless_user_requested
+    - no_real_translation_in_diff
+    - no_workspace_runtime_artifacts_in_diff
 
 push_policy:
-  requires_user_approval: true
+  default: local_only_no_automatic_push
+  automatic_push: false
+  requires_explicit_current_turn_user_authorization: true
+  retry_requires_new_current_turn_user_authorization: true
+
+workspace_file_baseline:
+  root: workspace
+  manifest: .agent_runtime/inspection_reports/workspace_file_baseline.json
+  verifier: scripts/workspace_file_baseline.py
+  algorithm: per_file_sha256
+  workspace_sensitive_tools:
+    verify_before: "python3 scripts/workspace_file_baseline.py verify --json"
+    verify_after: "python3 scripts/workspace_file_baseline.py verify --json"
+  drift_is_blocking: true
+  verifier_error_is_blocking: true
+  auto_rebaseline: false
+  create_or_rebaseline_requires_explicit_current_turn_user_authorization: true
+  full_agent_gate:
+    live_worktree_execution_prohibited: true
+    allowed_only_in_disposable_isolated_copy: true
+    isolated_workspace_reports_runtime_outputs_must_not_write_back: true
 
 translation_pipeline_rules:
   - do_not_mix_jp_to_cn_and_cn_to_jp_logic
@@ -54,3 +103,6 @@ automation_gate:
   entry: scripts/agent_gate.py
   report: docs/reports/agent_gate_report.md
   status: implemented_round_41
+  live_worktree_execution: prohibited
+  isolated_execution_only: disposable_copy
+  isolated_outputs_write_back: false

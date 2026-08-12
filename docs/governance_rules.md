@@ -60,17 +60,21 @@
 
 ## 提交规则
 
-当**用户或当前轮 Prompt 明确要求**提交时，每轮结束应：
+本仓库采用 user-owned `local_only` Git 最终化策略。治理批准的 scoped candidate 默认停留在未 stage/commit/push 的本地工作树中；通用协议的 approved-round automatic stage/commit/push 在本仓库不适用。仅由已验证 scoped task / baseline-owned changes 产生的 dirty worktree warning 是预期、非阻断状态；真实 `FAIL` 或 `BLOCKED` 仍然阻断。
 
-```bash
-git status
-git add .
-git commit -m "docs: describe change"
-```
+edit/build 请求和任何 Round Prompt 都不构成 Git 授权。只有用户在当前轮明确要求 commit 后，才可精确暂存本轮已批准路径并提交；禁止使用指向当前目录或全匹配路径的 `git add` 全量暂存形式。push 必须由用户在当前轮另行明确授权；push 失败后不得沿用旧授权重试。
 
-`git push` 需用户明确授权（对齐通用协议 `approval_required`）。commit 前必须确认 diff 中无 `.env`、API Key、未授权原文/译文。
+无论是否获得 commit 授权，真实原文、真实译文、workspace runtime artifacts 和 secrets 永远不得提交。commit 前必须检查精确路径 diff 与 staged diff，确认没有任何上述内容。如果当前目录不是 Git 仓库，不得强行初始化 Git，应记录原因。
 
-如果当前目录不是 Git 仓库，不得强行初始化 Git，应在报告中记录原因。如果 push 失败，记录原因，不反复尝试。
+## Workspace 逐文件基线与门禁隔离
+
+`project.yaml` 与 `governance/agent_policy.yaml` 必须维护语义一致的 `workspace_file_baseline` 机器策略：`root=workspace`、manifest 为 `.agent_runtime/inspection_reports/workspace_file_baseline.json`、verifier 为 `scripts/workspace_file_baseline.py`，并以 `per_file_sha256` 逐文件校验。
+
+1. 任何已知或可能写入 `workspace` 的工具，运行前必须执行 `python3 scripts/workspace_file_baseline.py verify --json`，运行后必须再次执行同一命令。
+2. 前置或后置 verify 发现 drift、返回非零或 verifier error 时均为硬阻断：立即停止并报告，不得继续工具链，也不得自动 `create` 或以 create/rebaseline 覆盖 drift。
+3. `auto_rebaseline=false`。baseline `create` 与 rebaseline 都必须取得用户**当前轮明确授权**；历史授权、Round Prompt 与 edit/build 请求均无效。
+4. 禁止在真实仓库工作树运行完整 `scripts/agent_gate.py`。真实工作树只可运行合同指定的 targeted/read-only checks；完整 gate 仅可在一次性隔离临时副本中运行。
+5. 隔离副本产生的 `workspace/`、`reports/`、`.agent_runtime/` 等 workspace/reports/runtime outputs 不得写回真实仓库。
 
 ## 生产翻译 Worker 生命周期
 
@@ -129,7 +133,7 @@ git commit -m "docs: describe change"
 3. 如果协议与仓库规则冲突，必须记录于 `docs/repo_protocol_alignment.md`，不得静默覆盖。
 4. 不得擅自修改协议本体；升级须备份并写迁移报告。
 5. 协议对齐报告有变更时必须更新 `docs/repo_protocol_alignment.md`。
-6. 后续 `scripts/agent_gate.py` 与 `scripts/check_protocol_standard.py` 应纳入协议检查（Round 41–42）。
+6. Round 41–42 曾将 `scripts/agent_gate.py` 与 `scripts/check_protocol_standard.py` 纳入协议检查；这是历史实现记录，不授予在真实工作树运行完整 gate 的当前执行权限。现行执行边界以“Workspace 逐文件基线与门禁隔离”为准。
 
 ## 参考方法吸收规则
 

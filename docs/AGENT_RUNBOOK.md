@@ -12,9 +12,8 @@ Operational steps for every Tool-aware Agent round (Cursor primary, Codex compat
    - `docs/TOOL_USAGE_POLICY.md`
    - `reports/latest-agent-report.json`
 3. `git status --short`
-4. `python3 scripts/tool_probe.py --sync-docs` (if probe older than 24h or environment changed)
-5. Or sync yaml only: `python3 scripts/sync_agent_tools_from_probe.py`
-6. Decide: need web search? → `docs/SEARCH_POLICY.md`
+4. Read `reports/tool_probe_report.json`; refreshing reports or syncing YAML is a separate authorized write, never an automatic startup step
+5. Decide: need web search? → `docs/SEARCH_POLICY.md`
 
 ## During implementation
 
@@ -26,12 +25,9 @@ Operational steps for every Tool-aware Agent round (Cursor primary, Codex compat
 
 ## Validation
 
-```bash
-python3 scripts/agent_gate.py --json
-npm run check:tooling          # when code/tests touched
-python3 scripts/user_view_test.py   # UI-related
-npm run test:ui                # full E2E when UI changed
-```
+In the real working tree, run only the contract-selected targeted/read-only checks. For control-plane changes, `npm run check:tooling` is the live-safe entrypoint. A full `scripts/agent_gate.py` run is allowed only in a disposable isolated copy, and none of its outputs may be written back.
+
+UI work still requires the task-specific browser checks and tests named by the active contract.
 
 ## After implementation
 
@@ -39,7 +35,7 @@ npm run test:ui                # full E2E when UI changed
 2. Write `reports/latest-agent-report.json`
 3. Append `reports/agent_audit_log.jsonl`
 4. `git diff` — verify no secrets / raw novel text
-5. Commit only if user asked
+5. Commit only after an explicit current-turn owner request; push requires a separate current-turn authorization, and retrying a failed push requires new authorization
 
 ## Exit codes (`agent_gate.py`)
 
@@ -61,7 +57,8 @@ npm run test:ui                # full E2E when UI changed
 
 - Safety: `docs/AGENT_SAFETY.md`
 - Reporting: `docs/AGENT_REPORTING.md`
-- Roadmap: `docs/AGENT_ROADMAP.md`
+- Current roadmap: `docs/final_state_implementation_roadmap.md` and `docs/final_state_round_task_list.md`
+- Historical Agent Layer snapshot (non-operative): `docs/AGENT_ROADMAP.md`
 - Legacy pipeline: `docs/agent_operating_manual.md`
 - MCP: `docs/runbooks/mcp_browser_tools_runbook.md`
 
@@ -74,7 +71,6 @@ npm run test:ui
 npm run check:mcp
 python3 scripts/run_real_api_smoke.py          # dry-run default
 python3 scripts/run_browser_inspection.py
-python3 scripts/agent_gate.py
-python3 scripts/tool_probe.py --sync-docs
-python3 scripts/sync_agent_tools_from_probe.py
+npm run check:tooling
+# Full gate: run python3 scripts/agent_gate.py only inside a disposable isolated copy.
 ```

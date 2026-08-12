@@ -27,7 +27,8 @@ agent_surfaces:
     primary: true
     available: true
     recommended_use:
-    - deterministic gates
+    - targeted read-only checks
+    - full gate only in a disposable isolated copy
     - reports
     - smoke tests
     - artifact checks
@@ -35,9 +36,10 @@ tools:
   shell:
     available: true
     safe_probe: pwd
-    probe_result: /Users/alalapi/PycharmProjects/light_novel
+    probe_result: repository root resolved at runtime; no fixed host path
     use_for:
-    - run gates
+    - run targeted read-only checks
+    - run a full gate only inside a disposable isolated copy
     - inspect repo
     - run tests
     never_use_for:
@@ -67,7 +69,7 @@ tools:
     safe_probe: python3 --version
     use_for:
     - pytest
-    - agent_gate
+    - agent_gate in a disposable isolated copy only
     - pipeline scripts
     probe_result: Python 3.14.5
   web_search:
@@ -105,13 +107,12 @@ tools:
     fallback: npm run test:ui
   playwright:
     available: true
-    safe_probe: npx playwright --version
+    safe_probe: node_modules/.bin/playwright --version
     use_for:
     - e2e tests
     - user-view flows
     - regression tests
-    probe_result: config=PASS; launcher=npx (ok); thread_tools=23; safe_tool=browser_snapshot; npx_playwright=ok; version=Version
-      1.60.0
+    probe_result: config=PASS; MCP launcher metadata present; safe local CLI probe uses node_modules/.bin/playwright only and returns BLOCKED_ENV when absent or non-executable
     configured: true
     callable_now: true
   chrome_devtools:
@@ -184,7 +185,16 @@ policies:
   default_real_publish: false
   require_dry_run: true
   require_report: true
-  require_gate_before_commit: true
+  require_verified_scoped_candidate_before_commit: true
+  live_full_gate_prohibited: true
+  full_gate_context: disposable_copy_only
+  full_gate_output_writeback: false
+  commit_requires_explicit_current_turn_user_request: true
+  push_requires_separate_explicit_current_turn_user_authorization: true
+  push_retry_requires_new_current_turn_user_authorization: true
+  git_authorization_sources:
+    edit_or_build_request: false
+    round_prompt: false
   require_tool_usage_log: true
   require_tool_probe_before_plan: true
 task_stage_mapping:
@@ -225,8 +235,11 @@ task_stage_mapping:
     required:
     - shell
     commands:
-    - python3 scripts/agent_gate.py
-    - python3 scripts/tool_probe.py
+    - npm run check:tooling
+    full_gate:
+      context: disposable_copy_only
+      command: python3 scripts/agent_gate.py
+      output_writeback: false
 probe_sync:
   source: reports/tool_probe_report.json
   probe_timestamp: '2026-06-11T14:50:15Z'

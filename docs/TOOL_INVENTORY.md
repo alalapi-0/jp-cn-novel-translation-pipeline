@@ -2,7 +2,7 @@
 
 Date: 2026-06-09 (AL-008 Cursor CLI probe)  
 Agent surface: Cursor (Tool-aware Agent Layer 2.0)  
-Probe script: `python3 scripts/tool_probe.py --sync-docs`  
+Probe source: `reports/tool_probe_report.json`（刷新 probe 或同步文档是独立写操作，须有当前任务授权）
 Machine report: `reports/tool_probe_report.json`
 
 ## Summary
@@ -26,7 +26,7 @@ Machine report: `reports/tool_probe_report.json`
 
 | Tool | Available | Probe | Output (truncated) |
 |------|-----------|-------|---------------------|
-| shell | yes | `pwd` | `/Users/alalapi/PycharmProjects/light_novel` |
+| shell | yes | `pwd` | repository root resolved at runtime; no fixed host path |
 | git | yes | `git status --short` | working tree changes present |
 | git branch | yes | `git branch --show-current` | `main` |
 | node | yes | `node -v` | v26.0.0 |
@@ -40,7 +40,7 @@ Machine report: `reports/tool_probe_report.json`
 | make | yes | `make --version` | GNU Make 3.81 |
 | gh | yes | `gh --version` | 2.92.0 |
 | ffmpeg | yes | `ffmpeg -version` | 8.0.1 |
-| playwright | yes | `npx playwright --version` | 1.60.0 (`@playwright/test` pin; MCP independent — AL-007) |
+| playwright | yes | `node_modules/.bin/playwright --version` | Non-installing local probe only; missing/non-executable binary returns `BLOCKED_ENV` (MCP versioning remains independent — AL-007) |
 
 ## B. Cursor Capabilities
 
@@ -162,7 +162,7 @@ npm run check:cursor-mcp     # repo wrapper; see docs/cursor_tool_registry_check
 
 1. **CLI layer ≠ Agent thread** — `cursor-agent mcp list` showing ready does **not** prove the current Chat/Agent conversation exposes MCP tools. See `docs/cursor_tool_registry_check.md`.
 2. **Approval gate** — CLI may report `not loaded (needs approval)` until servers are approved in Cursor Settings → MCP.
-3. **Not a CI substitute** — use `npm run check:mcp`, `python3 scripts/tool_probe.py`, and `npm run test:ui` for deterministic gates; Cursor CLI is optional diagnostics.
+3. **Not a CI substitute** — use the current contract's targeted/read-only checks (`npm run check:tooling` for the control plane) and applicable UI tests; Cursor CLI is optional diagnostics. `tool_probe.py` writes a report and is only a separately scoped refresh, not a deterministic live-tree gate.
 4. **Subscription** — Cursor CLI requires a Cursor account/subscription per vendor docs; probe only checks binary presence.
 
 ### When to use
@@ -171,7 +171,7 @@ npm run check:cursor-mcp     # repo wrapper; see docs/cursor_tool_registry_check
 |------|------|
 | Terminal agent session | `cursor-agent` / `agent` interactive |
 | MCP server list (CLI) | `cursor-agent mcp list` |
-| Repo automated probe | `python3 scripts/tool_probe.py` → `cursor_cli` |
+| Explicit repo probe refresh | `python3 scripts/tool_probe.py` → `cursor_cli` (writes report; current task must own the refresh) |
 | Browser/UI in IDE Agent | foreground Chat + MCP (`playwright`, `cursor-ide-browser`) — not CLI |
 
 ## Blockers
@@ -181,6 +181,6 @@ None hard-blocking for Layer 2.0 documentation round. Soft: dev server may be of
 ## Refresh
 
 ```bash
-python3 scripts/tool_probe.py
-python3 scripts/agent_gate.py --json
+npm run check:tooling
+# 完整 agent_gate 仅在一次性隔离副本运行，输出不得写回。
 ```

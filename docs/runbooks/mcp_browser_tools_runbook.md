@@ -95,8 +95,10 @@
 ```bash
 python3 scripts/check_mcp_health.py
 npm run check:mcp          # 可选
-python3 scripts/agent_gate.py   # Round 41+ 适用
+npm run check:tooling      # 真实工作树可用的控制面目标检查
 ```
+
+完整 `scripts/agent_gate.py` 仅可在一次性隔离副本运行，且隔离产生的 workspace、reports、runtime 输出不得写回真实仓库。
 
 ### 软阻塞记录
 
@@ -111,7 +113,7 @@ python3 scripts/agent_gate.py   # Round 41+ 适用
 当前典型错误：
 
 ```text
-The browser is already running for /Users/alalapi/.cache/chrome-devtools-mcp/chrome-profile
+The browser is already running for <home>/.cache/chrome-devtools-mcp/chrome-profile
 ```
 
 这是 **profile lock / user-data-dir 冲突**，不是单纯端口冲突。只换 `--remote-debugging-port` **不能**解决同一 `user-data-dir` 被占用的问题。

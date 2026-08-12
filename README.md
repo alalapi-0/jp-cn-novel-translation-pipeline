@@ -2,7 +2,7 @@
 
 本仓库用于规划和逐步建设一个面向长篇小说与轻小说的中日文互译生产流水线。它不再只是一次性的“日文小说翻译成中文”任务目录，而是面向长期项目管理、双向翻译、术语一致性、角色语气控制、世界观设定管理、检索增强、批量翻译、一致性校对、唯一最终译文导出和人工审核工作台的治理仓库。
 
-当前仓库的运行真值以本地探针为准。2026-06-18 v2.0 治理后实测：全书翻译 612/612 完成，一致性检查与 baseline lock 已完成，调度器处于 `final_ready` 且已暂停，`next_round_id=null`、`next_chapter_range=null`，0 active / 0 orphan worker。当前最终译文只保留一份：`output_cn/translated/full_volume_cn.md`。它未标记 `human_approved_final`，也不是公开 SaaS 或自动发布工具。
+当前仓库的运行真值以本地探针为准。2026-07-13 对齐当前 `input_jp` 编号源文后实测：全书翻译 609/609 完成，一致性检查与 baseline lock 已完成，调度器处于 `final_ready` 且已暂停，`next_round_id=null`、`next_chapter_range=null`，0 active / 0 orphan worker。当前最终译文只保留一份：`output_cn/translated/full_volume_cn.md`。它未标记 `human_approved_final`，也不是公开 SaaS 或自动发布工具。
 
 最终目标与当前唯一主路线：
 
@@ -71,7 +71,7 @@ result = chat(
 ```bash
 npm run test:py        # 推荐：自动使用 .venv/bin/python -m pytest
 npm run test:ui        # Playwright（自动起 5174 dev server）
-npm run check:tooling  # 内含 pytest + MCP 检查
+npm run check:tooling  # live-safe 控制面目标检查；不运行完整 gate
 ```
 
 勿直接 `python3 -m pytest`（系统 Python 可能缺依赖）；若无 `.venv`，`npm run test:py` 会提示创建虚拟环境。
@@ -222,7 +222,7 @@ Embedding 用于检索相似段落、术语上下文、角色台词、世界观�
 
 本项目是**中日文互译生产流水线**，不是单纯翻译脚本。后续 Agent 按 Round 推进，类型包括治理、实现、翻译执行、审核、前端、API 接入与工具链轮。工作方式见 `docs/agent_operating_manual.md` 与 `docs/agent_tooling_strategy.md`；每轮开始/结束 checklist 与硬软阻塞定义亦在该手册中。
 
-Round 41 起将实现 `scripts/agent_gate.py` 作为统一门控入口。
+Round 41 已实现 `scripts/agent_gate.py`，但它可能写报告或运行 workspace 敏感检查，现行规则禁止在真实工作树运行。真实工作树使用合同指定的 targeted/read-only checks；完整 gate 仅在一次性隔离副本运行，且输出不得写回。
 
 ## 通用协议对齐
 
@@ -278,7 +278,7 @@ npm run check:stitch
 5. 再打开页面并截图（after）
 6. console / network 检查
 7. 运行测试（`npm run test:ui` 等）
-8. commit / push（用户授权后）
+8. commit / push（分别取得用户当前轮明确授权后）
 
 Prompt 模板：`docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`
 
@@ -407,7 +407,7 @@ Exporter 是唯一负责生成最终阅读文件的模块。Exporter 不调用�
 2. 执行 `git status`，确认安全边界。
 3. 只做当前 Round 范围内任务，不越级。
 4. 更新 `governance/round_state.yaml` 与本地报告。
-5. 用户或 Prompt 要求时再 commit；push 需用户授权。
+5. Round Prompt、edit/build 请求都不授权 Git；commit 与 push 必须分别取得用户当前轮明确授权，push 重试也需新授权。
 
 ## Continuous Agent Foundation
 

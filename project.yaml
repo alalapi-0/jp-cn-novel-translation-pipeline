@@ -47,6 +47,43 @@ protocol_standard:
 
 protocol_standard_sync_required: true
 
+git_finalization_policy:
+  mode: local_only
+  auto_stage: false
+  auto_commit: false
+  auto_push: false
+  commit_requires_explicit_current_turn_user_request: true
+  push_requires_explicit_current_turn_user_authorization: true
+  push_retry_requires_new_current_turn_user_authorization: true
+  authorization_sources:
+    edit_or_build_request: false
+    round_prompt: false
+  approved_round_local_completion_allowed: true
+  dirty_worktree_warning_is_blocking: false
+  actual_fail_or_blocked_is_blocking: true
+  never_commit_categories:
+    - real_source_text
+    - real_translation
+    - workspace_runtime_artifacts
+    - secrets
+
+workspace_file_baseline:
+  root: workspace
+  manifest: .agent_runtime/inspection_reports/workspace_file_baseline.json
+  verifier: scripts/workspace_file_baseline.py
+  algorithm: per_file_sha256
+  workspace_sensitive_tools:
+    verify_before: "python3 scripts/workspace_file_baseline.py verify --json"
+    verify_after: "python3 scripts/workspace_file_baseline.py verify --json"
+  drift_is_blocking: true
+  verifier_error_is_blocking: true
+  auto_rebaseline: false
+  create_or_rebaseline_requires_explicit_current_turn_user_authorization: true
+  full_agent_gate:
+    live_worktree_execution_prohibited: true
+    allowed_only_in_disposable_isolated_copy: true
+    isolated_workspace_reports_runtime_outputs_must_not_write_back: true
+
 asset_extraction:
   enabled: false
   default_mode: rule-based
@@ -78,9 +115,44 @@ project_overrides:
     owner: user
     review_trigger: "When novel_pipeline_contract.yaml is updated"
 
-  - field: agent_policy_standard.commit_policy
-    standard_expectation: "Do not commit unless the user asks"
-    override_value: "Commit when user or round prompt explicitly requests; always verify no secrets"
-    reason: "Governance round prompts may require scoped commits"
+  - field: agent_policy_standard.git_finalization
+    standard_expectation: "Approved-round automatic stage, commit, and push"
+    override_value: "An approved round completes locally only; commit and push each require a separate explicit current-turn user instruction"
+    reason: "The user owns repository history and remote publication while verified scoped work may complete safely in the local worktree"
     owner: user
-    review_trigger: "When agent_gate commit checks are implemented"
+    review_trigger: "Only when the user explicitly changes the local-only policy"
+
+  - field: agent_policy_standard.automation_policy
+    standard_expectation: "Run scripts/agent_gate.py before autonomous advancement"
+    override_value: "Full agent_gate execution is prohibited in the real worktree; live advancement uses scoped targeted/read-only checks, and a full gate may run only in a disposable isolated copy with no output writeback"
+    reason: "The full gate may write reports or invoke workspace-sensitive diagnostics"
+    owner: user
+    review_trigger: "Only when the user explicitly changes the project's live-tree isolation or mutation policy"
+
+  - field: agent_reading_protocol.after_editing_checklist
+    standard_expectation: "Run protocol checks and regenerate inventory after applicable edits"
+    override_value: "Writing checks and inventory generation are never implicit post-edit validation; they run only when the current scoped task explicitly owns them, and workspace-sensitive tools require baseline verification before and after"
+    reason: "Routine live-tree validation must remain targeted and read-only"
+    owner: user
+    review_trigger: "Only when the user explicitly changes the project's live-tree isolation or mutation policy"
+
+  - field: portability_guide.validation_steps
+    standard_expectation: "Run inventory, contract, and protocol scripts and review generated reports"
+    override_value: "Use targeted/read-only validation in the real worktree; mutation-producing portability steps are opt-in scoped maintenance rather than routine gates"
+    reason: "Portable checks must not silently mutate project inventory or reports"
+    owner: user
+    review_trigger: "Only when the user explicitly changes the project's live-tree isolation or mutation policy"
+
+  - field: sync_requirements.drift_detection
+    standard_expectation: "Regenerate governance/repo_inventory.generated.json after structural changes"
+    override_value: "Detect drift read-only where possible; inventory regeneration is a separately scoped mutation and never an implicit validation side effect"
+    reason: "Generated inventory changes require explicit task ownership and review"
+    owner: user
+    review_trigger: "Only when the user explicitly changes the project's live-tree isolation or mutation policy"
+
+  - field: governance_files[path=governance/repo_inventory.generated.json].update_frequency
+    standard_expectation: "Regenerate after structural changes or governance audits"
+    override_value: "Regenerate only when the current task explicitly owns inventory refresh and all scoped preconditions are satisfied"
+    reason: "Inventory refresh is a mutation, not a default validation step"
+    owner: user
+    review_trigger: "Only when the user explicitly changes the project's live-tree isolation or mutation policy"

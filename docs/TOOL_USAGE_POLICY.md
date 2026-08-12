@@ -7,11 +7,12 @@ Tool-aware Agent Layer 2.0 — maps tasks to tools for Cursor, Codex, and local 
 | Task stage | Must use | Why |
 |------------|----------|-----|
 | Round start | Read `AGENTS.md`, `agent_tools.yaml`, `reports/latest-agent-report.json` | Continuity |
-| Tool planning | `scripts/tool_probe.py` or read `reports/tool_probe_report.json` | Avoid false assumptions |
+| Tool planning | Read `reports/tool_probe_report.json`; refresh it only with explicit report-update authority | Avoid false assumptions and hidden writes |
 | Code understanding | repo search, Read/Grep, filesystem MCP | Ground truth in repo |
 | Fresh external facts | WebSearch and/or Context7 | Avoid stale training data |
 | UI change | Browser MCP or Playwright + dev server | User-view required |
-| Deterministic validation | `scripts/agent_gate.py`, `npm run check:tooling` | Gate-driven |
+| Live deterministic validation | Contract-selected targeted/read-only checks; `npm run check:tooling` for the control plane | Preserve the real workspace |
+| Full deterministic gate | `scripts/agent_gate.py` in a disposable isolated copy only | No isolated output may be written back |
 | Round end | `reports/latest-agent-report.json` + audit log | Next agent handoff |
 
 ## 2. Preferred tools
@@ -32,10 +33,10 @@ Tool-aware Agent Layer 2.0 — maps tasks to tools for Cursor, Codex, and local 
 | Action | Rule |
 |--------|------|
 | Real paid API | Default off; only if env + protocol allow |
-| Real publish | Default off |
+| Real publish | Default off; current-turn owner authority required |
 | Read/print `.env` | Forbidden |
 | Force push / hard reset | User explicit only |
-| Auto push / auto PR | Forbidden unless user asks |
+| Commit / push / PR | Each effect requires its own explicit current-turn owner authority; a Round Prompt or edit/build request never grants it |
 | Browser in Multitask subagent | Forbidden (project rule) |
 | Stitch → blind overwrite `frontend/` | Forbidden |
 | MCP filesystem outside workspace | Forbidden |

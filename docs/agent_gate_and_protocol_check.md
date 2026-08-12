@@ -1,6 +1,6 @@
 # Agent Gate and Protocol Check
 
-未来统一检查入口：`python3 scripts/agent_gate.py`（Round 41 实现 MVP）。
+`scripts/agent_gate.py` 是 Round 41 实现的完整门禁能力。它可能写报告或触发 workspace 敏感检查，**禁止在真实仓库工作树运行**；仅可在一次性隔离副本运行，且隔离产生的 `workspace/`、`reports/`、`.agent_runtime/` 等输出不得写回。真实工作树只运行当前合同指定的 targeted/read-only checks。
 
 ---
 
@@ -58,18 +58,24 @@
 | `rm_roadmap_exists` | RM-01 到 RM-40 路线图 |
 | `rm_prompts_exist` | RM-01 到 RM-10 Prompt 草案 |
 
-**Protocol Checker（Round 42 MVP）：** `scripts/check_protocol_standard.py` — 校验根目录/治理文件、协议版本与 `project.yaml` 对齐、AGENTS 阅读顺序。运行：
+**Protocol Checker（Round 42 MVP）：** `scripts/check_protocol_standard.py` — 校验根目录/治理文件、协议版本与 `project.yaml` 对齐、AGENTS 阅读顺序。
+
+该 checker 会写合规报告，因此下列命令也只在一次性隔离副本运行；真实工作树用 `npm run check:tooling` 中不写报告的目标检查。
+
+运行：
 
 ```bash
 python3 scripts/check_protocol_standard.py
 python3 scripts/check_protocol_standard.py --json
 ```
 
-推荐顺序：`python3 scripts/agent_gate.py && python3 scripts/check_protocol_standard.py`
+真实工作树推荐运行 `npm run check:tooling` 或当前合同列出的更窄检查。完整 gate 与 protocol checker 的组合只能由外层在一次性隔离副本中串行运行。
 
 **Repo Contract（未来）：** `scripts/check_repo_contract.py` — 验证 governance YAML 必填字段。
 
 **Inventory（Round 43）：** `scripts/scan_repo_inventory.py` — 生成 `governance/repo_inventory.generated.json`。
+
+Inventory 生成是写入型维护，不是每轮或 live-tree 隐式验证；只有当前 scoped task 明确拥有 inventory refresh 时才可运行并审查其精确 diff。
 
 ---
 
@@ -92,7 +98,7 @@ python3 scripts/check_protocol_standard.py --json
 - `agent_gate` 应逐步吸收 `governance/repo_protocol_standard.yaml` 要求
 - **不得**随意篡改协议文件本体
 - 项目 override 只记录在 `project.yaml` 与 `docs/repo_protocol_alignment.md`
-- 每轮 Agent 应运行 gate（实现后）或手动对照本文件（实现前）
+- 每轮 Agent 应手动对照本文件并运行合同指定的 targeted/read-only checks；完整 gate 只有在合同要求且已有一次性隔离副本时才运行
 
 ---
 
@@ -127,7 +133,7 @@ Round 41 已实现 MVP（`scripts/agent_gate.py`）。
 | `vector_inspect_script_exists` / `vector_metadata_schema_exists` | PASS/WARN — Round 48 inspect 脚本与 schema |
 | `vector_index_present` / `vector_index_health` | PASS/WARN — 无 index 时 soft fallback；有 index 时 metadata/orphan 漂移为 WARNING，不 BLOCKED |
 
-### 运行示例
+### 隔离副本中的运行示例
 
 ```bash
 python3 scripts/agent_gate.py
@@ -140,17 +146,20 @@ pytest tests/test_agent_gate.py -q
 
 报告路径：`docs/reports/agent_gate_report.md`（本地，已在 `.gitignore`）。
 
+以上命令不得在真实工作树执行；外层必须证明副本是一次性的，并在完成后丢弃副本，不复制任何 gate 输出回真实仓库。
+
 ---
 
 ## 每轮协议检查流程
 
 ```
 开始
- → python3 scripts/agent_gate.py
+ → 真实工作树运行合同指定的 targeted/read-only checks
+ → 若合同要求完整 gate，创建一次性隔离副本并在其中运行 python3 scripts/agent_gate.py
  → 若 exit 2: 停止，写报告
  → 若 exit 1: 记录 warnings，继续低风险任务
  → 若 exit 0: 继续
- → （Round 42+）python3 scripts/check_protocol_standard.py
- → 更新 docs/reports/
+ → 若合同还要求 protocol checker，在同一隔离副本运行 python3 scripts/check_protocol_standard.py
+ → 丢弃隔离副本；不得把 workspace/reports/runtime 输出写回
 结束
 ```

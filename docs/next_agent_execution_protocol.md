@@ -21,10 +21,10 @@
 ```
 ① 读取最终规格 + Roadmap + Round Task List
 ② git status --short / git diff --stat 了解工作区
-③ 串行运行 local_scheduler_status / orphan / singleton 探针；不要与 agent_gate 并发
+③ 仅在工具可能写 `workspace` 且 baseline 已 clean 时，按合同串行运行 scheduler / orphan / singleton 探针，并在工具前后 verify baseline
 ④ 在 Round Task List 中找到第一个 not_started（或 in_progress）的 FS 轮，
    确认其依赖 Stage 已完成；阻塞则按清单允许的并行 Stage 取下一可执行轮
-⑤ 状态门禁：python3 scripts/agent_gate.py --json（与 scheduler 探针串行）
+⑤ 真实工作树运行合同指定的 targeted/read-only checks；完整 agent_gate 只能在一次性隔离副本中运行且不得写回输出
 ⑥ 执行该轮"要修改 / 新增的文件"与"要执行的命令"
 ⑦ 若涉及 Web UI：npm run dev:frontend 启动，用 chrome-devtools / playwright /
    Cursor 内置 browser 做 before/after 检查（页面内容、console、network），
@@ -37,10 +37,10 @@
    轮次详情入 workspace/round_reports/（脱敏）
 ⑪ 更新任务状态：在 final_state_round_task_list.md 该轮末尾追加
    "> ✅ 完成于 YYYY-MM-DD（证据引用）"；未完成则标注阻塞原因
-⑫ Git：git status --short && git diff --stat && git diff --check；
-   只 add 本轮相关文件（禁止 git add .）；确认无密钥 / 正文
-⑬ Commit：仅用户或当前轮 Prompt 明确要求时执行；使用 scoped add
-⑭ Push：仅用户已明确授权时执行；失败一次即记录原因，不反复重试
+⑫ Git（只读审计）：git status --short && git diff --stat && git diff --check；
+   未获 commit 授权不得 stage；获授权后也只可精确 add 已批准路径，禁止 git add .，并确认无密钥 / 正文 / workspace 产物
+⑬ Commit：仅用户在当前轮明确要求时执行；Round Prompt、edit/build 请求不授权 Git
+⑭ Push：必须取得与 commit 分离的当前轮明确授权；失败后重试需要新的当前轮授权
 ⑮ 输出下一轮建议（轮次号 + 一句话目标）
 ```
 

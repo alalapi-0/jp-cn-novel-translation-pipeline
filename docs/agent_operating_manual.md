@@ -153,7 +153,7 @@
 8. 执行 `git status`
 9. 检查 `.env` 是否被 Git 跟踪
 10. 检查是否存在未提交的重要变更
-11. 运行 `scripts/agent_gate.py`（Round 41 起）
+11. 运行合同指定的 targeted/read-only checks；完整 `scripts/agent_gate.py` 仅可在一次性隔离副本运行且不得写回输出
 12. UI / 浏览器 / 工具链轮：读取 `docs/runbooks/mcp_browser_tools_runbook.md` 并运行 `python3 scripts/check_mcp_health.py`
 
 ---
@@ -167,9 +167,9 @@
 5. 执行 `git status`
 6. 确认没有提交 `.env`
 7. 确认没有提交真实原文
-8. 确认没有提交真实译文（除非用户明确要求）
-9. commit（用户或 Prompt 要求时）
-10. push（远程可用且用户授权时）
+8. 确认没有提交真实译文（即使用户授权 Git 也禁止）
+9. commit（仅用户当前轮明确要求时；Round Prompt、edit/build 请求无效）
+10. push（另行取得用户当前轮明确授权；失败后的重试需要新授权）
 
 参考方法吸收后的实现轮还必须确认：
 

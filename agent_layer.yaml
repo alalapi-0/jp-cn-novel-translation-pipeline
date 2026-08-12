@@ -10,7 +10,7 @@ repo:
     - README.md
     - AGENTS.md
     - npm run dev:frontend
-    - python3 scripts/agent_gate.py
+    - npm run check:tooling
   core_user_flows:
     - workbench_review_and_quality_check
     - translation_pipeline_dry_run
@@ -30,7 +30,6 @@ docs:
     - agent_layer.yaml
     - docs/TOOL_USAGE_POLICY.md
     - docs/AGENT_RUNBOOK.md
-    - docs/AGENT_ROADMAP.md
     - reports/latest-agent-report.json
   research_notes: docs/RESEARCH_NOTES.md
   tool_inventory: docs/TOOL_INVENTORY.md
@@ -57,10 +56,14 @@ commands:
   dry_run:
     - python3 scripts/run_real_api_smoke.py
     - python3 scripts/run_openrouter_smoke.py --dry-run
-  agent_gate:
-    - python3 scripts/agent_gate.py --json
-    - python3 scripts/tool_probe.py --sync-docs
-    - python3 scripts/sync_agent_tools_from_probe.py
+  live_targeted_validation:
+    - npm run check:tooling
+  isolated_full_gate:
+    execution_context: disposable_copy_only
+    live_worktree_prohibited: true
+    output_writeback: false
+    commands:
+      - python3 scripts/agent_gate.py --json
   user_view_test:
     - python3 scripts/user_view_test.py
     - python3 scripts/run_browser_inspection.py
@@ -84,7 +87,14 @@ agent_policy:
   require_tool_probe_before_tool_plan: true
   require_tool_usage_log: true
   require_report: true
-  require_gate_before_commit: true
+  require_verified_scoped_candidate_before_commit: true
+  live_full_gate_prohibited: true
+  commit_requires_explicit_current_turn_user_request: true
+  push_requires_separate_explicit_current_turn_user_authorization: true
+  push_retry_requires_new_current_turn_user_authorization: true
+  git_authorization_sources:
+    edit_or_build_request: false
+    round_prompt: false
   max_scope_per_round: small
   prefer_incremental_changes: true
   real_api_round_override: "Allowed only when the selected v2 task explicitly permits it and cost/pause/lock/orphan guards pass; Agent quota translation must use the same structured output contract"
@@ -99,7 +109,8 @@ round:
   report_schema: schemas/agent_round_report.schema.json
   latest_report: reports/latest-agent-report.json
   audit_log: reports/agent_audit_log.jsonl
-  roadmap: docs/AGENT_ROADMAP.md
+  roadmap: docs/final_state_implementation_roadmap.md
+  historical_agent_layer_roadmap: docs/AGENT_ROADMAP.md
   tool_probe_report: reports/tool_probe_report.json
   gate_result: reports/gate_result.json
 

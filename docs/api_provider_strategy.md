@@ -112,7 +112,7 @@ Abort 日志写入 `workspace/model_runs/cost_guard_abort_*.json`（gitignore）
 进入 Round 50 E2E 受控试跑前须满足：
 
 1. `tests/test_fake_provider.py`、`tests/test_dry_run_provider.py`、`tests/test_cost_guard.py` 全部 pass。
-2. `agent_gate` 与 `check:tooling` 无 BLOCKED。
+2. 真实工作树的合同指定 targeted/read-only checks（控制面使用 `check:tooling`）无 BLOCKED；完整 `agent_gate` 仅在合同要求时于一次性隔离副本运行，且不得回写。
 3. 默认配置下（`REAL_API_TESTS_ENABLED=false`、`MAX_TEST_COST_USD=0`）无任何 outbound HTTP。
 4. fake → dry-run →（可选）controlled run 链路已在样例 segment 上验证。
 5. 若启用真实 API：用户显式授权、`REAL_API_TESTS_ENABLED=true`、`.env` 中 Key 仅本地、预算上限已设、`CONTROLLED_RUN_ENABLED=true`。

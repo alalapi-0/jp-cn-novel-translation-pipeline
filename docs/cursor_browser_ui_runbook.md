@@ -82,7 +82,7 @@
 11. 运行测试（`npm run test:ui` 或 `npm run test:py` 相关项）
 12. 保存 after screenshot
 13. 更新文档（设计 reviews、轮次记录）
-14. commit / push（用户授权后）
+14. 本地验证后默认保持未 stage；Round Prompt/edit/build 不授权 Git。commit 与 push 分别取得用户当前轮明确授权后才执行，push 失败重试需新授权
 
 Prompt 模板见 `docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`。
 
