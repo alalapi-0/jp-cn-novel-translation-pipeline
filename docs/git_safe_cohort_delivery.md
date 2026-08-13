@@ -10,7 +10,7 @@
 2. 只暂存 plan 中的精确路径；modified/deleted 判断、暂存和失败恢复均使用 raw blob/index plumbing，不运行 clean filter；
 3. 复核 staged path set、字节、mode、secret 与 never-commit 边界；
 4. 使用固定非私密身份 `Codex Git-safe Cohort Finalizer <codex-git-safe-cohort@users.noreply.github.com>` 创建一个 commit，并复核完整 commit metadata；不继承用户 Git identity、签名配置或 `GIT_AUTHOR_*` / `GIT_COMMITTER_*`；
-5. 立即重新解析并核验 endpoint/default/lineage；literal URL 的 `ls-remote` 与 push 使用最小环境 allowlist，禁用所选仓库、global、system、config-env、proxy/TLS/transport-helper rewrite，HTTPS 只显式注入单一白名单 `osxkeychain` helper并禁用交互 prompt；随后在无 hooks 的隔离临时 Git 配置中，以已核验的 URL literal 和 exact commit SHA 普通 push 到 `origin/codex/light-novel-governance-closure-20260813`；依赖多 helper、URL-specific helper、ASKPASS 或自定义 Git transport 的环境会 fail closed。
+5. 立即重新解析并核验 endpoint/default/lineage；literal URL 的 `ls-remote` 与 push 使用固定 `/usr/bin/git` 和最小环境 allowlist，禁用所选仓库、global、system、config-env、调用方 PATH、proxy/TLS/transport-helper rewrite。普通 delivery 的 HTTPS 只显式注入单一白名单 `osxkeychain` helper并禁用交互 prompt；随后在无 hooks 的隔离临时 Git 配置中，以已核验的 URL literal 和 exact commit SHA 普通 push 到 `origin/codex/light-novel-governance-closure-20260813`；依赖多 helper、URL-specific helper、ASKPASS 或自定义 Git transport 的环境会 fail closed。
 6. 用 fresh `git ls-remote` 确认远端 SHA 等于本地 commit SHA。
 
 只有第 6 步成立时 cohort 才是 `complete`，随后才可选择下一 cohort。`candidate_ready_for_delivery`、本地 commit、push 命令返回 0、缓存的 remote-tracking ref 都不等于完成。
@@ -77,10 +77,37 @@ push 或远端核验失败时，本地 commit 保留，cohort 为 `incomplete`�
 ```bash
 python3 scripts/git_safe_cohort_finalizer.py retry-push /absolute/path/to/PLAN.json \
   --expected-plan-sha256 REGISTERED_PLAN_SHA256 \
-  --change-evidence /absolute/path/to/RETRY_CHANGE_EVIDENCE.json
+  --change-evidence /absolute/path/to/RETRY_CHANGE_EVIDENCE.json \
+  --expected-change-evidence-sha256 REGISTERED_RETRY_EVIDENCE_SHA256
 ```
 
-Retry evidence 必须绑定同一 cohort 与 plan SHA，包含受控 condition、唯一 change ID、`recorded_at`、前一 receipt 的 exact `previous_attempt_updated_at`、不同的 before/after 非敏感状态指纹和一行摘要。`recorded_at` 必须晚于所绑定的前一 attempt；后续 attempt 的 before fingerprint 必须接续前一 attempt 的 after fingerprint。finalizer 会在任何外部 push 尝试**之前**把 evidence 原子记录为 consumed；已消费 evidence 不可复用。condition-specific 指纹与摘要由 Root/owner 的已登记真实诊断证据提供，finalizer 负责身份、时间、链路与不可重放门禁，不把任意自声明字符串提升为事实。改变 target 不属于 retry，必须取得新授权。下一 cohort 的 preflight 会重新要求当前 base SHA 已在远端，因而失败或未核验的交付会持续阻断推进。
+Retry evidence 必须绑定同一 cohort 与 plan SHA，且命令必须传入该 evidence 的已登记 canonical SHA-256；包含受控 condition、唯一 change ID、`recorded_at`、前一 receipt 的 exact `previous_attempt_updated_at`、不同的 before/after 非敏感状态指纹和一行摘要。`recorded_at` 必须晚于所绑定的前一 attempt；后续 attempt 的 before fingerprint 必须接续前一 attempt 的 after fingerprint。finalizer 会在任何外部 push 尝试**之前**把 evidence 原子记录为 consumed；已消费 evidence 不可复用。condition-specific 指纹与摘要由 Root/owner 的已登记真实诊断证据提供，finalizer 负责身份、时间、链路与不可重放门禁，不把任意自声明字符串提升为事实。改变 target 不属于 retry，必须取得新授权。下一 cohort 的 preflight 会重新要求当前 base SHA 已在远端，因而失败或未核验的交付会持续阻断推进。
+
+## 受治理的既有 GitHub CLI provider 恢复
+
+`github_cli_existing_keyring_v1` 不是 standing/default helper，也不是自动 fallback。它只在一个 GOVERNED、外部 SHA-256 绑定的授权中使用现有 GitHub CLI/keyring 状态，且 remote、branch、source/preimage SHA 与 provider executable identity 都保持精确不变：
+
+- 固定 provider 是受合同登记的直接 regular executable；运行时用 no-follow FD 复制并校验到 mode `0500` 的私有临时 snapshot，只执行该 snapshot，不执行可变 pathname。
+- helper 只把 credential protocol 的 `get` 交给该 snapshot；`store` / `erase` 只消费输入并返回，不调用 provider，因此不会修改 GitHub CLI 配置、Git config 或 keyring。
+- 不调用 `gh auth token`、`gh auth login`、`gh auth refresh`、`gh auth setup-git`，不把 credential 放入 argv、环境、文件、日志、异常或 receipt。
+- remote default、preimage、exact-SHA push 与 after-SHA lookup 使用同一 provider binding；provider、endpoint 或账户状态不匹配就 fail closed，绝不回退。
+- provider recovery 一旦进入外部阶段即为 one-shot；失败后需要新的 successor contract，不得切回默认 transport 或复用 evidence。
+
+原始已生成 commit 的恢复使用 strict `git_safe_cohort_retry_change_v2`。除了通用字段，evidence 还必须绑定 v1/v2 contract、prior failure receipt SHA、exact local source SHA、expected remote preimage SHA、URL fingerprint、target ref、固定 method/provider path/version/SHA/account，以及 `force=false`、`target_changed=false`、`credential_mutation=false`、`attempt_kind=retry-push`。before/after fingerprint 必须由默认 transport binding 与新 provider binding确定性派生。
+
+恢复补丁本身属于新的前向 cohort，不能故意先制造一次默认 helper 失败。其 cohort plan 必须是 `governed` lane，并已绑定 fresh Judge `PASS` 与 Governor `APPROVE`；direct/reviewed plan 在读取 provider authorization 前即 fail closed。经独立审查批准后，使用 strict `git_safe_cohort_forward_recovery_v1` authorization 和独立动作：
+
+```bash
+python3 scripts/git_safe_cohort_finalizer.py finalize-recovery \
+  /absolute/path/to/FORWARD_COHORT_PLAN.json \
+  --expected-plan-sha256 REGISTERED_PLAN_SHA256 \
+  --transport-authorization /absolute/path/to/FORWARD_AUTHORIZATION.json \
+  --expected-transport-authorization-sha256 REGISTERED_AUTHORIZATION_SHA256
+```
+
+该 authorization 必须绑定同一 contract、cohort/plan、base/preimage、remote URL、branch/ref、provider 和全部 false guards。finalizer 在首次 provider-backed remote/credential 操作前先把 authorization digest 原子记录为 consumed；同一 authorization 不能重跑。若 push 已发生但响应丢失，只能使用同一 plan 的 `verify` 从 private receipt 恢复同一 provider binding并 fresh 查询 SHA；不得再次 push或 fallback。
+
+本模型的本地信任根是 OS、固定 `/usr/bin/git`、已登记 provider bytes、mode-0700 私有临时目录、HOME 中既有 provider/keyring 只读状态，以及非恶意的同 UID 控制面。若同 UID 进程可任意改写 finalizer、object store或私有临时目录，必须先停止该 writer；本机制不宣称抵御已控制当前用户会话的攻击者。
 
 若进程在 commit 后、receipt 完整写入前中断，本地 commit 必须保留。对同一登记 plan 重新执行 `verify` 可在远端已包含该 commit 时重建 complete receipt；远端尚未包含时，`retry-push` 会先逐路径复核该 commit，再要求一份未消费的 change evidence，绝不重新提交或扩大路径。
 

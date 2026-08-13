@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import stat
 import subprocess
 import sys
@@ -54,6 +55,16 @@ ALLOWED_RETRY_CONDITIONS = {
     "remote_state_changed",
     "transport_method_changed",
 }
+DEFAULT_TRANSPORT_METHOD = "https_osxkeychain_v1"
+GITHUB_CLI_TRANSPORT_METHOD = "github_cli_existing_keyring_v1"
+GITHUB_CLI_EXECUTABLE = "/opt/homebrew/Cellar/gh/2.96.0/bin/gh"
+GITHUB_CLI_VERSION = "2.96.0"
+GITHUB_CLI_SHA256 = "02d2d4a85241c6a8c0b77ebb1ec76fc723caf7fb128e00915b306b968847cba1"
+GITHUB_CLI_ACCOUNT = "alalapi-0"
+SYSTEM_GIT_EXECUTABLE = "/usr/bin/git"
+RETRY_PREDECESSOR_CONTRACT = "TASK_CONTRACT_v1_git_finalization_policy"
+RETRY_RECOVERY_CONTRACT = "TASK_CONTRACT_v2_git_finalization_auth_recovery"
+MAX_PROVIDER_EXECUTABLE_BYTES = 256 * 1024 * 1024
 MAX_GIT_SAFE_FILE_BYTES = 2 * 1024 * 1024
 MAX_PLAN_BYTES = 256 * 1024
 RECEIPT_ROOT = Path(".agent_runtime/inspection_reports/git_delivery")
@@ -161,6 +172,27 @@ class RetryChangeEvidence:
     recorded_at: str
     previous_attempt_updated_at: str
     digest: str
+    transport_method: str = DEFAULT_TRANSPORT_METHOD
+    provider: CredentialProviderBinding | None = None
+    prior_failure_receipt_sha256: str | None = None
+    local_source_sha: str | None = None
+    expected_remote_preimage_sha: str | None = None
+
+
+@dataclass(frozen=True)
+class CredentialProviderBinding:
+    method: str
+    executable_path: str
+    executable_version: str
+    executable_sha256: str
+    account_login: str
+
+
+@dataclass(frozen=True)
+class ForwardRecoveryAuthorization:
+    digest: str
+    expected_remote_preimage_sha: str
+    provider: CredentialProviderBinding
 
 
 def _canonical_digest(value: dict[str, Any]) -> str:
@@ -385,41 +417,37 @@ def load_plan(
     )
 
 
-def load_retry_change_evidence(
-    path: Path, plan: CohortPlan
-) -> RetryChangeEvidence:
-    raw = _load_json_regular(path)
-    if set(raw) != {
-        "schema",
-        "cohort_id",
-        "plan_sha256",
-        "condition",
-        "change_id",
-        "recorded_at",
-        "before_fingerprint",
-        "after_fingerprint",
-        "previous_attempt_updated_at",
-        "summary",
-    } or raw.get("schema") != "git_safe_cohort_retry_change_v1":
-        raise FinalizationError("retry change evidence schema or fields are invalid")
-    if raw.get("cohort_id") != plan.cohort_id or raw.get("plan_sha256") != plan.digest:
-        raise FinalizationError("retry change evidence does not bind the exact cohort plan")
-    condition = raw.get("condition")
-    if condition not in ALLOWED_RETRY_CONDITIONS:
-        raise FinalizationError("retry requires one recognized state or method change")
-    change_id = raw.get("change_id")
-    if not isinstance(change_id, str) or COHORT_ID_RE.fullmatch(change_id) is None:
-        raise FinalizationError("retry change_id is invalid")
-    before = raw.get("before_fingerprint")
-    after = raw.get("after_fingerprint")
-    if (
-        not isinstance(before, str)
-        or not isinstance(after, str)
-        or HEX_SHA256_RE.fullmatch(before) is None
-        or HEX_SHA256_RE.fullmatch(after) is None
-        or before == after
-    ):
-        raise FinalizationError("retry evidence must record distinct before/after fingerprints")
+def _default_transport_fingerprint(plan: CohortPlan) -> str:
+    return _canonical_digest(
+        {
+            "method": DEFAULT_TRANSPORT_METHOD,
+            "plan_sha256": plan.digest,
+            "remote": plan.remote,
+            "remote_url_sha256": plan.remote_url_sha256,
+            "branch": plan.branch,
+        }
+    )
+
+
+def _provider_transport_fingerprint(
+    plan: CohortPlan, provider: CredentialProviderBinding
+) -> str:
+    return _canonical_digest(
+        {
+            "method": provider.method,
+            "plan_sha256": plan.digest,
+            "remote": plan.remote,
+            "remote_url_sha256": plan.remote_url_sha256,
+            "branch": plan.branch,
+            "executable_path": provider.executable_path,
+            "executable_version": provider.executable_version,
+            "executable_sha256": provider.executable_sha256,
+            "account_login": provider.account_login,
+        }
+    )
+
+
+def _validate_retry_timestamps_and_summary(raw: dict[str, Any]) -> tuple[str, str, str]:
     recorded_at = raw.get("recorded_at")
     try:
         timestamp = dt.datetime.fromisoformat(str(recorded_at).replace("Z", "+00:00"))
@@ -446,15 +474,219 @@ def load_retry_change_evidence(
         or len(summary) > 200
     ):
         raise FinalizationError("retry evidence summary must be one bounded non-empty line")
+    return str(recorded_at), str(previous_attempt_updated_at), summary
+
+
+def load_retry_change_evidence(
+    path: Path,
+    plan: CohortPlan,
+    *,
+    expected_change_evidence_sha256: str | None = None,
+) -> RetryChangeEvidence:
+    raw = _load_json_regular(path)
+    raw_digest = _canonical_digest(raw)
+    schema = raw.get("schema")
+    common = {
+        "schema",
+        "cohort_id",
+        "plan_sha256",
+        "condition",
+        "change_id",
+        "recorded_at",
+        "before_fingerprint",
+        "after_fingerprint",
+        "previous_attempt_updated_at",
+        "summary",
+    }
+    if (
+        expected_change_evidence_sha256 is None
+        or HEX_SHA256_RE.fullmatch(expected_change_evidence_sha256) is None
+        or raw_digest != expected_change_evidence_sha256
+    ):
+        raise FinalizationError("retry evidence differs from its registered identity")
+    if schema == "git_safe_cohort_retry_change_v1":
+        if set(raw) != common:
+            raise FinalizationError("retry change evidence schema or fields are invalid")
+        if raw.get("condition") == "transport_method_changed":
+            raise FinalizationError("provider transport changes require v2 retry evidence")
+        provider = None
+    elif schema == "git_safe_cohort_retry_change_v2":
+        required = common | {
+            "predecessor_contract",
+            "recovery_contract",
+            "prior_failure_receipt_sha256",
+            "local_source_sha",
+            "expected_remote_preimage_sha",
+            "remote",
+            "remote_url_sha256",
+            "branch",
+            "target_ref",
+            "transport_method",
+            "credential_provider",
+            "force",
+            "target_changed",
+            "credential_mutation",
+            "attempt_kind",
+        }
+        if set(raw) != required:
+            raise FinalizationError("recovery retry evidence schema or fields are invalid")
+        provider_raw = raw.get("credential_provider")
+        if not isinstance(provider_raw, dict) or set(provider_raw) != {
+            "executable_path",
+            "executable_version",
+            "executable_sha256",
+            "account_login",
+        }:
+            raise FinalizationError("credential provider binding is invalid")
+        provider = CredentialProviderBinding(
+            method=str(raw.get("transport_method")),
+            executable_path=str(provider_raw.get("executable_path")),
+            executable_version=str(provider_raw.get("executable_version")),
+            executable_sha256=str(provider_raw.get("executable_sha256")),
+            account_login=str(provider_raw.get("account_login")),
+        )
+        if (
+            raw.get("predecessor_contract") != RETRY_PREDECESSOR_CONTRACT
+            or raw.get("recovery_contract") != RETRY_RECOVERY_CONTRACT
+            or raw.get("condition") != "transport_method_changed"
+            or provider.method != GITHUB_CLI_TRANSPORT_METHOD
+            or raw.get("remote") != plan.remote
+            or raw.get("remote_url_sha256") != plan.remote_url_sha256
+            or raw.get("branch") != plan.branch
+            or raw.get("target_ref") != f"refs/heads/{plan.branch}"
+            or raw.get("expected_remote_preimage_sha") != plan.base_sha
+            or raw.get("force") is not False
+            or raw.get("target_changed") is not False
+            or raw.get("credential_mutation") is not False
+            or raw.get("attempt_kind") != "retry-push"
+            or not isinstance(raw.get("local_source_sha"), str)
+            or HEX_SHA_RE.fullmatch(raw["local_source_sha"]) is None
+            or not isinstance(raw.get("prior_failure_receipt_sha256"), str)
+            or HEX_SHA256_RE.fullmatch(raw["prior_failure_receipt_sha256"]) is None
+        ):
+            raise FinalizationError("recovery retry evidence expands or changes its target")
+        _validate_github_cli_provider(provider)
+        if (
+            raw.get("before_fingerprint") != _default_transport_fingerprint(plan)
+            or raw.get("after_fingerprint")
+            != _provider_transport_fingerprint(plan, provider)
+        ):
+            raise FinalizationError("transport change fingerprints are not derived from the binding")
+    else:
+        raise FinalizationError("retry change evidence schema or fields are invalid")
+    if raw.get("cohort_id") != plan.cohort_id or raw.get("plan_sha256") != plan.digest:
+        raise FinalizationError("retry change evidence does not bind the exact cohort plan")
+    condition = raw.get("condition")
+    if condition not in ALLOWED_RETRY_CONDITIONS:
+        raise FinalizationError("retry requires one recognized state or method change")
+    change_id = raw.get("change_id")
+    if not isinstance(change_id, str) or COHORT_ID_RE.fullmatch(change_id) is None:
+        raise FinalizationError("retry change_id is invalid")
+    before = raw.get("before_fingerprint")
+    after = raw.get("after_fingerprint")
+    if (
+        not isinstance(before, str)
+        or not isinstance(after, str)
+        or HEX_SHA256_RE.fullmatch(before) is None
+        or HEX_SHA256_RE.fullmatch(after) is None
+        or before == after
+    ):
+        raise FinalizationError("retry evidence must record distinct before/after fingerprints")
+    recorded_at, previous_attempt_updated_at, summary = (
+        _validate_retry_timestamps_and_summary(raw)
+    )
     return RetryChangeEvidence(
         condition=condition,
         change_id=change_id,
         before_fingerprint=before,
         after_fingerprint=after,
         summary=summary,
-        recorded_at=str(recorded_at),
-        previous_attempt_updated_at=str(previous_attempt_updated_at),
-        digest=_canonical_digest(raw),
+        recorded_at=recorded_at,
+        previous_attempt_updated_at=previous_attempt_updated_at,
+        digest=raw_digest,
+        transport_method=provider.method if provider else DEFAULT_TRANSPORT_METHOD,
+        provider=provider,
+        prior_failure_receipt_sha256=raw.get("prior_failure_receipt_sha256"),
+        local_source_sha=raw.get("local_source_sha"),
+        expected_remote_preimage_sha=raw.get("expected_remote_preimage_sha"),
+    )
+
+
+def load_forward_recovery_authorization(
+    path: Path,
+    plan: CohortPlan,
+    *,
+    expected_authorization_sha256: str,
+) -> ForwardRecoveryAuthorization:
+    if plan.review_lane != "governed":
+        raise FinalizationError("forward provider recovery requires a governed cohort plan")
+    raw = _load_json_regular(path)
+    digest = _canonical_digest(raw)
+    required = {
+        "schema",
+        "predecessor_contract",
+        "recovery_contract",
+        "attempt_kind",
+        "cohort_id",
+        "plan_sha256",
+        "expected_remote_preimage_sha",
+        "remote",
+        "remote_url_sha256",
+        "branch",
+        "target_ref",
+        "transport_method",
+        "credential_provider",
+        "force",
+        "target_changed",
+        "credential_mutation",
+        "fallback",
+    }
+    if (
+        set(raw) != required
+        or raw.get("schema") != "git_safe_cohort_forward_recovery_v1"
+        or not isinstance(expected_authorization_sha256, str)
+        or HEX_SHA256_RE.fullmatch(expected_authorization_sha256) is None
+        or digest != expected_authorization_sha256
+    ):
+        raise FinalizationError("forward recovery authorization identity is invalid")
+    provider_raw = raw.get("credential_provider")
+    if not isinstance(provider_raw, dict) or set(provider_raw) != {
+        "executable_path",
+        "executable_version",
+        "executable_sha256",
+        "account_login",
+    }:
+        raise FinalizationError("forward recovery provider binding is invalid")
+    provider = CredentialProviderBinding(
+        method=str(raw.get("transport_method")),
+        executable_path=str(provider_raw.get("executable_path")),
+        executable_version=str(provider_raw.get("executable_version")),
+        executable_sha256=str(provider_raw.get("executable_sha256")),
+        account_login=str(provider_raw.get("account_login")),
+    )
+    if (
+        raw.get("predecessor_contract") != RETRY_PREDECESSOR_CONTRACT
+        or raw.get("recovery_contract") != RETRY_RECOVERY_CONTRACT
+        or raw.get("attempt_kind") != "forward-finalize"
+        or raw.get("cohort_id") != plan.cohort_id
+        or raw.get("plan_sha256") != plan.digest
+        or raw.get("expected_remote_preimage_sha") != plan.base_sha
+        or raw.get("remote") != plan.remote
+        or raw.get("remote_url_sha256") != plan.remote_url_sha256
+        or raw.get("branch") != plan.branch
+        or raw.get("target_ref") != f"refs/heads/{plan.branch}"
+        or provider.method != GITHUB_CLI_TRANSPORT_METHOD
+        or raw.get("force") is not False
+        or raw.get("target_changed") is not False
+        or raw.get("credential_mutation") is not False
+        or raw.get("fallback") is not False
+    ):
+        raise FinalizationError("forward recovery authorization expands or changes its target")
+    _validate_github_cli_provider(provider)
+    return ForwardRecoveryAuthorization(
+        digest=digest,
+        expected_remote_preimage_sha=plan.base_sha,
+        provider=provider,
     )
 
 
@@ -467,7 +699,7 @@ def _git(
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
-        ["git", *args],
+        [SYSTEM_GIT_EXECUTABLE, *args],
         cwd=repo,
         env=env,
         text=True,
@@ -489,7 +721,7 @@ def _git_bytes(
     input_bytes: bytes | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     result = subprocess.run(
-        ["git", *args],
+        [SYSTEM_GIT_EXECUTABLE, *args],
         cwd=repo,
         input=input_bytes,
         stdout=subprocess.PIPE,
@@ -567,7 +799,271 @@ def _remote_url(repo: Path, plan: CohortPlan, *, allow_local_for_tests: bool) ->
     return url
 
 
-def _approved_credential_args(repo: Path, remote_url: str) -> list[str]:
+def _validate_github_cli_provider_binding(provider: CredentialProviderBinding) -> None:
+    if (
+        provider.method != GITHUB_CLI_TRANSPORT_METHOD
+        or provider.executable_path != GITHUB_CLI_EXECUTABLE
+        or provider.executable_version != GITHUB_CLI_VERSION
+        or provider.executable_sha256 != GITHUB_CLI_SHA256
+        or provider.account_login != GITHUB_CLI_ACCOUNT
+    ):
+        raise FinalizationError("GitHub CLI provider differs from the governed binding")
+    executable = Path(provider.executable_path)
+    if not executable.is_absolute() or executable.as_posix() != provider.executable_path:
+        raise FinalizationError("GitHub CLI provider path is not canonical and absolute")
+
+
+def _materialize_github_cli_provider(
+    provider: CredentialProviderBinding, private_root: Path
+) -> Path:
+    """Copy the exact governed provider bytes into one private execution root.
+
+    The governed pathname is never executed.  Hashing and copying share one
+    no-follow source descriptor, and every provider invocation uses the private
+    immutable-by-convention snapshot.  Same-UID mutation of a mode-0700 task
+    directory remains part of the documented local trust boundary.
+    """
+    _validate_github_cli_provider_binding(provider)
+    try:
+        root_meta = private_root.lstat()
+    except OSError as exc:
+        raise FinalizationError("private provider execution root is unavailable") from exc
+    if (
+        stat.S_ISLNK(root_meta.st_mode)
+        or not stat.S_ISDIR(root_meta.st_mode)
+        or stat.S_IMODE(root_meta.st_mode) & 0o077
+    ):
+        raise FinalizationError("private provider execution root is unsafe")
+    executable = Path(provider.executable_path)
+    try:
+        before = executable.lstat()
+        source_fd = os.open(
+            executable, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        )
+    except OSError as exc:
+        raise FinalizationError("GitHub CLI provider cannot be opened safely") from exc
+    snapshot = private_root / "github-cli-provider"
+    try:
+        snapshot_fd = os.open(
+            snapshot,
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_NOFOLLOW", 0),
+            0o500,
+        )
+    except OSError as exc:
+        os.close(source_fd)
+        raise FinalizationError("private GitHub CLI provider snapshot cannot be created") from exc
+    digest = hashlib.sha256()
+    total = 0
+    try:
+        opened = os.fstat(source_fd)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or not (opened.st_mode & 0o111)
+            or opened.st_mode & 0o022
+            or opened.st_uid not in {0, os.geteuid()}
+            or opened.st_size > MAX_PROVIDER_EXECUTABLE_BYTES
+        ):
+            raise FinalizationError("GitHub CLI provider permissions are unsafe")
+        while True:
+            chunk = os.read(source_fd, 1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_PROVIDER_EXECUTABLE_BYTES:
+                raise FinalizationError("GitHub CLI provider is unexpectedly large")
+            digest.update(chunk)
+            view = memoryview(chunk)
+            while view:
+                written = os.write(snapshot_fd, view)
+                if written <= 0:
+                    raise FinalizationError("GitHub CLI provider snapshot write failed")
+                view = view[written:]
+        os.fchmod(snapshot_fd, 0o500)
+        os.fsync(snapshot_fd)
+    finally:
+        os.close(source_fd)
+        os.close(snapshot_fd)
+    try:
+        after = executable.lstat()
+        snapshot_meta = snapshot.lstat()
+    except OSError as exc:
+        raise FinalizationError("GitHub CLI provider identity changed") from exc
+    if (
+        stat.S_ISLNK(before.st_mode)
+        or stat.S_ISLNK(after.st_mode)
+        or not stat.S_ISREG(before.st_mode)
+        or (before.st_dev, before.st_ino, before.st_size)
+        != (opened.st_dev, opened.st_ino, opened.st_size)
+        or (after.st_dev, after.st_ino, after.st_size)
+        != (opened.st_dev, opened.st_ino, opened.st_size)
+        or total != opened.st_size
+        or digest.hexdigest() != provider.executable_sha256
+        or stat.S_ISLNK(snapshot_meta.st_mode)
+        or not stat.S_ISREG(snapshot_meta.st_mode)
+        or stat.S_IMODE(snapshot_meta.st_mode) != 0o500
+        or snapshot_meta.st_size != total
+    ):
+        raise FinalizationError("GitHub CLI provider identity or digest changed")
+    directory_fd = os.open(
+        private_root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    )
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+    try:
+        version = subprocess.run(
+            [str(snapshot), "--version"],
+            env=_isolated_remote_environment(),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise FinalizationError("GitHub CLI provider version check failed") from exc
+    first_line = version.stdout.splitlines()[0] if version.stdout.splitlines() else ""
+    if (
+        version.returncode != 0
+        or len(version.stdout) > 4096
+        or not first_line.startswith(f"gh version {provider.executable_version} ")
+    ):
+        raise FinalizationError("GitHub CLI provider version differs from the binding")
+    return snapshot
+
+
+def _validate_github_cli_provider(provider: CredentialProviderBinding) -> None:
+    with tempfile.TemporaryDirectory(prefix="git-safe-cohort-provider-check.") as temporary:
+        private_root = Path(temporary)
+        os.chmod(private_root, 0o700)
+        _materialize_github_cli_provider(provider, private_root)
+
+
+def _verify_github_cli_provider_status(provider: CredentialProviderBinding) -> None:
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="git-safe-cohort-provider-status."
+        ) as temporary:
+            private_root = Path(temporary)
+            os.chmod(private_root, 0o700)
+            executable = _materialize_github_cli_provider(provider, private_root)
+            result = subprocess.run(
+                [
+                    str(executable),
+                    "auth",
+                    "status",
+                    "--active",
+                    "--hostname",
+                    "github.com",
+                    "--json",
+                    "hosts",
+                ],
+                env=_isolated_remote_environment(),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                timeout=30,
+                check=False,
+            )
+            if result.returncode != 0 or len(result.stdout) > 16384:
+                raise FinalizationError("existing GitHub CLI provider account is unavailable")
+            payload = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        raise FinalizationError("existing GitHub CLI provider account check failed") from exc
+    hosts = payload.get("hosts") if isinstance(payload, dict) else None
+    accounts = hosts.get("github.com", []) if isinstance(hosts, dict) else []
+    if not isinstance(accounts, list) or len(accounts) != 1:
+        raise FinalizationError("existing GitHub CLI provider account is ambiguous")
+    account = accounts[0]
+    if not isinstance(account, dict):
+        raise FinalizationError("existing GitHub CLI provider account is invalid")
+    scopes = {
+        value.strip()
+        for value in str(account.get("scopes", "")).split(",")
+        if value.strip()
+    }
+    if (
+        account.get("state") != "success"
+        or account.get("active") is not True
+        or account.get("host") != "github.com"
+        or account.get("login") != provider.account_login
+        or account.get("tokenSource") != "keyring"
+        or account.get("gitProtocol") != "https"
+        or "repo" not in scopes
+    ):
+        raise FinalizationError("existing GitHub CLI provider account does not satisfy recovery")
+
+
+def _write_get_only_provider_helper(
+    helper_root: Path,
+    provider: CredentialProviderBinding,
+    provider_executable: Path,
+) -> Path:
+    _validate_github_cli_provider_binding(provider)
+    if not helper_root.is_dir() or stat.S_IMODE(helper_root.lstat().st_mode) & 0o077:
+        raise FinalizationError("private credential helper root is unsafe")
+    try:
+        executable_meta = provider_executable.lstat()
+    except OSError as exc:
+        raise FinalizationError("private provider snapshot is unavailable") from exc
+    if (
+        provider_executable.parent != helper_root
+        or stat.S_ISLNK(executable_meta.st_mode)
+        or not stat.S_ISREG(executable_meta.st_mode)
+        or stat.S_IMODE(executable_meta.st_mode) != 0o500
+    ):
+        raise FinalizationError("private provider snapshot is unsafe")
+    wrapper = helper_root / "github-cli-get-only-credential-helper"
+    script = (
+        "#!/bin/sh\n"
+        "case \"$1\" in\n"
+        "  get)\n"
+        f"    exec {shlex.quote(str(provider_executable))} auth git-credential get\n"
+        "    ;;\n"
+        "  store|erase)\n"
+        "    while IFS= read -r _line; do :; done\n"
+        "    exit 0\n"
+        "    ;;\n"
+        "  *) exit 1 ;;\n"
+        "esac\n"
+    ).encode("utf-8")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(wrapper, flags, 0o700)
+        os.fchmod(fd, 0o700)
+        with os.fdopen(fd, "wb", closefd=True) as handle:
+            handle.write(script)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        raise FinalizationError("get-only credential helper could not be created") from exc
+    return wrapper
+
+
+def _credential_args(
+    repo: Path,
+    remote_url: str,
+    *,
+    provider: CredentialProviderBinding | None,
+    helper_root: Path,
+) -> list[str]:
+    if provider is not None:
+        if not remote_url.startswith("https://github.com/"):
+            raise FinalizationError("GitHub CLI recovery is restricted to approved GitHub HTTPS")
+        provider_executable = _materialize_github_cli_provider(provider, helper_root)
+        wrapper = _write_get_only_provider_helper(
+            helper_root, provider, provider_executable
+        )
+        return [
+            "-c",
+            "credential.helper=",
+            "-c",
+            f"credential.helper=!{shlex.quote(str(wrapper))}",
+        ]
     if not remote_url.startswith("https://"):
         return []
     helpers = [
@@ -581,7 +1077,7 @@ def _approved_credential_args(repo: Path, remote_url: str) -> list[str]:
         raise FinalizationError(
             "HTTPS delivery requires the single approved osxkeychain credential helper"
         )
-    return ["-c", "credential.helper=osxkeychain"]
+    return ["-c", "credential.helper=", "-c", "credential.helper=osxkeychain"]
 
 
 def _isolated_remote_environment() -> dict[str, str]:
@@ -591,7 +1087,6 @@ def _isolated_remote_environment() -> dict[str, str]:
     env = {
         key: os.environ[key]
         for key in (
-            "PATH",
             "HOME",
             "USER",
             "LOGNAME",
@@ -603,6 +1098,7 @@ def _isolated_remote_environment() -> dict[str, str]:
         )
         if key in os.environ
     }
+    env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
     env["GIT_CONFIG_NOSYSTEM"] = "1"
     env["GIT_CONFIG_GLOBAL"] = os.devnull
     env["GIT_TERMINAL_PROMPT"] = "0"
@@ -611,13 +1107,21 @@ def _isolated_remote_environment() -> dict[str, str]:
 
 
 def _literal_remote_git(
-    repo: Path, remote_url: str, args: list[str]
+    repo: Path,
+    remote_url: str,
+    args: list[str],
+    *,
+    provider: CredentialProviderBinding | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    credential_args = _approved_credential_args(repo, remote_url)
     env = _isolated_remote_environment()
     with tempfile.TemporaryDirectory(prefix="git-safe-cohort-remote.") as temporary:
+        helper_root = Path(temporary)
+        os.chmod(helper_root, 0o700)
+        credential_args = _credential_args(
+            repo, remote_url, provider=provider, helper_root=helper_root
+        )
         return subprocess.run(
-            ["git", *credential_args, *args],
+            [SYSTEM_GIT_EXECUTABLE, *credential_args, *args],
             cwd=temporary,
             env=env,
             text=True,
@@ -627,9 +1131,18 @@ def _literal_remote_git(
         )
 
 
-def _remote_default_branch_at(repo: Path, plan: CohortPlan, remote_target: str) -> str:
+def _remote_default_branch_at(
+    repo: Path,
+    plan: CohortPlan,
+    remote_target: str,
+    *,
+    provider: CredentialProviderBinding | None = None,
+) -> str:
     symbolic = _literal_remote_git(
-        repo, remote_target, ["ls-remote", "--symref", remote_target, "HEAD"]
+        repo,
+        remote_target,
+        ["ls-remote", "--symref", remote_target, "HEAD"],
+        provider=provider,
     )
     if symbolic.returncode != 0:
         raise FinalizationError("fresh remote HEAD lookup failed")
@@ -643,7 +1156,11 @@ def _remote_default_branch_at(repo: Path, plan: CohortPlan, remote_target: str) 
 
 
 def _ls_remote_branch(
-    repo: Path, plan: CohortPlan, remote_target: str | None = None
+    repo: Path,
+    plan: CohortPlan,
+    remote_target: str | None = None,
+    *,
+    provider: CredentialProviderBinding | None = None,
 ) -> str:
     target = remote_target or plan.remote
     result = _literal_remote_git(
@@ -655,6 +1172,7 @@ def _ls_remote_branch(
             target,
             f"refs/heads/{plan.branch}",
         ],
+        provider=provider,
     )
     if result.returncode != 0:
         raise FinalizationError("remote branch lookup failed")
@@ -914,6 +1432,8 @@ def preflight(
     plan: CohortPlan,
     *,
     allow_local_remote_for_tests: bool = False,
+    provider: CredentialProviderBinding | None = None,
+    expected_remote_preimage_sha: str | None = None,
 ) -> dict[str, Any]:
     repo = _repo_root(repo)
     if _head(repo) != plan.base_sha:
@@ -924,8 +1444,15 @@ def preflight(
     if _current_branch(repo) != plan.branch:
         raise FinalizationError("current branch differs from the registered branch")
     remote_url = _remote_url(repo, plan, allow_local_for_tests=allow_local_remote_for_tests)
-    _remote_default_branch_at(repo, plan, remote_url)
-    remote_sha = _ls_remote_branch(repo, plan, remote_url)
+    if provider is not None:
+        _verify_github_cli_provider_status(provider)
+    _remote_default_branch_at(repo, plan, remote_url, provider=provider)
+    remote_sha = _ls_remote_branch(repo, plan, remote_url, provider=provider)
+    if (
+        expected_remote_preimage_sha is not None
+        and expected_remote_preimage_sha != plan.base_sha
+    ):
+        raise FinalizationError("registered recovery preimage differs from the cohort base")
     if remote_sha != plan.base_sha:
         raise FinalizationError("previous cohort is not remotely verified or branch diverged")
     _ensure_empty_index(repo)
@@ -1195,6 +1722,8 @@ def _push_and_verify(
     local_sha: str,
     *,
     allow_local_remote_for_tests: bool = False,
+    provider: CredentialProviderBinding | None = None,
+    expected_remote_preimage_sha: str | None = None,
 ) -> tuple[bool, str]:
     # Resolve and validate the endpoint immediately next to the external effect,
     # then use the literal URL and exact commit SHA.  A symbolic remote name or
@@ -1202,19 +1731,26 @@ def _push_and_verify(
     remote_url = _remote_url(
         repo, plan, allow_local_for_tests=allow_local_remote_for_tests
     )
-    _remote_default_branch_at(repo, plan, remote_url)
-    before = _ls_remote_branch(repo, plan, remote_url)
+    if provider is not None:
+        _verify_github_cli_provider_status(provider)
+    _remote_default_branch_at(repo, plan, remote_url, provider=provider)
+    before = _ls_remote_branch(repo, plan, remote_url, provider=provider)
+    if expected_remote_preimage_sha is not None and before not in {
+        expected_remote_preimage_sha,
+        local_sha,
+    }:
+        raise FinalizationError("remote branch differs from the recovery preimage")
     if before not in {plan.base_sha, local_sha}:
         raise FinalizationError("remote branch changed outside the authorized lineage")
     if _head(repo) != local_sha:
         raise FinalizationError("local branch changed before the authorized push")
     if before != local_sha:
         push = _push_exact_commit_from_isolated_config(
-            repo, remote_url, local_sha, plan.branch
+            repo, remote_url, local_sha, plan.branch, provider=provider
         )
         if push.returncode != 0:
             return False, "push_failed"
-    after = _ls_remote_branch(repo, plan, remote_url)
+    after = _ls_remote_branch(repo, plan, remote_url, provider=provider)
     if _head(repo) != local_sha:
         raise FinalizationError("local branch changed during the authorized push")
     if _remote_url(
@@ -1227,27 +1763,32 @@ def _push_and_verify(
 
 
 def _push_exact_commit_from_isolated_config(
-    repo: Path, remote_url: str, local_sha: str, branch: str
+    repo: Path,
+    remote_url: str,
+    local_sha: str,
+    branch: str,
+    *,
+    provider: CredentialProviderBinding | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Push one object identity without re-reading the selected repo's config.
 
     The temporary bare repository has no symbolic remote, worktree, hooks, or
     selected-repository url rewrite rules.  It can read the approved commit via
-    the real repository's content-addressed object store.  Global credential
-    helpers remain available for the already validated credential-free URL.
+    the real repository's content-addressed object store. Provider recovery is
+    process-local and get-only; it never persists a helper or forwards a
+    credential store/erase operation.
     """
     objects = _git(repo, ["rev-parse", "--git-path", "objects"]).stdout.strip()
     object_root = (repo / objects).resolve() if not Path(objects).is_absolute() else Path(objects).resolve()
     if not object_root.is_dir():
         raise FinalizationError("repository object store is unavailable for isolated push")
-    credential_args = _approved_credential_args(repo, remote_url)
     push_env = _isolated_remote_environment()
     push_env["GIT_ALTERNATE_OBJECT_DIRECTORIES"] = str(object_root)
     with tempfile.TemporaryDirectory(prefix="git-safe-cohort-push.") as temporary:
         isolated = Path(temporary)
         initialized = subprocess.run(
             [
-                "git",
+                SYSTEM_GIT_EXECUTABLE,
                 "-c",
                 "init.templateDir=",
                 "init",
@@ -1263,9 +1804,14 @@ def _push_exact_commit_from_isolated_config(
         )
         if initialized.returncode != 0:
             raise FinalizationError("isolated push repository could not be initialized")
+        helper_root = isolated / "credential-helper"
+        helper_root.mkdir(mode=0o700)
+        credential_args = _credential_args(
+            repo, remote_url, provider=provider, helper_root=helper_root
+        )
         return subprocess.run(
             [
-                "git",
+                SYSTEM_GIT_EXECUTABLE,
                 *credential_args,
                 "-c",
                 "core.hooksPath=/dev/null",
@@ -1283,6 +1829,165 @@ def _push_exact_commit_from_isolated_config(
         )
 
 
+def _forward_transport_receipt_fields(
+    authorization: ForwardRecoveryAuthorization,
+) -> dict[str, Any]:
+    provider = authorization.provider
+    return {
+        "transport_authorization": {
+            "schema": "git_safe_cohort_forward_recovery_receipt_v1",
+            "authorization_sha256": authorization.digest,
+            "expected_remote_preimage_sha": authorization.expected_remote_preimage_sha,
+            "transport_method": provider.method,
+            "credential_provider": {
+                "executable_path": provider.executable_path,
+                "executable_version": provider.executable_version,
+                "executable_sha256": provider.executable_sha256,
+                "account_login": provider.account_login,
+            },
+        }
+    }
+
+
+def _finalize_locked(
+    repo: Path,
+    plan: CohortPlan,
+    *,
+    allow_local_remote_for_tests: bool = False,
+    provider: CredentialProviderBinding | None = None,
+    expected_remote_preimage_sha: str | None = None,
+    transport_receipt_fields: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    receipt_fields = dict(transport_receipt_fields or {})
+    ready = preflight(
+        repo,
+        plan,
+        allow_local_remote_for_tests=allow_local_remote_for_tests,
+        provider=provider,
+        expected_remote_preimage_sha=expected_remote_preimage_sha,
+    )
+    _ensure_receipt_root(repo)
+    _write_receipt(
+        repo,
+        plan,
+        {
+            **receipt_fields,
+            **ready,
+            "status": "finalizing",
+            "local_commit_sha": "",
+            "remote_commit_sha": "",
+            "remote_sha_verified": False,
+            "outcome": "pre_commit",
+            "retry_history": [],
+        },
+    )
+    committed = False
+    try:
+        _stage_exact_candidate(repo, plan)
+        _verify_staged_candidate(repo, plan)
+        local_sha = _create_exact_commit(repo, plan)
+        committed = True
+    except BaseException:
+        if not committed:
+            try:
+                _unstage_exact_after_failure(repo, plan)
+            except FinalizationError:
+                _write_receipt(
+                    repo,
+                    plan,
+                    {
+                        **receipt_fields,
+                        **ready,
+                        "status": "incomplete",
+                        "local_commit_sha": "",
+                        "remote_commit_sha": "",
+                        "remote_sha_verified": False,
+                        "outcome": "unsafe_index_requires_manual_recovery",
+                        "retry_history": [],
+                    },
+                )
+                raise
+            _write_receipt(
+                repo,
+                plan,
+                {
+                    **receipt_fields,
+                    **ready,
+                    "status": "incomplete",
+                    "local_commit_sha": "",
+                    "remote_commit_sha": "",
+                    "remote_sha_verified": False,
+                    "outcome": "pre_commit_failed",
+                    "retry_history": [],
+                },
+            )
+        raise
+    local_sha = _head(repo)
+    if local_sha == plan.base_sha:
+        raise FinalizationError("commit failed; push was not attempted")
+    _write_receipt(
+        repo,
+        plan,
+        {
+            **receipt_fields,
+            **ready,
+            "status": "incomplete",
+            "local_commit_sha": local_sha,
+            "remote_commit_sha": "",
+            "remote_sha_verified": False,
+            "outcome": "local_commit_created",
+            "retry_history": [],
+        },
+    )
+    try:
+        _verify_commit(repo, plan, local_sha)
+        _ensure_empty_index(repo)
+    except FinalizationError:
+        _write_receipt(
+            repo,
+            plan,
+            {
+                **receipt_fields,
+                **ready,
+                "status": "incomplete",
+                "local_commit_sha": local_sha,
+                "remote_commit_sha": "",
+                "remote_sha_verified": False,
+                "outcome": "post_commit_verification_failed",
+                "retry_history": [],
+            },
+        )
+        raise
+    try:
+        ok, outcome = _push_and_verify(
+            repo,
+            plan,
+            local_sha,
+            allow_local_remote_for_tests=allow_local_remote_for_tests,
+            provider=provider,
+            expected_remote_preimage_sha=expected_remote_preimage_sha,
+        )
+    except FinalizationError:
+        ok, outcome = False, "remote_verification_failed"
+    status = "complete" if ok else "incomplete"
+    payload = {
+        **receipt_fields,
+        **ready,
+        "status": status,
+        "local_commit_sha": local_sha,
+        "remote_commit_sha": local_sha if ok else "",
+        "remote_sha_verified": ok,
+        "outcome": outcome,
+        "retry_history": [],
+    }
+    _write_receipt(repo, plan, payload)
+    if not ok:
+        raise FinalizationError(
+            "push did not verify; local commit was preserved and blind retry is forbidden"
+        )
+    return payload
+
+
 def finalize(
     repo: Path,
     plan: CohortPlan,
@@ -1291,119 +1996,85 @@ def finalize(
 ) -> dict[str, Any]:
     repo = _repo_root(repo)
     with _exclusive_delivery_lock(repo):
-        ready = preflight(repo, plan, allow_local_remote_for_tests=allow_local_remote_for_tests)
-        _ensure_receipt_root(repo)
+        existing = _load_receipt_optional(repo, plan)
+        if (
+            isinstance(existing, dict)
+            and existing.get("transport_authorization") is not None
+        ):
+            raise FinalizationError(
+                "forward recovery transport is one-shot; only verify or a successor contract is allowed"
+            )
+        return _finalize_locked(
+            repo,
+            plan,
+            allow_local_remote_for_tests=allow_local_remote_for_tests,
+        )
+
+
+def finalize_recovery(
+    repo: Path,
+    plan: CohortPlan,
+    *,
+    authorization: ForwardRecoveryAuthorization,
+    allow_local_remote_for_tests: bool = False,
+) -> dict[str, Any]:
+    repo = _repo_root(repo)
+    with _exclusive_delivery_lock(repo):
+        if plan.review_lane != "governed":
+            raise FinalizationError(
+                "forward provider recovery requires a governed cohort plan"
+            )
+        _validate_github_cli_provider(authorization.provider)
+        if authorization.expected_remote_preimage_sha != plan.base_sha:
+            raise FinalizationError("forward recovery preimage differs from the cohort base")
+        if _load_receipt_optional(repo, plan) is not None:
+            raise FinalizationError(
+                "forward recovery authorization was already consumed; use verify only"
+            )
+        receipt_fields = _forward_transport_receipt_fields(authorization)
         _write_receipt(
             repo,
             plan,
             {
-                **ready,
-                "status": "finalizing",
+                **receipt_fields,
+                "status": "incomplete",
                 "local_commit_sha": "",
                 "remote_commit_sha": "",
                 "remote_sha_verified": False,
-                "outcome": "pre_commit",
+                "outcome": "forward_recovery_authorization_consumed",
                 "retry_history": [],
             },
         )
-        committed = False
         try:
-            _stage_exact_candidate(repo, plan)
-            _verify_staged_candidate(repo, plan)
-            local_sha = _create_exact_commit(repo, plan)
-            committed = True
+            return _finalize_locked(
+                repo,
+                plan,
+                allow_local_remote_for_tests=allow_local_remote_for_tests,
+                provider=authorization.provider,
+                expected_remote_preimage_sha=authorization.expected_remote_preimage_sha,
+                transport_receipt_fields=receipt_fields,
+            )
         except BaseException:
-            if not committed:
-                try:
-                    _unstage_exact_after_failure(repo, plan)
-                except FinalizationError:
-                    _write_receipt(
-                        repo,
-                        plan,
-                        {
-                            **ready,
-                            "status": "incomplete",
-                            "local_commit_sha": "",
-                            "remote_commit_sha": "",
-                            "remote_sha_verified": False,
-                            "outcome": "unsafe_index_requires_manual_recovery",
-                            "retry_history": [],
-                        },
-                    )
-                    raise
+            current = _load_receipt_optional(repo, plan)
+            if (
+                isinstance(current, dict)
+                and current.get("outcome")
+                == "forward_recovery_authorization_consumed"
+            ):
                 _write_receipt(
                     repo,
                     plan,
                     {
-                        **ready,
+                        **receipt_fields,
                         "status": "incomplete",
                         "local_commit_sha": "",
                         "remote_commit_sha": "",
                         "remote_sha_verified": False,
-                        "outcome": "pre_commit_failed",
+                        "outcome": "forward_recovery_preflight_failed",
                         "retry_history": [],
                     },
                 )
             raise
-        local_sha = _head(repo)
-        if local_sha == plan.base_sha:
-            raise FinalizationError("commit failed; push was not attempted")
-        _write_receipt(
-            repo,
-            plan,
-            {
-                **ready,
-                "status": "incomplete",
-                "local_commit_sha": local_sha,
-                "remote_commit_sha": "",
-                "remote_sha_verified": False,
-                "outcome": "local_commit_created",
-                "retry_history": [],
-            },
-        )
-        try:
-            _verify_commit(repo, plan, local_sha)
-            _ensure_empty_index(repo)
-        except FinalizationError:
-            _write_receipt(
-                repo,
-                plan,
-                {
-                    **ready,
-                    "status": "incomplete",
-                    "local_commit_sha": local_sha,
-                    "remote_commit_sha": "",
-                    "remote_sha_verified": False,
-                    "outcome": "post_commit_verification_failed",
-                    "retry_history": [],
-                },
-            )
-            raise
-        try:
-            ok, outcome = _push_and_verify(
-                repo,
-                plan,
-                local_sha,
-                allow_local_remote_for_tests=allow_local_remote_for_tests,
-            )
-        except FinalizationError:
-            ok, outcome = False, "remote_verification_failed"
-        status = "complete" if ok else "incomplete"
-        payload = {
-            **ready,
-            "status": status,
-            "local_commit_sha": local_sha,
-            "remote_commit_sha": local_sha if ok else "",
-            "remote_sha_verified": ok,
-            "outcome": outcome,
-            "retry_history": [],
-        }
-        _write_receipt(repo, plan, payload)
-        if not ok:
-            raise FinalizationError(
-                "push did not verify; local commit was preserved and blind retry is forbidden"
-            )
-        return payload
 
 
 def retry_push(
@@ -1415,18 +2086,26 @@ def retry_push(
 ) -> dict[str, Any]:
     repo = _repo_root(repo)
     with _exclusive_delivery_lock(repo):
-        remote_url = _remote_url(
-            repo, plan, allow_local_for_tests=allow_local_remote_for_tests
-        )
-        _remote_default_branch_at(repo, plan, remote_url)
+        if (
+            change_evidence.condition == "transport_method_changed"
+        ) != (change_evidence.provider is not None):
+            raise FinalizationError(
+                "transport retry requires the exact governed provider binding"
+            )
         if _current_branch(repo) != plan.branch:
             raise FinalizationError("retry target branch changed")
         _ensure_empty_index(repo)
+        receipt = _load_receipt_optional(repo, plan)
+        if isinstance(receipt, dict) and receipt.get("transport_authorization") is not None:
+            raise FinalizationError(
+                "forward recovery transport is one-shot; only verify or a successor contract is allowed"
+            )
+        if change_evidence.provider is not None:
+            _validate_github_cli_provider(change_evidence.provider)
         local_sha = _head(repo)
         if local_sha == plan.base_sha:
             raise FinalizationError("no local delivery commit exists for retry")
         _verify_commit(repo, plan, local_sha)
-        receipt = _load_receipt_optional(repo, plan)
         if receipt is None or receipt.get("status") == "finalizing":
             recovery = {
                 "status": "incomplete",
@@ -1444,6 +2123,9 @@ def retry_push(
             raise FinalizationError(
                 "post-commit recovery receipt created; record a new change evidence against it"
             )
+        remote_url = _remote_url(
+            repo, plan, allow_local_for_tests=allow_local_remote_for_tests
+        )
         if receipt.get("status") != "incomplete" or receipt.get("outcome") not in {
             "push_failed",
             "remote_sha_mismatch",
@@ -1456,9 +2138,35 @@ def retry_push(
             raise FinalizationError("no failed delivery is eligible for retry")
         if receipt.get("local_commit_sha") != local_sha:
             raise FinalizationError("local delivery commit changed after push failure")
+        if change_evidence.provider is not None:
+            receipt_identity = hashlib.sha256(
+                _read_regular_nofollow(
+                    _receipt_path(repo, plan), label="delivery receipt"
+                )
+            ).hexdigest()
+            if (
+                change_evidence.local_source_sha != local_sha
+                or change_evidence.expected_remote_preimage_sha != plan.base_sha
+                or change_evidence.prior_failure_receipt_sha256 != receipt_identity
+                or remote_url.startswith("https://github.com/") is not True
+            ):
+                raise FinalizationError(
+                    "provider retry does not bind the exact failure, source, or endpoint"
+                )
         history = receipt.get("retry_history", [])
         if not isinstance(history, list) or any(not isinstance(item, dict) for item in history):
             raise FinalizationError("retry history is invalid")
+        if any(
+            item.get("transport_method") == GITHUB_CLI_TRANSPORT_METHOD
+            for item in history
+        ):
+            raise FinalizationError(
+                "the governed provider attempt was already consumed; a successor contract is required"
+            )
+        if change_evidence.provider is not None and history:
+            raise FinalizationError(
+                "the one-shot governed provider may only recover the original failed delivery"
+            )
         if any(
             item.get("change_id") == change_evidence.change_id
             or item.get("evidence_sha256") == change_evidence.digest
@@ -1473,9 +2181,7 @@ def retry_push(
             previous_after = history[-1].get("after_fingerprint")
             if change_evidence.before_fingerprint != previous_after:
                 raise FinalizationError("retry evidence fingerprint chain is broken")
-        history = [
-            *history,
-            {
+        history_entry: dict[str, Any] = {
                 "condition": change_evidence.condition,
                 "change_id": change_evidence.change_id,
                 "before_fingerprint": change_evidence.before_fingerprint,
@@ -1484,8 +2190,22 @@ def retry_push(
                 "recorded_at": change_evidence.recorded_at,
                 "previous_attempt_updated_at": change_evidence.previous_attempt_updated_at,
                 "evidence_sha256": change_evidence.digest,
-            },
-        ]
+                "transport_method": change_evidence.transport_method,
+            }
+        if change_evidence.provider is not None:
+            history_entry.update(
+                {
+                    "credential_provider": {
+                        "executable_path": change_evidence.provider.executable_path,
+                        "executable_version": change_evidence.provider.executable_version,
+                        "executable_sha256": change_evidence.provider.executable_sha256,
+                        "account_login": change_evidence.provider.account_login,
+                    },
+                    "prior_failure_receipt_sha256": change_evidence.prior_failure_receipt_sha256,
+                    "expected_remote_preimage_sha": change_evidence.expected_remote_preimage_sha,
+                }
+            )
+        history = [*history, history_entry]
         attempting_payload = {
             "status": "incomplete",
             "local_commit_sha": local_sha,
@@ -1501,6 +2221,8 @@ def retry_push(
                 plan,
                 local_sha,
                 allow_local_remote_for_tests=allow_local_remote_for_tests,
+                provider=change_evidence.provider,
+                expected_remote_preimage_sha=change_evidence.expected_remote_preimage_sha,
             )
         except FinalizationError:
             ok, outcome = False, "remote_verification_failed"
@@ -1518,6 +2240,76 @@ def retry_push(
         return payload
 
 
+def _provider_from_retry_history(
+    history: list[dict[str, Any]],
+    plan: CohortPlan,
+) -> CredentialProviderBinding | None:
+    if not history or history[-1].get("transport_method") != GITHUB_CLI_TRANSPORT_METHOD:
+        return None
+    raw = history[-1].get("credential_provider")
+    if not isinstance(raw, dict) or set(raw) != {
+        "executable_path",
+        "executable_version",
+        "executable_sha256",
+        "account_login",
+    }:
+        raise FinalizationError("provider retry receipt binding is invalid")
+    provider = CredentialProviderBinding(
+        method=GITHUB_CLI_TRANSPORT_METHOD,
+        executable_path=str(raw.get("executable_path")),
+        executable_version=str(raw.get("executable_version")),
+        executable_sha256=str(raw.get("executable_sha256")),
+        account_login=str(raw.get("account_login")),
+    )
+    _validate_github_cli_provider(provider)
+    if history[-1].get("after_fingerprint") != _provider_transport_fingerprint(
+        plan,
+        provider,
+    ):
+        raise FinalizationError("provider retry receipt fingerprint is invalid")
+    return provider
+
+
+def _provider_from_forward_receipt(
+    receipt: dict[str, Any], plan: CohortPlan
+) -> CredentialProviderBinding | None:
+    raw = receipt.get("transport_authorization")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or set(raw) != {
+        "schema",
+        "authorization_sha256",
+        "expected_remote_preimage_sha",
+        "transport_method",
+        "credential_provider",
+    }:
+        raise FinalizationError("forward recovery receipt binding is invalid")
+    provider_raw = raw.get("credential_provider")
+    if not isinstance(provider_raw, dict) or set(provider_raw) != {
+        "executable_path",
+        "executable_version",
+        "executable_sha256",
+        "account_login",
+    }:
+        raise FinalizationError("forward recovery receipt provider is invalid")
+    provider = CredentialProviderBinding(
+        method=str(raw.get("transport_method")),
+        executable_path=str(provider_raw.get("executable_path")),
+        executable_version=str(provider_raw.get("executable_version")),
+        executable_sha256=str(provider_raw.get("executable_sha256")),
+        account_login=str(provider_raw.get("account_login")),
+    )
+    if (
+        raw.get("schema") != "git_safe_cohort_forward_recovery_receipt_v1"
+        or not isinstance(raw.get("authorization_sha256"), str)
+        or HEX_SHA256_RE.fullmatch(raw["authorization_sha256"]) is None
+        or raw.get("expected_remote_preimage_sha") != plan.base_sha
+    ):
+        raise FinalizationError("forward recovery receipt target is invalid")
+    _validate_github_cli_provider(provider)
+    return provider
+
+
 def verify_delivery(
     repo: Path,
     plan: CohortPlan,
@@ -1526,18 +2318,11 @@ def verify_delivery(
 ) -> dict[str, Any]:
     repo = _repo_root(repo)
     with _exclusive_delivery_lock(repo):
-        remote_url = _remote_url(
-            repo, plan, allow_local_for_tests=allow_local_remote_for_tests
-        )
-        _remote_default_branch_at(repo, plan, remote_url)
         if _current_branch(repo) != plan.branch:
             raise FinalizationError("verification branch changed")
         _ensure_empty_index(repo)
         local_sha = _head(repo)
         _verify_commit(repo, plan, local_sha)
-        remote_sha = _ls_remote_branch(repo, plan, remote_url)
-        if remote_sha != local_sha:
-            raise FinalizationError("remote SHA does not match the exact local delivery commit")
         existing = _load_receipt_optional(repo, plan)
         history: list[dict[str, Any]] = []
         if existing is not None:
@@ -1547,7 +2332,33 @@ def verify_delivery(
             ):
                 raise FinalizationError("retry history is invalid")
             history = candidate_history
+        forward_provider = (
+            _provider_from_forward_receipt(existing, plan)
+            if isinstance(existing, dict)
+            else None
+        )
+        retry_provider = _provider_from_retry_history(history, plan)
+        if forward_provider is not None and retry_provider is not None:
+            raise FinalizationError("delivery receipt has conflicting provider bindings")
+        provider = forward_provider or retry_provider
+        remote_url = _remote_url(
+            repo, plan, allow_local_for_tests=allow_local_remote_for_tests
+        )
+        if provider is not None:
+            _verify_github_cli_provider_status(provider)
+        _remote_default_branch_at(repo, plan, remote_url, provider=provider)
+        remote_sha = _ls_remote_branch(
+            repo, plan, remote_url, provider=provider
+        )
+        if remote_sha != local_sha:
+            raise FinalizationError("remote SHA does not match the exact local delivery commit")
         payload = {
+            **(
+                {"transport_authorization": existing["transport_authorization"]}
+                if isinstance(existing, dict)
+                and "transport_authorization" in existing
+                else {}
+            ),
             "status": "complete",
             "cohort_id": plan.cohort_id,
             "plan_sha256": plan.digest,
@@ -1569,32 +2380,101 @@ def _print_json(payload: dict[str, Any], *, stream: Any = sys.stdout) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("preflight", "finalize", "retry-push", "verify"))
+    parser.add_argument(
+        "action",
+        choices=(
+            "preflight",
+            "finalize",
+            "finalize-recovery",
+            "retry-push",
+            "verify",
+        ),
+    )
     parser.add_argument("plan", type=Path)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--expected-plan-sha256", required=True)
     parser.add_argument("--change-evidence", type=Path)
+    parser.add_argument("--expected-change-evidence-sha256")
+    parser.add_argument("--transport-authorization", type=Path)
+    parser.add_argument("--expected-transport-authorization-sha256")
     args = parser.parse_args(argv)
     try:
         plan = load_plan(
             args.plan, expected_plan_sha256=args.expected_plan_sha256
         )
         if args.action == "preflight":
-            if args.change_evidence is not None:
-                raise FinalizationError("preflight does not accept retry state")
+            if any(
+                value is not None
+                for value in (
+                    args.change_evidence,
+                    args.expected_change_evidence_sha256,
+                    args.transport_authorization,
+                    args.expected_transport_authorization_sha256,
+                )
+            ):
+                raise FinalizationError("preflight does not accept delivery recovery state")
             payload = preflight(args.repo, plan)
         elif args.action == "finalize":
-            if args.change_evidence is not None:
-                raise FinalizationError("finalize does not accept retry state")
+            if any(
+                value is not None
+                for value in (
+                    args.change_evidence,
+                    args.expected_change_evidence_sha256,
+                    args.transport_authorization,
+                    args.expected_transport_authorization_sha256,
+                )
+            ):
+                raise FinalizationError("finalize does not accept recovery state")
             payload = finalize(args.repo, plan)
+        elif args.action == "finalize-recovery":
+            if (
+                args.change_evidence is not None
+                or args.expected_change_evidence_sha256 is not None
+                or args.transport_authorization is None
+                or args.expected_transport_authorization_sha256 is None
+            ):
+                raise FinalizationError(
+                    "finalize-recovery requires one exact transport authorization"
+                )
+            authorization = load_forward_recovery_authorization(
+                args.transport_authorization,
+                plan,
+                expected_authorization_sha256=(
+                    args.expected_transport_authorization_sha256
+                ),
+            )
+            payload = finalize_recovery(
+                args.repo,
+                plan,
+                authorization=authorization,
+            )
         elif args.action == "retry-push":
-            if args.change_evidence is None:
-                raise FinalizationError("retry-push requires --change-evidence")
-            change_evidence = load_retry_change_evidence(args.change_evidence, plan)
+            if (
+                args.change_evidence is None
+                or args.expected_change_evidence_sha256 is None
+                or args.transport_authorization is not None
+                or args.expected_transport_authorization_sha256 is not None
+            ):
+                raise FinalizationError(
+                    "retry-push requires exact change evidence and its registered SHA-256"
+                )
+            change_evidence = load_retry_change_evidence(
+                args.change_evidence,
+                plan,
+                expected_change_evidence_sha256=args.expected_change_evidence_sha256,
+            )
             payload = retry_push(args.repo, plan, change_evidence=change_evidence)
         else:
-            if args.change_evidence is not None:
-                raise FinalizationError("verify does not accept retry state")
+            if any(
+                value is not None
+                for value in (
+                    args.change_evidence,
+                    args.expected_change_evidence_sha256,
+                    args.transport_authorization,
+                    args.expected_transport_authorization_sha256,
+                )
+            ):
+                raise FinalizationError("verify does not accept recovery arguments")
             payload = verify_delivery(args.repo, plan)
     except FinalizationError as exc:
         _print_json(
