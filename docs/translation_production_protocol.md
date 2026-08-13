@@ -148,7 +148,7 @@ final_ready
 6. 执行一致性检查。
 7. 导出 singleton final translation。
 8. 运行 singleton check。
-9. 更新 latest-agent-report 和 round_state。
+9. 更新 current-cohort-report 和 round_state。
 
 ## 9. Done
 

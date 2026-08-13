@@ -30,7 +30,7 @@
 - `docs/governance_rules.md`
 - `docs/agent_operating_manual.md`
 - **Tool-aware Agent Layer 2.0 当前策略：** `agent_layer.yaml`、`agent_tools.yaml`、`docs/AGENT_RUNBOOK.md`、`docs/TOOL_USAGE_POLICY.md`
-- **历史/快照（无当前执行或授权效力）：** `docs/AGENT_ROADMAP.md` 保留已完成 AL 路线事实；`reports/latest-agent-report.json` 是报告快照。二者不得覆盖上述当前策略或授予 gate、写入、Git、API 权限。
+- **报告与历史边界：** `reports/current-cohort-report.json` 是当前候选交接快照但不是完成授权，完成仍取决于 fresh remote SHA + ignored receipt；`reports/latest-agent-report.json` 是受保护的 pre-policy 历史快照；`docs/AGENT_ROADMAP.md` 只保留已完成 AL 路线事实。三者均不得扩大 gate、写入、Git 或 API 权限。
 - `docs/migration_notes.md`
 
 ## 设计输入层（Stitch）
@@ -104,7 +104,7 @@
 
 ## Prompt 模板目录
 
-以下文件是模板/历史输入，不是当前权限来源。任何 Prompt 都必须服从 `AGENTS.md` 与 `project.yaml`；尤其不得授权真实工作树完整 gate、隐式写入或 Git，commit 与 push 仍分别需要用户当前轮明确授权。
+以下文件是模板/历史输入，不是当前权限来源。任何 Prompt 都必须服从 `AGENTS.md`、`project.yaml` 与 `docs/git_safe_cohort_delivery.md`；尤其不得授权真实工作树完整 gate、隐式写入或扩大 Git target/effect。经验证/审批的 Git-safe cohort 由 standing finalizer 闭环。
 
 - `prompts/governance_round_template.md`
 - `prompts/implementation_round_template.md`

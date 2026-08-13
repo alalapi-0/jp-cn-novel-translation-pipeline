@@ -2,7 +2,7 @@
 
 Incremental Tool-aware rounds (AL-xxx). Complements `docs/final_state_implementation_roadmap.md` and the FS-v2 task list.
 
-> **历史、非执行性路线图（2026-06-09 已完成）：** 下列 AL 条目保留当时的目标、命令与依赖事实，但不再定义当前验证或授权。任何 `tool_probe`、`agent_gate`、`check:tooling`、报告写入或 Git 表述都必须服从 `AGENTS.md`、`project.yaml`、`docs/TOOL_USAGE_POLICY.md` 与 `scripts/run_tooling_checks.sh` 的现行规则：真实工作树仅运行 scoped targeted/read-only checks；完整 gate 仅可在不回写的一次性隔离副本运行；写入型 probe/inventory/report 同步不是隐式验证；Round Prompt 不授权 Git，commit 与 push 分别需要用户当前轮明确授权。
+> **历史、非执行性路线图（2026-06-09 已完成）：** 下列 AL 条目保留当时的目标、命令与依赖事实，但不再定义当前验证或授权。任何 `tool_probe`、`agent_gate`、`check:tooling`、报告写入或 Git 表述都必须服从 `AGENTS.md`、`project.yaml`、`docs/TOOL_USAGE_POLICY.md`、`docs/git_safe_cohort_delivery.md` 与 `scripts/run_tooling_checks.sh` 的现行规则：真实工作树仅运行 scoped targeted/read-only checks；完整 gate 仅可在不回写的一次性隔离副本运行；写入型 probe/inventory/report 同步不是隐式验证；Prompt 不能扩大 Git scope，approved Git-safe cohort 必须经 standing finalizer 远端闭环。
 
 **Legend:** `web_search_needed: true` → check `docs/SEARCH_POLICY.md` first.
 

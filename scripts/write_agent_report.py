@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write or update reports/latest-agent-report.json from a schema-safe template.
+"""Write or update reports/current-cohort-report.json from a schema-safe template.
 
 Optionally append a one-line summary to reports/agent_audit_log.jsonl.
 Validates output via validate_agent_report before write (unless --skip-validate).
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_REPORT = REPO_ROOT / "reports" / "latest-agent-report.json"
+DEFAULT_REPORT = REPO_ROOT / "reports" / "current-cohort-report.json"
 AUDIT_LOG = REPO_ROOT / "reports" / "agent_audit_log.jsonl"
 PROBE_REPORT = REPO_ROOT / "reports" / "tool_probe_report.json"
 GATE_RESULT = REPO_ROOT / "reports" / "gate_result.json"
@@ -26,6 +26,7 @@ SCHEMA_PATH = REPO_ROOT / "schemas" / "agent_round_report.schema.json"
 DEFAULT_AGENT = "cursor-composer"
 DEFAULT_SURFACE = "cursor"
 DEFAULT_MODE = "implement"
+POLICY_VERSION = "git_safe_cohort_delivery_v1"
 
 
 def utc_now() -> str:
@@ -49,6 +50,23 @@ def _git_head_oneline() -> str | None:
         return line if proc.returncode == 0 and line else None
     except OSError:
         return None
+
+
+def _git_status_label() -> str | None:
+    head = _git_head_oneline()
+    if not head:
+        return None
+    try:
+        branch = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+    except OSError:
+        branch = ""
+    return f"{branch or 'detached'} at {head}"
 
 
 def infer_tool_probe_status() -> str:
@@ -87,10 +105,13 @@ def build_template(
     next_recommended_round: str | None = None,
     repo_status_before: str | None = None,
     scope: list[str] | None = None,
+    cohort_status: str = "work_in_progress",
 ) -> dict[str, Any]:
-    head = _git_head_oneline()
-    if repo_status_before is None and head:
-        repo_status_before = f"main at {head}"
+    if cohort_status not in {"work_in_progress", "candidate_ready_for_delivery", "not_applicable"}:
+        raise ValueError("invalid cohort_status")
+    status_label = _git_status_label()
+    if repo_status_before is None and status_label:
+        repo_status_before = status_label
 
     report: dict[str, Any] = {
         "round_id": round_id,
@@ -99,6 +120,13 @@ def build_template(
         "agent_surface": agent_surface,
         "mode": mode,
         "goal": goal,
+        "policy_version": POLICY_VERSION,
+        "cohort_status": cohort_status,
+        "git_delivery": {
+            "status": cohort_status,
+            "remote_sha_verified": False,
+            "completion_authority": "fresh_remote_sha_and_ignored_delivery_receipt",
+        },
         "scope": scope or [],
         "repo_status_before": repo_status_before or "",
         "tool_probe_status": tool_probe_status or infer_tool_probe_status(),
@@ -201,6 +229,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tool-probe-status", default=None)
     parser.add_argument("--gate-status", default=None)
     parser.add_argument("--repo-status-before", default=None)
+    parser.add_argument(
+        "--cohort-status",
+        choices=("work_in_progress", "candidate_ready_for_delivery", "not_applicable"),
+        default="work_in_progress",
+    )
     parser.add_argument("--scope", action="append", default=[], help="Repeatable scope path")
     parser.add_argument("--merge", type=Path, help="JSON file merged over template (tools_used, etc.)")
     parser.add_argument("--base", type=Path, help="Start from existing report JSON instead of fresh template")
@@ -208,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         type=Path,
         default=DEFAULT_REPORT,
-        help="Output report path (default: reports/latest-agent-report.json)",
+        help="Output report path (default: reports/current-cohort-report.json)",
     )
     parser.add_argument("--write", action="store_true", help="Write output file (default: stdout only)")
     parser.add_argument("--append-audit", metavar="SUMMARY", help="Append audit log line with summary")
@@ -233,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
             next_recommended_round=args.next_round or None,
             repo_status_before=args.repo_status_before,
             scope=args.scope or None,
+            cohort_status=args.cohort_status,
         )
         report = merge_report(
             report,
@@ -243,6 +277,13 @@ def main(argv: list[str] | None = None) -> int:
                 "mode": args.mode,
                 "agent": args.agent,
                 "agent_surface": args.agent_surface,
+                "policy_version": POLICY_VERSION,
+                "cohort_status": args.cohort_status,
+                "git_delivery": {
+                    "status": args.cohort_status,
+                    "remote_sha_verified": False,
+                    "completion_authority": "fresh_remote_sha_and_ignored_delivery_receipt",
+                },
             },
         )
     else:
@@ -257,6 +298,7 @@ def main(argv: list[str] | None = None) -> int:
             next_recommended_round=args.next_round or None,
             repo_status_before=args.repo_status_before,
             scope=args.scope or None,
+            cohort_status=args.cohort_status,
         )
 
     if args.next_round:
@@ -287,6 +329,9 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             pass
 
+    if args.skip_validate and (args.write or args.append_audit):
+        print("write_agent_report: --skip-validate cannot be used with writes", file=sys.stderr)
+        return 2
     if not args.skip_validate:
         ok, errors = validate_report_dict(report)
         if not ok:

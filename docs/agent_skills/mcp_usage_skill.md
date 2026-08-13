@@ -128,7 +128,7 @@ CLI fallback：`npx playwright test`（Round 44 搭建后）。详见 `docs/mcp_
 1. **禁止** 提交 token、cookie、API Key、`.env` 内容
 2. **禁止** filesystem MCP 授权系统根目录或用户主目录整树
 3. **禁止** MCP 输出或日志打印密钥
-4. **禁止** MCP 绕过 Git 审查（push 仍需用户授权与 diff 检查）
+4. **禁止** MCP 绕过 Git 审查或执行 ad-hoc push；approved Git-safe cohort 只能由 standing finalizer 推送，target 扩张需要用户新的明确授权
 5. **禁止** MCP 自动公开发布译文或删除真实原文
 
 ## 相关文档

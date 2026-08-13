@@ -23,7 +23,7 @@ _One sentence objective for Codex round._
 - [ ] `agent_tools.yaml`
 - [ ] `docs/TOOL_USAGE_POLICY.md`
 - [ ] `docs/AGENT_RUNBOOK.md`
-- [ ] `reports/latest-agent-report.json`
+- [ ] `reports/current-cohort-report.json`
 - [ ] _Task-specific files listed below_
 
 ## Current P0/P1
@@ -67,8 +67,9 @@ npm run check:tooling   # live-safe control-plane checks
 
 - [ ] Scope limited to stated goal
 - [ ] Contract-selected targeted checks pass; isolated full-gate warnings are documented when that gate is required
-- [ ] `reports/latest-agent-report.json` updated
+- [ ] `reports/current-cohort-report.json` updated
 - [ ] No secrets in diff
+- [ ] If the round changes Git-safe files: exact cohort plan is registered and approved, and the standing finalizer verifies remote SHA before the next handoff
 
 ## Return format
 
@@ -78,3 +79,5 @@ Codex reply should include:
 2. Gate/test commands run + results
 3. Remaining P0/P1
 4. Suggested next scoped task from `docs/final_state_round_task_list.md` or the current approved contract (`docs/AGENT_ROADMAP.md` is historical only)
+
+Do not suggest item 4 while a Git-safe cohort is only local or remotely unverified.

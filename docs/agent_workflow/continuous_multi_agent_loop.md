@@ -19,8 +19,8 @@
    - `documentation_sync` → Runner Agent 或文档 Agent
 7. 页面相关任务执行 `python3 scripts/run_browser_inspection.py`。
 8. 每轮结束更新 `governance/round_state.yaml`，检查 `git status` 和 `git diff`。
-9. Round Prompt、edit/build 请求不授权 Git；commit 与 push 分别需要用户当前轮明确授权，push 重试需要新授权。
-10. 无硬阻塞时等待下一轮或按定时规则继续。
+9. 将经验证/审批的 Git-safe 变更登记为一个 hash-bound cohort，由 finalizer 精确 commit、固定目标 push 并 fresh verify remote SHA；Prompt 不得扩大 scope，retry 需新的状态/transport 变更证据。
+10. 远端 SHA 未核验属于当前 cohort 硬阻塞；仅在核验通过后等待下一轮或按定时规则继续。
 
 ## 等待与自动继续
 
@@ -41,7 +41,7 @@
 - 硬阻塞通过 `python3 scripts/agent.py block --reason "..."` 写入。
 - 解除阻塞通过 `python3 scripts/agent.py unblock`。
 - 缺少 API Key 只有在当前轮唯一目标必须真实调用 API 且无替代时才 hard block。
-- 推送权限缺失只在用户明确要求远程同步且无替代时 hard block。
+- standing target 的 push 或 fresh remote SHA 核验失败即当前 cohort hard block；只有提供绑定 plan 且未复用的状态/transport 变更证据后才可 retry。
 
 ## 安全规则
 

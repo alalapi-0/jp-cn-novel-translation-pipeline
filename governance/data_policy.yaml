@@ -20,7 +20,7 @@ database_policy:
 privacy_policy:
   do_not_commit:
     - real_copyright_source_text
-    - real_translations_unless_user_requests
+    - full_real_translation_outputs
     - user_private_content
     - credentials
 
@@ -33,6 +33,8 @@ git_commit_policy:
     - .env
     - full_novel_source
     - full_novel_translation_outputs
+    - workspace_runtime_artifacts
+    - artifacts
 
 workspace_policy:
   embeddings: workspace/embeddings/

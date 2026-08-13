@@ -128,7 +128,7 @@ Use this sequence for every full-book consistency pass:
 8. Re-run actual-content audit and variant report.
 9. Export singleton final translation.
 10. Run final singleton check.
-11. Write final report and append agent audit log.
+11. Write the product report, then use the schema-validated current cohort writer to record `candidate_ready_for_delivery`, `remote_sha_verified=false`, and an empty next-round field; append only the bounded audit summary.
 12. Clean old round logs and stale exported copies. Preserve runs, checkpoints, source, patch logs, and legacy baseline history unless the user explicitly asks to remove obsolete baseline body text from the current workspace.
 
 For this repository, the command shape is:
@@ -143,7 +143,7 @@ python3 scripts/check_final_translation_singleton.py --json
 python3 scripts/finalize_consistency_run.py --cleanup-round-logs --json
 ```
 
-New projects should keep the same command semantics even if filenames differ.
+`finalize_consistency_run.py` may report the consistency product as complete, but it must not mark the Git cohort complete or recommend a next round. The tracked report is `reports/current-cohort-report.json`; cohort completion remains a fresh remote SHA plus the ignored finalizer receipt. New projects should keep the same separation even if filenames differ.
 
 ## 9. Final Artifact Rule
 

@@ -10,7 +10,7 @@ Operational steps for every Tool-aware Agent round (Cursor primary, Codex compat
    - `agent_layer.yaml`
    - `agent_tools.yaml`
    - `docs/TOOL_USAGE_POLICY.md`
-   - `reports/latest-agent-report.json`
+   - `reports/current-cohort-report.json`
 3. `git status --short`
 4. Read `reports/tool_probe_report.json`; refreshing reports or syncing YAML is a separate authorized write, never an automatic startup step
 5. Decide: need web search? → `docs/SEARCH_POLICY.md`
@@ -32,10 +32,10 @@ UI work still requires the task-specific browser checks and tests named by the a
 ## After implementation
 
 1. Update `governance/round_state.yaml` if governance round
-2. Write `reports/latest-agent-report.json`
+2. Write `reports/current-cohort-report.json`
 3. Append `reports/agent_audit_log.jsonl`
 4. `git diff` — verify no secrets / raw novel text
-5. Commit only after an explicit current-turn owner request; push requires a separate current-turn authorization, and retrying a failed push requires new authorization
+5. Register one hash-bound Git-safe cohort, then use `scripts/git_safe_cohort_finalizer.py` to exact-stage, commit, push to the registered existing non-default branch, and verify the remote SHA. A failed push remains incomplete and may be retried only after a recorded state or transport change.
 
 ## Exit codes (`agent_gate.py`)
 

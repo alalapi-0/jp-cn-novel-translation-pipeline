@@ -6,7 +6,8 @@ Structured outputs every round must produce or update.
 
 | File | Purpose |
 |------|---------|
-| `reports/latest-agent-report.json` | Handoff to next agent |
+| `reports/current-cohort-report.json` | Handoff to next agent |
+| `reports/latest-agent-report.json` | Protected pre-policy historical snapshot; never use as current completion/next authority |
 | `reports/agent_audit_log.jsonl` | Append-only history |
 | `reports/gate_result.json` | Gate summary |
 | `reports/tool_probe_report.json` | Tool capability snapshot |
@@ -14,12 +15,15 @@ Structured outputs every round must produce or update.
 
 ## Required fields (summary)
 
-See schema for full list. Minimum:
+See schema for full list. The current schema requires the delivery-policy fields below. Only the exact protected `reports/latest-agent-report.json` path may use the pre-policy compatibility validator; a backdated current or alternate report cannot. The legacy snapshot is read-only and is not a template for new reports. Minimum:
 
 - `round_id`, `timestamp`, `agent`, `agent_surface`, `mode`, `goal`
 - `tool_probe_status`, `tools_used`, `tools_not_used`
 - `gate_status`, `severity_summary`
 - `next_recommended_round`, `human_decisions_required`
+- current reports also require `policy_version=git_safe_cohort_delivery_v1`, `cohort_status`, and `git_delivery`. A tracked candidate report must keep `remote_sha_verified=false`; while a Git-safe cohort is pending, `next_recommended_round` must be empty.
+
+Tracked reports cannot self-attest remote completion because doing so would create a self-referential follow-up commit. Completion authority is a fresh remote SHA lookup plus the gitignored finalizer receipt; the next cohort must reverify the prior HEAD remotely.
 
 ## tool_usage example
 
@@ -63,7 +67,8 @@ Also runs directly inside the live-safe `npm run check:tooling` entrypoint. That
 | Artifact | Retention | Rotation |
 |----------|-----------|----------|
 | `reports/agent_audit_log.jsonl` | Keep in repo; append-only | No auto-truncate; archive to `reports/archives/agent_audit_YYYY.jsonl` when >500 lines or quarterly |
-| `reports/latest-agent-report.json` | Single file; overwritten each round | Previous content recoverable from git history |
+| `reports/current-cohort-report.json` | Single file; overwritten each round | Previous content recoverable from git history |
+| `reports/latest-agent-report.json` | Frozen legacy compatibility snapshot | Do not overwrite; retain until a separately authorized archival decision |
 | `reports/gate_result.json` | Overwritten each gate run | CI may upload artifact (AL-030) |
 | `reports/tool_probe_report.json` | Overwritten on probe | — |
 | `reports/user_view_test.json` | Overwritten on user_view_test | — |
@@ -73,13 +78,13 @@ Agents must not commit secrets, raw novel text, or `.env` in any report path. La
 
 ## Write / update report
 
-The commands below mutate report files. They run only when the current scoped task explicitly owns the report update; they are not implicit live-tree validation and do not grant Git authority.
+The commands below mutate report files. They run only when the current scoped task explicitly owns the report update; they are not implicit live-tree validation and cannot expand standing Git authority.
 
 ```bash
 # Print template JSON (stdout)
 python3 scripts/write_agent_report.py --round-id AL-013 --goal "My round goal"
 
-# Write latest-agent-report.json + append audit log (validates first)
+# Write current-cohort-report.json + append audit log (validates first)
 python3 scripts/write_agent_report.py \
   --round-id AL-013 \
   --goal "My round goal" \

@@ -10,6 +10,9 @@
     "agent_surface",
     "mode",
     "goal",
+    "policy_version",
+    "cohort_status",
+    "git_delivery",
     "tool_probe_status",
     "gate_status",
     "severity_summary"
@@ -23,6 +26,26 @@
       "enum": ["audit", "plan", "implement", "test", "fix", "review", "tool-probe", "research-doc"]
     },
     "goal": { "type": "string" },
+    "policy_version": {
+      "enum": ["git_safe_cohort_delivery_v1"]
+    },
+    "cohort_status": {
+      "enum": ["work_in_progress", "candidate_ready_for_delivery", "not_applicable"]
+    },
+    "git_delivery": {
+      "type": "object",
+      "required": ["status", "remote_sha_verified", "completion_authority"],
+      "properties": {
+        "status": {
+          "enum": ["work_in_progress", "candidate_ready_for_delivery", "not_applicable"]
+        },
+        "remote_sha_verified": { "const": false },
+        "completion_authority": {
+          "const": "fresh_remote_sha_and_ignored_delivery_receipt"
+        }
+      },
+      "additionalProperties": false
+    },
     "scope": { "type": "array", "items": { "type": "string" } },
     "repo_status_before": { "type": "string" },
     "tool_probe_status": {
@@ -89,5 +112,45 @@
     "next_recommended_round": { "type": "string" },
     "human_decisions_required": { "type": "array", "items": { "type": "string" } }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "required": ["policy_version"],
+        "properties": {
+          "policy_version": { "const": "git_safe_cohort_delivery_v1" }
+        }
+      },
+      "then": {
+        "required": ["cohort_status", "git_delivery"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "cohort_status": { "const": "candidate_ready_for_delivery" }
+        },
+        "required": ["cohort_status"]
+      },
+      "then": {
+        "required": ["changed_files"],
+        "properties": {
+          "changed_files": { "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "cohort_status": { "const": "not_applicable" }
+        },
+        "required": ["cohort_status"]
+      },
+      "then": {
+        "properties": {
+          "changed_files": { "maxItems": 0 }
+        }
+      }
+    }
+  ]
 }

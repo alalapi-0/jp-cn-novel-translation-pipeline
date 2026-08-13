@@ -1,0 +1,161 @@
+{
+  "round_id": "git-safe-cohort-delivery-policy-20260813",
+  "timestamp": "2026-08-13T02:38:00Z",
+  "agent": "codex",
+  "agent_surface": "codex",
+  "mode": "implement",
+  "goal": "Require every approved Git-safe review cohort to reach the registered GitHub branch and verify its remote SHA before the next cohort",
+  "policy_version": "git_safe_cohort_delivery_v1",
+  "cohort_status": "candidate_ready_for_delivery",
+  "git_delivery": {
+    "status": "candidate_ready_for_delivery",
+    "remote_sha_verified": false,
+    "completion_authority": "fresh_remote_sha_and_ignored_delivery_receipt"
+  },
+  "scope": [
+    "Git-safe cohort policy",
+    "hash-bound finalizer",
+    "round reporting and completion gates"
+  ],
+  "repo_status_before": "existing protected local work preserved outside this cohort",
+  "tool_probe_status": "not_run",
+  "tools_used": [
+    {
+      "tool": "local shell and Python",
+      "purpose": "Validate the finalizer, machine policy, report schema, active docs, and workspace baseline",
+      "result": "passed",
+      "fallback_used": false
+    },
+    {
+      "tool": "fresh read-only Judge-style audits",
+      "purpose": "Independently review finalizer security, policy consistency, and test coverage",
+      "result": "three independent audits passed",
+      "fallback_used": false
+    }
+  ],
+  "tools_not_used": [
+    {
+      "tool": "full agent gate",
+      "reason": "Repository policy permits the full gate only in a disposable no-writeback copy; live-safe targeted tooling was used"
+    },
+    {
+      "tool": "browser and external APIs",
+      "reason": "This cohort changes repository control-plane and Git finalization behavior, not UI or production data"
+    }
+  ],
+  "web_research": [],
+  "changed_files": [
+    ".cursor/rules/agent-layer.mdc",
+    ".cursor/rules/safety-gates.mdc",
+    ".cursor/rules/tool-usage.mdc",
+    "AGENTS.md",
+    "README.md",
+    "agent_layer.yaml",
+    "agent_tools.yaml",
+    "docs/AGENT_REPORTING.md",
+    "docs/AGENT_ROADMAP.md",
+    "docs/AGENT_RUNBOOK.md",
+    "docs/AGENT_SAFETY.md",
+    "docs/CODEX_HANDOFF.example.md",
+    "docs/CODEX_HANDOFF.md",
+    "docs/CODEX_USAGE.md",
+    "docs/PROMPTS.md",
+    "docs/TOOL_INVENTORY.md",
+    "docs/TOOL_USAGE_POLICY.md",
+    "docs/agent_operating_manual.md",
+    "docs/agent_skills/mcp_usage_skill.md",
+    "docs/agent_tooling_strategy.md",
+    "docs/agent_workflow/continuous_multi_agent_loop.md",
+    "docs/agent_workflow/runner_agent.md",
+    "docs/cursor_browser_ui_runbook.md",
+    "docs/definition_of_done.md",
+    "docs/git_safe_cohort_delivery.md",
+    "docs/governance_rules.md",
+    "docs/index.md",
+    "docs/micro_round_runner_design.md",
+    "docs/next_agent_execution_protocol.md",
+    "docs/non_goals_and_guardrails.md",
+    "docs/phase_acceptance_criteria.md",
+    "docs/product_final_state_spec.md",
+    "docs/prompts/CONTINUOUS_FS_ADVANCE_PROMPT.md",
+    "docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md",
+    "docs/repo_protocol_alignment.md",
+    "docs/testing/PLAYWRIGHT_VERSION_ALIGNMENT.md",
+    "docs/translation_consistency_protocol.md",
+    "docs/translation_production_protocol.md",
+    "governance/agent_policy.yaml",
+    "governance/data_policy.yaml",
+    "governance/file_role_map.yaml",
+    "governance/round_state.yaml",
+    "package.json",
+    "project.yaml",
+    "reports/current-cohort-report.json",
+    "schemas/agent_round_report.schema.json",
+    "scripts/agent_gate.py",
+    "scripts/finalize_consistency_run.py",
+    "scripts/git_safe_cohort_finalizer.py",
+    "scripts/run_tooling_checks.sh",
+    "scripts/validate_agent_report.py",
+    "scripts/write_agent_report.py",
+    "tests/test_git_safe_cohort_finalizer.py",
+    "tests/test_local_only_git_policy.py",
+    "tests/test_validate_agent_report.py",
+    "tests/test_write_agent_report.py"
+  ],
+  "commands_run": [
+    "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/pytest -q -p no:cacheprovider tests/test_git_safe_cohort_finalizer.py",
+    "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/pytest -q -p no:cacheprovider tests/test_git_safe_cohort_finalizer.py tests/test_local_only_git_policy.py tests/test_validate_agent_report.py tests/test_write_agent_report.py",
+    "python3 scripts/workspace_file_baseline.py verify --json",
+    "PYTHONDONTWRITEBYTECODE=1 npm run check:tooling",
+    "git diff --check"
+  ],
+  "test_results": [
+    {
+      "name": "Git-safe cohort finalizer focused suite",
+      "status": "passed",
+      "tests": 42
+    },
+    {
+      "name": "Policy, finalizer, and report focused suites",
+      "status": "passed",
+      "tests": 87
+    },
+    {
+      "name": "Repository targeted tooling check",
+      "status": "passed",
+      "tests": 116
+    },
+    {
+      "name": "Workspace file baseline",
+      "status": "passed",
+      "files": 15979,
+      "drift": 0,
+      "aggregate_sha256": "32696c41fdd369704e9ce8d3b21142cd97fb4113783bf3c33b7ba334eedfd8ed"
+    }
+  ],
+  "issues_found": [
+    "Approved review work could be declared complete while remaining dirty and unpushed locally",
+    "Old active report and round-state surfaces could recommend the next round before remote delivery",
+    "Symbolic Git endpoint, commit identity, filters, config rewrites, and inherited transport environment created unsafe finalization inputs"
+  ],
+  "issues_fixed": [
+    "Standing policy now requires one hash-bound Git-safe cohort to be committed, pushed to the fixed non-default branch, and fresh-SHA verified before the next cohort",
+    "Current report and round state remain candidate-ready with remote verification false and no next-round recommendation",
+    "Finalizer binds plan and approvals, exact paths/bytes/modes, fixed safe commit metadata, isolated literal endpoint and exact-SHA push, recovery receipts, and non-replayable retry evidence",
+    "Real source text, full real translations, workspace runtime, artifacts, private content, and secrets remain never-commit categories"
+  ],
+  "remaining_issues": [
+    "Fresh contract-bound Judge and Governor approval are required before Git finalization"
+  ],
+  "severity_summary": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0
+  },
+  "gate_status": "passed",
+  "blockers": [],
+  "risks": [],
+  "next_recommended_round": "",
+  "human_decisions_required": []
+}

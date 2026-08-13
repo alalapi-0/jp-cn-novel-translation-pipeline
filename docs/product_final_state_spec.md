@@ -151,7 +151,7 @@ production_candidate
 * 输出必须写入与 API 模式相同的结构化中间态；
 * 必须保留 chapter_id / paragraph_id / segment_id；
 * 不得绕过术语库、角色设定、一致性检查和最终单例导出；
-* 必须在 round report / latest-agent-report 中记录本轮使用了 Agent 额度模式；
+* 必须在 round report / current-cohort-report 中记录本轮使用了 Agent 额度模式；
 * 不得把无法验证的聊天输出直接当最终译文，必须进入一致性校对和导出流程。
 
 两种执行方式的产物必须同构。后续一致性检查、canonical segments 修正、导出不应关心译文来自外部 API 还是 Agent。

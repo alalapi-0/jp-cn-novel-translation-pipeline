@@ -74,6 +74,9 @@ run_targeted_checks() {
   "$PYTEST" -p no:cacheprovider \
     tests/test_workspace_file_baseline.py \
     tests/test_local_only_git_policy.py \
+    tests/test_git_safe_cohort_finalizer.py \
+    tests/test_validate_agent_report.py \
+    tests/test_write_agent_report.py \
     tests/test_tool_probe.py \
     -q
 }

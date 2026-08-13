@@ -23,7 +23,7 @@ Agent
               ├─ micro_round_progress.json 每 30–60s
               └─ stop_requested → SIGTERM 链 → 无 orphan
         └─ compact summary JSON → stdout + workspace/logs/
-Agent 读 summary → report / commit / 下一 MR
+Agent 读 summary → candidate report → cohort finalizer（exact commit/push）→ fresh remote SHA verify → 下一受控任务
 ```
 
 **不变约束：**

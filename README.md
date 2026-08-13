@@ -278,7 +278,7 @@ npm run check:stitch
 5. 再打开页面并截图（after）
 6. console / network 检查
 7. 运行测试（`npm run test:ui` 等）
-8. commit / push（分别取得用户当前轮明确授权后）
+8. 将已验证、已批准的 Git-safe cohort 交给 hash-bound finalizer：精确 stage、commit、push 到登记的既有非默认分支并核验远端 SHA
 
 Prompt 模板：`docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`
 
@@ -407,7 +407,7 @@ Exporter 是唯一负责生成最终阅读文件的模块。Exporter 不调用�
 2. 执行 `git status`，确认安全边界。
 3. 只做当前 Round 范围内任务，不越级。
 4. 更新 `governance/round_state.yaml` 与本地报告。
-5. Round Prompt、edit/build 请求都不授权 Git；commit 与 push 必须分别取得用户当前轮明确授权，push 重试也需新授权。
+5. Round Prompt、edit/build 请求不能扩大 Git 权限；经验证和所需审批的 Git-safe cohort 必须按 `docs/git_safe_cohort_delivery.md` 完成精确 stage、commit、固定目标 push 与 fresh remote SHA 核验，之后才可进入下一轮。
 
 ## Continuous Agent Foundation
 

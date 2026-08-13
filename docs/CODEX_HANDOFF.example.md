@@ -23,7 +23,7 @@ Implement AL-018 gate triage helper and wire severity into `write_agent_report.p
 - [x] `agent_tools.yaml`
 - [x] `docs/TOOL_USAGE_POLICY.md`
 - [x] `docs/AGENT_RUNBOOK.md`
-- [x] `reports/latest-agent-report.json`
+- [x] `reports/current-cohort-report.json`
 - [ ] `scripts/gate_triage.py`, `scripts/write_agent_report.py`
 
 ## Current P0/P1
@@ -63,7 +63,8 @@ npm run check:tooling  # real-worktree targeted/read-only control-plane checks
 
 - [ ] Scope limited to stated goal
 - [ ] Scoped targeted checks pass; any contract-required full gate was isolated with no writeback
-- [ ] `reports/latest-agent-report.json` updated via `write_agent_report.py`
+- [ ] `reports/current-cohort-report.json` updated via `write_agent_report.py`
 - [ ] No secrets in diff
+- [ ] Any Git-safe changed-file cohort is finalized through exact commit/push and fresh remote SHA verification before a next task is selected
 
 Canonical template: `docs/CODEX_HANDOFF.md`

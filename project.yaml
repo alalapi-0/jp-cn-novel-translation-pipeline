@@ -48,23 +48,62 @@ protocol_standard:
 protocol_standard_sync_required: true
 
 git_finalization_policy:
-  mode: local_only
-  auto_stage: false
-  auto_commit: false
-  auto_push: false
-  commit_requires_explicit_current_turn_user_request: true
-  push_requires_explicit_current_turn_user_authorization: true
-  push_retry_requires_new_current_turn_user_authorization: true
+  mode: required_verified_remote_delivery
+  unit: git_safe_cohort
+  max_cohorts_per_round: 1
+  standing_delivery_authority: standing_git_safe_cohort_policy_v1
+  auto_finalize_approved_git_safe_cohort: true
+  target:
+    remote: origin
+    branch: codex/light-novel-governance-closure-20260813
+    default_branch: main
+    remote_must_preexist: true
+    branch_must_preexist: true
+    fetch_and_push_url_must_match: true
+    fresh_remote_head_must_match_default_branch: true
   authorization_sources:
+    standing_repository_policy: true
     edit_or_build_request: false
     round_prompt: false
-  approved_round_local_completion_allowed: true
-  dirty_worktree_warning_is_blocking: false
+  prerequisites:
+    exact_hash_bound_plan: true
+    registered_plan_sha256_required_at_execution: true
+    approval_subject_sha256_required: true
+    content_safety_review_required: true
+    scoped_validation_required: true
+    required_approvals_satisfied: true
+    prior_remote_sha_must_match_base: true
+  staging:
+    exact_paths_only: true
+    preexisting_index_must_be_empty: true
+    broad_staging_forbidden: true
+  delivery:
+    commit_required: true
+    push_required: true
+    force_push_forbidden: true
+    verify_remote_sha: true
+  completion:
+    approved_local_only_completion_allowed: false
+    requires_remote_sha_match: true
+    next_cohort_blocked_until_verified: true
+  push_failure:
+    preserve_local_commit: true
+    mark_cohort_incomplete: true
+    blind_retry_forbidden: true
+    same_target_retry_requires_state_or_method_change: true
+    retry_change_evidence_required: true
+    retry_evidence_must_bind_plan: true
+    retry_evidence_reuse_forbidden: true
+  authority_expansion:
+    remote_change_requires_new_user_authorization: true
+    branch_change_requires_new_user_authorization: true
+    effect_expansion_requires_new_user_authorization: true
   actual_fail_or_blocked_is_blocking: true
   never_commit_categories:
     - real_source_text
-    - real_translation
+    - full_real_translation
     - workspace_runtime_artifacts
+    - artifacts
     - secrets
 
 workspace_file_baseline:
@@ -117,10 +156,10 @@ project_overrides:
 
   - field: agent_policy_standard.git_finalization
     standard_expectation: "Approved-round automatic stage, commit, and push"
-    override_value: "An approved round completes locally only; commit and push each require a separate explicit current-turn user instruction"
-    reason: "The user owns repository history and remote publication while verified scoped work may complete safely in the local worktree"
+    override_value: "Every approved Git-safe cohort must use the hash-bound finalizer to exact-stage, commit, push to the registered existing non-default branch, and verify the remote SHA before completion or the next cohort"
+    reason: "The owner requires each review round's Git-safe results to reach GitHub instead of accumulating in the local worktree"
     owner: user
-    review_trigger: "Only when the user explicitly changes the local-only policy"
+    review_trigger: "When the owner changes the registered remote, branch, never-commit boundary, or required remote-delivery workflow"
 
   - field: agent_policy_standard.automation_policy
     standard_expectation: "Run scripts/agent_gate.py before autonomous advancement"

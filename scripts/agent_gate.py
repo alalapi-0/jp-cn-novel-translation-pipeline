@@ -52,7 +52,7 @@ AGENT_LAYER_FILES: Sequence[tuple[str, Path]] = (
     ("agent_roadmap", REPO_ROOT / "docs" / "AGENT_ROADMAP.md"),
     ("search_policy", REPO_ROOT / "docs" / "SEARCH_POLICY.md"),
     ("tool_inventory", REPO_ROOT / "docs" / "TOOL_INVENTORY.md"),
-    ("latest_agent_report", REPO_ROOT / "reports" / "latest-agent-report.json"),
+    ("current_cohort_report", REPO_ROOT / "reports" / "current-cohort-report.json"),
     ("round_report_schema", REPO_ROOT / "schemas" / "agent_round_report.schema.json"),
 )
 

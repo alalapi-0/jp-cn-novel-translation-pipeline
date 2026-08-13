@@ -1,10 +1,31 @@
-round_id: governance_final_ready_v2_cleanup_20260618
-round_name: Final-ready v2 governance, singleton export, and legacy route cleanup
-round_number_human: 2026-06-18 governance cleanup
-status: completed
+round_id: git_safe_cohort_delivery_policy_20260813
+round_name: Remote-verified Git-safe review cohort delivery policy
+round_number_human: 2026-08-13 Git delivery policy correction
+status: candidate_ready_for_delivery
 type: governance
 real_api_called: false
-completed_tasks:
+policy_version: git_safe_cohort_delivery_v1
+cohort_status: candidate_ready_for_delivery
+git_delivery:
+  status: candidate_ready_for_delivery
+  remote: origin
+  branch: codex/light-novel-governance-closure-20260813
+  remote_sha_verified: false
+  completion_authority: fresh_remote_sha_and_ignored_delivery_receipt
+  next_cohort_blocked: true
+validation_evidence:
+  independent_finalizer_audit: pass
+  independent_policy_docs_audit: pass
+  independent_policy_tests_audit: pass
+  repository_targeted_tooling_tests: 116
+  workspace_baseline_status: ok
+  workspace_baseline_file_count: 15979
+  workspace_baseline_sha256: 32696c41fdd369704e9ce8d3b21142cd97fb4113783bf3c33b7ba334eedfd8ed
+prior_product_round:
+  round_id: governance_final_ready_v2_cleanup_20260618
+  status: completed
+  note: The retained product snapshot below is historical context, not current Git delivery completion authority.
+historical_completed_tasks:
 - 'Verified scheduler truth: phase=final_ready, paused=true, next_round_id=null,
   next_chapter_range=null, active=0, orphan=0'
 - Removed refinement/R-MR/production_candidate from the active production route
@@ -240,13 +261,13 @@ latest_stats: &id001
   user_wells_bad_effective_hits: 0
   user_sniper_ant_bad_effective_hits: 0
   whole_book_fix_goal_completion_dry_run_changed_segments: 0
-next_recommended_round: FS-v2-001 Agent Quota Translation Writer, or UI v2 status vocabulary cleanup
-blockers:
+next_recommended_round: ''
+historical_blockers:
   hard: []
   soft:
   - Policy decision pending for contextual アンデッド renderings
   - 'agent_gate warning: dirty tree + pre-existing vector inspect warnings'
-recent_updates:
+historical_recent_updates:
 - Generated content-first ch381-390 actual audit and applied 153 high-confidence whole-book
   source-conditioned fixes
 - Refreshed CA-381-390 from latest fixed translation

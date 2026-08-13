@@ -1,5 +1,5 @@
-version: 1
-updated_at: '2026-06-11T14:50:15Z'
+version: 2
+updated_at: '2026-08-13T01:51:15Z'
 repo_name: light_novel
 agent_surfaces:
   cursor:
@@ -189,10 +189,26 @@ policies:
   live_full_gate_prohibited: true
   full_gate_context: disposable_copy_only
   full_gate_output_writeback: false
-  commit_requires_explicit_current_turn_user_request: true
-  push_requires_separate_explicit_current_turn_user_authorization: true
-  push_retry_requires_new_current_turn_user_authorization: true
+  git_finalization_mode: required_verified_remote_delivery
+  git_safe_cohort_finalizer: scripts/git_safe_cohort_finalizer.py
+  auto_finalize_approved_git_safe_cohort: true
+  registered_remote: origin
+  registered_branch: codex/light-novel-governance-closure-20260813
+  default_branch_push_forbidden: true
+  exact_hash_bound_plan_required: true
+  registered_plan_sha256_required_at_execution: true
+  approval_subject_sha256_required: true
+  content_safety_review_required: true
+  exact_path_staging_only: true
+  remote_sha_match_required_for_completion: true
+  next_cohort_blocked_until_remote_verified: true
+  blind_push_retry_forbidden: true
+  same_target_retry_requires_state_or_method_change: true
+  retry_change_evidence_required: true
+  retry_evidence_reuse_forbidden: true
+  target_change_requires_new_user_authorization: true
   git_authorization_sources:
+    standing_repository_policy: true
     edit_or_build_request: false
     round_prompt: false
   require_tool_usage_log: true
@@ -228,6 +244,10 @@ task_stage_mapping:
   github_ops:
     required:
     - git
+    commands:
+    - python3 scripts/git_safe_cohort_finalizer.py preflight PLAN.json
+    - python3 scripts/git_safe_cohort_finalizer.py finalize PLAN.json
+    - python3 scripts/git_safe_cohort_finalizer.py verify PLAN.json
     optional:
     - github_mcp
     - gh_cli

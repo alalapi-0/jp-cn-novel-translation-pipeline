@@ -82,7 +82,7 @@
 11. 运行测试（`npm run test:ui` 或 `npm run test:py` 相关项）
 12. 保存 after screenshot
 13. 更新文档（设计 reviews、轮次记录）
-14. 本地验证后默认保持未 stage；Round Prompt/edit/build 不授权 Git。commit 与 push 分别取得用户当前轮明确授权后才执行，push 失败重试需新授权
+14. UI 切片验证并满足所需审批后，登记一个 Git-safe cohort，由 standing finalizer 精确 stage/commit、固定目标 push 并 fresh verify remote SHA；Prompt 不得扩大 scope，失败 retry 需新的状态/transport 变更证据
 
 Prompt 模板见 `docs/prompts/CURSOR_UI_IMPLEMENTATION_PROMPT.md`。
 

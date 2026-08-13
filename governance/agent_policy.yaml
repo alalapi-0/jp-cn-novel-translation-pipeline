@@ -33,35 +33,73 @@ network_policy:
   default: no_network_unless_required
 
 git_finalization:
-  mode: local_only
-  automatic_stage: false
-  automatic_commit: false
-  automatic_push: false
-  approved_round_local_completion_allowed: true
-  commit_requires_explicit_current_turn_user_request: true
-  push_requires_explicit_current_turn_user_authorization: true
-  push_retry_requires_new_current_turn_user_authorization: true
-  dirty_worktree:
-    scoped_verified_task_changes_are_expected: true
-    warning_is_blocking: false
-    actual_fail_or_blocked_is_blocking: true
+  mode: required_verified_remote_delivery
+  unit: git_safe_cohort
+  max_cohorts_per_round: 1
+  standing_delivery_authority: standing_git_safe_cohort_policy_v1
+  automatic_finalizer: scripts/git_safe_cohort_finalizer.py
+  auto_finalize_approved_git_safe_cohort: true
+  target:
+    remote: origin
+    branch: codex/light-novel-governance-closure-20260813
+    default_branch: main
+    remote_must_preexist: true
+    branch_must_preexist: true
+    fetch_and_push_url_must_match: true
+    fresh_remote_head_must_match_default_branch: true
   authorization_sources:
+    standing_repository_policy: true
     edit_or_build_request: false
     round_prompt: false
+  prerequisites:
+    exact_hash_bound_plan: true
+    registered_plan_sha256_required_at_execution: true
+    approval_subject_sha256_required: true
+    content_safety_review_required: true
+    scoped_validation_required: true
+    required_approvals_satisfied: true
+    prior_remote_sha_must_match_base: true
+  staging:
+    exact_paths_only: true
+    preexisting_index_must_be_empty: true
+    broad_staging_forbidden: true
+  delivery:
+    commit_required: true
+    push_required: true
+    force_push_forbidden: true
+    verify_remote_sha: true
+  completion:
+    approved_local_only_completion_allowed: false
+    requires_remote_sha_match: true
+    next_cohort_blocked_until_verified: true
+  push_failure:
+    preserve_local_commit: true
+    mark_cohort_incomplete: true
+    blind_retry_forbidden: true
+    same_target_retry_requires_state_or_method_change: true
+    retry_change_evidence_required: true
+    retry_evidence_must_bind_plan: true
+    retry_evidence_reuse_forbidden: true
+  authority_expansion:
+    remote_change_requires_new_user_authorization: true
+    branch_change_requires_new_user_authorization: true
+    effect_expansion_requires_new_user_authorization: true
   never_commit_categories:
     - real_source_text
-    - real_translation
+    - full_real_translation
     - workspace_runtime_artifacts
+    - artifacts
     - secrets
 
 commit_policy:
-  default: local_only_no_automatic_commit
-  automatic_stage: false
-  automatic_commit: false
-  requires_explicit_current_turn_user_request: true
+  default: finalizer_exact_approved_cohort
+  automatic_stage: approved_git_safe_cohort_only
+  automatic_commit: approved_git_safe_cohort_only
+  standing_repository_policy_can_authorize: true
   round_prompt_can_authorize: false
   edit_or_build_request_can_authorize: false
   exact_path_staging_only: true
+  preexisting_index_must_be_empty: true
   verify_before_commit:
     - no_env_tracked
     - no_secrets_in_diff
@@ -70,10 +108,13 @@ commit_policy:
     - no_workspace_runtime_artifacts_in_diff
 
 push_policy:
-  default: local_only_no_automatic_push
-  automatic_push: false
-  requires_explicit_current_turn_user_authorization: true
-  retry_requires_new_current_turn_user_authorization: true
+  default: finalizer_registered_existing_non_default_branch
+  automatic_push: approved_git_safe_cohort_only
+  standing_repository_policy_can_authorize: true
+  verify_remote_sha: true
+  blind_retry_forbidden: true
+  same_target_retry_requires_state_or_method_change: true
+  target_change_requires_new_user_authorization: true
 
 workspace_file_baseline:
   root: workspace

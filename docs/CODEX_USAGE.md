@@ -27,7 +27,7 @@ How OpenAI Codex should interact with this repo when Cursor is primary.
 3. `agent_tools.yaml`
 4. `docs/TOOL_USAGE_POLICY.md`
 5. `docs/AGENT_RUNBOOK.md`
-6. `reports/latest-agent-report.json`
+6. `reports/current-cohort-report.json`
 7. `docs/CODEX_HANDOFF.md` (when provided by Cursor)
 
 ## Task format
@@ -35,9 +35,9 @@ How OpenAI Codex should interact with this repo when Cursor is primary.
 - Plan first, one round scope
 - No real API, no real publish
 - Run contract-selected targeted/read-only checks in the real tree; run a full `scripts/agent_gate.py` only in a disposable isolated copy with no output writeback
-- Update `reports/latest-agent-report.json`
+- Update `reports/current-cohort-report.json`
 - Record `tools_used`
-- Treat Round Prompts and edit/build requests as non-authorizing for Git; commit and push each need separate explicit current-turn owner wording
+- Treat Round Prompts and edit/build requests as unable to expand Git scope. After validation and required review, register one exact Git-safe cohort and complete the standing finalizer workflow through fresh remote SHA verification before handing off another cohort.
 
 ## Quota-limited strategy
 

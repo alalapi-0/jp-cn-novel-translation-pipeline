@@ -15,11 +15,11 @@ Follow `docs/TOOL_USAGE_POLICY.md`.
 | UI verification | Browser MCP / Playwright / chrome-devtools |
 | File ground truth | filesystem MCP or Read |
 | GitHub remote state | GitHub MCP or `gh` |
-| Deterministic validation | `scripts/agent_gate.py`, `npm run check:tooling` |
+| Deterministic validation | contract-selected targeted checks; `npm run check:tooling` for the control plane; full `scripts/agent_gate.py` only in an isolated no-writeback copy |
 
 ## MCP configured but unused
 
-If MCP was available and relevant, explain in `reports/latest-agent-report.json` → `tools_not_used`.
+If MCP was available and relevant, explain in `reports/current-cohort-report.json` → `tools_not_used`.
 
 ## Fallbacks
 

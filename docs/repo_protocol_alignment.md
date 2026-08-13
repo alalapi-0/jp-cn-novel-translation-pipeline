@@ -18,7 +18,7 @@
 2. **Agent 阅读顺序**：协议 → 项目身份 → 策略 → 轮次状态 → 文件角色 → 流水线契约 → README → docs/index
 3. **Round 生命周期**：intake → scan → plan → implement → validate → report → sync
 4. **自动化门控（通用协议历史能力）**：`scripts/agent_gate.py` 可产生 exit 0/1/2；本项目现行覆盖禁止在真实工作树运行完整 gate
-5. **安全**：不读 `.env`、不提交密钥、治理轮不调真实 API、不默认 commit/push
+5. **安全**：不读 `.env`、不提交密钥、治理轮不调真实 API、不进行 ad-hoc commit/push；approved Git-safe cohort 只经 standing finalizer 交付
 6. **浏览器验证**：Playwright 仅用于 UI 验证，产物进 `artifacts/`
 
 ## 与当前仓库一致的部分
@@ -47,16 +47,16 @@
 ## 当前仓库可能冲突的部分
 
 1. **Round 状态路径**：协议默认 `governance/round_state.yaml`；legacy 治理状态已归档至 `docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml`。已在 `project.yaml` 记录 override。
-2. **提交策略（历史）**：原 `governance_rules.md` 写“每轮结束应 commit/push”；协议 `commit_policy.default` 为“用户明确要求才 commit”。Round 02 当时曾修正为“用户或轮次 Prompt 明确要求时 commit”，push 需用户授权。该叙述保留 Round 02 的历史事实，但现行规则已由下方 `local_only` 项目覆盖取代，Round Prompt 不再具有任何 Git 授权效力。
+2. **提交策略（历史）**：原 `governance_rules.md` 写“每轮结束应 commit/push”；协议 `commit_policy.default` 为“用户明确要求才 commit”。Round 02 当时曾修正为“用户或轮次 Prompt 明确要求时 commit”，push 需用户授权。该叙述只保留 Round 02 的历史事实；现行规则已由下方 `required_verified_remote_delivery` 项目覆盖取代，Prompt 不得扩大 standing Git 权限。
 3. **项目定位**：协议 `project_specific_extensions.current_reference_project` 偏中文生成仓库；本仓库定位为**中日互译流水线**。差异写入 `novel_pipeline_contract.yaml` 与 `project.yaml`，不修改协议正文。
 4. **Round 编号**：旧 Round 00–50 / RM 编号仅作历史；当前推进以 `docs/final_state_round_task_list.md` 的 FS-v2 任务为准。
 5. **本地 tracked 内容**：`input_jp/` 等目录在磁盘有原文但 `.gitignore` 应阻止提交；敏感索引检查必须使用 targeted/read-only check，完整 gate 只能在不得回写的一次性隔离临时副本中验证。
 
-## 现行项目覆盖：user-owned local-only Git 最终化
+## 现行项目覆盖：Git-safe cohort 远端最终化
 
-`project.yaml` 的 `agent_policy_standard.git_finalization` override 取代通用 approved-round automatic stage/commit/push。Judge `PASS` 与 Governor `APPROVE` 只批准 verified scoped candidate 在本地工作树完成；不得自动 stage、commit、checkout、merge 或 push。
+`project.yaml` 的 `agent_policy_standard.git_finalization` override 将通用行为收紧为一个可执行的 standing workflow：verified scoped candidate 满足本轮风险等级所需审批后，必须生成绑定 path/state/mode/SHA-256 的 plan，由 finalizer 精确 stage、commit、普通 push 到登记的既有非默认分支并 fresh verify 远端 SHA。已批准但只留在本地不再是完成状态。
 
-采用该覆盖是为了让用户保有仓库历史和远端发布的最终控制权，同时允许通过验证的本地任务不因预期 dirty worktree warning 而被误判为失败。edit/build 请求与 Round Prompt 均不提供 Git 权限；commit 和 push 必须分别取得用户当前轮明确授权，push 重试也需要新授权。真实原文、真实译文、workspace runtime artifacts 与 secrets 在任何授权下都永不提交；真实 `FAIL` / `BLOCKED` 仍然阻断。
+该覆盖用于防止审校轮成果长期堆积。edit/build 请求与 Round Prompt 不能扩大 remote、branch 或外部效应；固定目标以外的 Git 操作仍需用户新授权。真实原文、完整真实译文、workspace runtime artifacts、artifacts 与 secrets 永不提交；真实 `FAIL` / `BLOCKED` 仍然阻断，push 失败则保留 commit 并要求记录实际状态或 transport 变化后才能同目标重试。
 
 ## 现行项目覆盖：Workspace 逐文件基线与完整门禁隔离
 
@@ -114,7 +114,7 @@ Round 02 已新增或更新：
 
 ## 当前仓库与协议可能冲突的部分
 
-1. **历史轮次快照**：当时用户要求完成后 commit 并 push，且当时规则仍将 Round Prompt 视为 commit 权限来源；该轮 Prompt 因而记录了 commit/push 请求，push 失败只记录原因、不反复尝试。本条仅保留当轮历史语境，不授予当前或未来轮次任何 Git 权限；现行 `local_only` 规则要求 commit 与 push 分别由用户在当前轮明确授权。
+1. **历史轮次快照**：当时用户要求完成后 commit 并 push，且当时规则仍将 Round Prompt 视为 commit 权限来源；该轮 Prompt 因而记录了 commit/push 请求，push 失败只记录原因、不反复尝试。本条仅保留当轮历史语境，不授予当前或未来轮次扩展权限；现行规则见 `docs/git_safe_cohort_delivery.md`。
 2. RM 路线新增一套编号，可能与既有 Round 00-50 混淆。因此 RM 文件必须明确 `RM` 只表示 Reference Method Absorption，不取代原路线。
 3. 参考方法可能诱导提前实现真实 API、EPUB、Workbench、OCR 或多 provider routing；本轮只写文档，不执行这些功能。
 

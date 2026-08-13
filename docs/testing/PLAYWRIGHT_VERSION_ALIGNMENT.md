@@ -78,7 +78,7 @@ MCP 不可用时不阻塞文档/后端轮次，但 **UI 实现轮** 须至少 CL
 | 2 | `npx playwright install` 重装浏览器（对应 CLI 版本） |
 | 3 | 仍失败 → `npx playwright install --force` |
 | 4 | MCP 仍失败 → 用 `npm run test:ui` 或 `cursor-ide-browser` fallback |
-| 5 | 记录于 `reports/latest-agent-report.json` → `remaining_issues` |
+| 5 | 记录于 `reports/current-cohort-report.json` → `remaining_issues` |
 
 根因通常是 **MCP 进程 bundled 的 core** 与 **全局/工作区已装浏览器** 不一致；CLI 路径以工作区 `@playwright/test` 为准修复。
 

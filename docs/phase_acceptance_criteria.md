@@ -94,6 +94,8 @@
 
 ## 8. Local scheduler 完成标准
 
+本节及其他产品阶段的 PASS 不替代 Git-safe cohort 交付门禁；若本轮改动可进入 Git，仍须完成 standing finalizer 的远端 SHA 核验后才能结束轮次。
+
 | # | 条件 | 验证方式 |
 | --- | --- | --- |
 | L1 | status 输出最终规格 §9.2 字段 | `local_scheduler_status.py --json` |

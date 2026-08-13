@@ -8,13 +8,16 @@ Exit: 0=valid, 1=schema validation failed, 2=IO/JSON parse error.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_REPORT = REPO_ROOT / "reports" / "latest-agent-report.json"
+DEFAULT_REPORT = REPO_ROOT / "reports" / "current-cohort-report.json"
+LEGACY_REPORT = REPO_ROOT / "reports" / "latest-agent-report.json"
 DEFAULT_SCHEMA = REPO_ROOT / "schemas" / "agent_round_report.schema.json"
 
 # Minimal fallback when jsonschema is not installed (dev should use requirements-dev.txt).
@@ -29,6 +32,8 @@ REQUIRED_TOP_LEVEL = (
     "gate_status",
     "severity_summary",
 )
+POLICY_VERSION = "git_safe_cohort_delivery_v1"
+POLICY_EFFECTIVE_AT = dt.datetime(2026, 8, 13, tzinfo=dt.timezone.utc)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -58,13 +63,69 @@ def validate_with_jsonschema(report: dict[str, Any], schema: dict[str, Any]) -> 
         import jsonschema
         from jsonschema.exceptions import ValidationError
     except ImportError:
-        return validate_required_fields(report)
+        return validate_required_fields(report) + validate_git_delivery_semantics(report)
 
     validator = jsonschema.Draft7Validator(schema)
     errors: list[str] = []
     for err in sorted(validator.iter_errors(report), key=lambda e: list(e.path)):
         path = ".".join(str(p) for p in err.path) or "(root)"
         errors.append(f"{path}: {err.message}")
+    errors.extend(validate_git_delivery_semantics(report))
+    return errors
+
+
+def _is_exact_legacy_report_path(path: Path) -> bool:
+    """Bind legacy-schema compatibility to the one protected historical file."""
+    return Path(os.path.abspath(path)) == LEGACY_REPORT
+
+
+def validate_legacy_report(report: dict[str, Any]) -> list[str]:
+    timestamp = _timestamp(report.get("timestamp"))
+    if (
+        report.get("policy_version") == POLICY_VERSION
+        or timestamp is None
+        or timestamp >= POLICY_EFFECTIVE_AT
+    ):
+        return ["protected legacy report does not satisfy the pre-policy boundary"]
+    return validate_required_fields(report)
+
+
+def _timestamp(value: Any) -> dt.datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.astimezone(dt.timezone.utc)
+
+
+def validate_git_delivery_semantics(report: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    version = report.get("policy_version")
+    if version != POLICY_VERSION:
+        errors.append("current reports must declare git_safe_cohort_delivery_v1")
+        return errors
+    status = report.get("cohort_status")
+    delivery = report.get("git_delivery")
+    if not isinstance(delivery, dict):
+        errors.append("git_delivery must be an object")
+        return errors
+    if delivery.get("status") != status:
+        errors.append("git_delivery.status must match cohort_status")
+    if delivery.get("remote_sha_verified") is not False:
+        errors.append("tracked report cannot self-attest the post-push remote SHA")
+    if report.get("overall_status") == "completed" or status == "complete":
+        errors.append("tracked report cannot mark the cohort complete")
+    next_round = report.get("next_recommended_round", "")
+    if status in {"work_in_progress", "candidate_ready_for_delivery"} and next_round:
+        errors.append("next cohort is blocked until fresh remote SHA verification")
+    if status == "candidate_ready_for_delivery" and not report.get("changed_files"):
+        errors.append("candidate_ready_for_delivery requires an exact changed_files list")
+    if status == "not_applicable" and report.get("changed_files"):
+        errors.append("not_applicable requires changed_files to be empty")
     return errors
 
 
@@ -88,7 +149,10 @@ def validate_report(
         schema = load_json(schema_path)
     except ValueError as exc:
         return False, [str(exc)]
-    errors = validate_with_jsonschema(report, schema)
+    if _is_exact_legacy_report_path(report_path):
+        errors = validate_legacy_report(report)
+    else:
+        errors = validate_with_jsonschema(report, schema)
     return len(errors) == 0, errors
 
 

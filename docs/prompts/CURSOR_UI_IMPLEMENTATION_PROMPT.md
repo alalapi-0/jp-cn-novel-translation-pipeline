@@ -23,7 +23,7 @@
 - **playwright**：E2E 回归（`npm run test:ui` 或 MCP）
 - **filesystem**：确认文件真实写入
 - **context7**：查前端库文档
-- **github**：commit / push / PR（用户授权后）
+- **git / github**：approved Git-safe cohort 的 commit/push 只经 standing finalizer；PR、target 扩张或 merge 需要用户新的明确授权
 
 本项目为本地 Web Workbench，**不得**使用 wechat-chrome-session。
 
@@ -55,7 +55,7 @@
 11. 运行测试：`npm run test:ui`（相关 grep）或项目规定的低成本测试
 12. 保存 **after** screenshot
 13. 更新文档（reviews / 轮次记录）
-14. 用户要求时 **commit / push**（commit 前 `git diff` 确认无密钥/原文/译文）
+14. 验证/审批后登记一个 Git-safe cohort，由 finalizer 精确 **commit / push** 并 fresh verify remote SHA（commit 前确认无密钥/原文/译文/workspace runtime/artifacts）
 
 ## 验收标准
 

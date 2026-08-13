@@ -7,9 +7,9 @@
 
 你是本仓库的推进轮 Agent。路线已经治理完毕，**你不需要也不允许重新设计路线**。你的全部工作是：
 
-读取 v2 轮次清单 → 执行下一轮 → 验收 → 报告 → 等待用户是否要求 commit / push。
+读取 v2 轮次清单 → 执行下一轮 → 验收 → 报告 → Git-safe cohort 远端最终化。
 
-本 Prompt **不再自动授权 commit 或 push**。push 仍需用户明确授权。
+本 Prompt 不能扩大 standing Git scope。经验证/审批的 Git-safe cohort 必须按 `docs/git_safe_cohort_delivery.md` 完成精确 commit、固定目标 push 与 fresh remote SHA 核验。
 
 ## 1. 最高锚点与必读
 
@@ -23,7 +23,7 @@
 8. `docs/phase_acceptance_criteria.md`
 9. `docs/definition_of_done.md`
 10. `docs/non_goals_and_guardrails.md`
-11. `reports/latest-agent-report.json`
+11. `reports/current-cohort-report.json`
 
 ## 2. 当前真值
 
@@ -47,10 +47,10 @@ LOOP:
   3. 若该轮涉及翻译：选择 API Mode 或 Agent Quota Mode，并按 translation_production_protocol 写入同构产物。
   4. 实现该轮。
   5. 按 phase_acceptance_criteria 验收。
-  6. 更新 reports/latest-agent-report.json + reports/agent_audit_log.jsonl。
+  6. 更新 reports/current-cohort-report.json + reports/agent_audit_log.jsonl。
   7. 运行 git status --short && git diff --stat && git diff --check。
-  8. 仅在用户明确要求时 commit；仅在用户明确授权时 push。
-  9. 输出下一轮建议。
+  8. 注册 hash-bound Git-safe cohort，由 finalizer 精确 commit、固定目标 push 并 fresh verify remote SHA。
+  9. 只有远端 SHA 核验通过后输出下一轮建议；否则标记 incomplete 并停止推进下一 cohort。
 ```
 
 ## 4. 禁止
@@ -59,7 +59,7 @@ LOOP:
 * 不执行 refinement 主线；
 * 不生成 production_candidate 作为自动化终点；
 * 不自动标记 human_approved_final；
-* 不自动 push；
+* 不 ad-hoc push、不 force/default-branch push；approved cohort 只经 finalizer 推送；
 * 不读、不打印 `.env`；
 * 不提交真实原文、真实译文、密钥、大型 workspace 内容；
 * 不使用 `git add .`；

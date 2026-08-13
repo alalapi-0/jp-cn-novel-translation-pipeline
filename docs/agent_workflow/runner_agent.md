@@ -68,4 +68,4 @@ Runner Agent 是连续推进的主控角色。它负责读取当前仓库状态�
 - 队列任务被读取并分派到对应角色。
 - 流程错误入队 `bugfix`，质量问题入队 `quality_optimization`。
 - 每轮结束前检查 `git status` 和 `git diff`。
-- Round Prompt、edit/build 请求不授权 Git；commit 与 push 分别需要用户当前轮明确授权，push 重试需要新授权。
+- Round Prompt、edit/build 请求不能扩大 standing Git scope；经验证/审批的 Git-safe cohort 必须由 finalizer 完成 exact commit、固定目标 push 与 fresh remote SHA 核验，失败 retry 需新的状态/transport 变更证据。

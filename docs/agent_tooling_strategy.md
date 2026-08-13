@@ -29,7 +29,7 @@
 | Model Provider Tools | fake, dry-run, OpenRouter, DeepSeek 等 | 翻译与 embedding 调用 |
 | Data / Vector Tools | JSON/YAML inspector, Chroma/FAISS verifier | 数据与向量索引检查 |
 | Review / QA Tools | 术语/角色/世界观一致性检查 | 质量与可复查性 |
-| Git / Release Tools | git commit, gh pr | 版本与协作（需授权） |
+| Git / Release Tools | cohort finalizer, git, gh pr | approved cohort 使用 standing finalizer；PR/merge/target 扩张另需授权 |
 | Safety Tools | secret scanner, cost guard, destructive guard | 安全边界 |
 
 ---
@@ -43,7 +43,7 @@
 - 每轮开始必须 `git status`
 - 每轮结束必须 `git status`
 - commit 前必须确认没有 `.env`、密钥、真实原文、真实译文或 workspace runtime artifacts
-- commit 与 push 分别需要用户当前轮明确授权；push 失败后的重试需要新授权
+- 经验证/审批的 Git-safe cohort 必须通过 standing finalizer 精确 commit、固定目标 push 并 fresh verify remote SHA；失败后的同目标 retry 需要记录实际状态或 transport 变化
 
 **验证：**
 
@@ -217,8 +217,8 @@ Bulk embed 须通过 `cost_guard` / `controlled_run`（Round 47）且 `--dry-run
 
 **规则：**
 
-- commit 需用户当前轮明确要求；Round Prompt、edit/build 请求不授权 Git
-- push 需与 commit 分离的用户当前轮明确授权；失败后重试需要新授权
+- Round Prompt、edit/build 请求不能扩大 Git scope；approved Git-safe cohort 的 commit/push 由 standing finalizer 执行
+- 固定 remote/branch 以外、PR/merge/default branch/force 仍需新的 owner authority；push 失败后只允许携带未复用的变更证据同目标 retry
 - 使用 `gh` 处理 PR 时遵循仓库 commit 风格
 
 ---

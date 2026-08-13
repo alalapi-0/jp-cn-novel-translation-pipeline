@@ -35,6 +35,14 @@ def test_build_template_has_required_fields(writer):
     assert ok, errors
     assert report["round_id"] == "AL-TEST"
     assert report["severity_summary"]["p0"] == 0
+    assert report["policy_version"] == "git_safe_cohort_delivery_v1"
+    assert report["cohort_status"] == "work_in_progress"
+    assert report["git_delivery"] == {
+        "status": "work_in_progress",
+        "remote_sha_verified": False,
+        "completion_authority": "fresh_remote_sha_and_ignored_delivery_receipt",
+    }
+    assert report["next_recommended_round"] == ""
 
 
 def test_merge_report_nested_severity(writer):
@@ -59,6 +67,8 @@ def test_write_and_validate_roundtrip(writer, tmp_path, monkeypatch):
             "writer helper test",
             "--next",
             "AL-014",
+            "--cohort-status",
+            "not_applicable",
             "--write",
             "--append-audit",
             "test audit line",
@@ -69,6 +79,10 @@ def test_write_and_validate_roundtrip(writer, tmp_path, monkeypatch):
     assert out.is_file()
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["round_id"] == "AL-013"
+    assert data["policy_version"] == "git_safe_cohort_delivery_v1"
+    assert data["cohort_status"] == "not_applicable"
+    assert data["git_delivery"]["status"] == "not_applicable"
+    assert data["git_delivery"]["remote_sha_verified"] is False
     audit_line = json.loads(audit.read_text(encoding="utf-8").strip().splitlines()[-1])
     assert audit_line["summary"] == "test audit line"
 

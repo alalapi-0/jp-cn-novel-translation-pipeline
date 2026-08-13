@@ -117,7 +117,8 @@ Probe note: AL-003 automated safe probes — no `deferred_to_agent_thread` resul
 | remote | `origin` → GitHub |
 | gh CLI | available |
 | GitHub MCP | configured |
-| commit / push / PR | user explicit only |
+| approved Git-safe cohort commit / push | standing finalizer only; exact plan + fixed existing non-default branch + fresh remote SHA |
+| PR / merge / target change | new explicit owner authority required |
 
 ## H. Context7 / Docs
 

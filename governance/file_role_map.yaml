@@ -26,6 +26,14 @@ agent_entry:
   - docs/next_agent_execution_protocol.md
   - docs/agent_operating_manual.md
 
+round_reporting:
+  - path: reports/current-cohort-report.json
+    role: current_git_safe_cohort_candidate_report
+    completion_authority: false
+  - path: reports/latest-agent-report.json
+    role: protected_pre_policy_historical_snapshot
+    treat_as_authority: false
+
 roadmaps:
   - docs/final_state_implementation_roadmap.md
   - docs/final_state_round_task_list.md

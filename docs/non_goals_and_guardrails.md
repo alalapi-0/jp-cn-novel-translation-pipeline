@@ -45,7 +45,7 @@ P0 / P1 未清零时不得做 P2 / P3（定义见规格 §23）。
 ## 4. 禁止 Agent 自动执行的行为
 
 - 自动标记 human_approved_final；
-- 自动 commit / push；Round Prompt、edit/build 请求均不授权 Git，commit 与 push 分别需要用户当前轮明确授权；
+- 未经验证/审批或绕过 hash-bound finalizer 的 commit / push；Round Prompt、edit/build 请求不得扩大登记的 remote、非默认 branch 或外部效应；
 - 自动发布、公开译文；
 - 自动删除真实原文（`input_jp/` / `input_zh/`）；
 - 自动覆盖原文、baseline、human_approved_final、人工校对译文；

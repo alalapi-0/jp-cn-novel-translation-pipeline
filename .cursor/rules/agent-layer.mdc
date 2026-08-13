@@ -10,8 +10,8 @@ Cursor is the **primary** agent surface for this repo.
 ## Every round start
 
 1. Read `AGENTS.md`, `agent_tools.yaml`, `agent_layer.yaml`
-2. Read `reports/latest-agent-report.json` if present
-3. Read or run `scripts/tool_probe.py` → `reports/tool_probe_report.json`
+2. Read `reports/current-cohort-report.json` if present; the protected pre-policy `reports/latest-agent-report.json` is historical only
+3. Read `reports/tool_probe_report.json`; run `scripts/tool_probe.py` only when the scoped task explicitly owns that report write
 4. Read `docs/TOOL_USAGE_POLICY.md` and `docs/AGENT_RUNBOOK.md`
 
 ## Tool planning
@@ -27,10 +27,10 @@ Cursor is the **primary** agent surface for this repo.
 
 ## End of round
 
-- Run `python3 scripts/agent_gate.py`
-- Write `reports/latest-agent-report.json`
+- Run contract-selected targeted/read-only checks in the real tree; a full `scripts/agent_gate.py` is disposable-copy-only with no writeback
+- Write `reports/current-cohort-report.json`
 - Append `reports/agent_audit_log.jsonl`
-- Do not auto commit/push
+- Do not ad-hoc commit/push. An approved Git-safe cohort must use the hash-bound finalizer and is not complete until fresh remote SHA verification succeeds.
 
 ## Cross-agent
 

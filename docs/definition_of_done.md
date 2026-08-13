@@ -3,6 +3,8 @@
 > Done 定义（v2.0，2026-06-18）。锚点：`docs/product_final_state_spec.md` v2.0。
 > 详细可验证条件见 `docs/phase_acceptance_criteria.md`；本文件是各级 Done 的权威汇总。
 
+本文件定义产品/产物 Done；包含 Git-safe 仓库变更的轮次还必须满足 `docs/git_safe_cohort_delivery.md`：远端 SHA 未与本地 delivery commit 相等时，该轮不得宣告完成或进入下一 cohort。
+
 ## 1. 自动化生产流程 Done（项目级）
 
 当且仅当以下条件全部满足：

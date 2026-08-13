@@ -60,11 +60,11 @@
 
 ## 提交规则
 
-本仓库采用 user-owned `local_only` Git 最终化策略。治理批准的 scoped candidate 默认停留在未 stage/commit/push 的本地工作树中；通用协议的 approved-round automatic stage/commit/push 在本仓库不适用。仅由已验证 scoped task / baseline-owned changes 产生的 dirty worktree warning 是预期、非阻断状态；真实 `FAIL` 或 `BLOCKED` 仍然阻断。
+本仓库采用 `required_verified_remote_delivery` Git 最终化策略。一次只允许一个经验证并满足 DIRECT / REVIEWED / GOVERNED 审批门禁的 Git-safe cohort；它必须由 `scripts/git_safe_cohort_finalizer.py` 依据 hash-bound plan 精确暂存、提交、普通 push 到登记的既有非默认分支，并用 fresh `git ls-remote` 核验远端 SHA。远端 SHA 相等前不得标记完成或选择下一 cohort。
 
-edit/build 请求和任何 Round Prompt 都不构成 Git 授权。只有用户在当前轮明确要求 commit 后，才可精确暂存本轮已批准路径并提交；禁止使用指向当前目录或全匹配路径的 `git add` 全量暂存形式。push 必须由用户在当前轮另行明确授权；push 失败后不得沿用旧授权重试。
+edit/build 请求和任何 Round Prompt 都不能扩大 standing Git 权限。固定目标为既有 `origin/codex/light-novel-governance-closure-20260813`；改 remote、branch、创建 PR、merge 或扩大外部效应需要用户新的明确授权。禁止全量 staging、force-push 与默认分支更新。push 失败时保留本地 commit 并标记 incomplete；只有凭据、网络、远端状态或 transport 方法确有记录的变化后，才可对同一目标重试，禁止原样盲重试。
 
-无论是否获得 commit 授权，真实原文、真实译文、workspace runtime artifacts 和 secrets 永远不得提交。commit 前必须检查精确路径 diff 与 staged diff，确认没有任何上述内容。如果当前目录不是 Git 仓库，不得强行初始化 Git，应记录原因。
+真实原文、完整真实译文、workspace runtime artifacts、artifacts 和 secrets 永远不得提交。finalizer 必须检查精确路径、staged/committed bytes 与 mode、secret 和 never-commit 边界。如果当前目录不是 Git 仓库，不得强行初始化 Git，应记录原因。
 
 ## Workspace 逐文件基线与门禁隔离
 
@@ -83,7 +83,7 @@ edit/build 请求和任何 Round Prompt 都不构成 Git 授权。只有用户�
 3. Agent 停止 → 翻译 worker 必须停止（`workspace/control/stop_requested.json` + SIGTERM）。
 4. 禁止无人监管后台真实 API worker（禁止对生产翻译使用 `nohup` / detached background worker）。
 5. 生产续跑入口以 v2 任务清单为准；不得自动进入 R-MR。
-6. 每个受控 batch 完成后生成报告、修复、测试、提交（授权时）并进入下一任务。
+6. 每个受控 batch 完成后生成 candidate report、修复和测试；Git-safe 变更必须登记/审批 hash-bound cohort，由 finalizer exact stage/commit/push 并 fresh verify remote SHA 后才可进入下一任务。
 7. 全书一致性检查采用 **渐进式披露**，不得全文硬扫。见 `docs/translation_consistency_protocol.md`。
 8. 模型切换须先 A/B（`scripts/model_ab_test.py`）；DeepSeek 保留 fallback。
 

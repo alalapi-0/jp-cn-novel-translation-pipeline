@@ -14,7 +14,7 @@
 6. `docs/final_state_round_task_list.md` —— 轮次任务与状态
 7. `docs/phase_acceptance_criteria.md` / `docs/definition_of_done.md` —— 验收
 8. `docs/non_goals_and_guardrails.md` —— 防跑偏
-9. `reports/latest-agent-report.json`（若存在）—— 上轮交接
+9. `reports/current-cohort-report.json`（若存在）—— 上轮交接
 
 ## 1. 每轮标准流程
 
@@ -33,15 +33,13 @@
    按该轮预算执行；记录调用数与成本；缺 Key 则 dry-run 并记录 missing_api_key
    若该轮允许 Agent 额度翻译：按 `translation_production_protocol.md` 写入同构 segment/run schema
 ⑨ 验证：按该轮"验收标准"逐条核对；npm run test:py / npm run test:ui 视变更运行
-⑩ 报告：写 reports/latest-agent-report.json + 追加 reports/agent_audit_log.jsonl；
-   轮次详情入 workspace/round_reports/（脱敏）
-⑪ 更新任务状态：在 final_state_round_task_list.md 该轮末尾追加
-   "> ✅ 完成于 YYYY-MM-DD（证据引用）"；未完成则标注阻塞原因
-⑫ Git（只读审计）：git status --short && git diff --stat && git diff --check；
-   未获 commit 授权不得 stage；获授权后也只可精确 add 已批准路径，禁止 git add .，并确认无密钥 / 正文 / workspace 产物
-⑬ Commit：仅用户在当前轮明确要求时执行；Round Prompt、edit/build 请求不授权 Git
-⑭ Push：必须取得与 commit 分离的当前轮明确授权；失败后重试需要新的当前轮授权
-⑮ 输出下一轮建议（轮次号 + 一句话目标）
+⑩ 报告：写 reports/current-cohort-report.json + 追加 reports/agent_audit_log.jsonl；
+   轮次详情入 workspace/round_reports/（脱敏）。存在 Git-safe 变更时 tracked report 只能标 `candidate_ready_for_delivery`，不得预写完成或下一轮
+⑪ 注册一个绑定 exact path/state/mode/SHA-256 的 Git-safe cohort plan，并按 DIRECT / REVIEWED / GOVERNED lane 满足所需审批
+⑫ 运行 finalizer preflight；精确核对 diff、plan SHA、固定 remote/非默认 branch、空 index、无密钥 / 正文 / workspace runtime / artifacts
+⑬ 由 `scripts/git_safe_cohort_finalizer.py` 精确 stage 与 commit；禁止 `git add .`、`git add -A`、glob 和目录级宽泛暂存
+⑭ 由同一 finalizer 普通 push 到登记的既有非默认分支，并 fresh verify 远端 SHA；失败则保留 commit、标 incomplete，只有已记录的状态/transport 变化后才可同目标 retry
+⑮ 仅在远端 SHA 与本地 commit 完全一致后，把轮次标记完成并输出下一轮建议（轮次号 + 一句话目标）
 ```
 
 ## 2. 轮次选择规则
@@ -72,4 +70,4 @@
 
 ## 6. 报告最小字段
 
-`reports/latest-agent-report.json` 须含：round_id（FS-xxx）、goal、files_changed、commands_run、tools_used / tools_not_used、real_api_used（bool + 调用数 + 成本）、ui_checked（bool + 证据路径）、acceptance_result（逐条）、blockers、next_recommended_round。Schema：`schemas/agent_round_report.schema.json`。
+`reports/current-cohort-report.json` 须含：round_id（FS-xxx）、goal、changed_files、commands_run、tools_used / tools_not_used、real_api_used（bool + 调用数 + 成本）、ui_checked（bool + 证据路径）、acceptance_result（逐条）、blockers、next_recommended_round。Schema：`schemas/agent_round_report.schema.json`。

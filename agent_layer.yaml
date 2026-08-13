@@ -1,5 +1,5 @@
-version: 2
-updated_at: "2026-06-18T00:00:00Z"
+version: 3
+updated_at: "2026-08-13T01:51:15Z"
 
 repo:
   name: light_novel
@@ -30,7 +30,7 @@ docs:
     - agent_layer.yaml
     - docs/TOOL_USAGE_POLICY.md
     - docs/AGENT_RUNBOOK.md
-    - reports/latest-agent-report.json
+    - reports/current-cohort-report.json
   research_notes: docs/RESEARCH_NOTES.md
   tool_inventory: docs/TOOL_INVENTORY.md
   search_policy: docs/SEARCH_POLICY.md
@@ -89,10 +89,26 @@ agent_policy:
   require_report: true
   require_verified_scoped_candidate_before_commit: true
   live_full_gate_prohibited: true
-  commit_requires_explicit_current_turn_user_request: true
-  push_requires_separate_explicit_current_turn_user_authorization: true
-  push_retry_requires_new_current_turn_user_authorization: true
+  git_finalization_mode: required_verified_remote_delivery
+  git_safe_cohort_finalizer: scripts/git_safe_cohort_finalizer.py
+  auto_finalize_approved_git_safe_cohort: true
+  registered_remote: origin
+  registered_branch: codex/light-novel-governance-closure-20260813
+  default_branch_push_forbidden: true
+  exact_hash_bound_plan_required: true
+  registered_plan_sha256_required_at_execution: true
+  approval_subject_sha256_required: true
+  content_safety_review_required: true
+  exact_path_staging_only: true
+  remote_sha_match_required_for_completion: true
+  next_cohort_blocked_until_remote_verified: true
+  blind_push_retry_forbidden: true
+  same_target_retry_requires_state_or_method_change: true
+  retry_change_evidence_required: true
+  retry_evidence_reuse_forbidden: true
+  target_change_requires_new_user_authorization: true
   git_authorization_sources:
+    standing_repository_policy: true
     edit_or_build_request: false
     round_prompt: false
   max_scope_per_round: small
@@ -107,7 +123,7 @@ severity:
 
 round:
   report_schema: schemas/agent_round_report.schema.json
-  latest_report: reports/latest-agent-report.json
+  current_cohort_report: reports/current-cohort-report.json
   audit_log: reports/agent_audit_log.jsonl
   roadmap: docs/final_state_implementation_roadmap.md
   historical_agent_layer_roadmap: docs/AGENT_ROADMAP.md

@@ -6,14 +6,14 @@ Tool-aware Agent Layer 2.0 — maps tasks to tools for Cursor, Codex, and local 
 
 | Task stage | Must use | Why |
 |------------|----------|-----|
-| Round start | Read `AGENTS.md`, `agent_tools.yaml`, `reports/latest-agent-report.json` | Continuity |
+| Round start | Read `AGENTS.md`, `agent_tools.yaml`, `reports/current-cohort-report.json` | Continuity |
 | Tool planning | Read `reports/tool_probe_report.json`; refresh it only with explicit report-update authority | Avoid false assumptions and hidden writes |
 | Code understanding | repo search, Read/Grep, filesystem MCP | Ground truth in repo |
 | Fresh external facts | WebSearch and/or Context7 | Avoid stale training data |
 | UI change | Browser MCP or Playwright + dev server | User-view required |
 | Live deterministic validation | Contract-selected targeted/read-only checks; `npm run check:tooling` for the control plane | Preserve the real workspace |
 | Full deterministic gate | `scripts/agent_gate.py` in a disposable isolated copy only | No isolated output may be written back |
-| Round end | `reports/latest-agent-report.json` + audit log | Next agent handoff |
+| Round end | `reports/current-cohort-report.json` + audit log | Next agent handoff |
 
 ## 2. Preferred tools
 
@@ -35,8 +35,10 @@ Tool-aware Agent Layer 2.0 — maps tasks to tools for Cursor, Codex, and local 
 | Real paid API | Default off; only if env + protocol allow |
 | Real publish | Default off; current-turn owner authority required |
 | Read/print `.env` | Forbidden |
-| Force push / hard reset | User explicit only |
-| Commit / push / PR | Each effect requires its own explicit current-turn owner authority; a Round Prompt or edit/build request never grants it |
+| Force push | Forbidden by the standing delivery policy |
+| Hard reset | Separate explicit owner authority plus exact destructive target review |
+| Git-safe cohort commit / push | Required after validation and approvals through `scripts/git_safe_cohort_finalizer.py`; exact registered paths and the fixed existing non-default branch only |
+| Target change / PR / merge | Requires new current owner authority; a Round Prompt or edit/build request cannot expand the standing scope |
 | Browser in Multitask subagent | Forbidden (project rule) |
 | Stitch → blind overwrite `frontend/` | Forbidden |
 | MCP filesystem outside workspace | Forbidden |
@@ -91,7 +93,7 @@ See `docs/USER_VIEW_TESTING.md`.
 
 ## 10. Tool usage logging
 
-Record in `reports/latest-agent-report.json`:
+Record in `reports/current-cohort-report.json`:
 
 ```json
 {"tool": "context7", "purpose": "Playwright config", "result": "ok", "fallback_used": false}

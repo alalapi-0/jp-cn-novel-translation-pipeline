@@ -18,7 +18,7 @@
 4. **supervised tick loop**：每个 tick 必须返回控制权给 Agent；长 foreground worker 已废弃。
 5. **禁止** `nohup` / 裸后台 `&` / detached background worker 启动无人监管翻译；Agent 停止时 worker 必须停止。
 6. Worker 须绑定 `controller_pid`；`throughput_gate` 对 orphan worker 返回 BLOCK。
-7. 每个受控 batch 完成后：报告 → 一致性检查 / 修复 → gate →（授权时）commit → 下一任务。
+7. 每个受控 batch 完成后：candidate report → 一致性检查 / 修复 → gate → 登记/审批 hash-bound cohort → finalizer exact stage/commit/push → fresh remote SHA verify → 下一任务。
 8. 详见 `docs/continuous_translation_autopilot_rules.md`、`docs/model_switching_policy.md`。
 
 ## 工具隔离原则
@@ -168,8 +168,8 @@
 6. 确认没有提交 `.env`
 7. 确认没有提交真实原文
 8. 确认没有提交真实译文（即使用户授权 Git 也禁止）
-9. commit（仅用户当前轮明确要求时；Round Prompt、edit/build 请求无效）
-10. push（另行取得用户当前轮明确授权；失败后的重试需要新授权）
+9. 为本轮经验证/审批的 Git-safe 变更生成 hash-bound cohort plan，并由 finalizer 精确 stage 与 commit
+10. 由 finalizer push 到登记的既有非默认分支并 fresh verify remote SHA；核验失败则本轮 incomplete，只有记录真实状态/transport 变化后才可同目标 retry
 
 参考方法吸收后的实现轮还必须确认：
 
@@ -187,7 +187,7 @@
 遇到以下情况**必须停止**并报告，不得继续自主修改：
 
 1. API Key 缺失，但当前轮必须真实调用 API
-2. Git push 权限缺失，但当前轮必须远程同步且用户已要求 push
+2. standing target 的 Git push 或 fresh remote SHA 核验失败，且在记录新的状态/transport 变化前无法安全恢复
 3. 本地权限不足，无法读写必需路径
 4. 缺少用户承诺提供的协议文件，且当前轮唯一目标是协议对齐
 5. 真实原文格式损坏，无法安全处理

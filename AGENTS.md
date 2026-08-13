@@ -2,14 +2,15 @@
 
 本文件告诉 Agent 如何阅读、行动和避免风险。**Cursor 与 Codex 共用本文件。** `governance/repo_protocol_standard.yaml` 管理跨仓库安全与治理规则；本项目的产品目标、阶段顺序和验收终点以 `docs/product_final_state_spec.md` 为最高锚点（项目级 override 见 `project.yaml`）。Tool-aware Agent Layer 2.0 机器配置见 `agent_layer.yaml`。
 
-## 项目级 Git 最终化覆盖（local-only）
+## 项目级 Git 最终化（远端核验必需）
 
-本仓库的 `project.yaml` 覆盖通用协议中的 approved-round automatic Git finalization。Judge `PASS` 且 Governor `APPROVE` 后，批准的 scoped candidate **只在本地工作树完成**；Agent 不得自动 stage、commit、checkout、merge 或 push。
+本仓库采用 standing `git_safe_cohort` 交付策略。每轮只能推进一个连贯 cohort；经 scoped validation 和相应 DIRECT / REVIEWED / GOVERNED 审批后，必须使用 `scripts/git_safe_cohort_finalizer.py` 的哈希绑定 plan 精确暂存、commit、普通 push 到已登记的现有安全非默认分支，并用 fresh remote SHA 核验。远端 SHA 未与本地 commit 完全一致时，本轮不得完成，也不得选择下一 cohort。完整协议见 `docs/git_safe_cohort_delivery.md`。
 
-- edit/build 请求不隐含任何 Git 授权；任何 Round Prompt 或轮次任务书也不得授权 Git 操作。
-- commit 与 push 是两个独立授权：两者分别都必须由用户在**当前轮**明确措辞授权。push 失败后不得沿用旧授权重试，必须取得用户新的当前轮明确授权。
-- 仅由已验证 scoped task / baseline-owned changes 产生的 dirty worktree warning 是预期状态，不构成阻断；真实的 `FAIL` 或 `BLOCKED` 仍然阻断完成。
-- 即使用户授权 commit，也永远不得提交真实原文、真实译文、workspace runtime artifacts 或 secrets；只能精确暂存已批准路径，禁止使用指向当前目录或全匹配路径的 `git add` 全量暂存形式。
+- standing 权限仅覆盖现有 `origin/codex/light-novel-governance-closure-20260813`；`main`、新 branch/remote、force、merge、deploy、release 均不在范围。改变 target 或扩大效应需要用户新的明确授权。
+- edit/build 请求和 Round Prompt 不能自行扩大 Git 权限；候选仍须经过精确计划、验证、审批与 finalizer 门禁。
+- 只能暂存 plan 中逐路径、逐 mode、逐 SHA-256 绑定的 Git-safe 文件；执行时必须显式提供已登记的 exact plan SHA-256，防止审批后改写；禁止 `git add .`、`git add -A`、glob 或目录级宽泛暂存。
+- 真实原文、完整真实译文、workspace runtime artifacts、artifacts、用户私密内容与 secrets 永不提交。
+- push 或远端核验失败时保留本地 commit、标记 cohort incomplete，禁止原样盲重试；同一 target 只有在提供绑定 plan、含不同 before/after 非敏感指纹且未复用的状态/方法变更 evidence 后才能 retry。
 
 ## Workspace 逐文件基线与完整门禁隔离
 
@@ -61,8 +62,10 @@
 3. `agent_tools.yaml`
 4. `docs/TOOL_USAGE_POLICY.md`
 5. `docs/AGENT_RUNBOOK.md`
-6. `reports/latest-agent-report.json`
+6. `reports/current-cohort-report.json`
 7. `docs/TOOL_INVENTORY.md` 或 `reports/tool_probe_report.json`
+
+`reports/latest-agent-report.json` 是 2026-08-13 策略生效前遗留且受保护的历史快照，不再是“latest”权限或下一轮来源，不得覆盖；现行可执行交接只读写 `reports/current-cohort-report.json`，并仍以 fresh remote SHA + ignored receipt 作为完成真值。
 
 ## Read First（治理顺序）
 
@@ -103,9 +106,9 @@
 
 - 更新 `governance/round_state.yaml`
 - 治理变更写入 `docs/reports/`（本地，默认不提交敏感报告正文）
-- 默认在未 stage/commit/push 的工作树中本地完成；Round Prompt 不得授权任何 Git 操作
-- 仅当用户在当前轮明确要求 commit 时，才可精确暂存本轮批准路径；commit 前确认无 `.env`、密钥、真实原文、真实译文或 workspace runtime artifacts
-- push 必须另有用户当前轮明确授权；失败后不得无新授权重试
+- 把本轮 Git-safe 改动登记为一个 hash-bound cohort；更新 tracked report 时只能标记 `candidate_ready_for_delivery`，不得预写完成或下一轮
+- 按风险 lane 取得所需审批后，使用 finalizer 精确暂存、commit、push 并 fresh verify remote SHA
+- commit 前确认无 `.env`、密钥、真实原文、完整真实译文、workspace runtime artifacts 或 artifacts；远端未核验时保持 incomplete
 - 已运行任何已知或可能写入 `workspace` 的工具时，结束后再次运行 `python3 scripts/workspace_file_baseline.py verify --json`；drift 或 verifier error 阻断完成，且不得自动 create/rebaseline
 
 ## 硬阻塞
@@ -271,7 +274,7 @@ python3 scripts/run_browser_inspection.py
 2. 工具探针 / 工具计划
 3. 从 `docs/final_state_round_task_list.md` 与当前批准合同选择一个小范围实现；`docs/AGENT_ROADMAP.md` 仅为已完成历史快照
 4. 验证：在真实工作树只运行合同指定的 targeted/read-only checks；完整 gate 如确有要求，只能在不得回写的一次性隔离临时副本中运行
-5. 报告：`reports/latest-agent-report.json` + `reports/agent_audit_log.jsonl`
+5. 报告：`reports/current-cohort-report.json` + `reports/agent_audit_log.jsonl`
 
 ### Common Commands
 
@@ -307,7 +310,7 @@ P0/P1 未清零不做 P2/P3。
 ### Report Format
 
 Schema：`schemas/agent_round_report.schema.json`  
-最新：`reports/latest-agent-report.json`  
+最新：`reports/current-cohort-report.json`
 说明：`docs/AGENT_REPORTING.md`
 
 ### Cursor-specific Notes
@@ -336,15 +339,15 @@ Schema：`schemas/agent_round_report.schema.json`
 
 ### Commit / Push Policy
 
-本仓库默认 local-only：批准轮在本地工作树完成，不自动 stage、commit、checkout、merge 或 push。edit/build 请求和 Round Prompt 均不构成 Git 授权。commit 与 push 分别需要用户在当前轮明确授权；commit 前仅精确暂存批准路径，并用 `git diff` 检查 secrets、真实原文、真实译文和 workspace runtime artifacts。任何上述类别都永不提交；push 失败后必须取得新的当前轮用户授权才能重试。
+已批准的 Git-safe cohort 不得停在本地：使用 `scripts/git_safe_cohort_finalizer.py` 对精确 plan 执行 stage → commit → push → fresh remote SHA verify。只有远端 SHA 匹配才算完成。standing target 固定为现有 `origin/codex/light-novel-governance-closure-20260813`；禁止默认分支、全量 staging、force/merge/deploy，以及任何真实原文、完整真实译文、workspace runtime、artifacts 或 secrets。失败保留 commit 并阻断下一 cohort；无状态/方法变化不得盲重试。
 
 ### Next Round Policy
 
-以 `docs/final_state_round_task_list.md`、`governance/round_state.yaml` 与当前批准合同为准；`reports/latest-agent-report.json` 只作报告快照，`docs/AGENT_ROADMAP.md` 只作历史参考。
+以 `docs/final_state_round_task_list.md`、`governance/round_state.yaml` 与当前批准合同为准；`reports/current-cohort-report.json` 只作报告快照，`docs/AGENT_ROADMAP.md` 只作历史参考。
 
 ### Human Required Decisions
 
-- 是否 push / 开 PR
+- 是否改变已登记 remote/branch、开 PR、合并默认分支或扩大 standing Git 效应
 - 是否启用真实 API 与成本上限
 - 是否保留或清理 workspace 运行产物（这些产物永远不得提交）
 - Codex 额度分配
