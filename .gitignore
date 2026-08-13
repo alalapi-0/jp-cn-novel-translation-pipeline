@@ -148,6 +148,8 @@ test-results/
 !.agent_runtime/fix_reports/.gitkeep
 .agent_runtime/logs/*
 !.agent_runtime/logs/.gitkeep
+.agent_runtime/locks/*
+!.agent_runtime/locks/.gitkeep
 
 # Generated inventory (committed summary: repo_inventory.example.json)
 governance/repo_inventory.generated.json

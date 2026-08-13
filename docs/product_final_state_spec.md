@@ -575,6 +575,10 @@ Phase C 完成条件：
 * no active worker；
 * no orphan worker。
 
+### 13.4 一致性写入与导出事务边界（2026-08-13 确认）
+
+本次修改是为了避免一致性修复、旧导出清理与 singleton 发布并发或中断时产生歧义。最终目标增加一项：这些合法写入入口必须共享 `.agent_runtime/locks/consistency_transaction.lock` 的内核排他锁，并以 no-follow、可恢复事务完成导出；锁文件 inode 持久保留，不以 PID 文件删除判断 stale，也不写入受逐文件 baseline 保护的 `workspace/`。Roadmap 的 Phase B/C 顺序不变，仅强化其执行门禁；已生成产物内容与 schema 不变，后续首次导出会自动恢复经验证的未完成私有事务。该边界是 cooperative local single-writer：所有合法 writer 遵守同一锁；故意绕过锁或竞速私有 quarantine/final stat→unlink 的恶意同 UID 进程不在防护目标内。Owner 已于 2026-08-13 明确确认该威胁模型与目标变更。
+
 ---
 
 ## 14. human_approved_final 定义

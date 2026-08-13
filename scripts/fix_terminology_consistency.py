@@ -46,6 +46,8 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 import yaml  # noqa: E402
 
 from glossary.store import GlossaryStore  # noqa: E402
+from consistency_transaction_lock import exclusive_consistency_lock  # noqa: E402
+from secure_consistency_files import BoundRegularFile, atomic_write_new_or_replace, write_bound_bytes  # noqa: E402
 
 BRACKETS = "【】"  # 【】
 DOUBLE_QUOTE_OPEN = "「"
@@ -93,6 +95,10 @@ AUTO_FIX_DENYLIST = {
 Rule = tuple[str, str, str]
 SpecialRule = tuple[str, str, str, tuple[str, ...], tuple[str, ...]]
 TARGET_TEXT_FIELDS = ("draft_text", "refined_text", "target_text", "translation")
+
+
+def _inject(_boundary: str) -> None:
+    """Synthetic deterministic mutation boundary; production is a no-op."""
 
 # Collision repair rules that are too narrow for glossary aliases. Segment
 # guards keep legitimate ant-species renderings intact.
@@ -2277,10 +2283,19 @@ def apply_rules(
 
 
 def main() -> int:
+    with exclusive_consistency_lock(REPO_ROOT):
+        return _main_locked()
+
+
+def _main_locked() -> int:
     parser = argparse.ArgumentParser(description="Apply terminology consistency fixes to segments.json")
     parser.add_argument("--segments-file", type=Path, required=True)
     parser.add_argument("--chapters", type=int, nargs=2, metavar=("START", "END"), required=True)
     parser.add_argument("--diff-log", type=Path, default=None)
+    parser.add_argument("--expected-dev", type=int, default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--expected-ino", type=int, default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--diff-log-expected-dev", type=int, default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--diff-log-expected-ino", type=int, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--update-all-target-fields",
@@ -2293,7 +2308,17 @@ def main() -> int:
     args = parser.parse_args()
 
     rules = build_rules(REPO_ROOT)
-    doc = json.loads(args.segments_file.read_text(encoding="utf-8"))
+    expected = None
+    if (args.expected_dev is None) != (args.expected_ino is None):
+        raise RuntimeError("both expected file identity fields are required")
+    if args.expected_dev is not None:
+        expected = (args.expected_dev, args.expected_ino)
+    segments_bound = BoundRegularFile.open(args.segments_file, expected=expected)
+    try:
+        doc = json.loads(segments_bound.read_bytes().decode("utf-8"))
+    except BaseException:
+        segments_bound.close()
+        raise
 
     start, end = args.chapters
     diffs: list[dict] = []
@@ -2362,9 +2387,11 @@ def main() -> int:
                 changed_segments += 1
 
     if not args.dry_run:
-        args.segments_file.write_text(
-            json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        _inject("segments-pre-write")
+        segments_bound.replace_bytes(
+            (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
         )
+    segments_bound.close()
 
     summary = {
         "segments_file": str(args.segments_file.relative_to(REPO_ROOT))
@@ -2393,11 +2420,17 @@ def main() -> int:
         "dry_run": args.dry_run,
     }
     if args.diff_log:
-        args.diff_log.parent.mkdir(parents=True, exist_ok=True)
-        args.diff_log.write_text(
-            json.dumps({"summary": summary, "diffs": diffs}, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        diff_content = (json.dumps({"summary": summary, "diffs": diffs}, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        if (args.diff_log_expected_dev is None) != (args.diff_log_expected_ino is None):
+            raise RuntimeError("both expected diff-log identity fields are required")
+        if args.diff_log_expected_dev is None:
+            atomic_write_new_or_replace(args.diff_log, diff_content)
+        else:
+            write_bound_bytes(
+                args.diff_log,
+                (args.diff_log_expected_dev, args.diff_log_expected_ino),
+                diff_content,
+            )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
 
