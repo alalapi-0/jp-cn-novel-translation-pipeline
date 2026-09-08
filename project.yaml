@@ -66,10 +66,10 @@ project_overrides:
 
   - field: round_protocol.current_round_source
     standard_expectation: governance/round_state.yaml
-    override_value: "Legacy governance archived at docs/archive/legacy_roadmaps/translation_pipeline_governance_round.yaml"
-    reason: "First governance round created round_state/ before full protocol adoption"
+    override_value: "governance/round_state.yaml; historical archive is not current state"
+    reason: "Use the current file-role registry; do not revive the superseded archived state"
     owner: user
-    review_trigger: "When legacy file is fully migrated or archived"
+    review_trigger: "When the owner changes current-state authority"
 
   - field: project_specific_extensions.current_reference_project.default_workflow
     standard_expectation: chinese_first_generation_and_review

@@ -21,9 +21,18 @@ def _load():
     return mod
 
 
-@pytest.fixture(scope="module")
-def scanner():
-    return _load()
+@pytest.fixture()
+def scanner(tmp_path, monkeypatch):
+    module = _load()
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path)
+    for directory in module.SCAN_DIRS:
+        root = tmp_path / directory
+        root.mkdir()
+        (root / "synthetic.txt").write_text("fixture")
+    monkeypatch.setattr(module, "probe_command", lambda name, *_args: module.ToolProbe(name, True, "fixture"))
+    for name in ("probe_pytest", "probe_playwright", "probe_mcp_config", "probe_env_tracked"):
+        monkeypatch.setattr(module, name, lambda: module.ToolProbe("fixture", True))
+    return module
 
 
 def test_build_payload_schema(scanner):

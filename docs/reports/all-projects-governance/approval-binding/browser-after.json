@@ -1,0 +1,118 @@
+{
+  "scope": "Real browser and real Workbench HTTP/API with disposable synthetic project state and mock/dry-run generated text. No production or original data, no provider calls.",
+  "command": "PLAYWRIGHT_PORT=5198 npm run test:ui -- --reporter=json",
+  "exit": 0,
+  "stats": {
+    "startTime": "2026-09-08T08:10:05.917Z",
+    "duration": 3961.4930000000004,
+    "expected": 35,
+    "skipped": 3,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "runtime_file_hashes": {
+    "frontend/assets/app.js": "395f68fd0b2de44ad8441262097cb11f89c9f551a75c1641db61cb2326661795",
+    "frontend/assets/styles.css": "c7967cc55e31af54eef3ef52e93619eef6acef43deedb473d343d83c067284bb",
+    "src/workbench/project_registry.py": "42ea4a3f968209555efdc75fa4061d09b594b313df109a780dec22050743f30e",
+    "src/workbench/review_state.py": "dd83e9152ccc9418760edb123a9e3c2a9880254cf8f06462cabbc6ce8d2fb7df",
+    "src/workbench/server.py": "280063ed3b9f5a848d077358af2affd38adb7709b868d24d29a7a5335b8ea3b4",
+    "src/workbench/export_service.py": "e5319570fdb64b1e65bf8dbbf40e191bb5447a356e7348d1884b28b694ba68b0",
+    "src/assets/translation_memory.py": "f4d2c469b894e182abbde7155c2bfb81f1cb3df16df70fd2b4423d233cabbfeb",
+    "scripts/serve_ui_fixture.py": "470683fd97a45aa80a2be33c3b24512d188f53fc44a2d6a665a7255e8fb8e5ab",
+    "tests/ui/review-approval-binding.spec.ts": "48dd0c3532595a0a81d24f8b2c92c7708dd613e8502fa32363c6806232c20b67"
+  },
+  "observations": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "identityA": "sha256:074c8fa4a078f161c12da34dbcb13e700830fb0c36fbe54e402c8824c4d86494",
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 409 (Conflict)",
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ],
+      "failedRequests": [],
+      "failedResponses": [
+        {
+          "path": "/api/projects/approval-1280-1788855006572/review-state",
+          "status": 409
+        },
+        {
+          "path": "/api/projects/approval-1280-1788855006572/review-state",
+          "status": 409
+        }
+      ],
+      "staleExportStatus": 400,
+      "freshExportStatus": 200,
+      "freshMemoryPairs": 1,
+      "staleRejectionStatus": 409,
+      "newerApprovalPreserved": true,
+      "freshRejectionPersisted": true,
+      "changedContentInvalidatesRejection": true,
+      "rejectedExportAndMemoryStatus": 400
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "identityA": "sha256:81971cff56bd52b5dd1477f1efa8c5602e65332fd76b529c0eec460bedae0d5d",
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 409 (Conflict)",
+        "Failed to load resource: the server responded with a status of 409 (Conflict)"
+      ],
+      "failedRequests": [],
+      "failedResponses": [
+        {
+          "path": "/api/projects/approval-390-1788855007690/review-state",
+          "status": 409
+        },
+        {
+          "path": "/api/projects/approval-390-1788855007690/review-state",
+          "status": 409
+        }
+      ],
+      "staleExportStatus": 400,
+      "freshExportStatus": 200,
+      "freshMemoryPairs": 1,
+      "staleRejectionStatus": 409,
+      "newerApprovalPreserved": true,
+      "freshRejectionPersisted": true,
+      "changedContentInvalidatesRejection": true,
+      "rejectedExportAndMemoryStatus": 400
+    }
+  ],
+  "screenshots": [
+    "docs/reports/all-projects-governance/approval-binding/browser-after-desktop-stale-reapproval.png",
+    "docs/reports/all-projects-governance/approval-binding/browser-after-desktop-fresh-approved.png",
+    "docs/reports/all-projects-governance/approval-binding/browser-after-mobile-stale-reapproval.png",
+    "docs/reports/all-projects-governance/approval-binding/browser-after-mobile-fresh-approved.png"
+  ],
+  "lanes": {
+    "functional": "PASS:approveA/reload;hold save disables duplicate keyboard submission;staleA rejects409;refreshB/freshapprove;export and manifestTM each1;legacy browser data retained but not formal. Stale B rejection after C approval returns409 and preservesC;freshC rejection persists;both consumers thenfailclosed;newD invalidatesC rejection display.",
+    "visual": "PASS:Root inspected rendered desktop/mobile stale and fresh states;recovery link uses inherited readable warning color and underline.",
+    "desktop_mobile": "PASS:1280x900 and390x844;no horizontal overflow;mobile recovery reachable and button remains usable.",
+    "console": "PASS:no page errors or unexpected console errors;expected409resource diagnostic retained.",
+    "network": "PASS:actual localhost GET/PATCH/export/manifestTM;stale approval and stale rejection each409 with displayed identity;fresh decisions200;export/TM200 before fresh rejection and400after;no failed page requests.",
+    "data_isolation": "PASS:helper owns temporary fixture root;real providers disabled;no .env;original untouched."
+  },
+  "experience_concerns": {
+    "hierarchy_truth": "PASS:existing reading/status layout retained;explicit mock/dry-run banner; failed save is never accepted.",
+    "loading_disabled": "PASS:in-flight save disables actions and duplicate keyboard request; API guards version and busy writes.",
+    "empty_error": "PASS:old browser fallback cannot promote;read failure is visible;409 has focusable actionable refresh.",
+    "dangerous_actions": "PASS:scope adds no destructive operation;approval remains explicit and reversible through current review route. Existing lifecycle synthetic UI tests retained.",
+    "keyboard_focus": "PASS:keyboard actions remain tested;successful approval focuses visible action;failed save focuses alert;no trap introduced.",
+    "accessibility": "PASS for changed controls:role alert,visible text labels,underlined warning-color recovery link44pxminimum;status uses text as well as color.",
+    "responsive": "PASS:desktop/mobile paths and screenshots;existing layout with bounded error text.",
+    "reduced_motion": "PASS:new states add no animation;both browser scenarios run with reducedMotion=reduce.",
+    "implementation_fit": "PASS:existing vanillaJS/CSS tokens,buttons,server and projectlock reused."
+  },
+  "limitations": [
+    "Synthetic fixture verification does not claim actual novel text is approved or exported.",
+    "Original checkout integration and live Hub projection remain a later unit.",
+    "This is evidence for the registered runtime hashes; decision/delivery metadata does not change those hashes."
+  ]
+}

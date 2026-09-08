@@ -70,6 +70,26 @@ def _post(base: str, path: str, payload: dict) -> tuple[int, dict]:
     return res.status, json.loads(body) if body else {}
 
 
+def _patch(base: str, path: str, payload: dict) -> tuple[int, dict]:
+    host, port = base.split(":")
+    conn = HTTPConnection(host, int(port), timeout=10)
+    data = json.dumps(payload).encode("utf-8")
+    conn.request("PATCH", path, body=data, headers={"Content-Type": "application/json"})
+    res = conn.getresponse()
+    body = res.read().decode("utf-8")
+    conn.close()
+    return res.status, json.loads(body) if body else {}
+
+
+def _segment_identity(base: str, project_id: str, segment_id: str) -> str:
+    code, payload = _get(base, f"/api/projects/{project_id}/workbench-data")
+    assert code == 200
+    segment = next(item for item in payload["segments"] if item["id"] == segment_id)
+    identity = segment["approval_identity"]
+    assert identity.startswith("sha256:")
+    return identity
+
+
 def test_api_status_missing_key(api_server: str) -> None:
     code, payload = _get(api_server, "/api/runtime/api-status")
     assert code == 200
@@ -97,30 +117,329 @@ def test_quickstart_create_and_dry_run(api_server: str) -> None:
     assert gen["segments_created"] == 2
 
 
+def test_workbench_api_projects_canonical_alias_text_for_approval(api_server: str) -> None:
+    project_id = "projection-api-test"
+    code, _ = _post(
+        api_server,
+        "/api/projects",
+        {
+            "project_id": project_id,
+            "name": "Projection",
+            "language_direction": "JP_TO_CN",
+            "segments": [
+                {
+                    "segment_id": "seg-001",
+                    "source": "   ",
+                    "source_text": "  fallback source  ",
+                    "draft_text": "  fallback target  ",
+                    "target_text": "ignored target",
+                }
+            ],
+        },
+    )
+    assert code == 201
+    code, payload = _get(api_server, f"/api/projects/{project_id}/workbench-data")
+    assert code == 200
+    segment = payload["segments"][0]
+    assert (segment["id"], segment["source"], segment["draft"]) == (
+        "seg-001",
+        "  fallback source  ",
+        "  fallback target  ",
+    )
+
+    code, approved = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {
+            "segments": {
+                "seg-001": {
+                    "status": "approved",
+                    "expected_identity": segment["approval_identity"],
+                }
+            }
+        },
+    )
+    assert code == 200
+    assert (
+        approved["review_state"]["segments"]["seg-001"]["approval_identity"]
+        == segment["approval_identity"]
+    )
+
+
 def test_review_state_patch(api_server: str) -> None:
     _post(
         api_server,
         "/api/projects",
         {"project_id": "review-state-test", "name": "RS", "language_direction": "JP_TO_CN"},
     )
-    host, port = api_server.split(":")
-    conn = HTTPConnection(host, int(port), timeout=10)
-    patch = json.dumps({"segments": {"seg-001": {"status": "approved"}}}).encode("utf-8")
-    conn.request(
-        "PATCH",
-        "/api/projects/review-state-test/review-state",
-        body=patch,
-        headers={"Content-Type": "application/json"},
+    _post(
+        api_server,
+        "/api/projects/review-state-test/dry-run-generate",
+        {"sample_text": "Alpha"},
     )
-    res = conn.getresponse()
-    assert res.status == 200
-    body = json.loads(res.read().decode("utf-8"))
+    identity = _segment_identity(api_server, "review-state-test", "seg-001")
+    code, body = _patch(
+        api_server,
+        "/api/projects/review-state-test/review-state",
+        {"segments": {"seg-001": {"status": "approved", "expected_identity": identity}}},
+    )
+    assert code == 200
     assert body["review_state"]["segments"]["seg-001"]["status"] == "approved"
-    conn.close()
+    assert body["review_state"]["segments"]["seg-001"]["approval_identity"] == identity
 
     code, loaded = _get(api_server, "/api/projects/review-state-test/review-state")
     assert code == 200
     assert loaded["review_state"]["segments"]["seg-001"]["status"] == "approved"
+
+
+def test_approval_identity_cas_rejects_stale_content_without_partial_write(
+    api_server: str,
+) -> None:
+    project_id = "pw-approval-cas"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "CAS", "language_direction": "JP_TO_CN"},
+    )
+    _post(
+        api_server,
+        f"/api/projects/{project_id}/dry-run-generate",
+        {"sample_text": "Source A"},
+    )
+    identity_a = _segment_identity(api_server, project_id, "seg-001")
+    code, _ = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {
+            "segments": {
+                "seg-001": {
+                    "status": "approved",
+                    "expected_identity": identity_a,
+                    "note": "preserve me",
+                }
+            }
+        },
+    )
+    assert code == 200
+
+    _post(
+        api_server,
+        f"/api/projects/{project_id}/dry-run-generate",
+        {"sample_text": "Source B"},
+    )
+    identity_b = _segment_identity(api_server, project_id, "seg-001")
+    assert identity_b != identity_a
+
+    code, stale = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {
+            "segments": {
+                "seg-001": {
+                    "status": "approved",
+                    "expected_identity": identity_a,
+                    "note": "must not be written",
+                }
+            },
+            "issues": {"issue-stale": {"status": "resolved"}},
+        },
+    )
+    assert code == 409
+    assert stale["error_code"] == "approval_identity_stale"
+    assert stale["current_identity"] == identity_b
+
+    code, state = _get(api_server, f"/api/projects/{project_id}/review-state")
+    assert code == 200
+    saved = state["review_state"]
+    assert saved["segments"]["seg-001"]["approval_identity"] == identity_a
+    assert saved["segments"]["seg-001"]["note"] == "preserve me"
+    assert "issue-stale" not in saved["issues"]
+
+    code, export_error = _post(
+        api_server,
+        "/api/export/run",
+        {"source": "manifest", "project_id": project_id},
+    )
+    assert code == 400
+    assert "no approved segments" in export_error["error"]
+    code, assets = _post(
+        api_server,
+        "/api/translation-assets/build",
+        {"project_id": project_id},
+    )
+    assert code == 400
+    assert "no approved translation pairs" in assets["error"]
+
+    code, fresh = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {
+            "segments": {
+                "seg-001": {"status": "approved", "expected_identity": identity_b},
+            }
+        },
+    )
+    assert code == 200
+    assert fresh["review_state"]["segments"]["seg-001"]["approval_identity"] == identity_b
+    assert fresh["review_state"]["segments"]["seg-001"]["note"] == "preserve me"
+
+    code, metadata = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {
+            "segments": {
+                "seg-001": {
+                    "review_result": "PASS",
+                    "note": "metadata update",
+                    "reviewed_at": "2026-09-08T00:00:00Z",
+                }
+            }
+        },
+    )
+    assert code == 200
+    metadata_entry = metadata["review_state"]["segments"]["seg-001"]
+    assert metadata_entry["status"] == "approved"
+    assert metadata_entry["approval_identity"] == identity_b
+    assert metadata_entry["review_result"] == "PASS"
+    assert metadata_entry["note"] == "metadata update"
+
+    code, exported = _post(
+        api_server,
+        "/api/export/run",
+        {"source": "manifest", "project_id": project_id},
+    )
+    assert code == 200
+    assert exported["segments_exported"] == 1
+    code, assets = _post(
+        api_server,
+        "/api/translation-assets/build",
+        {"project_id": project_id},
+    )
+    assert code == 200
+    assert assets["stats"]["pairs"] == 1
+
+    code, stale_rejection = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {
+            "segments": {
+                "seg-001": {
+                    "status": "rejected",
+                    "expected_identity": identity_a,
+                    "note": "stale rejection must not win",
+                }
+            },
+            "issues": {"stale-rejection": {"status": "resolved"}},
+        },
+    )
+    assert code == 409
+    assert stale_rejection["error_code"] == "approval_identity_stale"
+    code, state = _get(api_server, f"/api/projects/{project_id}/review-state")
+    assert code == 200
+    saved = state["review_state"]
+    assert saved["segments"]["seg-001"]["status"] == "approved"
+    assert saved["segments"]["seg-001"]["approval_identity"] == identity_b
+    assert saved["segments"]["seg-001"]["note"] == "metadata update"
+    assert "stale-rejection" not in saved["issues"]
+
+    code, exported = _post(
+        api_server,
+        "/api/export/run",
+        {"source": "manifest", "project_id": project_id},
+    )
+    assert code == 200
+    assert exported["segments_exported"] == 1
+    code, assets = _post(
+        api_server,
+        "/api/translation-assets/build",
+        {"project_id": project_id},
+    )
+    assert code == 200
+    assert assets["stats"]["pairs"] == 1
+
+    code, rejected = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {
+            "segments": {
+                "seg-001": {"status": "rejected", "expected_identity": identity_b},
+            }
+        },
+    )
+    assert code == 200
+    rejected_entry = rejected["review_state"]["segments"]["seg-001"]
+    assert rejected_entry["status"] == "rejected"
+    assert rejected_entry["approval_identity"] == identity_b
+    assert rejected_entry["note"] == "metadata update"
+    code, export_error = _post(
+        api_server,
+        "/api/export/run",
+        {"source": "manifest", "project_id": project_id},
+    )
+    assert code == 400
+    assert "no approved segments" in export_error["error"]
+    code, assets_error = _post(
+        api_server,
+        "/api/translation-assets/build",
+        {"project_id": project_id},
+    )
+    assert code == 400
+    assert "no approved translation pairs" in assets_error["error"]
+
+
+def test_approval_requires_valid_expected_identity(api_server: str) -> None:
+    project_id = "pw-approval-required"
+    _post(
+        api_server,
+        "/api/projects",
+        {"project_id": project_id, "name": "Required", "language_direction": "JP_TO_CN"},
+    )
+    _post(
+        api_server,
+        f"/api/projects/{project_id}/dry-run-generate",
+        {"sample_text": "Source"},
+    )
+    code, missing = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {"segments": {"seg-001": {"status": "approved"}}},
+    )
+    assert code == 409
+    assert missing["error_code"] == "approval_identity_required"
+    code, invalid = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
+        {"segments": {"seg-001": {"status": "approved", "expected_identity": "bad"}}},
+    )
+    assert code == 409
+    assert invalid["error_code"] == "approval_identity_invalid"
+
+
+def test_duplicate_segment_ids_return_actionable_conflict(
+    api_server: str,
+    api_repo_root: Path,
+) -> None:
+    manifest_dir = api_repo_root / "workspace" / "manifests"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    (manifest_dir / "duplicate-api.json").write_text(
+        json.dumps(
+            {
+                "project_id": "duplicate-api",
+                "name": "Duplicate",
+                "language_direction": "JP_TO_CN",
+                "segments": [
+                    {"id": "seg-1", "source": "A", "draft": "甲"},
+                    {"id": "seg-1", "source": "B", "draft": "乙"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    code, payload = _get(api_server, "/api/projects?include_test=true")
+    assert code == 409
+    assert payload["error_code"] == "duplicate_segment_id"
+    assert "seg-1" in payload["error"]
 
 
 def test_create_project_rejects_invalid_id(api_server: str) -> None:
@@ -193,26 +512,22 @@ def test_export_manifest_approved_only_uses_review_state(
         {"sample_text": "Alpha line.\n\nBeta line."},
     )
     assert code == 200
-    host, port = api_server.split(":")
-    conn = HTTPConnection(host, int(port), timeout=10)
-    patch = json.dumps(
+    identity = _segment_identity(api_server, project_id, "seg-001")
+    rejected_identity = _segment_identity(api_server, project_id, "seg-002")
+    code, _ = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
         {
             "segments": {
-                "seg-001": {"status": "approved"},
-                "seg-002": {"status": "rejected"},
+                "seg-001": {"status": "approved", "expected_identity": identity},
+                "seg-002": {
+                    "status": "rejected",
+                    "expected_identity": rejected_identity,
+                },
             }
-        }
-    ).encode("utf-8")
-    conn.request(
-        "PATCH",
-        f"/api/projects/{project_id}/review-state",
-        body=patch,
-        headers={"Content-Type": "application/json"},
+        },
     )
-    res = conn.getresponse()
-    assert res.status == 200
-    _ = res.read()
-    conn.close()
+    assert code == 200
 
     code, payload = _post(
         api_server,
@@ -247,26 +562,22 @@ def test_build_translation_assets_api_uses_approved_only(
         {"sample_text": "アルファの森へ向かう。\n\n【レア】称号を獲得した。"},
     )
     assert code == 200
-    host, port = api_server.split(":")
-    conn = HTTPConnection(host, int(port), timeout=10)
-    patch = json.dumps(
+    identity = _segment_identity(api_server, project_id, "seg-001")
+    rejected_identity = _segment_identity(api_server, project_id, "seg-002")
+    code, _ = _patch(
+        api_server,
+        f"/api/projects/{project_id}/review-state",
         {
             "segments": {
-                "seg-001": {"status": "approved"},
-                "seg-002": {"status": "rejected"},
+                "seg-001": {"status": "approved", "expected_identity": identity},
+                "seg-002": {
+                    "status": "rejected",
+                    "expected_identity": rejected_identity,
+                },
             }
-        }
-    ).encode("utf-8")
-    conn.request(
-        "PATCH",
-        f"/api/projects/{project_id}/review-state",
-        body=patch,
-        headers={"Content-Type": "application/json"},
+        },
     )
-    res = conn.getresponse()
-    assert res.status == 200
-    _ = res.read()
-    conn.close()
+    assert code == 200
 
     code, payload = _post(
         api_server,
@@ -300,19 +611,13 @@ def test_translation_assets_external_api_reports_clear_error(api_server: str) ->
         f"/api/projects/{project_id}/dry-run-generate",
         {"sample_text": "アルファ"},
     )
-    host, port = api_server.split(":")
-    conn = HTTPConnection(host, int(port), timeout=10)
-    patch = json.dumps({"segments": {"seg-001": {"status": "approved"}}}).encode("utf-8")
-    conn.request(
-        "PATCH",
+    identity = _segment_identity(api_server, project_id, "seg-001")
+    code, _ = _patch(
+        api_server,
         f"/api/projects/{project_id}/review-state",
-        body=patch,
-        headers={"Content-Type": "application/json"},
+        {"segments": {"seg-001": {"status": "approved", "expected_identity": identity}}},
     )
-    res = conn.getresponse()
-    assert res.status == 200
-    _ = res.read()
-    conn.close()
+    assert code == 200
 
     code, payload = _post(
         api_server,
@@ -778,4 +1083,3 @@ def test_dry_run_double_click_409_then_recovers(api_server: str, monkeypatch: py
     code, job_payload = _get(api_server, f"/api/projects/{project_id}/generation-job")
     assert code == 200
     assert job_payload["generation_job"]["status"] == "succeeded"
-

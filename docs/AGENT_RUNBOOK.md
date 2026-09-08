@@ -1,5 +1,7 @@
 # Agent Runbook
 
+Codex 使用 [AGENTS.md 顶部条件入口](../AGENTS.md)，独立执行已授权任务；当前状态只读 `governance/round_state.yaml`。工具探针、Cursor 交接和旧报告的下一轮建议不作为 Codex 启动条件。完整验证使用 `npm run check:tooling -- --surface codex`；真实业务数据须保持隔离。
+
 Operational steps for every Tool-aware Agent round (Cursor primary, Codex compatible).
 
 ## Before you touch code

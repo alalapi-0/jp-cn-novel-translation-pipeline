@@ -83,7 +83,7 @@ human_edited_segment:
 | 段落对齐 / 漏译启发 | `checker.segment_alignment` | `SEGMENT_ALIGNMENT_ERROR`, `OMISSION` | expected/orphan segment_id；词数比例启发式 |
 | 改写 diff | `checker.refinement_diff`（legacy name） | `OVER_REFINEMENT` | draft vs revised/final 表面差异（不写入正文） |
 
-CLI：`python3 scripts/run_quality_review.py --write-example`。Workbench：`frontend/issues.html` 读取 `frontend/assets/review-issue-report.json`；状态仅写 localStorage，**不覆盖** `human_edited` 段落。
+CLI：`python3 scripts/run_quality_review.py --write-example`。Workbench 的当前项目从 `/api/projects/{project_id}/quality-review` 读取报告，审核操作保存到项目 review-state API；静态 JSON 仅是演示回退。旧 localStorage 记录保留供人工参考，不能作为正式通过依据。机器审核**不覆盖** `human_edited` 段落。
 
 留待 Round 50+：语义误译、角色语气、世界观、日文残留、机翻腔等（需模型或更厚规则）。
 
@@ -108,3 +108,15 @@ CLI：`python3 scripts/run_quality_review.py --write-example`。Workbench：`fro
 - 对伏笔、暧昧表达和角色语气保持保守。
 - high 及以上 issue 默认阻止 final 导出，除非人工明确确认。
 - Validator 与 checker 生成的 issue 必须写回 JSONL 或 review issue 数据，不散落在不可解析日志中。
+
+## Workbench 段落通过与版本变更
+
+所有段落状态修改（包括通过、驳回、退回待审核）都绑定同一项目、段落 ID、语言方向和当前原文/译文内容。客户端先从 `/api/projects/{project_id}/workbench-data` 读取显示内容及 `approval_identity`，核对后 PATCH `/api/projects/{project_id}/review-state`：
+
+```json
+{"segments":{"seg-001":{"status":"approved","expected_identity":"<该段落返回的 sha256 指纹>"}}}
+```
+
+服务端在项目写锁内比较指纹；缺失、无效、过期指纹返回 409；正式通过还要求原文和译文非空，整次段落/issue 补丁不保存。页面显示未保存并提供刷新入口，重新读取和审核最新内容后才能再通过。指纹只保存摘要，不复制原文或译文；时间和 PASS 元数据不参与内容身份。
+
+嵌入 manifest 的旧 `approved`、无绑定的历史审核和过期审核均需重新审核，原有备注保留。正常 `approved` manifest 导出与 manifest 翻译记忆消费同一有效通过集合；`draft` 预览保留显式确认入口。run 级翻译记忆仍使用原有独立来源，不由本协议声称已验收。

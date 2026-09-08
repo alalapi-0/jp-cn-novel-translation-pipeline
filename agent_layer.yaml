@@ -119,5 +119,16 @@ final_state:
   singleton_check: reports/final_translation_singleton_check.json
 
 legacy_governance:
-  note: "Existing governance/*.yaml and docs/roadmap_rounds_* remain authoritative for pipeline rounds"
+  note: "governance/round_state.yaml is the sole current state; historical roadmaps/reports do not activate rounds"
   merge_strategy: "Agent Layer 2.0 extends, does not replace, Round 41+ tooling docs"
+
+codex:
+  startup: [AGENTS.md, governance/round_state.yaml]
+  state_authority: governance/round_state.yaml
+  connection_declaration: hub.connection.yaml
+  can_execute_independently: true
+  requires_cursor_handoff: false
+  gate: .venv/bin/python scripts/agent_gate.py --json
+  validation: npm run check:tooling -- --surface codex
+  excluded_probes: [tool_probe.py, scan_repo_inventory.py, check_cursor_mcp_status.sh]
+  fixture_policy: isolated synthetic data only; never overwrite real workspace state

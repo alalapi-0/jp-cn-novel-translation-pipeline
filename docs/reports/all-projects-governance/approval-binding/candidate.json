@@ -1,0 +1,471 @@
+{
+  "contract": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-APPROVAL-BINDING-v1",
+  "base_commit": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a",
+  "branch": "codex/light-novel-state-governance",
+  "semantic_sha256": "107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67",
+  "identity_algorithm": "SHA256 UTF8 canonical JSON(sorted keys,ensure_ascii=False,separators comma/colon) of sorted [{path,mode,sha256}]. Raw hashes except sole YAML state parsed then only listed decision/delivery paths removed. No self-hash.",
+  "state_metadata_exclusions": [
+    "codex_governance.current_work.status",
+    "codex_governance.current_work.accepted",
+    "codex_governance.current_work.next_action",
+    "codex_governance.verification.accepted_basis",
+    "codex_governance.delivery"
+  ],
+  "file_metadata_exclusions": [
+    "docs/reports/all-projects-governance/approval-binding/candidate.json",
+    "docs/reports/all-projects-governance/approval-binding/delivery.json",
+    "docs/reports/all-projects-governance/approval-binding/governor.json",
+    "docs/reports/all-projects-governance/approval-binding/judge.json"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "raw_sha256",
+      "sha256": "b1d94bd7da1f6d9573b973a759f97a5744370494f49ce5268b87cbccb2ae211e",
+      "raw_sha256": "b1d94bd7da1f6d9573b973a759f97a5744370494f49ce5268b87cbccb2ae211e",
+      "base_sha256": "d9605608b33458952c2802d5123c7a45a981504fc4af1616640c0c2babdab828"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "raw_sha256",
+      "sha256": "66a7a15d87f83e15a3353264aa0995a5b6b1154a5370362a85e4f4e413bb96d5",
+      "raw_sha256": "66a7a15d87f83e15a3353264aa0995a5b6b1154a5370362a85e4f4e413bb96d5",
+      "base_sha256": "73f425e44d2f6658ffc7bd217237e8c705b4ad13e694ef1031ebb3bbdc311109"
+    },
+    {
+      "path": "agent_layer.yaml",
+      "mode": "raw_sha256",
+      "sha256": "f71e4c1fa998bb794d87e98681c8a23bd4e53359cb9b0a1b88829f79c754cd33",
+      "raw_sha256": "f71e4c1fa998bb794d87e98681c8a23bd4e53359cb9b0a1b88829f79c754cd33",
+      "base_sha256": "35801f753cf4a5665bb45eb7265d84d77d9ba75ac9721671b8c3a4d7cd9dc9da"
+    },
+    {
+      "path": "data/examples/review_segments.fixture.json",
+      "mode": "raw_sha256",
+      "sha256": "e57a8ec85a52840e443f0428f4c7dcdcfdfb384dca819fa8b14d0611989f7dc5",
+      "raw_sha256": "e57a8ec85a52840e443f0428f4c7dcdcfdfb384dca819fa8b14d0611989f7dc5",
+      "base_sha256": "c663b6252267ad19d1e5a3e5d9b5714b61a3b9efeee83ea8aac3c1ac30a65d6c"
+    },
+    {
+      "path": "data/examples/workbench_project.demo-jp-cn.example.json",
+      "mode": "raw_sha256",
+      "sha256": "ecc8870b3aea72a4a0024e82778509b7379968eb7ede2e1dae55da4fb2d68c3e",
+      "raw_sha256": "ecc8870b3aea72a4a0024e82778509b7379968eb7ede2e1dae55da4fb2d68c3e",
+      "base_sha256": "f15a7ab2e631263a3edb94020a8ac04346da855d3c6f7de2205097180dabe88f"
+    },
+    {
+      "path": "docs/AGENT_RUNBOOK.md",
+      "mode": "raw_sha256",
+      "sha256": "0470721546568dafbf59ac0433376eeee4241d08911603d5d5f0dccf5d33b597",
+      "raw_sha256": "0470721546568dafbf59ac0433376eeee4241d08911603d5d5f0dccf5d33b597",
+      "base_sha256": "e0bee0dac2e63f301692aa275a06516b0f7d65a4073698b314c6dda227ea8d8b"
+    },
+    {
+      "path": "docs/TOOL_USAGE_POLICY.md",
+      "mode": "raw_sha256",
+      "sha256": "793980a19af627cffabed045e36d2d3414156c4df2fc818eed046974406ab121",
+      "raw_sha256": "793980a19af627cffabed045e36d2d3414156c4df2fc818eed046974406ab121",
+      "base_sha256": "e2bd1b23c7a65d605ea356bef0cd4eba3bb61695ed806becdab4f9be8f278be3"
+    },
+    {
+      "path": "docs/quality_review_workflow.md",
+      "mode": "raw_sha256",
+      "sha256": "8634b679e47e326a26f547ba852602e13211bd826a1e8a8a3871be8f17a38942",
+      "raw_sha256": "8634b679e47e326a26f547ba852602e13211bd826a1e8a8a3871be8f17a38942",
+      "base_sha256": "6a75d7c406e946301ff45cfdf3447886f3ceb87f59f81c6044ab2b3de02dabb8"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/backend-before.json",
+      "mode": "raw_sha256",
+      "sha256": "f6bfd76fb19b1695a4d3b49769dc032c5a8730d72600216e0823c5d77da72680",
+      "raw_sha256": "f6bfd76fb19b1695a4d3b49769dc032c5a8730d72600216e0823c5d77da72680",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/baseline.json",
+      "mode": "raw_sha256",
+      "sha256": "cd2e3657052ecec9c85161b482ab1848169080047c258525f5e7f445da21225a",
+      "raw_sha256": "cd2e3657052ecec9c85161b482ab1848169080047c258525f5e7f445da21225a",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-desktop-fresh-approved.png",
+      "mode": "raw_sha256",
+      "sha256": "0e78d90b9834114ddc8216f219e7a97e9cff5ff553e94c67c2bf72f4d0d7eeaf",
+      "raw_sha256": "0e78d90b9834114ddc8216f219e7a97e9cff5ff553e94c67c2bf72f4d0d7eeaf",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-desktop-stale-reapproval.png",
+      "mode": "raw_sha256",
+      "sha256": "f527df80836820e43e78ff38aa60a5687353932a940c2cfba52e9639dbdbf658",
+      "raw_sha256": "f527df80836820e43e78ff38aa60a5687353932a940c2cfba52e9639dbdbf658",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-mobile-fresh-approved.png",
+      "mode": "raw_sha256",
+      "sha256": "5bfba0ce7e432aea013b0a84f57fbad6919ea83314da6a12f8e1bd7d4976f243",
+      "raw_sha256": "5bfba0ce7e432aea013b0a84f57fbad6919ea83314da6a12f8e1bd7d4976f243",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-mobile-stale-reapproval.png",
+      "mode": "raw_sha256",
+      "sha256": "95d77268fe64d753b937f4707c0e3edafb9222066332f4c01868c4fda681a1b7",
+      "raw_sha256": "95d77268fe64d753b937f4707c0e3edafb9222066332f4c01868c4fda681a1b7",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after.json",
+      "mode": "raw_sha256",
+      "sha256": "d3000e351c5a4567e14f6375b9afa0638130e3075fd9d73639d99414a740b787",
+      "raw_sha256": "d3000e351c5a4567e14f6375b9afa0638130e3075fd9d73639d99414a740b787",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-before.json",
+      "mode": "raw_sha256",
+      "sha256": "42a4a56e973b24146520d2db3cb8941a462bf38c05169f9ab80968c481e10cfa",
+      "raw_sha256": "42a4a56e973b24146520d2db3cb8941a462bf38c05169f9ab80968c481e10cfa",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-before.png",
+      "mode": "raw_sha256",
+      "sha256": "0e80813b45a719d0a886fe56f93c2d1cf06fd065a6b5e4ddbc96c82cfce3282e",
+      "raw_sha256": "0e80813b45a719d0a886fe56f93c2d1cf06fd065a6b5e4ddbc96c82cfce3282e",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/checks.json",
+      "mode": "raw_sha256",
+      "sha256": "bcaf1b4bfee2386d727b53ec158159aeb058b3e019f6ecda58883175bf63067f",
+      "raw_sha256": "bcaf1b4bfee2386d727b53ec158159aeb058b3e019f6ecda58883175bf63067f",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/contract.md",
+      "mode": "raw_sha256",
+      "sha256": "55567c9b173f491e6fb3f751b4b6dc18c6e75c771947b41d72bb815ee24bef52",
+      "raw_sha256": "55567c9b173f491e6fb3f751b4b6dc18c6e75c771947b41d72bb815ee24bef52",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/entry-gate.json",
+      "mode": "raw_sha256",
+      "sha256": "5ad0db7d16cc7c5155ab266d48c8f62097c4765e1b813e587363bc6cfd72aa2e",
+      "raw_sha256": "5ad0db7d16cc7c5155ab266d48c8f62097c4765e1b813e587363bc6cfd72aa2e",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/hub-source.json",
+      "mode": "raw_sha256",
+      "sha256": "c4fce8037dd7c6565de0dc3793d830689d053578364f1d36f031bd419ed53442",
+      "raw_sha256": "c4fce8037dd7c6565de0dc3793d830689d053578364f1d36f031bd419ed53442",
+      "base_sha256": null
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/preservation.json",
+      "mode": "raw_sha256",
+      "sha256": "044068a916e1ea61a53afa29018e8ff375aad7e3eb3e464592517bc81aea07e1",
+      "raw_sha256": "044068a916e1ea61a53afa29018e8ff375aad7e3eb3e464592517bc81aea07e1",
+      "base_sha256": null
+    },
+    {
+      "path": "frontend/assets/app.js",
+      "mode": "raw_sha256",
+      "sha256": "395f68fd0b2de44ad8441262097cb11f89c9f551a75c1641db61cb2326661795",
+      "raw_sha256": "395f68fd0b2de44ad8441262097cb11f89c9f551a75c1641db61cb2326661795",
+      "base_sha256": "3342ce528845cd066575ad485d9ef1cc4ad66458bada35053eb647cf89cb18ec"
+    },
+    {
+      "path": "frontend/assets/styles.css",
+      "mode": "raw_sha256",
+      "sha256": "c7967cc55e31af54eef3ef52e93619eef6acef43deedb473d343d83c067284bb",
+      "raw_sha256": "c7967cc55e31af54eef3ef52e93619eef6acef43deedb473d343d83c067284bb",
+      "base_sha256": "dbc0cb2200e2034c44b695cc8d803280a7ab2b3f20c47b0d94e0fc9294356a45"
+    },
+    {
+      "path": "governance/file_role_map.yaml",
+      "mode": "raw_sha256",
+      "sha256": "70eab9202fad93bbbdb72b5ab00482ec2e81f7814cb5a561743b7192552a14bc",
+      "raw_sha256": "70eab9202fad93bbbdb72b5ab00482ec2e81f7814cb5a561743b7192552a14bc",
+      "base_sha256": "1c8d2507fc83287aa6c762e7f6cff17d107c62fe1c7c9eac7961f24cfbb9efb3"
+    },
+    {
+      "path": "governance/round_state.yaml",
+      "mode": "canonical_parsed_yaml_without_declared_decision_delivery_paths",
+      "sha256": "b4a14824250b779090ca1b0fa8c12f7d2dfa650ec2d7c75d85be08734bc55c86",
+      "raw_sha256": "5a3ae03d56dc37969b562c94a196eb7051dc8bad09c52145b9a5fc863d97f201",
+      "base_sha256": "4188c064b038a0c56e1daa7897e7e1c7eb735bcaf9baa8c22b84fe4ae4885cd4"
+    },
+    {
+      "path": "hub.connection.yaml",
+      "mode": "raw_sha256",
+      "sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913",
+      "raw_sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913",
+      "base_sha256": null
+    },
+    {
+      "path": "playwright.config.ts",
+      "mode": "raw_sha256",
+      "sha256": "7f27690a7fdd592fe755c438045e473e78e0aaa7b441d96594adbe8f2cc5c799",
+      "raw_sha256": "7f27690a7fdd592fe755c438045e473e78e0aaa7b441d96594adbe8f2cc5c799",
+      "base_sha256": "b41235ad7906279249789133bc6c9b624a9292018f4da6c97a770fcccaacb719"
+    },
+    {
+      "path": "project.yaml",
+      "mode": "raw_sha256",
+      "sha256": "f66d97adb063541ca16050172baca662234aba74f843d534b17e54ae2e5325e7",
+      "raw_sha256": "f66d97adb063541ca16050172baca662234aba74f843d534b17e54ae2e5325e7",
+      "base_sha256": "9a2a444ee7e34bbcd1b997d21f15da07a4f145f5100e0e06951220f69c5b9324"
+    },
+    {
+      "path": "reports/gate_result.json",
+      "mode": "raw_sha256",
+      "sha256": "05e062a1c146a84033e7072ea228ace37f4ac2d5e040bbb3e7953590df4c591c",
+      "raw_sha256": "05e062a1c146a84033e7072ea228ace37f4ac2d5e040bbb3e7953590df4c591c",
+      "base_sha256": "4862728ebab01be3f52030300d87d45157e588c3c7d8b24b603cad77b83ec647"
+    },
+    {
+      "path": "scripts/run_python_tests.sh",
+      "mode": "raw_sha256",
+      "sha256": "d2280cc0a66ce0764194ae87e38c918f7bc11853675eb06d753a28efc4e24157",
+      "raw_sha256": "d2280cc0a66ce0764194ae87e38c918f7bc11853675eb06d753a28efc4e24157",
+      "base_sha256": "9a17de5fcc8c8ac6e5107ebe9d038d8888e46488bc0226ddd001fb08f62aa54a"
+    },
+    {
+      "path": "scripts/run_tooling_checks.sh",
+      "mode": "raw_sha256",
+      "sha256": "837912f04a0e8d0462f52ee3bc012d52d5ca433b8bc610cd51dba5b64ed01279",
+      "raw_sha256": "837912f04a0e8d0462f52ee3bc012d52d5ca433b8bc610cd51dba5b64ed01279",
+      "base_sha256": "c2aee190e0a0380cb4efa373615c9f63a17fd3fbe547ad4991188b191ea19119"
+    },
+    {
+      "path": "scripts/serve_ui_fixture.py",
+      "mode": "raw_sha256",
+      "sha256": "470683fd97a45aa80a2be33c3b24512d188f53fc44a2d6a665a7255e8fb8e5ab",
+      "raw_sha256": "470683fd97a45aa80a2be33c3b24512d188f53fc44a2d6a665a7255e8fb8e5ab",
+      "base_sha256": null
+    },
+    {
+      "path": "src/assets/translation_memory.py",
+      "mode": "raw_sha256",
+      "sha256": "f4d2c469b894e182abbde7155c2bfb81f1cb3df16df70fd2b4423d233cabbfeb",
+      "raw_sha256": "f4d2c469b894e182abbde7155c2bfb81f1cb3df16df70fd2b4423d233cabbfeb",
+      "base_sha256": "a6924be144f3eda6079d17ab9876af16117991df5d07faaca0ec9f54abcb171a"
+    },
+    {
+      "path": "src/workbench/export_service.py",
+      "mode": "raw_sha256",
+      "sha256": "e5319570fdb64b1e65bf8dbbf40e191bb5447a356e7348d1884b28b694ba68b0",
+      "raw_sha256": "e5319570fdb64b1e65bf8dbbf40e191bb5447a356e7348d1884b28b694ba68b0",
+      "base_sha256": "b78ad1bd1d79cc1d689a28ab534025d3bc0607d09abbe29f9eeeb64731d51458"
+    },
+    {
+      "path": "src/workbench/project_registry.py",
+      "mode": "raw_sha256",
+      "sha256": "42ea4a3f968209555efdc75fa4061d09b594b313df109a780dec22050743f30e",
+      "raw_sha256": "42ea4a3f968209555efdc75fa4061d09b594b313df109a780dec22050743f30e",
+      "base_sha256": "bc42bfa4e8a791ad5a49d0fbcc5096e260e283c2f9162850032c8a6d165c72fc"
+    },
+    {
+      "path": "src/workbench/review_state.py",
+      "mode": "raw_sha256",
+      "sha256": "dd83e9152ccc9418760edb123a9e3c2a9880254cf8f06462cabbc6ce8d2fb7df",
+      "raw_sha256": "dd83e9152ccc9418760edb123a9e3c2a9880254cf8f06462cabbc6ce8d2fb7df",
+      "base_sha256": "891aa0ce436d7fbbc0b9fca3e32363c64527d48bebe89ccd5c5cfad656e451ce"
+    },
+    {
+      "path": "src/workbench/server.py",
+      "mode": "raw_sha256",
+      "sha256": "280063ed3b9f5a848d077358af2affd38adb7709b868d24d29a7a5335b8ea3b4",
+      "raw_sha256": "280063ed3b9f5a848d077358af2affd38adb7709b868d24d29a7a5335b8ea3b4",
+      "base_sha256": "d10313e9ea55ae6bbf63b2ebe5debbb19a706a10769478b71be9566b08a3f8c0"
+    },
+    {
+      "path": "tests/test_al_tooling_helpers.py",
+      "mode": "raw_sha256",
+      "sha256": "dd405e7b06cd69b40df37aea879b5961df7e0cd5d5bbfd2365ea0e1cd332dff2",
+      "raw_sha256": "dd405e7b06cd69b40df37aea879b5961df7e0cd5d5bbfd2365ea0e1cd332dff2",
+      "base_sha256": "fab142aa703bbfb0b3e030aa5f60c69439b6a63e83159d43b241201e81a7516f"
+    },
+    {
+      "path": "tests/test_codex_governance_entry.py",
+      "mode": "raw_sha256",
+      "sha256": "a97d58a6eb0e1b54810a0f61d29895bbd5db3ad92d8415124d281612607f766e",
+      "raw_sha256": "a97d58a6eb0e1b54810a0f61d29895bbd5db3ad92d8415124d281612607f766e",
+      "base_sha256": null
+    },
+    {
+      "path": "tests/test_manifest_write_lock.py",
+      "mode": "raw_sha256",
+      "sha256": "ba33b83c78d1a3d419db5d502b74f8180a651aa0eade61b24a139f8c5057be0a",
+      "raw_sha256": "ba33b83c78d1a3d419db5d502b74f8180a651aa0eade61b24a139f8c5057be0a",
+      "base_sha256": "f9c647c39d37c4b314505befdfab4c06100d17f1c6baa385dc6ef9cfbdf66995"
+    },
+    {
+      "path": "tests/test_multi_project_manifest.py",
+      "mode": "raw_sha256",
+      "sha256": "9c45de5c1ffb6bd0da50f92c3b348a53bf91b87a2ddd3fe695faea93baea901a",
+      "raw_sha256": "9c45de5c1ffb6bd0da50f92c3b348a53bf91b87a2ddd3fe695faea93baea901a",
+      "base_sha256": "364d23c6bd258a61d4b28b071caf66043a8023faf75c359150fd3270a633e871"
+    },
+    {
+      "path": "tests/test_review_state.py",
+      "mode": "raw_sha256",
+      "sha256": "c78a82d4e1ee0b063db3f8911e472c32b7b2d3266282e8855af2a299e6c51db1",
+      "raw_sha256": "c78a82d4e1ee0b063db3f8911e472c32b7b2d3266282e8855af2a299e6c51db1",
+      "base_sha256": "5dd9655a98cd8a0e4c1c105fc8e512ac7e426fce815789430370163db6bfb9f0"
+    },
+    {
+      "path": "tests/test_scan_repo_inventory.py",
+      "mode": "raw_sha256",
+      "sha256": "e280332b5fa9bdcf6d3485df48f72bba89be07ec64712752df2a66b06e842968",
+      "raw_sha256": "e280332b5fa9bdcf6d3485df48f72bba89be07ec64712752df2a66b06e842968",
+      "base_sha256": "ffceb976caaa7601ad84fd690bdb8cff64f977750c9c0e69337ca1573f3884f3"
+    },
+    {
+      "path": "tests/test_translation_memory_assets.py",
+      "mode": "raw_sha256",
+      "sha256": "21a56c7a96462bdbf6f4008f577dfb32d2c64bab30925795e08c14e54eea9d9a",
+      "raw_sha256": "21a56c7a96462bdbf6f4008f577dfb32d2c64bab30925795e08c14e54eea9d9a",
+      "base_sha256": "192de3fe89bb66177533ac73bdc795f29aaeb2882388a6b81215e2632302d384"
+    },
+    {
+      "path": "tests/test_workbench_export_service.py",
+      "mode": "raw_sha256",
+      "sha256": "e7f78d54f51c021dc028702b2a79c038088da34657f8c68e9aaaff1be5bbcc55",
+      "raw_sha256": "e7f78d54f51c021dc028702b2a79c038088da34657f8c68e9aaaff1be5bbcc55",
+      "base_sha256": "f01aacda9e5de948592c6347a029f913d53dc9da6adeaab587652333c8b5310a"
+    },
+    {
+      "path": "tests/test_workbench_server_api.py",
+      "mode": "raw_sha256",
+      "sha256": "716ab59f2bea0b2c8d4ab89c7f8056b3e128f8d299e4ca116744aa38ae3694d1",
+      "raw_sha256": "716ab59f2bea0b2c8d4ab89c7f8056b3e128f8d299e4ca116744aa38ae3694d1",
+      "base_sha256": "5b8cf039d5dba1a9fe2ece2cf5fc11ddef336fe0549c1efd8d62b39eddab4257"
+    },
+    {
+      "path": "tests/ui/issues.spec.ts",
+      "mode": "raw_sha256",
+      "sha256": "7494a15f56c85540b9ed3f0144bb3ddafb8de3440c56d6c51f187d9bb8c2ee5c",
+      "raw_sha256": "7494a15f56c85540b9ed3f0144bb3ddafb8de3440c56d6c51f187d9bb8c2ee5c",
+      "base_sha256": "a8c024e69c1ee96bf5c96dad24bf47ba182a93d3190799a62dda9d9dbdb219e3"
+    },
+    {
+      "path": "tests/ui/review-approval-binding.spec.ts",
+      "mode": "raw_sha256",
+      "sha256": "48dd0c3532595a0a81d24f8b2c92c7708dd613e8502fa32363c6806232c20b67",
+      "raw_sha256": "48dd0c3532595a0a81d24f8b2c92c7708dd613e8502fa32363c6806232c20b67",
+      "base_sha256": null
+    },
+    {
+      "path": "tests/ui/workbench.spec.ts",
+      "mode": "raw_sha256",
+      "sha256": "656ecb88f77e0b8eac2958872cfbb886448ecd36b851ecf9d100650ab973f0f7",
+      "raw_sha256": "656ecb88f77e0b8eac2958872cfbb886448ecd36b851ecf9d100650ab973f0f7",
+      "base_sha256": "6547bc1b6361f1960b3bdf1b4e7c828eb5bb7506a0212b0b587e9e62990a9559"
+    }
+  ],
+  "verification": "checks.json, browser-before/after.json, backend-before.json, hub-source.json, preservation.json; Root material checks reproduced.",
+  "preservation": "Registered original HEAD/status/25 target hashes/19 dirty hashes unchanged; all historical state semantics preserved.",
+  "secret_scan": "No private-key header/provider/GitHub token pattern in candidate text; no .env/.cursor/runtime/corpus/cache/dependency files staged.",
+  "delivery_authority": "Owner explicit normal main delivery after fresh Judge PASS and Governor approval; no original checkout integration in this unit.",
+  "decision": "accepted_pending_delivery",
+  "prior_candidates": [
+    {
+      "semantic_sha256": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+      "relevant_preimage_hashes": {
+        "frontend/assets/app.js": "85ca15221ccb63dbb2fa03ec900161c0035d896228346f6cd0351d57339e3c65",
+        "src/workbench/project_registry.py": "087f1af0ff879aa20715451ec79cc5513b714fc1b39e873b86175c1832390e22"
+      },
+      "judge": {
+        "reviewer": "/root/light_novel_approval_judge_v1",
+        "role": "fresh read-only Judge",
+        "candidate": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+        "decision": "FAIL",
+        "identity_verified": {
+          "files": 50,
+          "all_raw_and_semantic_hashes_match": true
+        },
+        "findings": [
+          {
+            "criterion": [
+              3,
+              7,
+              12
+            ],
+            "path": "src/workbench/project_registry.py",
+            "line": 479,
+            "ui_path": "frontend/assets/app.js",
+            "ui_line": 2135,
+            "failure": "CAS only validates expected_identity for approved. A stale A rejection without expected_identity succeeds after content changes to B and B is formally approved, replacing B decision with rejected/null identity.",
+            "reproduction": "Create A;captureidA;updateB;approveBwithidB;submitstaleArejectionwithoutidentity;resultsuccess,rejectedoverwrite. Disposable synthetic root only.",
+            "required_repair": "Require current expected_identity for every segment status mutation; send it for rejection; prove stale reject409/no partial write and fresh reject success in backend/browser."
+          }
+        ],
+        "acceptance": {
+          "1-2": "PASS",
+          "3": "FAIL",
+          "4-6": "PASS for covered approval/consumer/legacy paths",
+          "7": "FAIL stale rejection path",
+          "8-11": "PASS evidence and inspection",
+          "12": "FAIL unmet acceptance"
+        },
+        "checks": [
+          {
+            "command": "six relevant pytest modules",
+            "exit": 0,
+            "passed": 56
+          },
+          {
+            "command": "synthetic stale rejection reproduction",
+            "exit": 0,
+            "defect_reproduced": true
+          }
+        ],
+        "limitations": "Original integration/liveHub/realcorpus/translation acceptance not performed;7unchanged dev dependency advisories remain.",
+        "tracked_writes": false
+      },
+      "governor": {
+        "governor": "/root/hub_connection_governor",
+        "contract": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-APPROVAL-BINDING-v1",
+        "candidate": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+        "decision": "REQUEST_REPAIR",
+        "basis": "Fresh Judge independently reproduced stale A rejection overwriting current B approval; criteria3/7/12 fail.",
+        "requirements": [
+          "Require valid current expected_identity for every segment-status mutation under existing project lock.",
+          "Missing/invalid/stale mutation leaves segment/issue/note/newer approval untouched.",
+          "Frontend sends displayed identity for rejection and keeps failure truthful.",
+          "Tests stale rejection preserve export/TM;fresh rejection omits both;mixed patch atomicity;real browser conflict."
+        ],
+        "next_action": "Bounded forward repair under unchanged v1, preserve prior evidence, full relevant checks and new fresh Judge; no delivery of rejected candidate."
+      }
+    }
+  ],
+  "post_review_metadata_transitions": [
+    {
+      "path": [
+        "codex_governance",
+        "blockers"
+      ],
+      "preimage": [
+        {
+          "code": "independent_acceptance_pending",
+          "reason": "Prior candidate0ce177d7 was rejected for stale rejection. Forward repair and full local checks passed; fresh independent acceptance remains pending.",
+          "affected_items": [
+            "LIGHT-NOVEL-APPROVAL-BINDING-v1"
+          ],
+          "recovery_condition": "Fresh Judge PASS and Governor approval, then normal remote main delivery and CI verification.",
+          "retry_entry": "docs/reports/all-projects-governance/approval-binding/candidate.json",
+          "waiting_for_user": false
+        }
+      ],
+      "preimage_sha256": "5df931421b2930b59fe287356162f7970e22bf81d905061d193f194058265455",
+      "postimage": [],
+      "authority": "/root/hub_connection_governor explicit APPROVE after freshJudgePASS; exact decision-only row removal. No general blockers exclusion."
+    }
+  ]
+}

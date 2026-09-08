@@ -39,17 +39,13 @@ jobs:
           cache: npm
 
       - name: Install Python test runner
-        run: python3 -m pip install --upgrade pip pytest
+        run: python3 -m pip install -r requirements-dev.txt
 
       - name: Install Node dependencies
         run: npm ci
 
-      - name: MCP config sanity (optional)
-        run: npm run check:mcp
-        continue-on-error: true
-
       - name: Run tooling checks
-        run: npm run check:tooling
+        run: npm run check:tooling -- --surface codex
 
       - name: Upload gate result artifact
         if: always()
@@ -78,6 +74,9 @@ jobs:
         with:
           node-version: "20"
           cache: npm
+
+      - name: Install Python test runner
+        run: python3 -m pip install -r requirements-dev.txt
 
       - name: Install Node dependencies
         run: npm ci

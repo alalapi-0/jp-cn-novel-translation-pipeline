@@ -85,7 +85,7 @@ test("export manifest exports only selected project", async ({ page, request }) 
   await request.patch(`/api/projects/${projectId}/review-state`, {
     data: {
       segments: {
-        "seg-001": { status: "approved", at: new Date().toISOString() },
+        "seg-001": { status: "approved", expected_identity: (await (await request.get(`/api/projects/${projectId}/workbench-data`)).json()).segments.find((s: any) => s.id === "seg-001").approval_identity, at: new Date().toISOString() },
       },
     },
   });
@@ -107,8 +107,8 @@ test("export manifest默认仅导出 approved 并显示跳过统计", async ({ p
   await request.patch(`/api/projects/${projectId}/review-state`, {
     data: {
       segments: {
-        "seg-001": { status: "approved", at: new Date().toISOString() },
-        "seg-002": { status: "rejected", at: new Date().toISOString() },
+        "seg-001": { status: "approved", expected_identity: (await (await request.get(`/api/projects/${projectId}/workbench-data`)).json()).segments.find((s: any) => s.id === "seg-001").approval_identity, at: new Date().toISOString() },
+        "seg-002": { status: "rejected", expected_identity: (await (await request.get(`/api/projects/${projectId}/workbench-data`)).json()).segments.find((s: any) => s.id === "seg-002").approval_identity, at: new Date().toISOString() },
       },
     },
   });

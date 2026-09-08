@@ -1,0 +1,89 @@
+{
+  "reviewer": "/root/light_novel_approval_judge_v2",
+  "role": "fresh read-only Judge",
+  "candidate": "107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67",
+  "decision": "PASS",
+  "identity_verified": {
+    "files": 50,
+    "all_raw_and_semantic_hashes_match": true,
+    "head": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a"
+  },
+  "acceptance": {
+    "1-4": "PASS:all statusmutations currentidentity CAS underprojectlock;stale approval/rejection andmixedpatch atomic;notes/issues/newerdecision preserved;freshdecisions succeed.",
+    "5-7": "PASS:sharedformalapprovalselection;embedded/legacy/crossproject/blank/stale failclosed;duplicatesrejected;realbrowser409/reload/approval/rejection/consumerparity/contentinvalidation.",
+    "8-11": "PASS:originalHEAD/status/25target/19dirtyhashpreserved;strictYAMLzeroanchorsaliases/pausedhistory;Codexgatewithallqualitychecks/noCursor;typedsoleHubsource/unknowns/separatecompletionacceptancedelivery.",
+    "12": "PASS:Root544pytest5skip/gate72pass2warn;Judge62focusedpytest;Judge35UI3skip;diffcheck;all4screenshots inspected."
+  },
+  "checks": [
+    {
+      "command": "focused pytest modules including Codex entry",
+      "exit": 0,
+      "passed": 62
+    },
+    {
+      "command": "PLAYWRIGHT_PORT=5199 npm run test:ui",
+      "exit": 0,
+      "passed": 35,
+      "skipped": 3
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "limitations": [
+    "No original integration/liveHub/realcorpus/translationacceptance claimed.",
+    "Seven unchanged developer-only dependency advisories remain."
+  ],
+  "tracked_or_external_writes": false,
+  "prior_decisions": [
+    {
+      "reviewer": "/root/light_novel_approval_judge_v1",
+      "role": "fresh read-only Judge",
+      "candidate": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+      "decision": "FAIL",
+      "identity_verified": {
+        "files": 50,
+        "all_raw_and_semantic_hashes_match": true
+      },
+      "findings": [
+        {
+          "criterion": [
+            3,
+            7,
+            12
+          ],
+          "path": "src/workbench/project_registry.py",
+          "line": 479,
+          "ui_path": "frontend/assets/app.js",
+          "ui_line": 2135,
+          "failure": "CAS only validates expected_identity for approved. A stale A rejection without expected_identity succeeds after content changes to B and B is formally approved, replacing B decision with rejected/null identity.",
+          "reproduction": "Create A;captureidA;updateB;approveBwithidB;submitstaleArejectionwithoutidentity;resultsuccess,rejectedoverwrite. Disposable synthetic root only.",
+          "required_repair": "Require current expected_identity for every segment status mutation; send it for rejection; prove stale reject409/no partial write and fresh reject success in backend/browser."
+        }
+      ],
+      "acceptance": {
+        "1-2": "PASS",
+        "3": "FAIL",
+        "4-6": "PASS for covered approval/consumer/legacy paths",
+        "7": "FAIL stale rejection path",
+        "8-11": "PASS evidence and inspection",
+        "12": "FAIL unmet acceptance"
+      },
+      "checks": [
+        {
+          "command": "six relevant pytest modules",
+          "exit": 0,
+          "passed": 56
+        },
+        {
+          "command": "synthetic stale rejection reproduction",
+          "exit": 0,
+          "defect_reproduced": true
+        }
+      ],
+      "limitations": "Original integration/liveHub/realcorpus/translation acceptance not performed;7unchanged dev dependency advisories remain.",
+      "tracked_writes": false
+    }
+  ]
+}

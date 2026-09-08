@@ -19,42 +19,61 @@ from assets.translation_memory import (  # noqa: E402
 from translation.draft_runner import run_draft_stage_a  # noqa: E402
 from translation.prompt_builder import build_batch_messages  # noqa: E402
 from translation.chapter_parser import Segment  # noqa: E402
-from workbench.project_registry import create_project_manifest  # noqa: E402
-from workbench.review_state import patch_project_review_state  # noqa: E402
+from workbench.export_service import run_export  # noqa: E402
+from workbench.project_registry import (  # noqa: E402
+    create_project_manifest,
+    patch_project_review_state_cas,
+)
+from workbench.review_state import approval_identity, patch_project_review_state  # noqa: E402
 
 
 def _seed_workbench_project(repo: Path) -> str:
     project_id = "asset-memory-test"
+    approved_segment = {
+        "id": "seg-001",
+        "segment_id": "seg-001",
+        "chapter": 1,
+        "source": "アルファの森へ向かう。",
+        "draft": "前往阿尔法之森。",
+        "status": "pending",
+    }
+    rejected_segment = {
+        "id": "seg-002",
+        "segment_id": "seg-002",
+        "chapter": 1,
+        "source": "【レア】称号を獲得した。",
+        "draft": "【稀有】获得了称号。",
+        "status": "pending",
+    }
     create_project_manifest(
         repo,
         project_id=project_id,
         name="Asset Memory",
         language_direction="JP_TO_CN",
         segments=[
-            {
-                "id": "seg-001",
-                "segment_id": "seg-001",
-                "chapter": 1,
-                "source": "アルファの森へ向かう。",
-                "draft": "前往阿尔法之森。",
-                "status": "pending",
-            },
-            {
-                "id": "seg-002",
-                "segment_id": "seg-002",
-                "chapter": 1,
-                "source": "【レア】称号を獲得した。",
-                "draft": "【稀有】获得了称号。",
-                "status": "pending",
-            },
+            approved_segment,
+            rejected_segment,
         ],
     )
-    patch_project_review_state(
+    identity = approval_identity(
+        project_id=project_id,
+        language_direction="JP_TO_CN",
+        segment=approved_segment,
+    )
+    rejected_identity = approval_identity(
+        project_id=project_id,
+        language_direction="JP_TO_CN",
+        segment=rejected_segment,
+    )
+    patch_project_review_state_cas(
         repo,
         project_id,
         segments={
-            "seg-001": {"status": "approved"},
-            "seg-002": {"status": "rejected"},
+            "seg-001": {"status": "approved", "expected_identity": identity},
+            "seg-002": {
+                "status": "rejected",
+                "expected_identity": rejected_identity,
+            },
         },
     )
     return project_id
@@ -73,6 +92,81 @@ def test_agent_mode_builds_approved_translation_memory_without_api(tmp_path, mon
     assert "seg-002" not in doc["segment_map"]
     assert Path(doc["asset_path"]).is_file()
     assert "アルファ" in doc["context_prompt"]
+
+
+def test_manifest_memory_rejects_legacy_unbound_approval(tmp_path):
+    project_id = "asset-memory-legacy"
+    create_project_manifest(
+        tmp_path,
+        project_id=project_id,
+        name="Legacy",
+        language_direction="JP_TO_CN",
+        segments=[
+            {
+                "id": "seg-001",
+                "source": "原文",
+                "draft": "译文",
+                "status": "approved",
+            }
+        ],
+    )
+    patch_project_review_state(
+        tmp_path,
+        project_id,
+        segments={"seg-001": {"status": "approved", "note": "keep"}},
+    )
+
+    with pytest.raises(ValueError, match="no approved translation pairs"):
+        build_translation_memory_assets(repo_root=tmp_path, project_id=project_id)
+
+
+@pytest.mark.parametrize(
+    "project_id,segment",
+    [
+        (
+            "asset-memory-blank-source",
+            {"id": "seg-001", "source": "", "draft": "译文"},
+        ),
+        (
+            "asset-memory-blank-target",
+            {"id": "seg-001", "source": "原文", "draft": "   "},
+        ),
+    ],
+)
+def test_approved_consumers_share_blank_content_eligibility(
+    tmp_path,
+    project_id,
+    segment,
+):
+    create_project_manifest(
+        tmp_path,
+        project_id=project_id,
+        name="Blank",
+        language_direction="JP_TO_CN",
+        segments=[segment],
+    )
+    identity = approval_identity(
+        project_id=project_id,
+        language_direction="JP_TO_CN",
+        segment=segment,
+    )
+    patch_project_review_state(
+        tmp_path,
+        project_id,
+        segments={
+            "seg-001": {"status": "approved", "approval_identity": identity},
+        },
+    )
+
+    with pytest.raises(ValueError, match="no approved segments"):
+        run_export(
+            tmp_path,
+            source="manifest",
+            project_id=project_id,
+            status_mode="approved",
+        )
+    with pytest.raises(ValueError, match="no approved translation pairs"):
+        build_translation_memory_assets(repo_root=tmp_path, project_id=project_id)
 
 
 def test_run_source_translated_mode_can_deposit_completed_pairs(tmp_path):

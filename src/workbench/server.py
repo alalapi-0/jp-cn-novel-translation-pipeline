@@ -41,6 +41,8 @@ from workbench.project_id import (
     validate_project_id,
 )
 from workbench.project_registry import (
+    ApprovalIdentityConflictError,
+    DuplicateSegmentIdError,
     ManifestWriteInProgressError,
     archive_project,
     create_project_manifest,
@@ -51,9 +53,10 @@ from workbench.project_registry import (
     refresh_example_manifests,
     retry_project,
     set_active_project_id,
+    patch_project_review_state_cas,
     update_project_segments,
 )
-from workbench.review_state import get_project_review_state, patch_project_review_state
+from workbench.review_state import get_project_review_state
 from assets.translation_memory import (
     ExternalAssetExtractionUnavailable,
     build_translation_memory_assets,
@@ -121,6 +124,12 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
         def _manifest_busy(self, exc: ManifestWriteInProgressError) -> None:
             self._send_json(HTTPStatus.CONFLICT, {"error": str(exc)})
 
+        def _duplicate_segment_id(self, exc: DuplicateSegmentIdError) -> None:
+            self._send_json(
+                HTTPStatus.CONFLICT,
+                {"error": str(exc), "error_code": "duplicate_segment_id"},
+            )
+
         def _parse_project_id(self, raw: str) -> str:
             return validate_project_id(raw.strip("/"))
 
@@ -159,6 +168,10 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_get(parsed)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
+                except DuplicateSegmentIdError as exc:
+                    self._duplicate_segment_id(exc)
+                except ManifestWriteInProgressError as exc:
+                    self._manifest_busy(exc)
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -174,6 +187,10 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_post(parsed.path)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
+                except DuplicateSegmentIdError as exc:
+                    self._duplicate_segment_id(exc)
+                except ManifestWriteInProgressError as exc:
+                    self._manifest_busy(exc)
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -189,6 +206,10 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_put(parsed.path)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
+                except DuplicateSegmentIdError as exc:
+                    self._duplicate_segment_id(exc)
+                except ManifestWriteInProgressError as exc:
+                    self._manifest_busy(exc)
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -204,6 +225,10 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._handle_api_patch(parsed.path)
                 except InvalidProjectIdError as exc:
                     self._invalid_project_id(exc)
+                except DuplicateSegmentIdError as exc:
+                    self._duplicate_segment_id(exc)
+                except ManifestWriteInProgressError as exc:
+                    self._manifest_busy(exc)
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -814,12 +839,27 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 if not segments and not issues:
                     self._bad_request("segments or issues patch required")
                     return
-                review_state = patch_project_review_state(
-                    repo_root,
-                    project_id,
-                    segments=segments,
-                    issues=issues,
-                )
+                try:
+                    review_state = patch_project_review_state_cas(
+                        repo_root,
+                        project_id,
+                        segments=segments,
+                        issues=issues,
+                    )
+                except ApprovalIdentityConflictError as exc:
+                    payload = {
+                        "error": str(exc),
+                        "error_code": exc.error_code,
+                        "project_id": exc.project_id,
+                        "segment_id": exc.segment_id,
+                    }
+                    if exc.current_identity is not None:
+                        payload["current_identity"] = exc.current_identity
+                    self._send_json(HTTPStatus.CONFLICT, payload)
+                    return
+                except ManifestWriteInProgressError as exc:
+                    self._manifest_busy(exc)
+                    return
                 self._send_json(
                     HTTPStatus.OK,
                     {"project_id": project_id, "review_state": review_state},
