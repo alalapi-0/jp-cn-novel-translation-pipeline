@@ -373,7 +373,7 @@
   "preservation": "Registered original HEAD/status/25 target hashes/19 dirty hashes unchanged; all historical state semantics preserved.",
   "secret_scan": "No private-key header/provider/GitHub token pattern in candidate text; no .env/.cursor/runtime/corpus/cache/dependency files staged.",
   "delivery_authority": "Owner explicit normal main delivery after fresh Judge PASS and Governor approval; no original checkout integration in this unit.",
-  "decision": "accepted_pending_delivery",
+  "decision": "accepted_delivered",
   "prior_candidates": [
     {
       "semantic_sha256": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",

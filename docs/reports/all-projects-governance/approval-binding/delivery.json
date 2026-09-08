@@ -1,12 +1,28 @@
 {
   "candidate": "107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67",
   "contract": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-APPROVAL-BINDING-v1",
-  "status": "pending_delivery",
+  "status": "delivered",
   "remote": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline",
   "branch": "main",
-  "code_commit": null,
-  "observed_main": null,
-  "code_ci": null,
+  "code_commit": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+  "observed_main": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+  "code_ci": {
+    "run_id": 34204195336,
+    "url": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34204195336",
+    "head_sha": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "check:tooling",
+        "conclusion": "success"
+      },
+      {
+        "name": "test:ui (optional)",
+        "conclusion": "success"
+      }
+    ]
+  },
   "metadata_transition": {
     "path": [
       "codex_governance",
@@ -82,5 +98,37 @@
       "delivery.commit": "唯一状态源未提供已核验的远端主分支交付收据；不推断 delivered。"
     }
   },
-  "history_preserved": true
+  "history_preserved": true,
+  "remote_contains_code": "verified_equal_remote_SHA_and_merge_base_ancestor",
+  "receipt_commit": "Recorded by native delivery output and subsequent Hub management receipt; no self-referential commit hash.",
+  "post_delivery_source": {
+    "kind": "shared_Hub2_validator_and_source_reader",
+    "shared_code_commit": "1b5dd803ab156f30a33299347b5afcf06b0b8066",
+    "success": true,
+    "declaration_sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913",
+    "state_sha256": "4f55e0868376d8eda44d66970ea442d5eb94bf2c7aea882d54fc3e72611c50e3",
+    "unknown_fields": {
+      "progress.completed": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+      "progress.total": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+      "progress.milestones": "当前未发布逐项验收里程碑。"
+    },
+    "cases": {
+      "initial_exact_candidate": "PASS",
+      "unchanged_repeat_same_update_key": "PASS",
+      "one_source_field_change_only_corresponding_business_field_changes": "PASS",
+      "corrupt_source_returns_failure_with_actual_hash": "PASS"
+    },
+    "scope": "Candidate declaration validated; not installed in original or reflected in live Hub.",
+    "traced_fields": 18,
+    "accepted": true,
+    "blockers": [],
+    "delivery": {
+      "status": "delivered",
+      "remote": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline",
+      "branch": "main",
+      "commit": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+      "receipt_ref": "docs/reports/all-projects-governance/approval-binding/delivery.json"
+    },
+    "next_action": "Integrate the accepted files into the original checkout under a separate owned unit, preserving existing dirty work; then refresh the live Hub source. This isolated unit is delivered; overall project governance remains in progress."
+  }
 }

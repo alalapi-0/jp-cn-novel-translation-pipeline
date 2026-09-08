@@ -593,8 +593,9 @@ codex_governance:
     status: complete
     completed: true
     accepted: true
-    next_action: Commit and normally push the approved candidate to remote main; verify commit ancestry
-      and applicable CI before marking delivery. Original integration/live Hub remain later.
+    next_action: Integrate the accepted files into the original checkout under a separate owned unit,
+      preserving existing dirty work; then refresh the live Hub source. This isolated unit is delivered;
+      overall project governance remains in progress.
     owner_role: Codex Root
   progress:
     completed: null
@@ -614,10 +615,10 @@ codex_governance:
     accepted_basis: Fresh Judge PASS and Governor APPROVE for semantic 107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67;
       docs/reports/all-projects-governance/approval-binding/judge.json and governor.json.
   delivery:
-    status: pending_delivery
+    status: delivered
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
     branch: main
-    commit: null
+    commit: 40624481a2a42dd0af4e03f8aab0f4fb936fd298
     receipt_ref: docs/reports/all-projects-governance/approval-binding/delivery.json
   historical_state_meaning: 其余顶层字段保留原历史轮次记录，不作为本单元或整个作品已验收的证明；未恢复旧 scheduler/翻译/章节复审任务。
   original_checkout: read_only; original dirty work and all real payload preserved
