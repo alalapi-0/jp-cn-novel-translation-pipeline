@@ -593,9 +593,8 @@ codex_governance:
     status: complete
     completed: true
     accepted: true
-    next_action: Integrate the accepted files into the original checkout under a separate owned unit,
-      preserving existing dirty work; then refresh the live Hub source. This isolated unit is delivered;
-      overall project governance remains in progress.
+    next_action: Deliver the independently accepted installation receipt to main and verify CI, then integrate
+      the Hub entry and refresh this project. Real translation and scheduler work remain unchanged.
     owner_role: Codex Root
   progress:
     completed: null
@@ -621,16 +620,23 @@ codex_governance:
     commit: 40624481a2a42dd0af4e03f8aab0f4fb936fd298
     receipt_ref: docs/reports/all-projects-governance/approval-binding/delivery.json
   historical_state_meaning: 其余顶层字段保留原历史轮次记录，不作为本单元或整个作品已验收的证明；未恢复旧 scheduler/翻译/章节复审任务。
-  original_checkout: read_only; original dirty work and all real payload preserved
+  original_checkout:
+    unit_id: LIGHT-NOVEL-ORIGINAL-INTEGRATION-v1
+    status: installed_accepted
+    source_commit: 29394a82de740c89ef9f4a633305569c246f42a6
+    head_preserved: 77e4b57ca2baa67f0646b72c7d28823d4a683a7a
+    receipt_url: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/blob/main/docs/reports/all-projects-governance/approval-binding/integration.json
+    receipt_delivery: pending
   budget:
     native_goal_tokens: 5046204
     native_goal_seconds: 17429
     coverage: Cumulative native Goal snapshot 2026-09-08; all prior units and agents included as exposed
       by tool. No explicit token cap. Cost unavailable. No reset.
   limitations:
-  - Original checkout remains read-only; candidate is not installed in its dirty worktree.
   - Current real translation/corpus/scheduler probes are unverified in this unit; preserved June history
     is not current product acceptance.
   - Existing developer-only npm dependency audit:7 advisories(4high2moderate1low); package/lock unchanged;
     no MCP/Stitch service invoked.
   - Run-level TM remains an independent unchanged authority.
+  - Original application files are installed; existing unrelated dirty work and original HEAD/index are
+    preserved. Live Hub refresh remains pending.
