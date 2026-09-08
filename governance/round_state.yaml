@@ -593,8 +593,9 @@ codex_governance:
     status: complete
     completed: true
     accepted: true
-    next_action: Deliver the independently accepted installation receipt to main and verify CI, then integrate
-      the Hub entry and refresh this project. Real translation and scheduler work remain unchanged.
+    next_action: Integrate the normal Hub entry with the accepted Hub2 source reader, then refresh the
+      installed light-novel declaration. Approval binding and local installation are accepted and delivered;
+      real translation and scheduler work remain unchanged.
     owner_role: Codex Root
   progress:
     completed: null
@@ -626,7 +627,7 @@ codex_governance:
     source_commit: 29394a82de740c89ef9f4a633305569c246f42a6
     head_preserved: 77e4b57ca2baa67f0646b72c7d28823d4a683a7a
     receipt_url: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/blob/main/docs/reports/all-projects-governance/approval-binding/integration.json
-    receipt_delivery: pending
+    receipt_delivery: delivered
   budget:
     native_goal_tokens: 5046204
     native_goal_seconds: 17429
