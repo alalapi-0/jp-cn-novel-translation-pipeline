@@ -60,6 +60,19 @@ def test_production_legacy_path_routes_to_guarded_external_root(
     )
 
 
+def test_compatibility_symlink_repo_routes_to_guarded_external_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project, external = _configure_production_fixture(monkeypatch, tmp_path)
+    compatibility_root = tmp_path / "compatibility-project"
+    compatibility_root.symlink_to(project, target_is_directory=True)
+    requested = compatibility_root / "workspace" / "indexes" / "entity_index.json"
+    assert storage.reroute_legacy_index_path(
+        requested,
+        repo_root=compatibility_root,
+    ) == external / "entity_index.json"
+
+
 def test_mapping_drift_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     wrong = tmp_path / "wrong" / "indexes"
     wrong.mkdir(parents=True)

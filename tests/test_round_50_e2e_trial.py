@@ -64,6 +64,24 @@ def test_isolated_review_root_requires_skip_report(tmp_path: Path):
     assert "requires --skip-report" in proc.stderr
 
 
+def test_isolated_review_root_rejects_non_temporary_directory():
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(TRIAL_SCRIPT),
+            "--skip-report",
+            "--isolated-review-root",
+            str(REPO_ROOT),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 2
+    assert "system temporary root" in proc.stderr
+
+
 def test_trial_produces_segments_and_issues(trial_result):
     proc, issue_report_path = trial_result
     assert proc.returncode == 0

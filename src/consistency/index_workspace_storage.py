@@ -28,6 +28,14 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
+def _canonical_repo_root(path: Path) -> Path:
+    absolute = _absolute(path)
+    try:
+        return absolute.resolve(strict=True)
+    except OSError:
+        return absolute
+
+
 def _validate_relative(relative: Path) -> None:
     if relative.is_absolute() or not relative.parts:
         raise IndexWorkspaceStorageError("index path must be relative")
@@ -85,7 +93,7 @@ def _guarded_path(root: Path, relative: Path) -> Path:
 
 def index_workspace_root(*, repo_root: Path = PROJECT_ROOT) -> Path:
     """Return the guarded root in production and the local root for fixtures."""
-    normalized_repo = _absolute(repo_root)
+    normalized_repo = _canonical_repo_root(repo_root)
     if normalized_repo != PROJECT_ROOT:
         return normalized_repo / "workspace" / "indexes"
     return _guarded_root()
@@ -95,7 +103,7 @@ def index_workspace_path(*relative_parts: str, repo_root: Path = PROJECT_ROOT) -
     """Resolve a safe index path for the production or fixture repository."""
     relative = Path(*relative_parts)
     _validate_relative(relative)
-    normalized_repo = _absolute(repo_root)
+    normalized_repo = _canonical_repo_root(repo_root)
     if normalized_repo != PROJECT_ROOT:
         return normalized_repo / "workspace" / "indexes" / relative
     return _guarded_path(_guarded_root(), relative)
@@ -103,13 +111,21 @@ def index_workspace_path(*relative_parts: str, repo_root: Path = PROJECT_ROOT) -
 
 def reroute_legacy_index_path(requested: Path, *, repo_root: Path = PROJECT_ROOT) -> Path:
     """Map a logical ``workspace/indexes`` path externally in production."""
-    normalized_repo = _absolute(repo_root)
-    requested_absolute = requested if requested.is_absolute() else normalized_repo / requested
+    lexical_repo = _absolute(repo_root)
+    normalized_repo = _canonical_repo_root(repo_root)
+    requested_absolute = requested if requested.is_absolute() else lexical_repo / requested
     requested_absolute = _absolute(requested_absolute)
-    legacy_root = normalized_repo / "workspace" / "indexes"
-    try:
-        relative = requested_absolute.relative_to(legacy_root)
-    except ValueError:
+    relative = None
+    for legacy_root in {
+        lexical_repo / "workspace" / "indexes",
+        normalized_repo / "workspace" / "indexes",
+    }:
+        try:
+            relative = requested_absolute.relative_to(legacy_root)
+            break
+        except ValueError:
+            continue
+    if relative is None:
         return requested_absolute
     if normalized_repo != PROJECT_ROOT:
         return requested_absolute

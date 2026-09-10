@@ -20,6 +20,7 @@ MAP_KEY = "mappings.light_novel.chapter_review_root"
 EXPECTED_PARENT = Path("/Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review")
 EXPECTED_ROOT = EXPECTED_PARENT / "workspace_review"
 LEGACY_INTERNAL_ROOT = REPO_ROOT / "workspace" / "review"
+COMPATIBILITY_REPO_ROOT = Path("/Users/alalapi/PycharmProjects/light_novel")
 
 
 class ReviewWorkspaceStorageError(RuntimeError):
@@ -102,13 +103,24 @@ def reroute_legacy_review_path(requested: Path) -> Path:
     """Map an old workspace/review path externally; preserve other explicit paths."""
     requested_absolute = requested if requested.is_absolute() else Path.cwd() / requested
     requested_absolute = Path(os.path.abspath(requested_absolute))
+    legacy_roots = [LEGACY_INTERNAL_ROOT]
     try:
-        relative = requested_absolute.relative_to(LEGACY_INTERNAL_ROOT)
-    except ValueError:
-        return requested
-    if not relative.parts:
-        return review_workspace_root()
-    return review_workspace_path(*relative.parts)
+        if (
+            COMPATIBILITY_REPO_ROOT.is_symlink()
+            and COMPATIBILITY_REPO_ROOT.resolve(strict=True) == REPO_ROOT.resolve(strict=True)
+        ):
+            legacy_roots.append(COMPATIBILITY_REPO_ROOT / "workspace" / "review")
+    except OSError:
+        pass
+    for legacy_root in legacy_roots:
+        try:
+            relative = requested_absolute.relative_to(legacy_root)
+        except ValueError:
+            continue
+        if not relative.parts:
+            return review_workspace_root()
+        return review_workspace_path(*relative.parts)
+    return requested
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import sys
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -293,7 +294,25 @@ def step_refine(segments_doc: dict[str, Any]) -> StepResult:
     )
 
 
+def _validated_isolated_review_root(root: Path) -> Path:
+    temporary_root = Path(tempfile.gettempdir()).resolve(strict=True)
+    if not root.is_absolute() or root.is_symlink():
+        raise ValueError("isolated review root must be an absolute real directory")
+    resolved = root.resolve(strict=True)
+    if (
+        resolved == temporary_root
+        or not resolved.is_relative_to(temporary_root)
+        or not resolved.is_dir()
+        or resolved.stat().st_dev != temporary_root.stat().st_dev
+        or any(resolved.iterdir())
+    ):
+        raise ValueError("isolated review root must be an empty child of the system temporary root")
+    return resolved
+
+
 def step_quality_review(*, isolated_review_root: Path | None = None) -> StepResult:
+    if isolated_review_root is not None:
+        isolated_review_root = _validated_isolated_review_root(isolated_review_root)
     issue_report_path = (
         isolated_review_root / "issue_report.json"
         if isolated_review_root is not None
@@ -512,6 +531,8 @@ def run_trial(
     skip_report: bool = False,
     isolated_review_root: Path | None = None,
 ) -> tuple[list[StepResult], int]:
+    if isolated_review_root is not None:
+        isolated_review_root = _validated_isolated_review_root(isolated_review_root)
     guard = CostGuard(
         CostGuardConfig(
             max_test_cost_usd=1.0,
@@ -585,12 +606,10 @@ def main(argv: list[str] | None = None) -> int:
     if isolated_review_root is not None:
         if not args.skip_report:
             parser.error("--isolated-review-root requires --skip-report")
-        if (
-            not isolated_review_root.is_absolute()
-            or not isolated_review_root.is_dir()
-            or isolated_review_root.is_symlink()
-        ):
-            parser.error("--isolated-review-root must be an existing absolute real directory")
+        try:
+            isolated_review_root = _validated_isolated_review_root(isolated_review_root)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
 
     results, exit_code = run_trial(
         skip_report=args.skip_report,
