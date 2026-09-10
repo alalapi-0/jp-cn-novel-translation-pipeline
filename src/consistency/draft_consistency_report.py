@@ -13,6 +13,7 @@ from typing import Any
 
 from translation.chapter_parser import count_source_chapters
 from translation.run_progress import safe_load_json
+from consistency.index_workspace_storage import index_workspace_path
 
 AUDIT_DIR_REL = "workspace/consistency_audit"
 MANIFEST_DIR_REL = "workspace/manifests"
@@ -36,7 +37,11 @@ def utc_now_iso() -> str:
 
 
 def _load_optional(repo_root: Path, rel_dir: str, name: str) -> dict[str, Any] | None:
-    path = repo_root / rel_dir / name
+    path = (
+        index_workspace_path(name, repo_root=repo_root)
+        if rel_dir == INDEX_DIR_REL
+        else repo_root / rel_dir / name
+    )
     if not path.is_file():
         return None
     return safe_load_json(path)

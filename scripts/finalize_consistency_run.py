@@ -13,11 +13,15 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from review_workspace_storage import review_workspace_root  # noqa: E402
 
 
 def _utc_now() -> str:
@@ -52,9 +56,9 @@ def _rel(path: Path) -> str:
 
 
 def _latest_final_report() -> Path:
-    candidates = sorted((REPO_ROOT / "workspace" / "review").glob("final_consistency_report_*.json"))
+    candidates = sorted(review_workspace_root().glob("final_consistency_report_*.json"))
     if not candidates:
-        raise FileNotFoundError("workspace/review/final_consistency_report_*.json not found")
+        raise FileNotFoundError("guarded review workspace has no final_consistency_report_*.json")
     return candidates[-1]
 
 
@@ -66,8 +70,7 @@ def _matching_patch_log(report_path: Path) -> Path | None:
 
 def _cleanup_review_dir(keep: set[Path]) -> list[str]:
     removed: list[str] = []
-    review_dir = REPO_ROOT / "workspace" / "review"
-    review_dir.mkdir(parents=True, exist_ok=True)
+    review_dir = review_workspace_root()
     for path in review_dir.iterdir():
         if path in keep or path.name == "README.md":
             continue

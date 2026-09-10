@@ -16,6 +16,10 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from consistency.draft_consistency_report import build_draft_consistency_report  # noqa: E402
+from consistency.index_workspace_storage import (  # noqa: E402
+    IndexWorkspaceStorageError,
+    index_workspace_path,
+)
 from scheduler.status import collect_status  # noqa: E402
 from translation.chapter_parser import count_source_chapters  # noqa: E402
 from translation.run_progress import safe_load_json  # noqa: E402
@@ -40,7 +44,12 @@ def _load_orphan_eval() -> dict[str, Any]:
 
 
 def _artifact(repo_root: Path, rel_dir: str, name: str) -> dict[str, Any] | None:
-    return safe_load_json(repo_root / rel_dir / name)
+    path = (
+        index_workspace_path(name, repo_root=repo_root)
+        if rel_dir == INDEX_DIR
+        else repo_root / rel_dir / name
+    )
+    return safe_load_json(path)
 
 
 def evaluate(repo_root: Path | None = None) -> dict[str, Any]:
@@ -184,7 +193,11 @@ def main() -> int:
         help="Write desensitized report to docs/reports/phase_b_completion_report.md",
     )
     args = parser.parse_args()
-    result = evaluate()
+    try:
+        result = evaluate()
+    except IndexWorkspaceStorageError as exc:
+        print(f"phase_b_completion: {exc}", file=sys.stderr)
+        return 78
 
     if args.write_report:
         report_dir = REPO_ROOT / "docs" / "reports"

@@ -13,11 +13,14 @@ authoring_probe_expected_chapters: 609
 canonical_target: output_cn/translated/full_volume_cn.md
 human_published_range: [1, 86]
 human_published_root: artifacts/wechat_published_text/chapters
-progress_root: artifacts/chapter_review/full_book
-progress_ledger: artifacts/chapter_review/full_book/progress.json
-annotation_ledger: artifacts/chapter_review/full_book/proper_noun_annotation_ledger.json
-transaction_journal: artifacts/chapter_review/full_book/transaction.json
-chapter_audit_root: artifacts/chapter_review/full_book/chapters
+storage_entrypoint: scripts/chapter_review_storage_root.sh
+storage_map_key: mappings.light_novel.chapter_review_root
+progress_root: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book
+progress_ledger: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/progress.json
+annotation_ledger: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/proper_noun_annotation_ledger.json
+transaction_journal: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/transaction.json
+chapter_audit_root: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/chapters
+internal_progress_root_policy: forbidden_no_fallback
 ```
 
 > 本文件是“第 1 章至最后编号章”全书审阅的权威执行 Prompt。旧 `CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md` 只是较窄的历史前身，不得与本文件拼接执行，也不得用它重新排除第 1–87 章。
@@ -29,7 +32,7 @@ chapter_audit_root: artifacts/chapter_review/full_book/chapters
 本 Prompt 授权的执行范围仅包括：
 
 - 按本文件规则逐章修改唯一中文阅读正文 `output_cn/translated/full_volume_cn.md`；
-- 在被 Git 忽略的 `artifacts/chapter_review/full_book/` 中维护进度、短引用审计、事务日志、术语覆盖层和注释账本；
+- 在双 UUID 守卫验证后的外盘 `progress_root` 中维护进度、短引用审计、事务日志、术语覆盖层和注释账本；
 - 在全书完成后运行只读或明确不会从旧 workspace 重建正文的定向检查。
 
 本 Prompt 不授权修改 `workspace/`、glossary、角色资料、翻译记忆、原文、人工发布稿、baseline、`human_approved_final` 或任何外部系统；也不授权 Git、真实 API、发布、上传、删除数据或恢复 scheduler。
@@ -54,16 +57,17 @@ chapter_audit_root: artifacts/chapter_review/full_book/chapters
 
 每次新运行或恢复都先完成以下检查：
 
-1. 阅读 `AGENTS.md`、`docs/product_final_state_spec.md`、`docs/translation_consistency_protocol.md`、`docs/quality_review_workflow.md`。
-2. 用文件名前三位数字动态发现 `input_jp/` 的编号章集合；必须从 1 连续到最后一章，每个编号恰好一个文件。
-3. 用 Markdown 一级章节标题解析 `output_cn/translated/full_volume_cn.md`；目标章号集合、顺序和数量必须与编号源章完全一致。
-4. 核对 `output_cn/final_export_manifest.json` 的章节范围与 singleton 指向。当前编写时实测为 609 个连续编号章；若以后不再是 609，必须确认是有效源章变化，而不是误纳入辅助记录。
-5. 明确排除没有对应编号源文件的旧辅助记录 610–612；不得把后记、特别记录或宣传页伪装成正文章。
-6. 核对人工发布稿：`artifacts/wechat_published_text/manifest.json` 必须为 86/86 成功，`chapters/` 必须恰有 001–086 共 86 篇；它们始终只读。
-7. 运行 workspace baseline verify、scheduler status、orphan worker 和 singleton final 的只读检查。scheduler 处于 paused 是本人工审阅流程的正常状态，不得因此恢复 scheduler。
-8. 确认没有 active/orphan 写入者；如有并发写入风险，停止。
-9. 记录编号源文件集合、人工稿集合、canonical 全文、当前 Prompt 和各覆盖层的哈希；不得把正文复制进报告。
-10. 若存在未完成事务，先按第 7 节恢复；不得直接开启新章节。
+1. 运行 `scripts/chapter_review_storage_root.sh --check`，再用 `--path full_book` 解析本轮进度根；结果必须精确等于上面的 `progress_root`。命令非零、路径漂移、外盘缺失或身份不符时立即停止，禁止创建或回退到内盘 `artifacts/chapter_review/`。每次恢复及每个章节事务提交前都重新执行 `--check`。
+2. 阅读 `AGENTS.md`、`docs/product_final_state_spec.md`、`docs/translation_consistency_protocol.md`、`docs/quality_review_workflow.md`。
+3. 用文件名前三位数字动态发现 `input_jp/` 的编号章集合；必须从 1 连续到最后一章，每个编号恰好一个文件。
+4. 用 Markdown 一级章节标题解析 `output_cn/translated/full_volume_cn.md`；目标章号集合、顺序和数量必须与编号源章完全一致。
+5. 核对 `output_cn/final_export_manifest.json` 的章节范围与 singleton 指向。当前编写时实测为 609 个连续编号章；若以后不再是 609，必须确认是有效源章变化，而不是误纳入辅助记录。
+6. 明确排除没有对应编号源文件的旧辅助记录 610–612；不得把后记、特别记录或宣传页伪装成正文章。
+7. 核对人工发布稿：`artifacts/wechat_published_text/manifest.json` 必须为 86/86 成功，`chapters/` 必须恰有 001–086 共 86 篇；它们始终只读。
+8. 运行 workspace baseline verify、scheduler status、orphan worker 和 singleton final 的只读检查。scheduler 处于 paused 是本人工审阅流程的正常状态，不得因此恢复 scheduler。
+9. 确认没有 active/orphan 写入者；如有并发写入风险，停止。
+10. 记录编号源文件集合、人工稿集合、canonical 全文、当前 Prompt 和各覆盖层的哈希；不得把正文复制进报告。
+11. 若存在未完成事务，先按第 7 节恢复；不得直接开启新章节。
 
 旧的 `artifacts/user_revision_sync/ch001_086_sync_plan.json` 仅是只读对齐线索。该文件及其记录的 digest 生成于本次全书范围、霍蒙库鲁斯译名和全书首次注释规则确认之前，因此已经过时；它的 `plan_only=true`、旧摘要、旧术语候选和旧 owner decisions 都不是正文写入门禁，也不是可自动应用的事实，且永远不能满足本 Prompt 的执行就绪门禁。只允许读取摘要、哈希和当前章相关 ID，不得批量套用其中的变化；执行期间必须保持该计划文件逐字节不变。
 
@@ -176,7 +180,7 @@ chapter_audit_root: artifacts/chapter_review/full_book/chapters
 
 ## 6. 全书专名首次注释账本
 
-在处理第 1 章之前，先按编号章顺序扫描源文并建立忽略的全局账本 `artifacts/chapter_review/full_book/proper_noun_annotation_ledger.json`。扫描以统计、实体 ID、segment ID、源偏移和哈希为主，不把全书正文加载进模型上下文。
+在处理第 1 章之前，先按编号章顺序扫描源文并在外盘建立全局账本 `/Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/proper_noun_annotation_ledger.json`。扫描以统计、实体 ID、segment ID、源偏移和哈希为主，不把全书正文加载进模型上下文。
 
 账本至少包含：
 

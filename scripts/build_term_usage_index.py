@@ -26,9 +26,13 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from glossary import GlossaryStore  # noqa: E402
 from glossary.usage_index import build_usage_index  # noqa: E402
+from consistency.index_workspace_storage import (  # noqa: E402
+    IndexWorkspaceStorageError,
+    reroute_legacy_index_path,
+)
 
 DEFAULT_GLOSSARY = REPO_ROOT / "workspace" / "configs" / "glossary.yaml"
-DEFAULT_OUTPUT = REPO_ROOT / "workspace" / "indexes" / "term_usage_index.json"
+DEFAULT_OUTPUT = Path("workspace/indexes/term_usage_index.json")
 DEFAULT_RUN_DIRS = (
     REPO_ROOT / "workspace" / "runs",
     REPO_ROOT / "workspace" / "archived_runs",
@@ -72,7 +76,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     glossary_path = args.glossary if args.glossary.is_absolute() else REPO_ROOT / args.glossary
-    output_path = args.output if args.output.is_absolute() else REPO_ROOT / args.output
     run_dirs = [
         (d if d.is_absolute() else REPO_ROOT / d) for d in (args.runs_dir or [])
     ] or list(DEFAULT_RUN_DIRS)
@@ -80,6 +83,11 @@ def main(argv: list[str] | None = None) -> int:
     if not glossary_path.is_file():
         print(f"build_term_usage_index: FAIL glossary not found: {glossary_path}")
         return 2
+    try:
+        output_path = reroute_legacy_index_path(args.output, repo_root=REPO_ROOT)
+    except IndexWorkspaceStorageError as exc:
+        print(f"build_term_usage_index: {exc}", file=sys.stderr)
+        return 78
 
     chapter_min, chapter_max = parse_chapter_range(args.chapter_range)
     terms = GlossaryStore(glossary_path).entries()

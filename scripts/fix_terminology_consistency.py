@@ -29,6 +29,9 @@ Usage:
       --chapters 1 40 \
       --diff-log workspace/review/ch001-040_consistency_fix_log.json \
       [--dry-run]
+
+The legacy workspace/review diff-log path is resolved through the guarded
+external review workspace; there is no implicit internal fallback.
 """
 
 from __future__ import annotations
@@ -41,11 +44,13 @@ from collections import Counter
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import yaml  # noqa: E402
 
 from glossary.store import GlossaryStore  # noqa: E402
+from review_workspace_storage import reroute_legacy_review_path  # noqa: E402
 
 BRACKETS = "【】"  # 【】
 DOUBLE_QUOTE_OPEN = "「"
@@ -2393,8 +2398,9 @@ def main() -> int:
         "dry_run": args.dry_run,
     }
     if args.diff_log:
-        args.diff_log.parent.mkdir(parents=True, exist_ok=True)
-        args.diff_log.write_text(
+        diff_log_path = reroute_legacy_review_path(args.diff_log)
+        diff_log_path.parent.mkdir(parents=True, exist_ok=True)
+        diff_log_path.write_text(
             json.dumps({"summary": summary, "diffs": diffs}, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )

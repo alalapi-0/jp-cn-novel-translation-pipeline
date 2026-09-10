@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -582,14 +583,21 @@ def check_round_50_e2e_trial() -> list[CheckResult]:
     if not E2E_TRIAL_SCRIPT.is_file():
         return results
     try:
-        proc = subprocess.run(
-            [sys.executable, str(E2E_TRIAL_SCRIPT), "--skip-report"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=90,
-        )
+        with tempfile.TemporaryDirectory(prefix="light-novel-e2e-") as review_root:
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(E2E_TRIAL_SCRIPT),
+                    "--skip-report",
+                    "--isolated-review-root",
+                    review_root,
+                ],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=90,
+            )
         if proc.returncode == 0:
             results.append(
                 CheckResult(

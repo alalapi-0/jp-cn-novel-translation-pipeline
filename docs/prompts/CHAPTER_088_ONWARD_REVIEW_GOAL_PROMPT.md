@@ -9,7 +9,10 @@ start_chapter: 88
 end_chapter: last_numbered_source_chapter
 chapter_087_disposition: awaiting_user_separate_from_this_prompt
 canonical_target: output_cn/translated/full_volume_cn.md
-progress_root: artifacts/chapter_review/ch088_onward
+storage_entrypoint: scripts/chapter_review_storage_root.sh
+storage_map_key: mappings.light_novel.chapter_review_root
+progress_root: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/ch088_onward
+internal_progress_root_policy: forbidden_no_fallback
 ```
 
 > 本 Prompt 是用户发起的逐章人工复核工作流，不是旧 Phase D / R-MR refinement 主线，也不会自行激活 Codex Goal Mode。只有用户另行明确要求“启用目标模式”时，才可调用原生 Goal Mode。
@@ -26,14 +29,15 @@ progress_root: artifacts/chapter_review/ch088_onward
 
 开始写入前，先完成并报告以下检查；任一项不满足就停止，不得猜测：
 
-1. 阅读 `AGENTS.md`、`docs/product_final_state_spec.md`、`docs/translation_consistency_protocol.md`、`docs/quality_review_workflow.md`。
-2. 确认 `input_jp/` 中第 88 章到末章连续存在，唯一当前译文是 `output_cn/translated/full_volume_cn.md`。
-3. 运行 workspace baseline、scheduler、orphan worker、singleton final 的只读检查；不得在真实工作树运行完整 `scripts/agent_gate.py`。
-4. 读取本次逐章复核对应的机器计划，并确认它是已经完成源文裁决的**可应用候选**，而不是 `plan_only=true` 的只读对齐计划；其 `gates_satisfied` 必须为 `true`，且用户接受的 `plan_id` 与 `content_digest` 必须和当前文件完全一致。只要状态仍是 `forbidden_pending_gates`，就只能检查和生成报告，不得修改 canonical 正文。
-5. 确认用户在**当前轮**明确授权本批次可能需要的 workspace 写入与完成后的 baseline 重建。该授权同时作为 canonical 正文写入的前置门禁；不得先改正文，再补做授权或 baseline。历史授权、只说“开始润色”或仅提供本 Prompt 均不满足此条件。
-6. 确认本次任务明确授权修改的章节范围；本 Prompt 的固定起点是第 88 章，因此不得借它修改第 1–87 章。这里的范围限制**不等于**已经决定第 87 章应永久保持不动；第 87 章是否另行复核仍等待用户确认。
-7. 记录目标章节修改前的章节块哈希。若章节无法唯一定位或段落无法可靠对齐，停止并生成 `needs_review`，不得按行号强行覆盖。
-8. 确认以下词形已经由用户在当前同步计划中最终确认：
+1. 运行 `scripts/chapter_review_storage_root.sh --check`，再用 `--path ch088_onward` 解析本轮进度根；结果必须精确等于上面的 `progress_root`。命令非零、路径漂移、外盘缺失或身份不符时立即停止，禁止创建或回退到内盘 `artifacts/chapter_review/`。
+2. 阅读 `AGENTS.md`、`docs/product_final_state_spec.md`、`docs/translation_consistency_protocol.md`、`docs/quality_review_workflow.md`。
+3. 确认 `input_jp/` 中第 88 章到末章连续存在，唯一当前译文是 `output_cn/translated/full_volume_cn.md`。
+4. 运行 workspace baseline、scheduler、orphan worker、singleton final 的只读检查；不得在真实工作树运行完整 `scripts/agent_gate.py`。
+5. 读取本次逐章复核对应的机器计划，并确认它是已经完成源文裁决的**可应用候选**，而不是 `plan_only=true` 的只读对齐计划；其 `gates_satisfied` 必须为 `true`，且用户接受的 `plan_id` 与 `content_digest` 必须和当前文件完全一致。只要状态仍是 `forbidden_pending_gates`，就只能检查和生成报告，不得修改 canonical 正文。
+6. 确认用户在**当前轮**明确授权本批次可能需要的 workspace 写入与完成后的 baseline 重建。该授权同时作为 canonical 正文写入的前置门禁；不得先改正文，再补做授权或 baseline。历史授权、只说“开始润色”或仅提供本 Prompt 均不满足此条件。
+7. 确认本次任务明确授权修改的章节范围；本 Prompt 的固定起点是第 88 章，因此不得借它修改第 1–87 章。这里的范围限制**不等于**已经决定第 87 章应永久保持不动；第 87 章是否另行复核仍等待用户确认。
+8. 记录目标章节修改前的章节块哈希。若章节无法唯一定位或段落无法可靠对齐，停止并生成 `needs_review`，不得按行号强行覆盖。
+9. 确认以下词形已经由用户在当前同步计划中最终确认：
    - `ホムンクルス` 的目标字形目前候选为“火门库鲁斯”；它可能与“霍蒙库鲁斯”存在字形歧义，未经明确确认不得批量传播。
    - 该词的注释格式和出现位置已经确认；未经确认不得自行决定注释频率。
 

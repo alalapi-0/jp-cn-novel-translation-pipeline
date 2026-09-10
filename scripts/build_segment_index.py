@@ -23,8 +23,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from consistency.segment_index import build_segment_index, index_summary  # noqa: E402
+from consistency.index_workspace_storage import (  # noqa: E402
+    IndexWorkspaceStorageError,
+    reroute_legacy_index_path,
+)
 
-DEFAULT_OUTPUT = REPO_ROOT / "workspace" / "indexes" / "segment_index.json"
+DEFAULT_OUTPUT = Path("workspace/indexes/segment_index.json")
 DEFAULT_RUN_DIRS = (
     REPO_ROOT / "workspace" / "runs",
     REPO_ROOT / "workspace" / "archived_runs",
@@ -52,7 +56,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     repo_root = args.repo_root if args.repo_root.is_absolute() else REPO_ROOT / args.repo_root
-    output_path = args.output if args.output.is_absolute() else repo_root / args.output
+    try:
+        output_path = reroute_legacy_index_path(args.output, repo_root=repo_root)
+    except IndexWorkspaceStorageError as exc:
+        print(f"build_segment_index: {exc}", file=sys.stderr)
+        return 78
     run_dirs = [
         (d if d.is_absolute() else repo_root / d) for d in (args.runs_dir or [])
     ] or [repo_root / "workspace" / "runs", repo_root / "workspace" / "archived_runs"]

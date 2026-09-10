@@ -9,10 +9,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from glossary.models import GlossaryEntry  # noqa: E402
 from glossary.store import EntryNotFoundError, GlossaryStore  # noqa: E402
+from review_workspace_storage import review_workspace_path  # noqa: E402
 
 NOW = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 NOTE = "2026-06-18 fullbook regenerated actual-data consistency rules"
@@ -82,6 +84,7 @@ def upsert_entry(
 
 
 def main() -> int:
+    out = review_workspace_path("fullbook_regen_rule_supplement_log_20260618.json")
     store = GlossaryStore(REPO_ROOT / "workspace/configs/glossary.yaml")
     log: list[dict] = []
     entries = [
@@ -145,13 +148,12 @@ def main() -> int:
     for source, target, category, aliases, first_seen in entries:
         upsert_entry(store, source, target, category, aliases, first_seen, log)
 
-    out = REPO_ROOT / "workspace/review/fullbook_regen_rule_supplement_log_20260618.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps({"updated_at": NOW, "changes": log}, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(json.dumps({"changes": len(log), "log": str(out.relative_to(REPO_ROOT))}, ensure_ascii=False, indent=2))
+    print(json.dumps({"changes": len(log), "log": str(out)}, ensure_ascii=False, indent=2))
     return 0
 
 
