@@ -531,6 +531,8 @@ def run_trial(
     skip_report: bool = False,
     isolated_review_root: Path | None = None,
 ) -> tuple[list[StepResult], int]:
+    if isolated_review_root is not None and not skip_report:
+        raise ValueError("isolated_review_root requires skip_report=True")
     if isolated_review_root is not None:
         isolated_review_root = _validated_isolated_review_root(isolated_review_root)
     guard = CostGuard(

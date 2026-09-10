@@ -14,6 +14,9 @@ TRIAL_SCRIPT = REPO_ROOT / "scripts" / "run_round_50_e2e_trial.py"
 SYNTHETIC_SOURCE = REPO_ROOT / "data" / "examples" / "e2e_trial_chapter.md"
 SEGMENTS_PATH = REPO_ROOT / "workspace" / "e2e_trial" / "segments.json"
 EXPORT_META = REPO_ROOT / "workspace" / "e2e_trial" / "export" / "export_meta.json"
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+import run_round_50_e2e_trial as trial  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -62,6 +65,11 @@ def test_isolated_review_root_requires_skip_report(tmp_path: Path):
     )
     assert proc.returncode == 2
     assert "requires --skip-report" in proc.stderr
+
+
+def test_direct_api_isolated_review_root_requires_skip_report(tmp_path: Path):
+    with pytest.raises(ValueError, match="requires skip_report=True"):
+        trial.run_trial(skip_report=False, isolated_review_root=tmp_path)
 
 
 def test_isolated_review_root_rejects_non_temporary_directory():

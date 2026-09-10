@@ -13,6 +13,7 @@ storage_entrypoint: scripts/chapter_review_storage_root.sh
 storage_map_key: mappings.light_novel.chapter_review_root
 progress_root: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/ch088_onward
 internal_progress_root_policy: forbidden_no_fallback
+guarded_subpath_policy: resolve_each_progress_or_audit_path_immediately_before_write
 ```
 
 > 本 Prompt 是用户发起的逐章人工复核工作流，不是旧 Phase D / R-MR refinement 主线，也不会自行激活 Codex Goal Mode。只有用户另行明确要求“启用目标模式”时，才可调用原生 Goal Mode。
@@ -29,7 +30,7 @@ internal_progress_root_policy: forbidden_no_fallback
 
 开始写入前，先完成并报告以下检查；任一项不满足就停止，不得猜测：
 
-1. 运行 `scripts/chapter_review_storage_root.sh --check`，再用 `--path ch088_onward` 解析本轮进度根；结果必须精确等于上面的 `progress_root`。命令非零、路径漂移、外盘缺失或身份不符时立即停止，禁止创建或回退到内盘 `artifacts/chapter_review/`。
+1. 运行 `scripts/chapter_review_storage_root.sh --check`，再用 `--path ch088_onward` 解析本轮进度根；结果必须精确等于上面的 `progress_root`。任何进度、事务或逐章审计文件在实际写入前，都必须再用 `--path ch088_onward/<relative-path>` 解析并只使用其返回值；每次恢复及每次写入前重复对应检查。命令非零、路径漂移、软链、跨设备、外盘缺失或身份不符时立即停止，禁止创建或回退到内盘 `artifacts/chapter_review/`。
 2. 阅读 `AGENTS.md`、`docs/product_final_state_spec.md`、`docs/translation_consistency_protocol.md`、`docs/quality_review_workflow.md`。
 3. 确认 `input_jp/` 中第 88 章到末章连续存在，唯一当前译文是 `output_cn/translated/full_volume_cn.md`。
 4. 运行 workspace baseline、scheduler、orphan worker、singleton final 的只读检查；不得在真实工作树运行完整 `scripts/agent_gate.py`。

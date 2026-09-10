@@ -21,6 +21,7 @@ annotation_ledger: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/f
 transaction_journal: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/transaction.json
 chapter_audit_root: /Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/chapters
 internal_progress_root_policy: forbidden_no_fallback
+guarded_subpath_policy: resolve_every_ledger_journal_and_chapter_path_immediately_before_write
 ```
 
 > 本文件是“第 1 章至最后编号章”全书审阅的权威执行 Prompt。旧 `CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md` 只是较窄的历史前身，不得与本文件拼接执行，也不得用它重新排除第 1–87 章。
@@ -57,7 +58,7 @@ internal_progress_root_policy: forbidden_no_fallback
 
 每次新运行或恢复都先完成以下检查：
 
-1. 运行 `scripts/chapter_review_storage_root.sh --check`，再用 `--path full_book` 解析本轮进度根；结果必须精确等于上面的 `progress_root`。命令非零、路径漂移、外盘缺失或身份不符时立即停止，禁止创建或回退到内盘 `artifacts/chapter_review/`。每次恢复及每个章节事务提交前都重新执行 `--check`。
+1. 运行 `scripts/chapter_review_storage_root.sh --check`，再用 `--path full_book` 解析本轮进度根；结果必须精确等于上面的 `progress_root`。随后分别用 `--path full_book/progress.json`、`--path full_book/proper_noun_annotation_ledger.json`、`--path full_book/transaction.json` 和 `--path full_book/chapters` 解析四个固定写入路径；处理每章时还必须用 `--path full_book/chapters/<chapter-id>.json` 解析该章审计文件。每个返回值都必须精确等于上面声明的对应路径或其合法直接子路径。命令非零、路径漂移、软链、跨设备、外盘缺失或身份不符时立即停止，禁止创建或回退到内盘 `artifacts/chapter_review/`。每次恢复、每个章节事务提交前及每次实际写入前都重新执行对应 `--check` / `--path`。
 2. 阅读 `AGENTS.md`、`docs/product_final_state_spec.md`、`docs/translation_consistency_protocol.md`、`docs/quality_review_workflow.md`。
 3. 用文件名前三位数字动态发现 `input_jp/` 的编号章集合；必须从 1 连续到最后一章，每个编号恰好一个文件。
 4. 用 Markdown 一级章节标题解析 `output_cn/translated/full_volume_cn.md`；目标章号集合、顺序和数量必须与编号源章完全一致。
@@ -180,7 +181,7 @@ internal_progress_root_policy: forbidden_no_fallback
 
 ## 6. 全书专名首次注释账本
 
-在处理第 1 章之前，先按编号章顺序扫描源文并在外盘建立全局账本 `/Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/proper_noun_annotation_ledger.json`。扫描以统计、实体 ID、segment ID、源偏移和哈希为主，不把全书正文加载进模型上下文。
+在处理第 1 章之前，先按编号章顺序扫描源文，并使用紧邻本次写入的 `--path full_book/proper_noun_annotation_ledger.json` 返回值在外盘建立全局账本 `/Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review/full_book/proper_noun_annotation_ledger.json`。扫描以统计、实体 ID、segment ID、源偏移和哈希为主，不把全书正文加载进模型上下文。
 
 账本至少包含：
 

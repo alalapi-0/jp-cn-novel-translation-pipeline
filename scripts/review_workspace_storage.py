@@ -17,6 +17,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 COMMON_GUARD = Path("/Users/alalapi/.config/storage-governance/guard.sh")
 MAP_KEY = "mappings.light_novel.chapter_review_root"
+EXPECTED_VOLUME_ROOT = Path("/Volumes/AI_WORK_SSD")
 EXPECTED_PARENT = Path("/Volumes/AI_WORK_SSD/ProjectData/light_novel/chapter_review")
 EXPECTED_ROOT = EXPECTED_PARENT / "workspace_review"
 LEGACY_INTERNAL_ROOT = REPO_ROOT / "workspace" / "review"
@@ -46,6 +47,13 @@ def _guarded_parent() -> Path:
         raise ReviewWorkspaceStorageError("guarded review workspace parent is unavailable")
     if resolved.is_symlink() or resolved.resolve(strict=True) != EXPECTED_PARENT:
         raise ReviewWorkspaceStorageError("review workspace parent is not the guarded physical path")
+    if (
+        not EXPECTED_VOLUME_ROOT.is_dir()
+        or EXPECTED_VOLUME_ROOT.is_symlink()
+        or EXPECTED_VOLUME_ROOT.resolve(strict=True) != EXPECTED_VOLUME_ROOT
+        or resolved.stat().st_dev != EXPECTED_VOLUME_ROOT.stat().st_dev
+    ):
+        raise ReviewWorkspaceStorageError("review workspace parent crossed the guarded volume")
     return resolved
 
 
