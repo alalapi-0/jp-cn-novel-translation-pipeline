@@ -581,7 +581,7 @@ recent_updates:
     user_wells_bad_effective_hits: 0
     user_sniper_ant_bad_effective_hits: 0
     whole_book_fix_goal_completion_dry_run_changed_segments: 0
-updated_at: '2026-09-11T01:58:00Z'
+updated_at: '2026-09-11T02:11:51Z'
 codex_governance:
   task_id: ALL-PROJECTS-CODEX-GOVERNANCE-V1
   unit_id: V3-06-A1
@@ -590,10 +590,10 @@ codex_governance:
     objective: 用共享 Hub Schema 和原子写入器导出轻小说无正文指标快照，证明局部更新、幂等刷新、重启一致及审核未知安全
     phase: project_data_publish_sync_v3
     round: V3-06-A1
-    status: candidate
+    status: complete
     completed: true
-    accepted: false
-    next_action: 对冻结候选执行 fresh Judge；通过后正常交付 main、核对远端 SHA/CI，再回写最终交付事实
+    accepted: true
+    next_action: 返回 Hub 唯一游标执行 V3-06-A2；继续复用同一快照，不在项目内启动真实业务源刷新
     owner_role: Cursor Root
   progress:
     completed: null
@@ -607,20 +607,28 @@ codex_governance:
     - unknown_review_preserved
   blockers: []
   verification:
-    status: targeted4 PASS; sharedHub18 PASS; normal tooling564 PASS/5 existing skips; agent gate warning仅分支和任务WIP
+    status: targeted4 PASS; sharedHub18 PASS; normal tooling564 PASS/5 existing skips; fresh Judge PASS; code CI34553553811 success
     evidence_refs:
     - scripts/export_hub_metric_snapshot.py
     - tests/test_hub_metric_snapshot.py
     - personal-control-hub-v3@789404c2:src/hub/metric_export.py
     - personal-control-hub-v3@789404c2:src/hub/metric_novel.py
     - personal-control-hub-v3@789404c2:src/hub/metric_snapshot.py
-    accepted_basis: pending fresh independent Judge
+    accepted_basis: Fresh Judge PASS for exact candidate 311a853301fa1900f186e0994ad0af7133fa6fdf;
+      judge 037aea12-f570-47cb-96db-4057c05806ee.
+  review:
+    verdict: PASS
+    candidate: 311a853301fa1900f186e0994ad0af7133fa6fdf
+    judge: 037aea12-f570-47cb-96db-4057c05806ee
   delivery:
-    status: pending_delivery
+    status: delivered
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
     branch: main
-    commit: null
-    receipt_ref: null
+    commit: 311a853301fa1900f186e0994ad0af7133fa6fdf
+    ci_run: 34553553811
+    ci: success
+    remote_verified: true
+    receipt_ref: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34553553811
   prior_units:
   - unit_id: LIGHT-NOVEL-APPROVAL-BINDING-v1
     contract: docs/reports/all-projects-governance/approval-binding/contract.md
