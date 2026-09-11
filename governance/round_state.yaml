@@ -581,55 +581,100 @@ recent_updates:
     user_wells_bad_effective_hits: 0
     user_sniper_ant_bad_effective_hits: 0
     whole_book_fix_goal_completion_dry_run_changed_segments: 0
-updated_at: '2026-09-11T02:11:51Z'
+updated_at: '2026-09-11T03:14:47Z'
 codex_governance:
   task_id: ALL-PROJECTS-CODEX-GOVERNANCE-V1
-  unit_id: V3-06-A1
-  contract: personal-control-hub-v3@789404c2:data/roadmap/project_data_v3.yaml#V3-06-A1
+  unit_id: V3-06-A2
+  contract: personal-control-hub-v3@92cdd8fb:data/roadmap/project_data_v3.yaml#V3-06-A2
   current_work:
-    objective: 用共享 Hub Schema 和原子写入器导出轻小说无正文指标快照，证明局部更新、幂等刷新、重启一致及审核未知安全
+    objective: 用同一共享快照承载轻小说管理与业务事实，证明异单位隔离、单文件导入、重启幂等及审核未知安全
     phase: project_data_publish_sync_v3
-    round: V3-06-A1
+    round: V3-06-A2
     status: complete
     completed: true
     accepted: true
-    next_action: 返回 Hub 唯一游标执行 V3-06-A2；继续复用同一快照，不在项目内启动真实业务源刷新
+    next_action: 返回 Hub 唯一游标执行 V3-07-A1；启动与手动同步协调留在 Hub，不在项目内运行 live 导出
     owner_role: Cursor Root
   progress:
     completed: null
     total: null
-    counting_basis: 本单元验收导出契约与确定性行为，不把历史章节、草稿、审核、验收或导出计数互相替代。
+    counting_basis: 本单元验收统一快照来源与单位隔离，不把页、章、段、运行数或历史完成状态相加。
     milestones:
-    - shared_schema_entry
-    - related_metric_delta
-    - idempotent_refresh
-    - restart_consistency
+    - unified_management_business_snapshot
+    - heterogeneous_unit_isolation
+    - snapshot_only_import
+    - restart_idempotency
     - unknown_review_preserved
   blockers: []
   verification:
-    status: targeted4 PASS; sharedHub18 PASS; normal tooling564 PASS/5 existing skips; fresh Judge PASS; code CI34553553811 success
+    status: targeted11 PASS; project tooling566 PASS/5 existing skips; sharedHub315 PASS; Hub CI34555857719 and project CI34557555737 success; fresh Judges REVISION_PASS
     evidence_refs:
+    - hub.connection.yaml
     - scripts/export_hub_metric_snapshot.py
     - tests/test_hub_metric_snapshot.py
-    - personal-control-hub-v3@789404c2:src/hub/metric_export.py
-    - personal-control-hub-v3@789404c2:src/hub/metric_novel.py
-    - personal-control-hub-v3@789404c2:src/hub/metric_snapshot.py
-    accepted_basis: Fresh Judge PASS for exact candidate 311a853301fa1900f186e0994ad0af7133fa6fdf;
-      judge 037aea12-f570-47cb-96db-4057c05806ee.
+    - personal-control-hub-v3@92cdd8fb:src/hub/metric_snapshot.py
+    - personal-control-hub-v3@92cdd8fb:src/hub/metric_store.py
+    accepted_basis: Hub candidate 8302e907经Judge 413198e8修订通过；项目候选53d53f54经Judge
+      283c2673修订通过；两仓远端main与CI已核验。
   review:
-    verdict: PASS
-    candidate: 311a853301fa1900f186e0994ad0af7133fa6fdf
-    judge: 037aea12-f570-47cb-96db-4057c05806ee
+    verdict: REVISION_PASS
+    candidate: 53d53f542794fa74c9514cf7d752a83794035e209ddc117eb01520323b0e29b1
+    judge: 283c2673-b8ca-474a-9313-90516d965ef1
   delivery:
     status: delivered
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
     branch: main
-    commit: 311a853301fa1900f186e0994ad0af7133fa6fdf
-    ci_run: 34553553811
+    commit: 0ad93b63143d0c5869210308a46494d4781c79f2
+    ci_run: 34557555737
     ci: success
     remote_verified: true
-    receipt_ref: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34553553811
+    receipt_ref: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34557555737
   prior_units:
+  - unit_id: V3-06-A1
+    contract: personal-control-hub-v3@789404c2:data/roadmap/project_data_v3.yaml#V3-06-A1
+    current_work:
+      objective: 用共享 Hub Schema 和原子写入器导出轻小说无正文指标快照，证明局部更新、幂等刷新、重启一致及审核未知安全
+      phase: project_data_publish_sync_v3
+      round: V3-06-A1
+      status: complete
+      completed: true
+      accepted: true
+      next_action: 返回 Hub 唯一游标执行 V3-06-A2；继续复用同一快照，不在项目内启动真实业务源刷新
+      owner_role: Cursor Root
+    progress:
+      completed: null
+      total: null
+      counting_basis: 本单元验收导出契约与确定性行为，不把历史章节、草稿、审核、验收或导出计数互相替代。
+      milestones:
+      - shared_schema_entry
+      - related_metric_delta
+      - idempotent_refresh
+      - restart_consistency
+      - unknown_review_preserved
+    blockers: []
+    verification:
+      status: targeted4 PASS; sharedHub18 PASS; normal tooling564 PASS/5 existing skips; fresh Judge PASS; code CI34553553811 success
+      evidence_refs:
+      - scripts/export_hub_metric_snapshot.py
+      - tests/test_hub_metric_snapshot.py
+      - personal-control-hub-v3@789404c2:src/hub/metric_export.py
+      - personal-control-hub-v3@789404c2:src/hub/metric_novel.py
+      - personal-control-hub-v3@789404c2:src/hub/metric_snapshot.py
+      accepted_basis: Fresh Judge PASS for exact candidate 311a853301fa1900f186e0994ad0af7133fa6fdf;
+        judge 037aea12-f570-47cb-96db-4057c05806ee.
+    review:
+      verdict: PASS
+      candidate: 311a853301fa1900f186e0994ad0af7133fa6fdf
+      judge: 037aea12-f570-47cb-96db-4057c05806ee
+    delivery:
+      status: delivered
+      remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
+      branch: main
+      commit: 311a853301fa1900f186e0994ad0af7133fa6fdf
+      ci_run: 34553553811
+      ci: success
+      remote_verified: true
+      receipt_ref: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34553553811
   - unit_id: LIGHT-NOVEL-APPROVAL-BINDING-v1
     contract: docs/reports/all-projects-governance/approval-binding/contract.md
     current_work:
@@ -680,7 +725,7 @@ codex_governance:
     coverage: Cumulative native Goal snapshot 2026-09-08; all prior units and agents included as exposed
       by tool. No explicit token cap. Cost unavailable. No reset.
   limitations:
-  - 本单元只读确定性 fixture 与无正文元数据；未读取或改写真实正文、翻译、审核正文、scheduler、队列或 provider。
+  - 本单元只读确定性 fixture、真实声明副本与唯一治理状态副本；未读取或改写真实正文、翻译、审核正文、scheduler、队列或 provider。
   - 原工作树的大量既有 WIP 与 HEAD 均保留；未在原工作树写入 live .hub/status.json，实际协调刷新留给 V3-07。
   - Existing developer-only npm dependency audit:7 advisories(4high2moderate1low); package/lock unchanged;
     no MCP/Stitch service invoked.
