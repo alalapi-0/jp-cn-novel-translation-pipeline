@@ -5,6 +5,9 @@ source_refs:
   path: governance/round_state.yaml
   format: yaml
   role: current_state
+metric_export:
+  entry: scripts/export_hub_metric_snapshot.py
+  snapshot: .hub/status.json
 mapping:
   current_work.objective:
     source_ref: state
@@ -93,14 +96,6 @@ mapping:
       - codex_governance
       - progress
       - counting_basis
-    value_map: null
-  progress.milestones:
-    source_ref: state
-    selector:
-      path:
-      - codex_governance
-      - progress
-      - milestones
     value_map: null
   blockers:
     source_ref: state

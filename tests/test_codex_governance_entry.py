@@ -77,3 +77,9 @@ def test_state_is_strict_yaml_and_preserves_paused_history():
     declaration = yaml.safe_load((ROOT / "hub.connection.yaml").read_text())
     assert declaration["project_id"] == "light-novel"
     assert declaration["source_refs"] == [{"id": "state", "path": "governance/round_state.yaml", "format": "yaml", "role": "current_state"}]
+    assert declaration["metric_export"] == {
+        "entry": "scripts/export_hub_metric_snapshot.py",
+        "snapshot": ".hub/status.json",
+    }
+    assert "progress.milestones" not in declaration["mapping"]
+    assert declaration["unknown_fields"]["progress.milestones"]

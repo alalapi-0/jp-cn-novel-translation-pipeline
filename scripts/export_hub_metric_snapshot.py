@@ -7,6 +7,7 @@ import argparse
 import importlib
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -17,7 +18,7 @@ EXPORTER_ID = "light-novel-metadata"
 EXPORTER_VERSION = "1.0"
 
 
-def _shared_hub_modules(hub_root: Path) -> tuple[Callable, Callable]:
+def _shared_hub_modules(hub_root: Path) -> tuple[Callable, Callable, type]:
     """Load the authoritative Hub writer and novel collector from one explicit root."""
     root = hub_root.expanduser().absolute()
     if not root.is_dir() or root.is_symlink():
@@ -28,6 +29,7 @@ def _shared_hub_modules(hub_root: Path) -> tuple[Callable, Callable]:
         source / "hub" / "metric_export.py",
         source / "hub" / "metric_novel.py",
         source / "hub" / "metric_snapshot.py",
+        source / "hub" / "connection_sources.py",
     )
     if (
         not source.is_dir()
@@ -42,17 +44,22 @@ def _shared_hub_modules(hub_root: Path) -> tuple[Callable, Callable]:
         importlib.invalidate_caches()
         metric_export = importlib.import_module("hub.metric_export")
         metric_novel = importlib.import_module("hub.metric_novel")
+        connection_sources = importlib.import_module("hub.connection_sources")
     finally:
         try:
             sys.path.remove(source_text)
         except ValueError:
             pass
 
-    for module in (metric_export, metric_novel):
+    for module in (metric_export, metric_novel, connection_sources):
         module_path = Path(module.__file__ or "").resolve(strict=True)
         if not module_path.is_relative_to(source):
             raise RuntimeError("loaded Hub metric module is outside the selected hub root")
-    return metric_export.export_metric_snapshot, metric_novel.collect_novel
+    return (
+        metric_export.export_metric_snapshot,
+        metric_novel.collect_novel,
+        connection_sources.SourceResolver,
+    )
 
 
 def export_snapshot(
@@ -60,17 +67,51 @@ def export_snapshot(
     hub_root: Path,
     *,
     clock: Callable[[], str] | None = None,
+    registry_path: Path | None = None,
 ) -> dict:
     """Read declared metadata only and atomically replace ``.hub/status.json``."""
-    export_metric_snapshot, collect_novel = _shared_hub_modules(hub_root)
+    export_metric_snapshot, collect_novel, source_resolver = _shared_hub_modules(
+        hub_root
+    )
+    observed_at = (
+        clock()
+        if clock is not None
+        else datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    )
+    resolver = source_resolver(
+        hub_root,
+        registry_path=registry_path,
+        clock=lambda: observed_at,
+    )
+    project = resolver.projects[PROJECT_ID]
+    removed = (
+        project.get("local_presence", {}).get("status") == "removed_local"
+        or project.get("current_state_status") == "removed_local"
+    )
+    if (
+        removed
+        or project.get("connection_read_allowed", project.get("enabled")) is not True
+        or project.get("access_profile") == "no_current_goal_access"
+    ):
+        raise ValueError("Hub registry does not authorize this project export")
+    selected_root = project_root.expanduser().absolute()
+    registered_root = Path(project["root_path"]).expanduser().absolute()
+    if registered_root != selected_root:
+        raise ValueError("project root does not match the selected Hub registry")
+    if not selected_root.is_dir() or selected_root.is_symlink():
+        raise ValueError("project root must be an existing ordinary directory")
+    root = selected_root.resolve(strict=True)
+    management = resolver.refresh(PROJECT_ID)
+    if not management["success"]:
+        raise ValueError("management source resolution failed; snapshot not exported")
     kwargs = {
         "exporter_id": EXPORTER_ID,
         "exporter_version": EXPORTER_VERSION,
+        "management": management,
+        "clock": lambda: observed_at,
     }
-    if clock is not None:
-        kwargs["clock"] = clock
     return export_metric_snapshot(
-        project_root,
+        root,
         PROJECT_ID,
         {"business": collect_novel},
         **kwargs,
