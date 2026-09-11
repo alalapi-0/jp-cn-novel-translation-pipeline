@@ -130,6 +130,10 @@ tmp/
 temp/
 .cache/
 
+# Generated Hub snapshot
+.hub/status.json
+.hub/.status.*.tmp
+
 # Playwright / browser automation artifacts
 artifacts/
 artifacts/screenshots/*

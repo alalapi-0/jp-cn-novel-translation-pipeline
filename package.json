@@ -14,6 +14,7 @@
     "check:stitch": "node scripts/check_stitch_config.js",
     "check:tooling": "sh scripts/run_tooling_checks.sh",
     "dev:frontend": "python3 scripts/serve_frontend.py --port 5174",
+    "hub:export": "python3 scripts/export_hub_metric_snapshot.py",
     "test:py": "sh scripts/run_python_tests.sh",
     "test:ui": "playwright test",
     "test:ui:headed": "playwright test --headed"

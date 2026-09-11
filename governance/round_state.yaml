@@ -581,45 +581,83 @@ recent_updates:
     user_wells_bad_effective_hits: 0
     user_sniper_ant_bad_effective_hits: 0
     whole_book_fix_goal_completion_dry_run_changed_segments: 0
-updated_at: '2026-06-18T03:18:56Z'
+updated_at: '2026-09-11T01:58:00Z'
 codex_governance:
   task_id: ALL-PROJECTS-CODEX-GOVERNANCE-V1
-  unit_id: LIGHT-NOVEL-APPROVAL-BINDING-v1
-  contract: docs/reports/all-projects-governance/approval-binding/contract.md
+  unit_id: V3-06-A1
+  contract: personal-control-hub-v3@789404c2:data/roadmap/project_data_v3.yaml#V3-06-A1
   current_work:
-    objective: 修复内容变更后的审核绑定、Codex 验证入口与 Hub 状态接入
-    phase: governance
-    round: LIGHT-NOVEL-APPROVAL-BINDING-v1
-    status: complete
+    objective: 用共享 Hub Schema 和原子写入器导出轻小说无正文指标快照，证明局部更新、幂等刷新、重启一致及审核未知安全
+    phase: project_data_publish_sync_v3
+    round: V3-06-A1
+    status: candidate
     completed: true
-    accepted: true
-    next_action: Integrate the normal Hub entry with the accepted Hub2 source reader, then refresh the
-      installed light-novel declaration. Approval binding and local installation are accepted and delivered;
-      real translation and scheduler work remain unchanged.
-    owner_role: Codex Root
+    accepted: false
+    next_action: 对冻结候选执行 fresh Judge；通过后正常交付 main、核对远端 SHA/CI，再回写最终交付事实
+    owner_role: Cursor Root
   progress:
     completed: null
     total: null
-    counting_basis: 本单元是流程治理，不以历史翻译章数或旧轮次 completed 计算项目完成率。
-    milestones: null
+    counting_basis: 本单元验收导出契约与确定性行为，不把历史章节、草稿、审核、验收或导出计数互相替代。
+    milestones:
+    - shared_schema_entry
+    - related_metric_delta
+    - idempotent_refresh
+    - restart_consistency
+    - unknown_review_preserved
   blockers: []
   verification:
-    status: checks_passed:544 Python /35 browser;5+3 existing skips; gate72PASS2WARN
+    status: targeted4 PASS; sharedHub18 PASS; normal tooling564 PASS/5 existing skips; agent gate warning仅分支和任务WIP
     evidence_refs:
-    - docs/reports/all-projects-governance/approval-binding/checks.json
-    - docs/reports/all-projects-governance/approval-binding/backend-before.json
-    - docs/reports/all-projects-governance/approval-binding/browser-before.json
-    - docs/reports/all-projects-governance/approval-binding/browser-after.json
-    - docs/reports/all-projects-governance/approval-binding/hub-source.json
-    - docs/reports/all-projects-governance/approval-binding/preservation.json
-    accepted_basis: Fresh Judge PASS and Governor APPROVE for semantic 107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67;
-      docs/reports/all-projects-governance/approval-binding/judge.json and governor.json.
+    - scripts/export_hub_metric_snapshot.py
+    - tests/test_hub_metric_snapshot.py
+    - personal-control-hub-v3@789404c2:src/hub/metric_export.py
+    - personal-control-hub-v3@789404c2:src/hub/metric_novel.py
+    - personal-control-hub-v3@789404c2:src/hub/metric_snapshot.py
+    accepted_basis: pending fresh independent Judge
   delivery:
-    status: delivered
+    status: pending_delivery
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
     branch: main
-    commit: 40624481a2a42dd0af4e03f8aab0f4fb936fd298
-    receipt_ref: docs/reports/all-projects-governance/approval-binding/delivery.json
+    commit: null
+    receipt_ref: null
+  prior_units:
+  - unit_id: LIGHT-NOVEL-APPROVAL-BINDING-v1
+    contract: docs/reports/all-projects-governance/approval-binding/contract.md
+    current_work:
+      objective: 修复内容变更后的审核绑定、Codex 验证入口与 Hub 状态接入
+      phase: governance
+      round: LIGHT-NOVEL-APPROVAL-BINDING-v1
+      status: complete
+      completed: true
+      accepted: true
+      next_action: Integrate the normal Hub entry with the accepted Hub2 source reader, then refresh the
+        installed light-novel declaration. Approval binding and local installation are accepted and delivered;
+        real translation and scheduler work remain unchanged.
+      owner_role: Codex Root
+    progress:
+      completed: null
+      total: null
+      counting_basis: 本单元是流程治理，不以历史翻译章数或旧轮次 completed 计算项目完成率。
+      milestones: null
+    blockers: []
+    verification:
+      status: checks_passed:544 Python /35 browser;5+3 existing skips; gate72PASS2WARN
+      evidence_refs:
+      - docs/reports/all-projects-governance/approval-binding/checks.json
+      - docs/reports/all-projects-governance/approval-binding/backend-before.json
+      - docs/reports/all-projects-governance/approval-binding/browser-before.json
+      - docs/reports/all-projects-governance/approval-binding/browser-after.json
+      - docs/reports/all-projects-governance/approval-binding/hub-source.json
+      - docs/reports/all-projects-governance/approval-binding/preservation.json
+      accepted_basis: Fresh Judge PASS and Governor APPROVE for semantic 107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67;
+        docs/reports/all-projects-governance/approval-binding/judge.json and governor.json.
+    delivery:
+      status: delivered
+      remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
+      branch: main
+      commit: 40624481a2a42dd0af4e03f8aab0f4fb936fd298
+      receipt_ref: docs/reports/all-projects-governance/approval-binding/delivery.json
   historical_state_meaning: 其余顶层字段保留原历史轮次记录，不作为本单元或整个作品已验收的证明；未恢复旧 scheduler/翻译/章节复审任务。
   original_checkout:
     unit_id: LIGHT-NOVEL-ORIGINAL-INTEGRATION-v1
@@ -634,10 +672,8 @@ codex_governance:
     coverage: Cumulative native Goal snapshot 2026-09-08; all prior units and agents included as exposed
       by tool. No explicit token cap. Cost unavailable. No reset.
   limitations:
-  - Current real translation/corpus/scheduler probes are unverified in this unit; preserved June history
-    is not current product acceptance.
+  - 本单元只读确定性 fixture 与无正文元数据；未读取或改写真实正文、翻译、审核正文、scheduler、队列或 provider。
+  - 原工作树的大量既有 WIP 与 HEAD 均保留；未在原工作树写入 live .hub/status.json，实际协调刷新留给 V3-07。
   - Existing developer-only npm dependency audit:7 advisories(4high2moderate1low); package/lock unchanged;
     no MCP/Stitch service invoked.
   - Run-level TM remains an independent unchanged authority.
-  - Original application files are installed; existing unrelated dirty work and original HEAD/index are
-    preserved. Live Hub refresh remains pending.

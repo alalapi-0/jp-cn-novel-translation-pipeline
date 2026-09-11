@@ -1,6 +1,6 @@
 {
   "status": "warning",
-  "timestamp": "2026-09-08T08:08:49Z",
+  "timestamp": "2026-09-11T01:59:22Z",
   "passed": [
     "docs_exist_readme",
     "docs_exist_agents",
@@ -442,12 +442,12 @@
     {
       "id": "git_status_dirty",
       "severity": "warn",
-      "message": "working tree has 37 uncommitted change(s) on branch codex/light-novel-state-governance"
+      "message": "working tree has 6 uncommitted change(s) on branch codex/project-data-publish-sync-v3"
     },
     {
       "id": "git_branch_not_main",
       "severity": "warn",
-      "message": "current branch is codex/light-novel-state-governance, not main/master"
+      "message": "current branch is codex/project-data-publish-sync-v3, not main/master"
     }
   ],
   "commands": [
