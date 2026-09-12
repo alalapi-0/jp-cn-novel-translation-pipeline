@@ -1,0 +1,857 @@
+{
+  "contract": {
+    "id": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-ORIGINAL-INTEGRATION-v1",
+    "lane": "GOVERNED",
+    "governor": "/root/hub_connection_governor",
+    "objective": "Install exact accepted delivery in original dirty checkout; preserve HEAD/index/all prior work, validate synthetic behavior and truthful current installation state.",
+    "authority": "Current owner Goal section7; Governor contract CREATE_TASK. Root sole writer.",
+    "protected": [
+      "all original dirty/untracked data",
+      "HEAD/index",
+      "real corpus/exports/queues/locks/scheduler/providers",
+      "Cursor and credentials",
+      "Hub/global writes"
+    ],
+    "acceptance": [
+      "verified receipt main and CI before writes",
+      "exact54 path preimages and zero dirty overlap",
+      "git apply check",
+      "installed hashes/modes match source except registered state delta",
+      "inverse state delta reproduces delivered state",
+      "HEAD/index unchanged",
+      "all24 original status entries and19 dirty/5 untracked file hashes preserved",
+      "no outside manifest original writes",
+      "strict alias-free YAML and historical scheduler pause",
+      "sole-source Hub declaration reads",
+      "six synthetic modules pass with sanitized env/cache/temp",
+      "no original gate/runtime reports",
+      "reuse accepted identical app gate/CI",
+      "fresh Judge then Governor"
+    ],
+    "source_commit": "29394a82de740c89ef9f4a633305569c246f42a6",
+    "original_head": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a",
+    "no_original_git_delivery": true
+  },
+  "prior_application_candidate": "107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67",
+  "source_ci": {
+    "conclusion": "success",
+    "headSha": "29394a82de740c89ef9f4a633305569c246f42a6",
+    "status": "completed",
+    "url": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34204686600"
+  },
+  "remote_main_before": "29394a82de740c89ef9f4a633305569c246f42a6",
+  "patch_sha256": "abe7547d13bc3a51fd5f6f02963712d9584d79e46294efa341c81572fa97f131",
+  "manifest": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "100644",
+      "preimage_sha256": "d9605608b33458952c2802d5123c7a45a981504fc4af1616640c0c2babdab828",
+      "postimage_sha256": "b1d94bd7da1f6d9573b973a759f97a5744370494f49ce5268b87cbccb2ae211e"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "preimage_sha256": "73f425e44d2f6658ffc7bd217237e8c705b4ad13e694ef1031ebb3bbdc311109",
+      "postimage_sha256": "66a7a15d87f83e15a3353264aa0995a5b6b1154a5370362a85e4f4e413bb96d5"
+    },
+    {
+      "path": "agent_layer.yaml",
+      "mode": "100644",
+      "preimage_sha256": "35801f753cf4a5665bb45eb7265d84d77d9ba75ac9721671b8c3a4d7cd9dc9da",
+      "postimage_sha256": "f71e4c1fa998bb794d87e98681c8a23bd4e53359cb9b0a1b88829f79c754cd33"
+    },
+    {
+      "path": "data/examples/review_segments.fixture.json",
+      "mode": "100644",
+      "preimage_sha256": "c663b6252267ad19d1e5a3e5d9b5714b61a3b9efeee83ea8aac3c1ac30a65d6c",
+      "postimage_sha256": "e57a8ec85a52840e443f0428f4c7dcdcfdfb384dca819fa8b14d0611989f7dc5"
+    },
+    {
+      "path": "data/examples/workbench_project.demo-jp-cn.example.json",
+      "mode": "100644",
+      "preimage_sha256": "f15a7ab2e631263a3edb94020a8ac04346da855d3c6f7de2205097180dabe88f",
+      "postimage_sha256": "ecc8870b3aea72a4a0024e82778509b7379968eb7ede2e1dae55da4fb2d68c3e"
+    },
+    {
+      "path": "docs/AGENT_RUNBOOK.md",
+      "mode": "100644",
+      "preimage_sha256": "e0bee0dac2e63f301692aa275a06516b0f7d65a4073698b314c6dda227ea8d8b",
+      "postimage_sha256": "0470721546568dafbf59ac0433376eeee4241d08911603d5d5f0dccf5d33b597"
+    },
+    {
+      "path": "docs/TOOL_USAGE_POLICY.md",
+      "mode": "100644",
+      "preimage_sha256": "e2bd1b23c7a65d605ea356bef0cd4eba3bb61695ed806becdab4f9be8f278be3",
+      "postimage_sha256": "793980a19af627cffabed045e36d2d3414156c4df2fc818eed046974406ab121"
+    },
+    {
+      "path": "docs/quality_review_workflow.md",
+      "mode": "100644",
+      "preimage_sha256": "6a75d7c406e946301ff45cfdf3447886f3ceb87f59f81c6044ab2b3de02dabb8",
+      "postimage_sha256": "8634b679e47e326a26f547ba852602e13211bd826a1e8a8a3871be8f17a38942"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/backend-before.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "f6bfd76fb19b1695a4d3b49769dc032c5a8730d72600216e0823c5d77da72680"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/baseline.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "cd2e3657052ecec9c85161b482ab1848169080047c258525f5e7f445da21225a"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-desktop-fresh-approved.png",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "0e78d90b9834114ddc8216f219e7a97e9cff5ff553e94c67c2bf72f4d0d7eeaf"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-desktop-stale-reapproval.png",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "f527df80836820e43e78ff38aa60a5687353932a940c2cfba52e9639dbdbf658"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-mobile-fresh-approved.png",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "5bfba0ce7e432aea013b0a84f57fbad6919ea83314da6a12f8e1bd7d4976f243"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after-mobile-stale-reapproval.png",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "95d77268fe64d753b937f4707c0e3edafb9222066332f4c01868c4fda681a1b7"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-after.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "d3000e351c5a4567e14f6375b9afa0638130e3075fd9d73639d99414a740b787"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-before.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "42a4a56e973b24146520d2db3cb8941a462bf38c05169f9ab80968c481e10cfa"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/browser-before.png",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "0e80813b45a719d0a886fe56f93c2d1cf06fd065a6b5e4ddbc96c82cfce3282e"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/candidate.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "ce0ab831356c515fa71e66d30b0571930325a9706cb8d882a55a2b773c7d351c"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/checks.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "bcaf1b4bfee2386d727b53ec158159aeb058b3e019f6ecda58883175bf63067f"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/contract.md",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "55567c9b173f491e6fb3f751b4b6dc18c6e75c771947b41d72bb815ee24bef52"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/delivery.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "a0bf33937b6dcf2df181b927e8225fed4c5e87911b1b889ca21517d84b28bfb0"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/entry-gate.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "5ad0db7d16cc7c5155ab266d48c8f62097c4765e1b813e587363bc6cfd72aa2e"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/governor.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "4f9c5151cc06b8110f00fd196c9a17eada3109e2e5888ec106dd35503a5fd1e7"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/hub-source.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "c4fce8037dd7c6565de0dc3793d830689d053578364f1d36f031bd419ed53442"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/judge.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "c5d7817f49d2781290714bc37c8173a32ef9c5b6f981aa9d0b8f1b33b134b1f1"
+    },
+    {
+      "path": "docs/reports/all-projects-governance/approval-binding/preservation.json",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "044068a916e1ea61a53afa29018e8ff375aad7e3eb3e464592517bc81aea07e1"
+    },
+    {
+      "path": "frontend/assets/app.js",
+      "mode": "100644",
+      "preimage_sha256": "3342ce528845cd066575ad485d9ef1cc4ad66458bada35053eb647cf89cb18ec",
+      "postimage_sha256": "395f68fd0b2de44ad8441262097cb11f89c9f551a75c1641db61cb2326661795"
+    },
+    {
+      "path": "frontend/assets/styles.css",
+      "mode": "100644",
+      "preimage_sha256": "dbc0cb2200e2034c44b695cc8d803280a7ab2b3f20c47b0d94e0fc9294356a45",
+      "postimage_sha256": "c7967cc55e31af54eef3ef52e93619eef6acef43deedb473d343d83c067284bb"
+    },
+    {
+      "path": "governance/file_role_map.yaml",
+      "mode": "100644",
+      "preimage_sha256": "1c8d2507fc83287aa6c762e7f6cff17d107c62fe1c7c9eac7961f24cfbb9efb3",
+      "postimage_sha256": "70eab9202fad93bbbdb72b5ab00482ec2e81f7814cb5a561743b7192552a14bc"
+    },
+    {
+      "path": "governance/round_state.yaml",
+      "mode": "100644",
+      "preimage_sha256": "4188c064b038a0c56e1daa7897e7e1c7eb735bcaf9baa8c22b84fe4ae4885cd4",
+      "postimage_sha256": "4f55e0868376d8eda44d66970ea442d5eb94bf2c7aea882d54fc3e72611c50e3"
+    },
+    {
+      "path": "hub.connection.yaml",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913"
+    },
+    {
+      "path": "playwright.config.ts",
+      "mode": "100644",
+      "preimage_sha256": "b41235ad7906279249789133bc6c9b624a9292018f4da6c97a770fcccaacb719",
+      "postimage_sha256": "7f27690a7fdd592fe755c438045e473e78e0aaa7b441d96594adbe8f2cc5c799"
+    },
+    {
+      "path": "project.yaml",
+      "mode": "100644",
+      "preimage_sha256": "9a2a444ee7e34bbcd1b997d21f15da07a4f145f5100e0e06951220f69c5b9324",
+      "postimage_sha256": "f66d97adb063541ca16050172baca662234aba74f843d534b17e54ae2e5325e7"
+    },
+    {
+      "path": "reports/gate_result.json",
+      "mode": "100644",
+      "preimage_sha256": "4862728ebab01be3f52030300d87d45157e588c3c7d8b24b603cad77b83ec647",
+      "postimage_sha256": "05e062a1c146a84033e7072ea228ace37f4ac2d5e040bbb3e7953590df4c591c"
+    },
+    {
+      "path": "scripts/run_python_tests.sh",
+      "mode": "100755",
+      "preimage_sha256": "9a17de5fcc8c8ac6e5107ebe9d038d8888e46488bc0226ddd001fb08f62aa54a",
+      "postimage_sha256": "d2280cc0a66ce0764194ae87e38c918f7bc11853675eb06d753a28efc4e24157"
+    },
+    {
+      "path": "scripts/run_tooling_checks.sh",
+      "mode": "100755",
+      "preimage_sha256": "c2aee190e0a0380cb4efa373615c9f63a17fd3fbe547ad4991188b191ea19119",
+      "postimage_sha256": "837912f04a0e8d0462f52ee3bc012d52d5ca433b8bc610cd51dba5b64ed01279"
+    },
+    {
+      "path": "scripts/serve_ui_fixture.py",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "470683fd97a45aa80a2be33c3b24512d188f53fc44a2d6a665a7255e8fb8e5ab"
+    },
+    {
+      "path": "src/assets/translation_memory.py",
+      "mode": "100644",
+      "preimage_sha256": "a6924be144f3eda6079d17ab9876af16117991df5d07faaca0ec9f54abcb171a",
+      "postimage_sha256": "f4d2c469b894e182abbde7155c2bfb81f1cb3df16df70fd2b4423d233cabbfeb"
+    },
+    {
+      "path": "src/workbench/export_service.py",
+      "mode": "100644",
+      "preimage_sha256": "b78ad1bd1d79cc1d689a28ab534025d3bc0607d09abbe29f9eeeb64731d51458",
+      "postimage_sha256": "e5319570fdb64b1e65bf8dbbf40e191bb5447a356e7348d1884b28b694ba68b0"
+    },
+    {
+      "path": "src/workbench/project_registry.py",
+      "mode": "100644",
+      "preimage_sha256": "bc42bfa4e8a791ad5a49d0fbcc5096e260e283c2f9162850032c8a6d165c72fc",
+      "postimage_sha256": "42ea4a3f968209555efdc75fa4061d09b594b313df109a780dec22050743f30e"
+    },
+    {
+      "path": "src/workbench/review_state.py",
+      "mode": "100644",
+      "preimage_sha256": "891aa0ce436d7fbbc0b9fca3e32363c64527d48bebe89ccd5c5cfad656e451ce",
+      "postimage_sha256": "dd83e9152ccc9418760edb123a9e3c2a9880254cf8f06462cabbc6ce8d2fb7df"
+    },
+    {
+      "path": "src/workbench/server.py",
+      "mode": "100644",
+      "preimage_sha256": "d10313e9ea55ae6bbf63b2ebe5debbb19a706a10769478b71be9566b08a3f8c0",
+      "postimage_sha256": "280063ed3b9f5a848d077358af2affd38adb7709b868d24d29a7a5335b8ea3b4"
+    },
+    {
+      "path": "tests/test_al_tooling_helpers.py",
+      "mode": "100644",
+      "preimage_sha256": "fab142aa703bbfb0b3e030aa5f60c69439b6a63e83159d43b241201e81a7516f",
+      "postimage_sha256": "dd405e7b06cd69b40df37aea879b5961df7e0cd5d5bbfd2365ea0e1cd332dff2"
+    },
+    {
+      "path": "tests/test_codex_governance_entry.py",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "a97d58a6eb0e1b54810a0f61d29895bbd5db3ad92d8415124d281612607f766e"
+    },
+    {
+      "path": "tests/test_manifest_write_lock.py",
+      "mode": "100644",
+      "preimage_sha256": "f9c647c39d37c4b314505befdfab4c06100d17f1c6baa385dc6ef9cfbdf66995",
+      "postimage_sha256": "ba33b83c78d1a3d419db5d502b74f8180a651aa0eade61b24a139f8c5057be0a"
+    },
+    {
+      "path": "tests/test_multi_project_manifest.py",
+      "mode": "100644",
+      "preimage_sha256": "364d23c6bd258a61d4b28b071caf66043a8023faf75c359150fd3270a633e871",
+      "postimage_sha256": "9c45de5c1ffb6bd0da50f92c3b348a53bf91b87a2ddd3fe695faea93baea901a"
+    },
+    {
+      "path": "tests/test_review_state.py",
+      "mode": "100644",
+      "preimage_sha256": "5dd9655a98cd8a0e4c1c105fc8e512ac7e426fce815789430370163db6bfb9f0",
+      "postimage_sha256": "c78a82d4e1ee0b063db3f8911e472c32b7b2d3266282e8855af2a299e6c51db1"
+    },
+    {
+      "path": "tests/test_scan_repo_inventory.py",
+      "mode": "100644",
+      "preimage_sha256": "ffceb976caaa7601ad84fd690bdb8cff64f977750c9c0e69337ca1573f3884f3",
+      "postimage_sha256": "e280332b5fa9bdcf6d3485df48f72bba89be07ec64712752df2a66b06e842968"
+    },
+    {
+      "path": "tests/test_translation_memory_assets.py",
+      "mode": "100644",
+      "preimage_sha256": "192de3fe89bb66177533ac73bdc795f29aaeb2882388a6b81215e2632302d384",
+      "postimage_sha256": "21a56c7a96462bdbf6f4008f577dfb32d2c64bab30925795e08c14e54eea9d9a"
+    },
+    {
+      "path": "tests/test_workbench_export_service.py",
+      "mode": "100644",
+      "preimage_sha256": "f01aacda9e5de948592c6347a029f913d53dc9da6adeaab587652333c8b5310a",
+      "postimage_sha256": "e7f78d54f51c021dc028702b2a79c038088da34657f8c68e9aaaff1be5bbcc55"
+    },
+    {
+      "path": "tests/test_workbench_server_api.py",
+      "mode": "100644",
+      "preimage_sha256": "5b8cf039d5dba1a9fe2ece2cf5fc11ddef336fe0549c1efd8d62b39eddab4257",
+      "postimage_sha256": "716ab59f2bea0b2c8d4ab89c7f8056b3e128f8d299e4ca116744aa38ae3694d1"
+    },
+    {
+      "path": "tests/ui/issues.spec.ts",
+      "mode": "100644",
+      "preimage_sha256": "a8c024e69c1ee96bf5c96dad24bf47ba182a93d3190799a62dda9d9dbdb219e3",
+      "postimage_sha256": "7494a15f56c85540b9ed3f0144bb3ddafb8de3440c56d6c51f187d9bb8c2ee5c"
+    },
+    {
+      "path": "tests/ui/review-approval-binding.spec.ts",
+      "mode": "100644",
+      "preimage_sha256": null,
+      "postimage_sha256": "48dd0c3532595a0a81d24f8b2c92c7708dd613e8502fa32363c6806232c20b67"
+    },
+    {
+      "path": "tests/ui/workbench.spec.ts",
+      "mode": "100644",
+      "preimage_sha256": "6547bc1b6361f1960b3bdf1b4e7c828eb5bb7506a0212b0b587e9e62990a9559",
+      "postimage_sha256": "656ecb88f77e0b8eac2958872cfbb886448ecd36b851ecf9d100650ab973f0f7"
+    }
+  ],
+  "before": {
+    "head": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a",
+    "index_sha256": "9e0f754ab2d647798132015d6e5d4b5baed5ed0dc9e22fc2de7a257efad29f39",
+    "status": [
+      " M .agent_runtime/blockers.jsonl",
+      " M .agent_runtime/status.json",
+      " M docs/prompts/CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md",
+      " M docs/prompts/FULL_BOOK_CHAPTER_REVIEW_GOAL_PROMPT.md",
+      " M scripts/audit_draft_structure.py",
+      " M scripts/audit_glossary_conflicts.py",
+      " M scripts/build_entity_index.py",
+      " M scripts/build_segment_index.py",
+      " M scripts/build_term_usage_index.py",
+      " M scripts/build_term_variant_report.py",
+      " M scripts/finalize_consistency_run.py",
+      " M scripts/fix_terminology_consistency.py",
+      " M scripts/phase_b_completion_check.py",
+      " M scripts/run_quality_review.py",
+      " M scripts/run_round_50_e2e_trial.py",
+      " M scripts/supplement_fullbook_regen_rules.py",
+      " M src/consistency/draft_consistency_report.py",
+      " M tests/test_round_50_e2e_trial.py",
+      " M workspace/review/README.md",
+      "?? .agent_runtime/locks/",
+      "?? scripts/chapter_review_storage_root.sh",
+      "?? scripts/review_workspace_storage.py",
+      "?? src/consistency/index_workspace_storage.py",
+      "?? tests/test_index_workspace_storage.py"
+    ],
+    "expanded_status": [
+      " M .agent_runtime/blockers.jsonl",
+      " M .agent_runtime/status.json",
+      " M docs/prompts/CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md",
+      " M docs/prompts/FULL_BOOK_CHAPTER_REVIEW_GOAL_PROMPT.md",
+      " M scripts/audit_draft_structure.py",
+      " M scripts/audit_glossary_conflicts.py",
+      " M scripts/build_entity_index.py",
+      " M scripts/build_segment_index.py",
+      " M scripts/build_term_usage_index.py",
+      " M scripts/build_term_variant_report.py",
+      " M scripts/finalize_consistency_run.py",
+      " M scripts/fix_terminology_consistency.py",
+      " M scripts/phase_b_completion_check.py",
+      " M scripts/run_quality_review.py",
+      " M scripts/run_round_50_e2e_trial.py",
+      " M scripts/supplement_fullbook_regen_rules.py",
+      " M src/consistency/draft_consistency_report.py",
+      " M tests/test_round_50_e2e_trial.py",
+      " M workspace/review/README.md",
+      "?? .agent_runtime/locks/git_safe_cohort_finalizer.lock",
+      "?? scripts/chapter_review_storage_root.sh",
+      "?? scripts/review_workspace_storage.py",
+      "?? src/consistency/index_workspace_storage.py",
+      "?? tests/test_index_workspace_storage.py"
+    ],
+    "dirty_hashes": {
+      ".agent_runtime/blockers.jsonl": "327e23665a2c7511857893617ab090bbecefc436f6333324b8f2a0b73438da9a",
+      ".agent_runtime/status.json": "0ddc997ae0bd68ab18c1d34dde1803c9377e9453703888b52e14bb7de8460b35",
+      "docs/prompts/CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md": "388bfe63c44843aaf14a508a8232b9925c3f7ce97e6489b49eea497f32b736a7",
+      "docs/prompts/FULL_BOOK_CHAPTER_REVIEW_GOAL_PROMPT.md": "fd6ca580296184d382e18bca42842f7769cdd1798da17f4631c6e3f4ad518364",
+      "scripts/audit_draft_structure.py": "548bc484dc91500740146f34fcc77ff0cf6a5865603e1004e2f3d1dc0ac0b7e3",
+      "scripts/audit_glossary_conflicts.py": "9547e8a83335dcb3c8402d1da04e415a0f5283aa7a53f7c451f0efb54ae57665",
+      "scripts/build_entity_index.py": "6ff69b573b51883b30596f88ed535aaff5776f63c24870062a19a8543b41a0df",
+      "scripts/build_segment_index.py": "28c2b5be98cbc1759ab38322d9c5e07586924c408637c5facd87a53fc45b72d1",
+      "scripts/build_term_usage_index.py": "b2be81aa80a69b3b369e2939681df74624bca3e2dbf1f36e005015f9516834d2",
+      "scripts/build_term_variant_report.py": "0d500bd2a3db8ef124ebf1573ede7041e44a349f68678c0a5f294a0abb362d32",
+      "scripts/finalize_consistency_run.py": "cc679091b0c1ac8dd242e7bb219082900935534ed24229e17393a438a4cc7270",
+      "scripts/fix_terminology_consistency.py": "4d8b86280f727936769d6ae560c08978c9f0298b313ef42b60aba0257be38982",
+      "scripts/phase_b_completion_check.py": "73c801fe097b8dba8fca520a49874e08ec1fa9ed26b33ebbc4b4ad53c1be3998",
+      "scripts/run_quality_review.py": "239676ecf93bbf1161c8d34187ec319570d035993c07df3e26363e00bd220d6a",
+      "scripts/run_round_50_e2e_trial.py": "fa94fa2f74a8bb79bf653c1c2eceb5d655c17c8de44612a0f4feb6987871ed1c",
+      "scripts/supplement_fullbook_regen_rules.py": "2fff1c82f4ecdb81a2f9741dabca5aabbcdb556c7bd588e7ff56f47c9317941e",
+      "src/consistency/draft_consistency_report.py": "d409140f60bdc69d49f4d38707ecd2e9d93d133b26630626e10afc1e019994d7",
+      "tests/test_round_50_e2e_trial.py": "4bdc62980f248a2ed70cfc8e68c7d2cedfd2298562417144ebe4d379b684baa0",
+      "workspace/review/README.md": "ddf745ddeba0e383f91fa4b3f695899200be5fd46ed93138563156ef497c9e16"
+    },
+    "untracked_hashes": {
+      ".agent_runtime/locks/git_safe_cohort_finalizer.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "scripts/chapter_review_storage_root.sh": "210183033cfdbf46c2fdd6cf5dee279f665510b1ec9fe23b722dbdd7a388820d",
+      "scripts/review_workspace_storage.py": "58e0db2b613d11ab7f344b7682d6a7f5f881056e1dcf64ee760b9126d591b071",
+      "src/consistency/index_workspace_storage.py": "1cad2ac7e4c1d9a679d036c704c12eee3c5a343c1b3e459cfd087c92cadcee99",
+      "tests/test_index_workspace_storage.py": "d5220c3be95ecd1ce5c70f306404401da4b124b23ea0593a8f8b8974c9bdb0c3"
+    },
+    "untracked_paths": [
+      ".agent_runtime/locks/git_safe_cohort_finalizer.lock",
+      "scripts/chapter_review_storage_root.sh",
+      "scripts/review_workspace_storage.py",
+      "src/consistency/index_workspace_storage.py",
+      "tests/test_index_workspace_storage.py"
+    ]
+  },
+  "entry_gate": {
+    "reused": "approval-binding/entry-gate.json and checks.json; accepted application bytes and CI unchanged",
+    "preimage_check": "PASS",
+    "git_apply_check_exit": 0
+  },
+  "state_delta": [
+    {
+      "path": [
+        "codex_governance",
+        "original_checkout"
+      ],
+      "preimage": "read_only; original dirty work and all real payload preserved",
+      "postimage": {
+        "unit_id": "LIGHT-NOVEL-ORIGINAL-INTEGRATION-v1",
+        "status": "installed_pending_review",
+        "source_commit": "29394a82de740c89ef9f4a633305569c246f42a6",
+        "head_preserved": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a",
+        "receipt_url": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/blob/main/docs/reports/all-projects-governance/approval-binding/integration.json",
+        "receipt_delivery": "pending"
+      }
+    },
+    {
+      "path": [
+        "codex_governance",
+        "limitations"
+      ],
+      "preimage": [
+        "Original checkout remains read-only; candidate is not installed in its dirty worktree.",
+        "Current real translation/corpus/scheduler probes are unverified in this unit; preserved June history is not current product acceptance.",
+        "Existing developer-only npm dependency audit:7 advisories(4high2moderate1low); package/lock unchanged; no MCP/Stitch service invoked.",
+        "Run-level TM remains an independent unchanged authority."
+      ],
+      "postimage": [
+        "Current real translation/corpus/scheduler probes are unverified in this unit; preserved June history is not current product acceptance.",
+        "Existing developer-only npm dependency audit:7 advisories(4high2moderate1low); package/lock unchanged; no MCP/Stitch service invoked.",
+        "Run-level TM remains an independent unchanged authority.",
+        "Original application files are installed; existing unrelated dirty work and original HEAD/index are preserved. Live Hub refresh remains pending."
+      ]
+    },
+    {
+      "path": [
+        "codex_governance",
+        "current_work",
+        "next_action"
+      ],
+      "preimage": "Integrate the accepted files into the original checkout under a separate owned unit, preserving existing dirty work; then refresh the live Hub source. This isolated unit is delivered; overall project governance remains in progress.",
+      "postimage": "Finish independent installation acceptance and deliver its receipt, then integrate the Hub entry and refresh this project. Original real translation and scheduler work remain unchanged."
+    }
+  ],
+  "checks": {
+    "installation": {
+      "status": "PASS",
+      "paths": 54,
+      "dirty_hashes": 19,
+      "untracked_file_hashes": 5,
+      "head_and_index_preserved": true,
+      "original_status_entries_preserved": 24,
+      "strict_yaml": "PASS"
+    },
+    "synthetic_tests": {
+      "command": "isolated .venv/bin/python -m pytest -p no:cacheprovider -q --basetemp <task temp>/pytest tests/test_review_state.py tests/test_manifest_write_lock.py tests/test_multi_project_manifest.py tests/test_translation_memory_assets.py tests/test_workbench_export_service.py tests/test_workbench_server_api.py",
+      "cwd": "/Volumes/AI_WORK_SSD/Projects/light-novel",
+      "exit": 0,
+      "summary": "57 passed in 14.77s",
+      "environment": "allowlisted PATH/HOME/TMPDIR/LANG only; credential environment absent; bytecode/cache/auto plugins disabled; API flags false",
+      "temporary_root": "outside original, removed on completion"
+    },
+    "hub_source": {
+      "success": true,
+      "shared_code_commit": "1b5dd803ab156f30a33299347b5afcf06b0b8066",
+      "state_sha256": "4c8ca45352e902a915b35e726136ffb427358d078746f9eb49051cd453e1c798",
+      "declaration_sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913",
+      "unknown_fields": {
+        "progress.completed": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+        "progress.total": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+        "progress.milestones": "当前未发布逐项验收里程碑。"
+      },
+      "cases": {
+        "initial_exact_candidate": "PASS",
+        "unchanged_repeat_same_update_key": "PASS",
+        "one_source_field_change_only_corresponding_business_field_changes": "PASS",
+        "corrupt_source_returns_failure_with_actual_hash": "PASS"
+      },
+      "traced_fields": 18,
+      "method": "Exact installed source and declaration bytes copied to disposable fixture root outside protected .codex; no live Hub writes."
+    },
+    "post_test_preservation": "PASS:54 manifest paths,19dirty5untracked hashes,24status,HEAD/index; inverse state metadata reproduces29394 semantics"
+  },
+  "decision": {
+    "status": "accepted_delivered",
+    "judge": {
+      "identity": "/root/light_novel_installation_judge",
+      "verdict": "PASS",
+      "candidate": "bad40d8b91cea60483514eff7a9eaa48365d6063e1327283ed18e597d47e2a83",
+      "findings": [
+        "Canonical candidate identity independently reproduced with exact registration keys and three state metadata exclusions; no self hash.",
+        "Remote main29394a82 and successful CI34204686600 verified.",
+        "54-file full patch hashabe7547d13bc3a51fd5f6f02963712d9584d79e46294efa341c81572fa97f131 reproduced; isolated apply-check passed.",
+        "All54 installed hashes and modes match source except registered STATE delta; zero prior dirty overlap.",
+        "Inverse STATE delta reproduces29394 YAML semantics; no aliases/anchors, historical final_ready/paused/no next round preserved.",
+        "HEAD77e4/index24priorstatus19dirty5untracked hashes preserved; normal-environment after expanded78status exact.",
+        "Original has no55th integration.json; isolated candidate exactly STATE and integration.json.",
+        "Independent Hub4casesPASS with18traced3unknown.",
+        "Independent sanitized six-module pytest57passed14.77sec; post-test preservationPASS.",
+        "No repository/evidence/Git/Hub/Cursor/corpus/scheduler/queue/external-system writes; accepted application107a reused."
+      ]
+    },
+    "governor": {
+      "identity": "/root/hub_connection_governor",
+      "verdict": "APPROVE",
+      "candidate": "bad40d8b91cea60483514eff7a9eaa48365d6063e1327283ed18e597d47e2a83",
+      "basis": "Fresh independent Judge reproduced identity,54path/mode/patch and inverseSTATE, HEAD/index24status19dirty5untracked preservation, source main/CI, Hub4cases18traced3unknown,57sanitizedtests and posttestpreservation.",
+      "authorized_action": "Only registered decision/delivery metadata and three exact STATE fields may transition; normal isolated STATE+integration receipt main delivery and remote/CI checks. No original Git effect or55thfile. No nextHub activation."
+    },
+    "contract_clarification": {
+      "governor": "/root/hub_connection_governor",
+      "disposition": "REQUEST_REPAIR meaning complete freeze and fresh review, no candidate rejection",
+      "scope": "No contract revision. Original54paths only; newreceipt isolatedonly, remote URL paired pending; history exact; originalandisolatedSTATE byte-identical. Isolated normal main delivery authorized after independent acceptance; only exact3decision/delivery fields may transition without semantic rereview."
+    },
+    "post_approval_state": {
+      "sha256": "89776d11ee93b308db9fb3f7e20321b5090f318cab23e2cf1cdf0fe980eea49a",
+      "status": "installed_accepted",
+      "receipt_delivery": "pending",
+      "original_and_isolated_identical": true
+    },
+    "post_delivery_state": {
+      "sha256": "13eb1da30bfd0c73b3d5d9cee7fc7b1d89311822a7f4adccdefb8402c34a4c3f",
+      "status": "installed_accepted",
+      "receipt_delivery": "delivered",
+      "original_and_isolated_identical": true
+    }
+  },
+  "delivery": {
+    "status": "delivered",
+    "remote": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline",
+    "branch": "main",
+    "candidate_commit": "9f68a1d2d3366ac6f7b509c23cd1d299dc873bff",
+    "observed_main": "9f68a1d2d3366ac6f7b509c23cd1d299dc873bff",
+    "remote_contains_candidate": true,
+    "ci": {
+      "run_id": 34206068174,
+      "conclusion": "success",
+      "headSha": "9f68a1d2d3366ac6f7b509c23cd1d299dc873bff",
+      "status": "completed",
+      "url": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34206068174"
+    },
+    "receipt_path_verified": "docs/reports/all-projects-governance/approval-binding/integration.json exists in remote-confirmed candidate tree",
+    "metadata_commit": "Recorded by native output and later Hub management receipt; no self-referential hash.",
+    "source_validation": {
+      "success": true,
+      "state_sha256": "13eb1da30bfd0c73b3d5d9cee7fc7b1d89311822a7f4adccdefb8402c34a4c3f",
+      "declaration_sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913",
+      "unknown_fields": {
+        "progress.completed": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+        "progress.total": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+        "progress.milestones": "当前未发布逐项验收里程碑。"
+      },
+      "cases": {
+        "initial_exact_candidate": "PASS",
+        "unchanged_repeat_same_update_key": "PASS",
+        "one_source_field_change_only_corresponding_business_field_changes": "PASS",
+        "corrupt_source_returns_failure_with_actual_hash": "PASS"
+      },
+      "traced_fields": 18
+    }
+  },
+  "after": {
+    "head": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a",
+    "index_sha256": "9e0f754ab2d647798132015d6e5d4b5baed5ed0dc9e22fc2de7a257efad29f39",
+    "status": [
+      " M .agent_runtime/blockers.jsonl",
+      " M .agent_runtime/status.json",
+      " M .github/workflows/ci.yml",
+      " M AGENTS.md",
+      " M agent_layer.yaml",
+      " M data/examples/review_segments.fixture.json",
+      " M data/examples/workbench_project.demo-jp-cn.example.json",
+      " M docs/AGENT_RUNBOOK.md",
+      " M docs/TOOL_USAGE_POLICY.md",
+      " M docs/prompts/CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md",
+      " M docs/prompts/FULL_BOOK_CHAPTER_REVIEW_GOAL_PROMPT.md",
+      " M docs/quality_review_workflow.md",
+      " M frontend/assets/app.js",
+      " M frontend/assets/styles.css",
+      " M governance/file_role_map.yaml",
+      " M governance/round_state.yaml",
+      " M playwright.config.ts",
+      " M project.yaml",
+      " M reports/gate_result.json",
+      " M scripts/audit_draft_structure.py",
+      " M scripts/audit_glossary_conflicts.py",
+      " M scripts/build_entity_index.py",
+      " M scripts/build_segment_index.py",
+      " M scripts/build_term_usage_index.py",
+      " M scripts/build_term_variant_report.py",
+      " M scripts/finalize_consistency_run.py",
+      " M scripts/fix_terminology_consistency.py",
+      " M scripts/phase_b_completion_check.py",
+      " M scripts/run_python_tests.sh",
+      " M scripts/run_quality_review.py",
+      " M scripts/run_round_50_e2e_trial.py",
+      " M scripts/run_tooling_checks.sh",
+      " M scripts/supplement_fullbook_regen_rules.py",
+      " M src/assets/translation_memory.py",
+      " M src/consistency/draft_consistency_report.py",
+      " M src/workbench/export_service.py",
+      " M src/workbench/project_registry.py",
+      " M src/workbench/review_state.py",
+      " M src/workbench/server.py",
+      " M tests/test_al_tooling_helpers.py",
+      " M tests/test_manifest_write_lock.py",
+      " M tests/test_multi_project_manifest.py",
+      " M tests/test_review_state.py",
+      " M tests/test_round_50_e2e_trial.py",
+      " M tests/test_scan_repo_inventory.py",
+      " M tests/test_translation_memory_assets.py",
+      " M tests/test_workbench_export_service.py",
+      " M tests/test_workbench_server_api.py",
+      " M tests/ui/issues.spec.ts",
+      " M tests/ui/workbench.spec.ts",
+      " M workspace/review/README.md",
+      "?? .agent_runtime/locks/",
+      "?? docs/reports/all-projects-governance/",
+      "?? hub.connection.yaml",
+      "?? scripts/chapter_review_storage_root.sh",
+      "?? scripts/review_workspace_storage.py",
+      "?? scripts/serve_ui_fixture.py",
+      "?? src/consistency/index_workspace_storage.py",
+      "?? tests/test_codex_governance_entry.py",
+      "?? tests/test_index_workspace_storage.py",
+      "?? tests/ui/review-approval-binding.spec.ts"
+    ],
+    "expanded_status": [
+      " M .agent_runtime/blockers.jsonl",
+      " M .agent_runtime/status.json",
+      " M .github/workflows/ci.yml",
+      " M AGENTS.md",
+      " M agent_layer.yaml",
+      " M data/examples/review_segments.fixture.json",
+      " M data/examples/workbench_project.demo-jp-cn.example.json",
+      " M docs/AGENT_RUNBOOK.md",
+      " M docs/TOOL_USAGE_POLICY.md",
+      " M docs/prompts/CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md",
+      " M docs/prompts/FULL_BOOK_CHAPTER_REVIEW_GOAL_PROMPT.md",
+      " M docs/quality_review_workflow.md",
+      " M frontend/assets/app.js",
+      " M frontend/assets/styles.css",
+      " M governance/file_role_map.yaml",
+      " M governance/round_state.yaml",
+      " M playwright.config.ts",
+      " M project.yaml",
+      " M reports/gate_result.json",
+      " M scripts/audit_draft_structure.py",
+      " M scripts/audit_glossary_conflicts.py",
+      " M scripts/build_entity_index.py",
+      " M scripts/build_segment_index.py",
+      " M scripts/build_term_usage_index.py",
+      " M scripts/build_term_variant_report.py",
+      " M scripts/finalize_consistency_run.py",
+      " M scripts/fix_terminology_consistency.py",
+      " M scripts/phase_b_completion_check.py",
+      " M scripts/run_python_tests.sh",
+      " M scripts/run_quality_review.py",
+      " M scripts/run_round_50_e2e_trial.py",
+      " M scripts/run_tooling_checks.sh",
+      " M scripts/supplement_fullbook_regen_rules.py",
+      " M src/assets/translation_memory.py",
+      " M src/consistency/draft_consistency_report.py",
+      " M src/workbench/export_service.py",
+      " M src/workbench/project_registry.py",
+      " M src/workbench/review_state.py",
+      " M src/workbench/server.py",
+      " M tests/test_al_tooling_helpers.py",
+      " M tests/test_manifest_write_lock.py",
+      " M tests/test_multi_project_manifest.py",
+      " M tests/test_review_state.py",
+      " M tests/test_round_50_e2e_trial.py",
+      " M tests/test_scan_repo_inventory.py",
+      " M tests/test_translation_memory_assets.py",
+      " M tests/test_workbench_export_service.py",
+      " M tests/test_workbench_server_api.py",
+      " M tests/ui/issues.spec.ts",
+      " M tests/ui/workbench.spec.ts",
+      " M workspace/review/README.md",
+      "?? .agent_runtime/locks/git_safe_cohort_finalizer.lock",
+      "?? docs/reports/all-projects-governance/approval-binding/backend-before.json",
+      "?? docs/reports/all-projects-governance/approval-binding/baseline.json",
+      "?? docs/reports/all-projects-governance/approval-binding/browser-after-desktop-fresh-approved.png",
+      "?? docs/reports/all-projects-governance/approval-binding/browser-after-desktop-stale-reapproval.png",
+      "?? docs/reports/all-projects-governance/approval-binding/browser-after-mobile-fresh-approved.png",
+      "?? docs/reports/all-projects-governance/approval-binding/browser-after-mobile-stale-reapproval.png",
+      "?? docs/reports/all-projects-governance/approval-binding/browser-after.json",
+      "?? docs/reports/all-projects-governance/approval-binding/browser-before.json",
+      "?? docs/reports/all-projects-governance/approval-binding/browser-before.png",
+      "?? docs/reports/all-projects-governance/approval-binding/candidate.json",
+      "?? docs/reports/all-projects-governance/approval-binding/checks.json",
+      "?? docs/reports/all-projects-governance/approval-binding/contract.md",
+      "?? docs/reports/all-projects-governance/approval-binding/delivery.json",
+      "?? docs/reports/all-projects-governance/approval-binding/entry-gate.json",
+      "?? docs/reports/all-projects-governance/approval-binding/governor.json",
+      "?? docs/reports/all-projects-governance/approval-binding/hub-source.json",
+      "?? docs/reports/all-projects-governance/approval-binding/judge.json",
+      "?? docs/reports/all-projects-governance/approval-binding/preservation.json",
+      "?? hub.connection.yaml",
+      "?? scripts/chapter_review_storage_root.sh",
+      "?? scripts/review_workspace_storage.py",
+      "?? scripts/serve_ui_fixture.py",
+      "?? src/consistency/index_workspace_storage.py",
+      "?? tests/test_codex_governance_entry.py",
+      "?? tests/test_index_workspace_storage.py",
+      "?? tests/ui/review-approval-binding.spec.ts"
+    ],
+    "dirty_hashes": {
+      ".agent_runtime/blockers.jsonl": "327e23665a2c7511857893617ab090bbecefc436f6333324b8f2a0b73438da9a",
+      ".agent_runtime/status.json": "0ddc997ae0bd68ab18c1d34dde1803c9377e9453703888b52e14bb7de8460b35",
+      "docs/prompts/CHAPTER_088_ONWARD_REVIEW_GOAL_PROMPT.md": "388bfe63c44843aaf14a508a8232b9925c3f7ce97e6489b49eea497f32b736a7",
+      "docs/prompts/FULL_BOOK_CHAPTER_REVIEW_GOAL_PROMPT.md": "fd6ca580296184d382e18bca42842f7769cdd1798da17f4631c6e3f4ad518364",
+      "scripts/audit_draft_structure.py": "548bc484dc91500740146f34fcc77ff0cf6a5865603e1004e2f3d1dc0ac0b7e3",
+      "scripts/audit_glossary_conflicts.py": "9547e8a83335dcb3c8402d1da04e415a0f5283aa7a53f7c451f0efb54ae57665",
+      "scripts/build_entity_index.py": "6ff69b573b51883b30596f88ed535aaff5776f63c24870062a19a8543b41a0df",
+      "scripts/build_segment_index.py": "28c2b5be98cbc1759ab38322d9c5e07586924c408637c5facd87a53fc45b72d1",
+      "scripts/build_term_usage_index.py": "b2be81aa80a69b3b369e2939681df74624bca3e2dbf1f36e005015f9516834d2",
+      "scripts/build_term_variant_report.py": "0d500bd2a3db8ef124ebf1573ede7041e44a349f68678c0a5f294a0abb362d32",
+      "scripts/finalize_consistency_run.py": "cc679091b0c1ac8dd242e7bb219082900935534ed24229e17393a438a4cc7270",
+      "scripts/fix_terminology_consistency.py": "4d8b86280f727936769d6ae560c08978c9f0298b313ef42b60aba0257be38982",
+      "scripts/phase_b_completion_check.py": "73c801fe097b8dba8fca520a49874e08ec1fa9ed26b33ebbc4b4ad53c1be3998",
+      "scripts/run_quality_review.py": "239676ecf93bbf1161c8d34187ec319570d035993c07df3e26363e00bd220d6a",
+      "scripts/run_round_50_e2e_trial.py": "fa94fa2f74a8bb79bf653c1c2eceb5d655c17c8de44612a0f4feb6987871ed1c",
+      "scripts/supplement_fullbook_regen_rules.py": "2fff1c82f4ecdb81a2f9741dabca5aabbcdb556c7bd588e7ff56f47c9317941e",
+      "src/consistency/draft_consistency_report.py": "d409140f60bdc69d49f4d38707ecd2e9d93d133b26630626e10afc1e019994d7",
+      "tests/test_round_50_e2e_trial.py": "4bdc62980f248a2ed70cfc8e68c7d2cedfd2298562417144ebe4d379b684baa0",
+      "workspace/review/README.md": "ddf745ddeba0e383f91fa4b3f695899200be5fd46ed93138563156ef497c9e16"
+    },
+    "untracked_hashes": {
+      ".agent_runtime/locks/git_safe_cohort_finalizer.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "scripts/chapter_review_storage_root.sh": "210183033cfdbf46c2fdd6cf5dee279f665510b1ec9fe23b722dbdd7a388820d",
+      "scripts/review_workspace_storage.py": "58e0db2b613d11ab7f344b7682d6a7f5f881056e1dcf64ee760b9126d591b071",
+      "src/consistency/index_workspace_storage.py": "1cad2ac7e4c1d9a679d036c704c12eee3c5a343c1b3e459cfd087c92cadcee99",
+      "tests/test_index_workspace_storage.py": "d5220c3be95ecd1ce5c70f306404401da4b124b23ea0593a8f8b8974c9bdb0c3"
+    },
+    "untracked_paths": [
+      ".agent_runtime/locks/git_safe_cohort_finalizer.lock",
+      "scripts/chapter_review_storage_root.sh",
+      "scripts/review_workspace_storage.py",
+      "src/consistency/index_workspace_storage.py",
+      "tests/test_index_workspace_storage.py"
+    ]
+  },
+  "installed_state_sha256": "4c8ca45352e902a915b35e726136ffb427358d078746f9eb49051cd453e1c798",
+  "delivered_state_sha256": "4f55e0868376d8eda44d66970ea442d5eb94bf2c7aea882d54fc3e72611c50e3",
+  "original_manifest_only": true,
+  "candidate": {
+    "semantic_sha256": "bad40d8b91cea60483514eff7a9eaa48365d6063e1327283ed18e597d47e2a83",
+    "algorithm": "SHA256 canonical JSON registration keys plus parsed state excluding exactly registered three decision/delivery fields; candidate/decision/delivery envelopes are outside identity. No self hash.",
+    "registration_keys": [
+      "contract",
+      "prior_application_candidate",
+      "source_ci",
+      "remote_main_before",
+      "patch_sha256",
+      "manifest",
+      "before",
+      "entry_gate",
+      "state_delta",
+      "checks",
+      "after",
+      "installed_state_sha256",
+      "delivered_state_sha256",
+      "original_manifest_only"
+    ],
+    "state_metadata_exclusions": [
+      [
+        "codex_governance",
+        "original_checkout",
+        "status"
+      ],
+      [
+        "codex_governance",
+        "original_checkout",
+        "receipt_delivery"
+      ],
+      [
+        "codex_governance",
+        "current_work",
+        "next_action"
+      ]
+    ],
+    "state_semantic_sha256": "62d4f14f8326fb9421b8dc48d5cd9725ed6f25df96d1390403da44d391c7ceb4",
+    "review_time_state_sha256": "4c8ca45352e902a915b35e726136ffb427358d078746f9eb49051cd453e1c798",
+    "base_commit": "29394a82de740c89ef9f4a633305569c246f42a6",
+    "candidate_files": [
+      "governance/round_state.yaml",
+      "docs/reports/all-projects-governance/approval-binding/integration.json"
+    ],
+    "preserved_application": "107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67"
+  }
+}
