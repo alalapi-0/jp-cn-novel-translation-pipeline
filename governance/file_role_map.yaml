@@ -127,3 +127,9 @@ generated_future:
   - path: governance/repo_inventory.generated.json
     role: generated_inventory
     status: not_yet_created
+
+project_connection:
+  - path: hub.connection.yaml
+    role: stable_hub_2_0_source_mapping
+    current_state: governance/round_state.yaml
+    dynamic_business_values: forbidden_in_declaration

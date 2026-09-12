@@ -5,213 +5,178 @@ status: completed
 type: governance
 real_api_called: false
 completed_tasks:
-- Verified scheduler truth: phase=final_ready, paused=true, next_round_id=null,
-  next_chapter_range=null, active=0, orphan=0
+- 'Verified scheduler truth: phase=final_ready, paused=true, next_round_id=null, next_chapter_range=null,
+  active=0, orphan=0'
 - Removed refinement/R-MR/production_candidate from the active production route
 - Added docs/translation_production_protocol.md for API mode and Agent quota mode
 - Consolidated final translation handoff to a singleton file under output_cn/translated/full_volume_cn.md
-- Removed old generated final/export copies and old local round logs while preserving runs,
-  checkpoints, source, baseline, and final patch logs
+- Removed old generated final/export copies and old local round logs while preserving runs, checkpoints,
+  source, baseline, and final patch logs
 - Added docs/translation_consistency_protocol.md for future works and future agents
 - Made legacy production/autopilot launchers fail closed unless explicitly unlocked
 - 'Accepted user correction: old glossary/rules are hints, not correctness premise'
-- Generated content-first ch081-090 actual audit from current source_text and latest
-  CN text
+- Generated content-first ch081-090 actual audit from current source_text and latest CN text
 - 'Encoded user decisions: ウェルス=维尔斯; スナイパーアント=狙击蚁'
-- 'Applied source-conditioned and segment-guarded fixes: 218 initial safe + 459 user
-  decision + 1 sniper disambiguation + 4 actual residual segments'
-- Applied user policy for player/forum handles as readable romanized forms; 1223 segments
-  changed and post dry-run converged
+- 'Applied source-conditioned and segment-guarded fixes: 218 initial safe + 459 user decision + 1 sniper
+  disambiguation + 4 actual residual segments'
+- Applied user policy for player/forum handles as readable romanized forms; 1223 segments changed and
+  post dry-run converged
 - Generated content-first ch091-100 actual audit from latest fixed translation
-- Supplemented ch091-100 rules and applied 223 + 4 high-confidence source-conditioned
-  fixes
+- Supplemented ch091-100 rules and applied 223 + 4 high-confidence source-conditioned fixes
 - Protected contextual アーティファクト surface 秘遗物 from automatic conversion
-- 'Fixed checker evidence issues: kana middle-dot false positive and out-of-range/empty
-  UNKNOWN_ENTITY samples'
-- 'Fixed checker noise/staleness issues: kana boundary matching, bracket-label phrase
-  filtering, stale glossary cache filtering'
+- 'Fixed checker evidence issues: kana middle-dot false positive and out-of-range/empty UNKNOWN_ENTITY
+  samples'
+- 'Fixed checker noise/staleness issues: kana boundary matching, bracket-label phrase filtering, stale
+  glossary cache filtering'
 - Refreshed CA-081-090 and CA-091-100 from latest fixed translation
-- Generated content-first ch101-110 actual audit and applied 439 high-confidence source-conditioned
-  fixes
+- Generated content-first ch101-110 actual audit and applied 439 high-confidence source-conditioned fixes
 - Refreshed CA-101-110 from latest fixed translation
-- Generated content-first ch111-120 actual audit and applied 337 high-confidence source-conditioned
-  fixes
+- Generated content-first ch111-120 actual audit and applied 337 high-confidence source-conditioned fixes
 - Refreshed CA-111-120 from latest fixed translation
-- Generated content-first ch121-130 actual audit and applied 181 + 8 high-confidence
-  source-conditioned fixes
+- Generated content-first ch121-130 actual audit and applied 181 + 8 high-confidence source-conditioned
+  fixes
 - Refreshed CA-121-130 from latest fixed translation
-- Generated content-first ch131-140 actual audit and applied 702 high-confidence source-conditioned
-  fixes
+- Generated content-first ch131-140 actual audit and applied 702 high-confidence source-conditioned fixes
 - Refreshed CA-131-140 from latest fixed translation
-- Generated content-first ch141-150 actual audit and applied 217 high-confidence source-conditioned
-  fixes
+- Generated content-first ch141-150 actual audit and applied 217 high-confidence source-conditioned fixes
 - Refreshed CA-141-150 from latest fixed translation
-- Generated content-first ch151-160 actual audit and applied 61 + 5 + 6 high-confidence
-  source-conditioned fixes
+- Generated content-first ch151-160 actual audit and applied 61 + 5 + 6 high-confidence source-conditioned
+  fixes
 - Refreshed CA-151-160 from latest fixed translation
-- Generated content-first ch161-170 actual audit and applied 116 + 1 high-confidence
-  source-conditioned fixes
+- Generated content-first ch161-170 actual audit and applied 116 + 1 high-confidence source-conditioned
+  fixes
 - Refreshed CA-161-170 from latest fixed translation
-- Generated content-first ch171-180 actual audit and applied 496 + 3 high-confidence
-  source-conditioned fixes
+- Generated content-first ch171-180 actual audit and applied 496 + 3 high-confidence source-conditioned
+  fixes
 - Refreshed CA-171-180 from latest fixed translation
-- Generated content-first ch181-190 actual audit and applied 254 + 40 high-confidence
-  source-conditioned fixes
+- Generated content-first ch181-190 actual audit and applied 254 + 40 high-confidence source-conditioned
+  fixes
 - Refreshed CA-181-190 from latest fixed translation
-- Generated content-first ch191-200 actual audit and applied 33 high-confidence source-conditioned
-  fixes
+- Generated content-first ch191-200 actual audit and applied 33 high-confidence source-conditioned fixes
 - Refreshed CA-191-200 from latest fixed translation
-- Updated docs/consistency_audit_progress_log.md and docs/consistency_audit_round_index.md
-  for CA-081-200
-- Generated content-first ch201-210 actual audit and applied 1089 + 55 high-confidence
-  source-conditioned fixes
-- Added placeholder residual detection to actual content audit and backfilled ch191-210
-  placeholder fixes
+- Updated docs/consistency_audit_progress_log.md and docs/consistency_audit_round_index.md for CA-081-200
+- Generated content-first ch201-210 actual audit and applied 1089 + 55 high-confidence source-conditioned
+  fixes
+- Added placeholder residual detection to actual content audit and backfilled ch191-210 placeholder fixes
 - Refreshed CA-201-210 from latest fixed translation
-- Generated content-first ch211-220 actual audit and applied 82 high-confidence source-conditioned
-  fixes
+- Generated content-first ch211-220 actual audit and applied 82 high-confidence source-conditioned fixes
 - Refreshed CA-211-220 from latest fixed translation
-- Generated content-first ch221-230 actual audit and applied 90 + 23 high-confidence
-  source-conditioned fixes
+- Generated content-first ch221-230 actual audit and applied 90 + 23 high-confidence source-conditioned
+  fixes
 - Refreshed CA-221-230 from latest fixed translation
-- Generated content-first ch231-240 actual audit and applied 845 + 1 high-confidence
-  source-conditioned fixes
+- Generated content-first ch231-240 actual audit and applied 845 + 1 high-confidence source-conditioned
+  fixes
 - Refreshed CA-231-240 from latest fixed translation
-- Generated content-first ch241-250 actual audit and applied 727 + 13 high-confidence
-  source-conditioned fixes
+- Generated content-first ch241-250 actual audit and applied 727 + 13 high-confidence source-conditioned
+  fixes
 - Refreshed CA-241-250 from latest fixed translation
-- Generated content-first ch251-260 actual audit and applied 427 + 322 high-confidence
-  source-conditioned fixes
+- Generated content-first ch251-260 actual audit and applied 427 + 322 high-confidence source-conditioned
+  fixes
 - Refreshed CA-251-260 from latest fixed translation
-- Generated content-first ch261-270 actual audit and applied 408 high-confidence source-conditioned
-  fixes
+- Generated content-first ch261-270 actual audit and applied 408 high-confidence source-conditioned fixes
 - Refreshed CA-261-270 from latest fixed translation
-- Generated content-first ch271-280 actual audit and applied 338 + 3 high-confidence
-  source-conditioned fixes
+- Generated content-first ch271-280 actual audit and applied 338 + 3 high-confidence source-conditioned
+  fixes
 - Refreshed CA-271-280 from latest fixed translation
-- Generated content-first ch281-290 actual audit and applied 127 + 252 high-confidence
-  source-conditioned fixes
+- Generated content-first ch281-290 actual audit and applied 127 + 252 high-confidence source-conditioned
+  fixes
 - Refreshed CA-281-290 from latest fixed translation
-- Generated content-first ch291-300 actual audit and applied 130 high-confidence source-conditioned
-  fixes
+- Generated content-first ch291-300 actual audit and applied 130 high-confidence source-conditioned fixes
 - Refreshed CA-291-300 from latest fixed translation
-- Generated content-first ch301-310 actual audit and applied 41 + 6 + 2 + 1 high-confidence
-  source-conditioned fixes
+- Generated content-first ch301-310 actual audit and applied 41 + 6 + 2 + 1 high-confidence source-conditioned
+  fixes
 - Refreshed CA-301-310 from latest fixed translation
-- Generated content-first ch311-320 actual audit and applied 289 + 6 high-confidence
-  source-conditioned fixes
+- Generated content-first ch311-320 actual audit and applied 289 + 6 high-confidence source-conditioned
+  fixes
 - Refreshed CA-311-320 from latest fixed translation
-- Generated content-first ch321-330 actual audit and applied 373 + 6 high-confidence
-  source-conditioned fixes
+- Generated content-first ch321-330 actual audit and applied 373 + 6 high-confidence source-conditioned
+  fixes
 - Refreshed CA-321-330 from latest fixed translation
-- Generated content-first ch331-340 actual audit and applied 145 high-confidence source-conditioned
-  fixes
+- Generated content-first ch331-340 actual audit and applied 145 high-confidence source-conditioned fixes
 - Refreshed CA-331-340 from latest fixed translation
-- Generated content-first ch341-350 actual audit and applied 158 + 5 high-confidence
-  source-conditioned fixes
+- Generated content-first ch341-350 actual audit and applied 158 + 5 high-confidence source-conditioned
+  fixes
 - Refreshed CA-341-350 from latest fixed translation
-- Generated content-first ch351-360 actual audit and applied 91 + 6 high-confidence
-  source-conditioned fixes
+- Generated content-first ch351-360 actual audit and applied 91 + 6 high-confidence source-conditioned
+  fixes
 - Refreshed CA-351-360 from latest fixed translation
-- Generated content-first ch361-370 actual audit and applied 116 + 1 + 81 + 29 + 6
-  + 1 high-confidence source-conditioned fixes
+- Generated content-first ch361-370 actual audit and applied 116 + 1 + 81 + 29 + 6 + 1 high-confidence
+  source-conditioned fixes
 - Refreshed CA-361-370 from latest fixed translation
-- Generated content-first ch371-380 actual audit and applied 101 + 25 high-confidence
-  source-conditioned fixes
+- Generated content-first ch371-380 actual audit and applied 101 + 25 high-confidence source-conditioned
+  fixes
 - Refreshed CA-371-380 from latest fixed translation
-- Generated content-first ch381-390 actual audit and applied 148 + 5 high-confidence
-  source-conditioned fixes
+- Generated content-first ch381-390 actual audit and applied 148 + 5 high-confidence source-conditioned
+  fixes
 - Refreshed CA-381-390 from latest fixed translation
-- Generated content-first ch391-400 actual audit and applied 254 + 9 high-confidence
-  source-conditioned fixes
+- Generated content-first ch391-400 actual audit and applied 254 + 9 high-confidence source-conditioned
+  fixes
 - Refreshed CA-391-400 from latest fixed translation
-- Generated content-first ch401-410 actual audit and applied 49 high-confidence source-conditioned
-  fixes
+- Generated content-first ch401-410 actual audit and applied 49 high-confidence source-conditioned fixes
 - Refreshed CA-401-410 from latest fixed translation
-- Generated content-first ch411-420 actual audit and applied 38 high-confidence source-conditioned
-  fixes
+- Generated content-first ch411-420 actual audit and applied 38 high-confidence source-conditioned fixes
 - Refreshed CA-411-420 from latest fixed translation
-- Generated content-first ch421-430 actual audit and applied 370 high-confidence source-conditioned
-  fixes
+- Generated content-first ch421-430 actual audit and applied 370 high-confidence source-conditioned fixes
 - Refreshed CA-421-430 from latest fixed translation
-- Generated content-first ch431-440 actual audit and applied 75 high-confidence source-conditioned
-  fixes
+- Generated content-first ch431-440 actual audit and applied 75 high-confidence source-conditioned fixes
 - Refreshed CA-431-440 from latest fixed translation
-- Generated content-first ch441-450 actual audit and applied 161 + 2 high-confidence
-  source-conditioned fixes
+- Generated content-first ch441-450 actual audit and applied 161 + 2 high-confidence source-conditioned
+  fixes
 - Refreshed CA-441-450 from latest fixed translation
 - 'Normalized actual evidence terms: Indigo, 席兹, 阿克拉吉奥, 奥克塔维亚, 贝尔塔萨蕾娜, 斯艾尔特迪奥斯'
-- Generated content-first ch451-460 actual audit and applied 87 + 2 high-confidence
-  source-conditioned fixes
+- Generated content-first ch451-460 actual audit and applied 87 + 2 high-confidence source-conditioned
+  fixes
 - Refreshed CA-451-460 from latest fixed translation
 - 'Normalized actual evidence terms: Bambu, Peikouken, 佩尔佩托·卡斯帕尔, 海啸三叉戟, 黑暗精灵, 邪恶制裁'
-- Generated content-first ch461-470 actual audit and applied 168 high-confidence source-conditioned
-  fixes
+- Generated content-first ch461-470 actual audit and applied 168 high-confidence source-conditioned fixes
 - Refreshed CA-461-470 from latest fixed translation
-- 'Normalized actual evidence names/handles: Beam-chan, Janet, Oh-No田, TKDSG, 加斯帕尔,
-  莫妮卡'
-- Generated content-first ch471-480 actual audit and applied 98 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence names/handles: Beam-chan, Janet, Oh-No田, TKDSG, 加斯帕尔, 莫妮卡'
+- Generated content-first ch471-480 actual audit and applied 98 high-confidence source-conditioned fixes
 - Refreshed CA-471-480 from latest fixed translation
-- 'Normalized actual evidence terms/names: 耶修克, 莱斯巴赫, 涅克拉索夫, 灭族蟋蟀, Sono Te ga Attaka,
-  阿哈·伊什凯, 布弗里, 泽诺比亚'
-- Generated content-first ch481-490 actual audit and applied 122 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence terms/names: 耶修克, 莱斯巴赫, 涅克拉索夫, 灭族蟋蟀, Sono Te ga Attaka, 阿哈·伊什凯, 布弗里, 泽诺比亚'
+- Generated content-first ch481-490 actual audit and applied 122 high-confidence source-conditioned fixes
 - Refreshed CA-481-490 from latest fixed translation
-- 'Normalized actual evidence terms/names: Joe, 塞普腾特里昂, 乌鲁鲁, Septem, TKDSG, 神圣阿玛莉埃帝国,
-  长枪冲锋, 神之吐息'
-- Generated content-first ch491-500 actual audit and applied 301 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence terms/names: Joe, 塞普腾特里昂, 乌鲁鲁, Septem, TKDSG, 神圣阿玛莉埃帝国, 长枪冲锋, 神之吐息'
+- Generated content-first ch491-500 actual audit and applied 301 high-confidence source-conditioned fixes
 - Refreshed CA-491-500 from latest fixed translation
-- 'Normalized actual evidence player handles/names: Andy, School Hadagi, Jeans, Nadenade
-  Shikoshiko, Arafubuki, Omiotsukenai, Suama, Farm'
-- Generated content-first ch501-510 actual audit and applied 18 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence player handles/names: Andy, School Hadagi, Jeans, Nadenade Shikoshiko, Arafubuki,
+  Omiotsukenai, Suama, Farm'
+- Generated content-first ch501-510 actual audit and applied 18 high-confidence source-conditioned fixes
 - Refreshed CA-501-510 from latest fixed translation
 - 'Normalized actual evidence terms/names: 登出, 真爱, 伊亚拉, 闪光之枪'
-- Generated content-first ch511-520 actual audit and applied 62 high-confidence source-conditioned
-  fixes
+- Generated content-first ch511-520 actual audit and applied 62 high-confidence source-conditioned fixes
 - Refreshed CA-511-520 from latest fixed translation
-- 'Normalized actual evidence names/places/terms: 苏莱曼, 西特莉, 维基努斯联邦, 安莉, 弗雷斯贝尔格, 尤克,
-  尤克·奥莱恩'
-- Generated content-first ch521-530 actual audit and applied 74 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence names/places/terms: 苏莱曼, 西特莉, 维基努斯联邦, 安莉, 弗雷斯贝尔格, 尤克, 尤克·奥莱恩'
+- Generated content-first ch521-530 actual audit and applied 74 high-confidence source-conditioned fixes
 - Refreshed CA-521-530 from latest fixed translation
-- 'Normalized actual evidence handles/names/terms: Autumn, Oh-No田, Septem, 丹扎, 阿里库比,
-  乌特尔, 看破单片镜, 雪狒狒, 奥罗拉, 天变地异, 慈悲一击'
-- Generated content-first ch551-560 actual audit and applied 263 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence handles/names/terms: Autumn, Oh-No田, Septem, 丹扎, 阿里库比, 乌特尔, 看破单片镜, 雪狒狒,
+  奥罗拉, 天变地异, 慈悲一击'
+- Generated content-first ch551-560 actual audit and applied 263 high-confidence source-conditioned fixes
 - Refreshed CA-551-560 from latest fixed translation
-- 'Normalized actual evidence handles/names/skills: Thermos, Nanashi no Elf-san, Ginoregamesh,
-  Mentai List, Joubu de Hagarenikui, Macky, 奥克·奥莱恩, 死之舞踏, 终极投掷'
-- Generated content-first ch561-570 actual audit and applied 57 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence handles/names/skills: Thermos, Nanashi no Elf-san, Ginoregamesh, Mentai
+  List, Joubu de Hagarenikui, Macky, 奥克·奥莱恩, 死之舞踏, 终极投掷'
+- Generated content-first ch561-570 actual audit and applied 57 high-confidence source-conditioned fixes
 - Refreshed CA-561-570 from latest fixed translation
-- 'Normalized actual evidence handles/names/places/skills: Amatein, Arafubuki, Hana
-  Eleboo, Mari Ookami, 泽诺比亚, 小布兰, 希尔斯, 佩亚雷, 波特利, 维尔斯, 慈悲一击, 赛莫格尔托拉'
-- Fixed ch561-seg092..094 segment-distribution drift and protected ch569 mojibake
-  literals
-- Generated content-first ch571-580 actual audit and applied 284 high-confidence source-conditioned
-  fixes
+- 'Normalized actual evidence handles/names/places/skills: Amatein, Arafubuki, Hana Eleboo, Mari Ookami,
+  泽诺比亚, 小布兰, 希尔斯, 佩亚雷, 波特利, 维尔斯, 慈悲一击, 赛莫格尔托拉'
+- Fixed ch561-seg092..094 segment-distribution drift and protected ch569 mojibake literals
+- Generated content-first ch571-580 actual audit and applied 284 high-confidence source-conditioned fixes
 - Refreshed CA-571-580 from latest fixed translation
 - 'Normalized actual evidence names/places/monster terms: 梅莉桑德, 大艾吉尔海, 艾吉尔海, 糖龙, 哈拉赫里科普里昂'
-- Generated content-first ch581-590 actual audit and applied 42 high-confidence source-conditioned
-  fixes
+- Generated content-first ch581-590 actual audit and applied 42 high-confidence source-conditioned fixes
 - Refreshed CA-581-590 from latest fixed translation
-- 'Normalized actual evidence forum/player handles: Kouki, Kondo Roi Chin, Oishii
-  Munou, Titanium Nugget, Okappiki Nobu, Multi-Pull'
+- 'Normalized actual evidence forum/player handles: Kouki, Kondo Roi Chin, Oishii Munou, Titanium Nugget,
+  Okappiki Nobu, Multi-Pull'
 - CA-591-600 content-first audit completed from latest fixed translations
 - CA-601-610 content-first audit completed from latest fixed translations
-- CA-611-612 content-first audit completed from latest fixed translations; CA-081-612
-  loop complete
+- CA-611-612 content-first audit completed from latest fixed translations; CA-081-612 loop complete
 - Reopened CA-081-120 after user challenge and refreshed from latest fixed translations
-- 'Applied ch081-120 refresh rules and whole-book source-conditioned sync: 256 segments
-  changed, post dry-run 0'
+- 'Applied ch081-120 refresh rules and whole-book source-conditioned sync: 256 segments changed, post
+  dry-run 0'
 - Fixed fixer idempotency for short aliases inside canonical targets (王车易位, 骷髅兵)
 - 'Resolved user-specified ウェルス compound residuals: 韦尔斯玩家/威尔斯专楼 -> 维尔斯玩家/维尔斯专楼'
-- Verified スナイパーアント effective fields retain 狙击蚁 and final whole-book dry-run changed
-  0 segments
-latest_stats: &id001
+- Verified スナイパーアント effective fields retain 狙击蚁 and final whole-book dry-run changed 0 segments
+latest_stats:
   governance_cleanup_at: '2026-06-18T00:00:00Z'
   scheduler_phase: final_ready
   scheduler_paused: true
@@ -244,28 +209,28 @@ blockers:
   - Policy decision pending for contextual アンデッド renderings
   - 'agent_gate warning: dirty tree + pre-existing vector inspect warnings'
 recent_updates:
-- Generated content-first ch381-390 actual audit and applied 153 high-confidence whole-book
-  source-conditioned fixes
+- Generated content-first ch381-390 actual audit and applied 153 high-confidence whole-book source-conditioned
+  fixes
 - Refreshed CA-381-390 from latest fixed translation
-- Generated content-first ch371-380 actual audit and applied 126 high-confidence whole-book
-  source-conditioned fixes
+- Generated content-first ch371-380 actual audit and applied 126 high-confidence whole-book source-conditioned
+  fixes
 - Refreshed CA-371-380 from latest fixed translation
-- Generated content-first ch361-370 actual audit and applied 234 high-confidence whole-book
-  source-conditioned fixes
+- Generated content-first ch361-370 actual audit and applied 234 high-confidence whole-book source-conditioned
+  fixes
 - Refreshed CA-361-370 from latest fixed translation
-- Generated content-first ch351-360 actual audit and applied 91 + 6 high-confidence
-  source-conditioned fixes
+- Generated content-first ch351-360 actual audit and applied 91 + 6 high-confidence source-conditioned
+  fixes
 - Refreshed CA-351-360 from latest fixed translation
-- 2026-06-17T21:17:07Z CA-391-400 content-first refresh complete; formal CA=0, post-fix
-  dry-run=0; next CA-401-410.
-- 2026-06-17T21:30:40Z CA-401-410 content-first refresh complete; formal CA=0, post-fix
-  dry-run=0; next CA-411-420.
-- 2026-06-17T21:42:28Z CA-411-420 content-first refresh complete; formal CA=0, post-fix
-  dry-run=0; next CA-421-430.
-- 2026-06-17T22:03:53Z CA-421-430 content-first refresh complete; formal CA=0, post-fix
-  dry-run=0; next CA-431-440.
-- 2026-06-17T22:17:32Z CA-431-440 content-first refresh complete; formal CA=0, post-fix
-  dry-run=0; next CA-441-450.
+- 2026-06-17T21:17:07Z CA-391-400 content-first refresh complete; formal CA=0, post-fix dry-run=0; next
+  CA-401-410.
+- 2026-06-17T21:30:40Z CA-401-410 content-first refresh complete; formal CA=0, post-fix dry-run=0; next
+  CA-411-420.
+- 2026-06-17T21:42:28Z CA-411-420 content-first refresh complete; formal CA=0, post-fix dry-run=0; next
+  CA-421-430.
+- 2026-06-17T22:03:53Z CA-421-430 content-first refresh complete; formal CA=0, post-fix dry-run=0; next
+  CA-431-440.
+- 2026-06-17T22:17:32Z CA-431-440 content-first refresh complete; formal CA=0, post-fix dry-run=0; next
+  CA-441-450.
 - timestamp: '2026-06-17T22:37:08Z'
   round_id: CA-441-450
   status: completed
@@ -561,9 +526,118 @@ recent_updates:
 - timestamp: '2026-06-18T03:11:07Z'
   round_id: CA-081-120-refresh-recheck
   status: completed
-  summary: *id001
+  summary:
+    governance_cleanup_at: '2026-06-18T00:00:00Z'
+    scheduler_phase: final_ready
+    scheduler_paused: true
+    next_round_id: null
+    next_chapter_range: null
+    active_worker_count: 0
+    orphan_worker_count: 0
+    canonical_final_translation: output_cn/translated/full_volume_cn.md
+    canonical_final_translation_count: 1
+    singleton_check_report: reports/final_translation_singleton_check.json
+    production_protocol: docs/translation_production_protocol.md
+    consistency_protocol: docs/translation_consistency_protocol.md
+    legacy_refinement_route: deprecated
+    content_first_refreshed_through: CA-611-612
+    ca_081_120_refresh_issues_total: 0
+    ca_081_120_refresh_blocking: 0
+    ca_081_120_refresh_source_residual: 0
+    ch081_120_changed_segments_whole_book: 256
+    ch081_120_changed_segments_current_range: 36
+    ch081_120_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 0
+    user_wells_compound_changed_segments: 2
+    user_wells_bad_effective_hits: 0
+    user_sniper_ant_bad_effective_hits: 0
+    whole_book_fix_goal_completion_dry_run_changed_segments: 0
 - timestamp: '2026-06-18T03:18:56Z'
   round_id: user-wells-sniper-regression-cleanup
   status: completed
-  summary: *id001
+  summary:
+    governance_cleanup_at: '2026-06-18T00:00:00Z'
+    scheduler_phase: final_ready
+    scheduler_paused: true
+    next_round_id: null
+    next_chapter_range: null
+    active_worker_count: 0
+    orphan_worker_count: 0
+    canonical_final_translation: output_cn/translated/full_volume_cn.md
+    canonical_final_translation_count: 1
+    singleton_check_report: reports/final_translation_singleton_check.json
+    production_protocol: docs/translation_production_protocol.md
+    consistency_protocol: docs/translation_consistency_protocol.md
+    legacy_refinement_route: deprecated
+    content_first_refreshed_through: CA-611-612
+    ca_081_120_refresh_issues_total: 0
+    ca_081_120_refresh_blocking: 0
+    ca_081_120_refresh_source_residual: 0
+    ch081_120_changed_segments_whole_book: 256
+    ch081_120_changed_segments_current_range: 36
+    ch081_120_post_dry_run_changed_segments: 0
+    aggregate_remaining_issues_from_current_ca_json: 0
+    user_wells_compound_changed_segments: 2
+    user_wells_bad_effective_hits: 0
+    user_sniper_ant_bad_effective_hits: 0
+    whole_book_fix_goal_completion_dry_run_changed_segments: 0
 updated_at: '2026-06-18T03:18:56Z'
+codex_governance:
+  task_id: ALL-PROJECTS-CODEX-GOVERNANCE-V1
+  unit_id: LIGHT-NOVEL-APPROVAL-BINDING-v1
+  contract: docs/reports/all-projects-governance/approval-binding/contract.md
+  current_work:
+    objective: 修复内容变更后的审核绑定、Codex 验证入口与 Hub 状态接入
+    phase: governance
+    round: LIGHT-NOVEL-APPROVAL-BINDING-v1
+    status: complete
+    completed: true
+    accepted: true
+    next_action: Integrate the normal Hub entry with the accepted Hub2 source reader, then refresh the
+      installed light-novel declaration. Approval binding and local installation are accepted and delivered;
+      real translation and scheduler work remain unchanged.
+    owner_role: Codex Root
+  progress:
+    completed: null
+    total: null
+    counting_basis: 本单元是流程治理，不以历史翻译章数或旧轮次 completed 计算项目完成率。
+    milestones: null
+  blockers: []
+  verification:
+    status: checks_passed:544 Python /35 browser;5+3 existing skips; gate72PASS2WARN
+    evidence_refs:
+    - docs/reports/all-projects-governance/approval-binding/checks.json
+    - docs/reports/all-projects-governance/approval-binding/backend-before.json
+    - docs/reports/all-projects-governance/approval-binding/browser-before.json
+    - docs/reports/all-projects-governance/approval-binding/browser-after.json
+    - docs/reports/all-projects-governance/approval-binding/hub-source.json
+    - docs/reports/all-projects-governance/approval-binding/preservation.json
+    accepted_basis: Fresh Judge PASS and Governor APPROVE for semantic 107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67;
+      docs/reports/all-projects-governance/approval-binding/judge.json and governor.json.
+  delivery:
+    status: delivered
+    remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
+    branch: main
+    commit: 40624481a2a42dd0af4e03f8aab0f4fb936fd298
+    receipt_ref: docs/reports/all-projects-governance/approval-binding/delivery.json
+  historical_state_meaning: 其余顶层字段保留原历史轮次记录，不作为本单元或整个作品已验收的证明；未恢复旧 scheduler/翻译/章节复审任务。
+  original_checkout:
+    unit_id: LIGHT-NOVEL-ORIGINAL-INTEGRATION-v1
+    status: installed_accepted
+    source_commit: 29394a82de740c89ef9f4a633305569c246f42a6
+    head_preserved: 77e4b57ca2baa67f0646b72c7d28823d4a683a7a
+    receipt_url: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/blob/main/docs/reports/all-projects-governance/approval-binding/integration.json
+    receipt_delivery: delivered
+  budget:
+    native_goal_tokens: 5046204
+    native_goal_seconds: 17429
+    coverage: Cumulative native Goal snapshot 2026-09-08; all prior units and agents included as exposed
+      by tool. No explicit token cap. Cost unavailable. No reset.
+  limitations:
+  - Current real translation/corpus/scheduler probes are unverified in this unit; preserved June history
+    is not current product acceptance.
+  - Existing developer-only npm dependency audit:7 advisories(4high2moderate1low); package/lock unchanged;
+    no MCP/Stitch service invoked.
+  - Run-level TM remains an independent unchanged authority.
+  - Original application files are installed; existing unrelated dirty work and original HEAD/index are
+    preserved. Live Hub refresh remains pending.

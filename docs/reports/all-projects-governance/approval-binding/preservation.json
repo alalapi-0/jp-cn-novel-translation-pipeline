@@ -1,0 +1,10 @@
+{
+  "original_head_unchanged": true,
+  "original_status_unchanged": true,
+  "registered_target_hashes_unchanged": 25,
+  "registered_dirty_hashes_unchanged": 19,
+  "historical_state_semantics_preserved": true,
+  "baseline_yaml_syntax_repair": "Quote/fold sole malformed first completed_tasks scalar before semantic comparison. Original aliases are expanded, not removed from history.",
+  "original_payload_scope": "No original writes; only registered preservation hashes/status read. Real payload is not independently re-audited or accepted.",
+  "root_scope": "isolated light-novel worktree; Hub/global/original unchanged"
+}

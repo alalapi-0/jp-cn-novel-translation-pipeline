@@ -11,12 +11,14 @@ import argparse
 import json
 import re
 import sys
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from providers.controlled_run import ControlledRunConfig, ControlledRunManager  # noqa: E402
@@ -24,6 +26,7 @@ from providers.cost_guard import CostGuard, CostGuardConfig  # noqa: E402
 from providers.fake_provider import FakeProvider  # noqa: E402
 from providers.types import GenerateOptions, Message  # noqa: E402
 from quality_review.runner import run_review, validate_report_dict, write_report  # noqa: E402
+from review_workspace_storage import review_workspace_path  # noqa: E402
 
 SYNTHETIC_SOURCE = REPO_ROOT / "data" / "examples" / "e2e_trial_chapter.md"
 DEFAULT_GLOSSARY = REPO_ROOT / "data" / "examples" / "review_glossary.fixture.json"
@@ -34,7 +37,6 @@ SEGMENTS_PATH = TRIAL_ROOT / "segments.json"
 TERMS_PATH = TRIAL_ROOT / "terminology_candidates.json"
 CHARS_PATH = TRIAL_ROOT / "character_candidates.json"
 REFINE_DIFF_PATH = TRIAL_ROOT / "refine_diff.json"
-ISSUE_REPORT_PATH = REPO_ROOT / "workspace" / "review" / "issue_report.json"
 EXPORT_DIR = TRIAL_ROOT / "export"
 VECTOR_INDEX_PATH = REPO_ROOT / "workspace" / "vector_store" / "index.json"
 TRIAL_REPORT_PATH = REPO_ROOT / "docs" / "reports" / "round_50_controlled_trial_report.md"
@@ -292,18 +294,41 @@ def step_refine(segments_doc: dict[str, Any]) -> StepResult:
     )
 
 
-def step_quality_review() -> StepResult:
+def _validated_isolated_review_root(root: Path) -> Path:
+    temporary_root = Path(tempfile.gettempdir()).resolve(strict=True)
+    if not root.is_absolute() or root.is_symlink():
+        raise ValueError("isolated review root must be an absolute real directory")
+    resolved = root.resolve(strict=True)
+    if (
+        resolved == temporary_root
+        or not resolved.is_relative_to(temporary_root)
+        or not resolved.is_dir()
+        or resolved.stat().st_dev != temporary_root.stat().st_dev
+        or any(resolved.iterdir())
+    ):
+        raise ValueError("isolated review root must be an empty child of the system temporary root")
+    return resolved
+
+
+def step_quality_review(*, isolated_review_root: Path | None = None) -> StepResult:
+    if isolated_review_root is not None:
+        isolated_review_root = _validated_isolated_review_root(isolated_review_root)
+    issue_report_path = (
+        isolated_review_root / "issue_report.json"
+        if isolated_review_root is not None
+        else review_workspace_path("issue_report.json")
+    )
     report = run_review(SEGMENTS_PATH, DEFAULT_GLOSSARY, generated_by="round_50_e2e_trial")
     errors = validate_report_dict(report.to_dict())
     if errors:
         return StepResult("quality_review", 2, "; ".join(errors))
-    write_report(report, ISSUE_REPORT_PATH)
+    write_report(report, issue_report_path)
     issue_count = len(report.issues)
     return StepResult(
         "quality_review",
         0,
         f"{issue_count} issue(s); status={report.review_status}",
-        [str(ISSUE_REPORT_PATH.relative_to(REPO_ROOT))],
+        [str(issue_report_path)],
     )
 
 
@@ -501,7 +526,15 @@ def write_trial_report(
     return TRIAL_REPORT_PATH
 
 
-def run_trial(*, skip_report: bool = False) -> tuple[list[StepResult], int]:
+def run_trial(
+    *,
+    skip_report: bool = False,
+    isolated_review_root: Path | None = None,
+) -> tuple[list[StepResult], int]:
+    if isolated_review_root is not None and not skip_report:
+        raise ValueError("isolated_review_root requires skip_report=True")
+    if isolated_review_root is not None:
+        isolated_review_root = _validated_isolated_review_root(isolated_review_root)
     guard = CostGuard(
         CostGuardConfig(
             max_test_cost_usd=1.0,
@@ -542,7 +575,10 @@ def run_trial(*, skip_report: bool = False) -> tuple[list[StepResult], int]:
     segments_doc = json.loads(SEGMENTS_PATH.read_text(encoding="utf-8"))
     if not run_step("refine", lambda: step_refine(segments_doc)):
         return results, 2
-    if not run_step("quality_review", step_quality_review):
+    if not run_step(
+        "quality_review",
+        lambda: step_quality_review(isolated_review_root=isolated_review_root),
+    ):
         return results, 2
 
     segments_doc = json.loads(SEGMENTS_PATH.read_text(encoding="utf-8"))
@@ -561,9 +597,26 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Round 50 controlled E2E trial")
     parser.add_argument("--json", action="store_true", help="Print step results as JSON")
     parser.add_argument("--skip-report", action="store_true", help="Skip writing trial report")
+    parser.add_argument(
+        "--isolated-review-root",
+        type=Path,
+        help="Existing absolute temporary directory for deterministic gate/test output",
+    )
     args = parser.parse_args(argv)
 
-    results, exit_code = run_trial(skip_report=args.skip_report)
+    isolated_review_root = args.isolated_review_root
+    if isolated_review_root is not None:
+        if not args.skip_report:
+            parser.error("--isolated-review-root requires --skip-report")
+        try:
+            isolated_review_root = _validated_isolated_review_root(isolated_review_root)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+
+    results, exit_code = run_trial(
+        skip_report=args.skip_report,
+        isolated_review_root=isolated_review_root,
+    )
     if args.json:
         print(json.dumps([asdict(r) for r in results], ensure_ascii=False, indent=2))
     else:

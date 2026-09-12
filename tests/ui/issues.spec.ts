@@ -15,7 +15,7 @@ test("issues dashboard lists fixture report", async ({ page }) => {
 test("locked term issue has auto-fix disabled", async ({ page }) => {
   await page.goto(`/issues.html?project=${DEMO_JP_CN}`);
   await expect(
-    page.getByRole("button", { name: "自动修复（禁用）" }).first()
+    page.locator(".issue-card").filter({ has: page.getByText("LOCKED_TERM_VIOLATION", { exact: true }) }).getByRole("button", { name: "自动修复（禁用）" })
   ).toBeDisabled();
 });
 

@@ -707,3 +707,13 @@ kbd {
   margin-left: 0.5rem;
   font-size: 0.8rem;
 }
+
+/* Keep the recovery action readable and reachable after a rejected save. */
+.review-save-error a {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

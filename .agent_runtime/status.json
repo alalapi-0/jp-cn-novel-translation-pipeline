@@ -10,7 +10,7 @@
   "last_real_api_check_at": "2026-06-11T23:20:00+00:00",
   "hard_blocked": false,
   "stop_reason": null,
-  "updated_at": "2026-06-19T05:13:58+00:00",
+  "updated_at": "2026-08-23T05:09:06+00:00",
   "pilot_notes": "Final-ready v2 cleanup complete; singleton final translation exported; refinement/R-MR/production_candidate removed from mainline; scheduler final_ready with 0 active/orphan workers",
   "last_updated": "2026-06-18T06:50:00Z"
 }

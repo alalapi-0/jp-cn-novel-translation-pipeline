@@ -1,2 +1,5 @@
 {"created_at": "2026-06-05T13:51:31+00:00", "id": "blocker-20260605T135131Z-2b40855a", "reason": "用户手动关闭 agent", "status": "open", "updated_at": "2026-06-05T13:51:31+00:00"}
 {"created_at": "2026-06-05T14:38:08+00:00", "id": "unblock-20260605T143808Z-5d212396", "reason": "manual_unblock", "status": "cleared", "updated_at": "2026-06-05T14:38:08+00:00"}
+{"created_at": "2026-08-22T11:36:27+00:00", "id": "blocker-20260822T113627Z-34238ee9", "reason": "user requested pause: stop all workers", "status": "open", "updated_at": "2026-08-22T11:36:27+00:00"}
+{"created_at": "2026-08-22T11:42:20+00:00", "id": "blocker-20260822T114220Z-0e2a3b3e", "reason": "user requested pause: stop all background workers and tasks", "status": "open", "updated_at": "2026-08-22T11:42:20+00:00"}
+{"created_at": "2026-08-23T05:09:06+00:00", "id": "unblock-20260823T050906Z-dfc62acb", "reason": "manual_unblock", "status": "cleared", "updated_at": "2026-08-23T05:09:06+00:00"}

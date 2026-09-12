@@ -1,6 +1,6 @@
 {
   "status": "warning",
-  "timestamp": "2026-06-28T13:10:45Z",
+  "timestamp": "2026-09-08T08:08:49Z",
   "passed": [
     "docs_exist_readme",
     "docs_exist_agents",
@@ -307,7 +307,7 @@
     {
       "id": "round_53_manifest_count",
       "severity": "pass",
-      "message": "407 project manifest(s) under workspace/manifests"
+      "message": "2 project manifest(s) under workspace/manifests"
     },
     {
       "id": "round_53_active_project_switch",
@@ -442,7 +442,12 @@
     {
       "id": "git_status_dirty",
       "severity": "warn",
-      "message": "working tree has 6 uncommitted change(s) on branch main"
+      "message": "working tree has 37 uncommitted change(s) on branch codex/light-novel-state-governance"
+    },
+    {
+      "id": "git_branch_not_main",
+      "severity": "warn",
+      "message": "current branch is codex/light-novel-state-governance, not main/master"
     }
   ],
   "commands": [

@@ -1,5 +1,19 @@
 # Agent 入口说明
 
+## Codex 条件入口
+
+本节是 Codex 的启动路由；下文历史全量必读、Cursor 探针和交接要求不自动适用于 Codex。
+
+- 默认读本文件本节与 `governance/round_state.yaml`。后者是唯一当前状态；`codex_governance` 是当前授权治理单元，其余历史字段和旧报告不能恢复旧轮次或证明整个作品已完成。
+- 产品行为按 `docs/product_final_state_spec.md`；领域流程再读对应协议。审核/导出/TM 修复读 `src/workbench/` 对应实现和测试；不默认全文读取所有路线图。
+- Codex 可以独立执行当前已授权任务，无需 Cursor 交接、探针、配置或进程。禁止从 Codex 执行 `.cursor`、`tool_probe.py`、`scan_repo_inventory.py` 或 Cursor MCP 检查。
+- 先按 README 的开发依赖说明建立项目 `.venv`（隔离工作树可使用自己的忽略环境），执行 `.venv/bin/python scripts/agent_gate.py --json`。门禁只运行当前隔离样例；不能在真实工作区上用样例覆盖已有运行数据。
+- 正常验证：`npm run check:tooling -- --surface codex` 保留 gate、报告、引用、协议及完整 Python 测试；UI 变更另跑 `npm run test:ui`，使用隔离样例与独立服务，不复用未知端口服务。
+- 每个有状态变化的执行单元更新唯一状态；报告是验收证据，不是第二个下一轮权威。`hub.connection.yaml` 只维护稳定映射；业务字段由状态源派生。
+- `ALL-PROJECTS-CODEX-GOVERNANCE-V1` 已获所有者授权修复本项目并交付验收候选到远端主分支；仍须独立审查、正常推送、远端祖先和 CI 验证。其他任务按其当前授权，不继承本任务的主分支交付权限。
+- 本治理单元内：不读取秘密或真实正文，不调用付费 API，不改变 scheduler 暂停、模型、预算、队列、原始素材或正式译文，不推进旧 FS/章节任务。保护原工作区，当前治理改动在隔离工作树完成。
+
+
 本文件告诉 Agent 如何阅读、行动和避免风险。**Cursor 与 Codex 共用本文件。** `governance/repo_protocol_standard.yaml` 管理跨仓库安全与治理规则；本项目的产品目标、阶段顺序和验收终点以 `docs/product_final_state_spec.md` 为最高锚点（项目级 override 见 `project.yaml`）。Tool-aware Agent Layer 2.0 机器配置见 `agent_layer.yaml`。
 
 ## 🎯 最终成品规格（最高优先级，2026-06-10 起）
@@ -298,9 +312,8 @@ Schema：`schemas/agent_round_report.schema.json`
 
 ### Codex-specific Notes
 
-- 高价值、长程、审查任务；额度有限时见 `docs/CODEX_USAGE.md`
-- 启动前读 `docs/CODEX_HANDOFF.md`（若 Cursor 已填写）
-- 同一 `AGENTS.md` + `agent_layer.yaml`
+- 使用本文件顶部 Codex 条件入口；独立按当前所有者授权执行。
+- `docs/CODEX_HANDOFF.md` 仅为历史交接模板，不是当前状态或启动依赖。
 
 ### MCP-specific Notes
 

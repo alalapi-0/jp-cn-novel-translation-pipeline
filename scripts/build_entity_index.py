@@ -25,11 +25,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from consistency.entity_index import build_entity_index, index_summary  # noqa: E402
+from consistency.index_workspace_storage import (  # noqa: E402
+    IndexWorkspaceStorageError,
+    reroute_legacy_index_path,
+)
 from consistency.manifest import find_segments_files  # noqa: E402
 from glossary import GlossaryStore  # noqa: E402
 
 DEFAULT_GLOSSARY = REPO_ROOT / "workspace" / "configs" / "glossary.yaml"
-DEFAULT_OUTPUT = REPO_ROOT / "workspace" / "indexes" / "entity_index.json"
+DEFAULT_OUTPUT = Path("workspace/indexes/entity_index.json")
 def glob_segments_files(run_dirs: list[Path]) -> list[Path]:
     """Direct glob for explicit --runs-dir (tests / ad-hoc scans)."""
     files: list[Path] = []
@@ -76,7 +80,6 @@ def main(argv: list[str] | None = None) -> int:
 
     repo_root = args.repo_root if args.repo_root.is_absolute() else REPO_ROOT / args.repo_root
     glossary_path = args.glossary if args.glossary.is_absolute() else repo_root / args.glossary
-    output_path = args.output if args.output.is_absolute() else repo_root / args.output
     explicit_run_dirs = args.runs_dir is not None
     if explicit_run_dirs:
         run_dirs = [
@@ -91,6 +94,11 @@ def main(argv: list[str] | None = None) -> int:
     if not glossary_path.is_file():
         print(f"build_entity_index: FAIL glossary not found: {glossary_path}")
         return 2
+    try:
+        output_path = reroute_legacy_index_path(args.output, repo_root=repo_root)
+    except IndexWorkspaceStorageError as exc:
+        print(f"build_entity_index: {exc}", file=sys.stderr)
+        return 78
 
     chapter_min, chapter_max = parse_chapter_range(args.chapter_range)
     store = GlossaryStore(glossary_path)

@@ -1,0 +1,11 @@
+{
+  "base": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a",
+  "scope": "Root reproduction from git archive in disposable temporary root; synthetic text only",
+  "exit": 0,
+  "results": {
+    "base_embedded_approval_exported": 1,
+    "base_bare_approval_saved": "approved",
+    "base_changed_B_exported_using_unbound_A_review": 1
+  },
+  "method": "import sys,json\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()/\"src\"))\nfrom workbench.project_registry import create_project_manifest,update_project_segments\nfrom workbench.review_state import patch_project_review_state\nfrom workbench.export_service import run_export\nr=Path.cwd()\na={\"id\":\"seg-001\",\"source\":\"Synthetic A\",\"draft\":\"Synthetic target A\",\"status\":\"approved\"}\ncreate_project_manifest(r,project_id=\"base-approval\",name=\"Synthetic base\",language_direction=\"JP_TO_CN\",segments=[a])\nembedded=run_export(r,source=\"manifest\",project_id=\"base-approval\",status_mode=\"approved\")\nreview=patch_project_review_state(r,\"base-approval\",segments={\"seg-001\":{\"status\":\"approved\",\"note\":\"synthetic preserved note\"}})\nupdate_project_segments(r,\"base-approval\",[{\"id\":\"seg-001\",\"source\":\"Synthetic B\",\"draft\":\"Synthetic target B\",\"status\":\"pending\"}])\nstale=run_export(r,source=\"manifest\",project_id=\"base-approval\",status_mode=\"approved\")\nprint(json.dumps({\"base_embedded_approval_exported\":embedded[\"segments_exported\"],\"base_bare_approval_saved\":review[\"segments\"][\"seg-001\"][\"status\"],\"base_changed_B_exported_using_unbound_A_review\":stale[\"segments_exported\"]}))\n"
+}

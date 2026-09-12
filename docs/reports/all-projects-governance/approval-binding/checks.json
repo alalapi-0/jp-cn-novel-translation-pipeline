@@ -1,0 +1,112 @@
+{
+  "contract": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-APPROVAL-BINDING-v1",
+  "root_reproduced": [
+    {
+      "command": "npm run check:tooling -- --surface codex",
+      "exit": 0,
+      "python_passed": 544,
+      "python_skipped": 5,
+      "seconds": 34.33,
+      "gate": {
+        "passed": 72,
+        "warned": 2,
+        "failed": 0,
+        "warnings": [
+          "isolated candidate is dirty",
+          "working branch is not main"
+        ]
+      },
+      "protocol": "PASS",
+      "report_schema": "PASS",
+      "prompt_refs": "PASS"
+    },
+    {
+      "command": "PLAYWRIGHT_PORT=5198 npm run test:ui",
+      "exit": 0,
+      "passed": 35,
+      "skipped": 3,
+      "seconds": 4.7
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "skip_basis": {
+    "python": "Existing guards for absent real migrated assets/glossary and locked production baseline chapters; no skip introduced.",
+    "browser": "Three existing static-MVP pages absent; no skip introduced."
+  },
+  "prior_failures": [
+    {
+      "check": "base quality checker tests",
+      "base": "77e4b57ca2baa67f0646b72c7d28823d4a683a7a",
+      "results": "Root base archive reproduced2failed4passed; current original first fullsuite2failed534passed5skipped",
+      "cause": "Intended locked alias touches Chinese preceding character; current standalone boundary rule rejects it.",
+      "repair": "Quote synthetic noncanonical alias. Keep original locked-term assertions."
+    },
+    {
+      "check": "first full browser suite",
+      "results": "1failed34passed3skipped",
+      "cause": "Demo fixture did not produce required locked/unlocked glossary terms; simplified source alias differs from glossary.",
+      "repair": "Align two committed synthetic fixtures with explicit standalone locked alias and glossary source; retain assertions and strengthen locked-issue button selector."
+    },
+    {
+      "check": "shared Hub typed source refresh",
+      "cause": "Intermediate state used awaiting_review, outside shared lifecycle enum.",
+      "repair": "Retain shared active status; next_action and acceptance flag express review pending. No schema expansion."
+    },
+    {
+      "check": "freshJudgecandidate0ce177d7",
+      "candidate": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+      "cause": "Stale nonapproved status mutation bypassed CAS; newer B approval became rejected.",
+      "root_reproduction": {
+        "candidate": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+        "before": "approved",
+        "after_stale_A_rejection": "rejected",
+        "stale_expected_identity_was_ignored": true,
+        "scope": "Root reproduction in disposable synthetic state only"
+      },
+      "repair": "Extend CAS to all segmentstatusmutations; preserve metadata-only notes; backend/browser stale/fresh rejection regression.",
+      "governor": "REQUEST_REPAIR under unchanged v1"
+    }
+  ],
+  "npm_audit": {
+    "unchanged_package_and_lock": true,
+    "total": 7,
+    "high": 4,
+    "moderate": 2,
+    "low": 1,
+    "scope": "Existing dev-only transitive dependencies of MCP/Stitch tooling; separate follow-up, not a claim of clean dependency audit. No change to production Python/vanilla frontend dependency surface."
+  },
+  "boundaries": {
+    "real_translation": "not_run",
+    "paid_apis": "not_run",
+    "Cursor": "not_accessed",
+    "original_integration": "not_done",
+    "run_level_TM": "unchanged"
+  },
+  "runtime": {
+    "python": "isolated.venv Python3.12.14 with declared requirements-dev.txt",
+    "browser": "local Playwright Chromium1223",
+    "dependencies": "worktree-local ignored .venv/node_modules/.cache only"
+  },
+  "failures_resolved": [
+    "content identity inheritance",
+    "frontend false-success on409",
+    "refresh writer bypass",
+    "blank content approved consumer mismatch",
+    "canonical displayed text alias mismatch",
+    "stale quality fixtures",
+    "stale rejection overwriting newer approval; content changes invalidate old rejection in UI"
+  ],
+  "recovery": "Forward repair from registered base; no original rollback/reset/clean; future original integration requires own owned unit.",
+  "decision_rounds": [
+    {
+      "candidate": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+      "judge": "FAIL",
+      "governor": "REQUEST_REPAIR",
+      "finding": "stale rejection CAS bypass",
+      "resolution": "All status mutations CAS;notes preserve binding;stale/fresh rejection backend+browser and consumer parity verified."
+    }
+  ]
+}

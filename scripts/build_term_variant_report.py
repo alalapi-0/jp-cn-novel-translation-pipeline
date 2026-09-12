@@ -13,7 +13,7 @@ only *replace* variants already listed in a `forbidden`/`aliases` list. This
 report surfaces UNRECOGNIZED renderings -- spellings nobody has registered
 yet -- which is exactly what a rule-replacement pass cannot find on its own.
 
-Output: workspace/review/term_variant_report_full.json (ReviewIssue-shaped).
+Default output: the guarded external review workspace (ReviewIssue-shaped).
 
 Usage:
     python3 scripts/build_term_variant_report.py [--chapters START END]
@@ -36,6 +36,10 @@ import yaml  # noqa: E402
 from glossary.store import GlossaryStore  # noqa: E402
 from fix_terminology_consistency import AUTO_FIX_DENYLIST  # noqa: E402
 from run_consistency_fix_all import discover_canonical_files  # noqa: E402
+from review_workspace_storage import (  # noqa: E402
+    reroute_legacy_review_path,
+    review_workspace_path,
+)
 
 BRACKETS = "【】"
 KANA_RE = set(chr(c) for c in range(0x3040, 0x3100))
@@ -184,8 +188,13 @@ def find_standalone_occurrences(source: str, text: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--chapters", type=int, nargs=2, metavar=("START", "END"), default=(1, 612))
-    parser.add_argument("--output", type=Path, default=REPO_ROOT / "workspace" / "review" / "term_variant_report_full.json")
+    parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
+    output_path = (
+        review_workspace_path("term_variant_report_full.json")
+        if args.output is None
+        else reroute_legacy_review_path(args.output)
+    )
     start, end = args.chapters
 
     registry = build_registry(REPO_ROOT)
@@ -278,8 +287,8 @@ def main() -> int:
         "terms_with_unrecognized_variants": sum(1 for i in issues if i["severity"] == "high"),
         "issues": issues,
     }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "issues"}, ensure_ascii=False, indent=2))
     return 0
 

@@ -1,5 +1,7 @@
 # Tool Usage Policy
 
+Codex 使用 [AGENTS.md 顶部条件入口](../AGENTS.md)，独立执行已授权任务；当前状态只读 `governance/round_state.yaml`。工具探针、Cursor 交接和旧报告的下一轮建议不作为 Codex 启动条件。完整验证使用 `npm run check:tooling -- --surface codex`；真实业务数据须保持隔离。
+
 Tool-aware Agent Layer 2.0 — maps tasks to tools for Cursor, Codex, and local scripts.
 
 ## 1. Must-use by task
@@ -57,7 +59,7 @@ Tool-aware Agent Layer 2.0 — maps tasks to tools for Cursor, Codex, and local 
 
 **Cursor (primary):** local edits, MCP, browser, small scoped rounds, docs/rules, gates.
 
-**Codex (secondary):** large refactors, deep review, worktree parallelism — only after handoff pack.
+**Codex:** independently executes authorized work through the conditional entry; no Cursor handoff prerequisite.
 
 See `docs/CODEX_USAGE.md`.
 

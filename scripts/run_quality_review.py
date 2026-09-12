@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from quality_review.runner import (  # noqa: E402
@@ -25,8 +26,12 @@ from quality_review.runner import (  # noqa: E402
     validate_report_dict,
     write_report,
 )
+from review_workspace_storage import (  # noqa: E402
+    reroute_legacy_review_path,
+    review_workspace_path,
+)
 
-DEFAULT_WORKSPACE_REPORT = REPO_ROOT / "workspace" / "review" / "issue_report.json"
+WORKSPACE_REPORT_NAME = "issue_report.json"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -58,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--workspace",
         action="store_true",
-        help=f"Write {DEFAULT_WORKSPACE_REPORT.relative_to(REPO_ROOT)} (gitignored)",
+        help="Write the gitignored issue report through the guarded external route",
     )
     parser.add_argument("--json", action="store_true", help="Print report JSON to stdout")
     args = parser.parse_args(argv)
@@ -81,9 +86,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_example:
         write_report(report, EXAMPLE_REPORT)
     if args.workspace:
-        write_report(report, DEFAULT_WORKSPACE_REPORT)
+        write_report(report, review_workspace_path(WORKSPACE_REPORT_NAME))
     if args.output:
-        write_report(report, args.output)
+        write_report(report, reroute_legacy_review_path(args.output))
 
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))

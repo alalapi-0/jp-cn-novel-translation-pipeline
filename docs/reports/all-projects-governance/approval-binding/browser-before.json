@@ -1,0 +1,31 @@
+{
+  "kind": "before_repair",
+  "data": "synthetic API fixture; real unchanged frontend",
+  "original_app_sha256": "3342ce528845cd066575ad485d9ef1cc4ad66458bada35053eb647cf89cb18ec",
+  "defect": "HTTP409 still writes local approved state and renders approved",
+  "requests": [
+    {
+      "method": "PATCH",
+      "path": "/api/projects/gov-fixture/review-state",
+      "payload": {
+        "segments": {
+          "seg-001": {
+            "status": "approved",
+            "autoApprove": false,
+            "at": "2026-09-08T07:29:53.878Z"
+          }
+        }
+      },
+      "status": 409
+    }
+  ],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 409 (Conflict)"
+  ],
+  "unexpected": [],
+  "localState": {
+    "light_novel_active_project_v1": "gov-fixture",
+    "light_novel_workbench_state_v1": "{\"segments\":{\"seg-001\":{\"status\":\"approved\",\"autoApprove\":false,\"at\":\"2026-09-08T07:29:53.878Z\"}}}"
+  },
+  "statusLog": "[07:29:53] manual: seg-001 approved\n[07:29:53] loaded 1 segment(s) from api · project=gov-fixture\n"
+}

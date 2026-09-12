@@ -21,8 +21,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from consistency.draft_structure_audit import audit_draft_structure, audit_summary  # noqa: E402
+from consistency.index_workspace_storage import (  # noqa: E402
+    IndexWorkspaceStorageError,
+    reroute_legacy_index_path,
+)
 
-DEFAULT_SEGMENT_INDEX = REPO_ROOT / "workspace" / "indexes" / "segment_index.json"
+DEFAULT_SEGMENT_INDEX = Path("workspace/indexes/segment_index.json")
 DEFAULT_OUTPUT = REPO_ROOT / "workspace" / "consistency_audit" / "draft_structure_audit.json"
 
 
@@ -49,9 +53,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     repo_root = args.repo_root if args.repo_root.is_absolute() else REPO_ROOT / args.repo_root
-    index_path = (
-        args.segment_index if args.segment_index.is_absolute() else repo_root / args.segment_index
-    )
+    try:
+        index_path = reroute_legacy_index_path(args.segment_index, repo_root=repo_root)
+    except IndexWorkspaceStorageError as exc:
+        print(f"audit_draft_structure: {exc}", file=sys.stderr)
+        return 78
     output_path = args.output if args.output.is_absolute() else repo_root / args.output
 
     if not index_path.is_file():

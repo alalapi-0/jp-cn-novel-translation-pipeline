@@ -10,7 +10,7 @@
         {
           "segment_id": "seg-001",
           "source_text": "（合成原文 A：角色取出魔力結晶 — 占位）",
-          "target_text": "（合成译文 A：使用了魔法结晶 — 故意违反锁定术语）",
+          "target_text": "（合成译文 A：使用了「魔法结晶」 — 故意违反锁定术语）",
           "draft_text": "（合成初译 A — mock）",
           "refined_text": "（合成润色 A：魔法结晶加强语气 — mock diff）",
           "status": "machine_translated",
@@ -18,7 +18,7 @@
         },
         {
           "segment_id": "seg-002",
-          "source_text": "（合成原文 B：他望向异世界的天空，心中充满疑问与期待，久久无法平静 — 占位）",
+          "source_text": "（合成原文 B：他望向異世界的天空，心中充满疑问与期待，久久无法平静 — 占位）",
           "target_text": "异界。",
           "draft_text": "（合成初译 B — mock）",
           "refined_text": "（合成润色 B — mock）",

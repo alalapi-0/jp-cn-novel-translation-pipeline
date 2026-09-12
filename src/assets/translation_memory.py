@@ -84,7 +84,13 @@ def _collect_manifest_pairs(
     status_mode: AssetStatusMode,
 ) -> tuple[list[TranslationPair], str]:
     from workbench.project_registry import get_project_manifest
-    from workbench.review_state import get_project_review_state
+    from workbench.review_state import (
+        approval_identity,
+        get_project_review_state,
+        is_formally_approved,
+        segment_id,
+        segment_text,
+    )
 
     manifest = get_project_manifest(repo_root, project_id)
     if manifest is None:
@@ -96,17 +102,30 @@ def _collect_manifest_pairs(
 
     pairs: list[TranslationPair] = []
     for seg in manifest.segments:
-        seg_id = _segment_text(seg, "id", "segment_id")
+        seg_id = segment_id(seg)
         state_entry = review_segments.get(seg_id, {}) if seg_id else {}
         status = str(
             (state_entry.get("status") if isinstance(state_entry, dict) else None)
             or seg.get("status")
             or "pending"
         ).strip().lower()
-        if not _status_allowed(status, status_mode):
+        current_identity = approval_identity(
+            project_id=manifest.project_id,
+            language_direction=manifest.language_direction,
+            segment=seg,
+        )
+        if status_mode == "approved":
+            if not is_formally_approved(
+                state_entry,
+                current_identity,
+                segment=seg,
+            ):
+                continue
+            status = "approved"
+        elif not _status_allowed(status, status_mode):
             continue
-        source = _segment_text(seg, "source", "source_text")
-        target = _segment_text(seg, "draft", "draft_text", "target_text", "translation")
+        source = segment_text(seg, "source", "source_text")
+        target = segment_text(seg, "draft", "draft_text", "target_text", "translation")
         if source and target:
             pairs.append(
                 TranslationPair(

@@ -25,11 +25,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from consistency.conflict_audit import audit_glossary_conflicts, audit_summary  # noqa: E402
+from consistency.index_workspace_storage import (  # noqa: E402
+    IndexWorkspaceStorageError,
+    reroute_legacy_index_path,
+)
 from glossary import GlossaryStore  # noqa: E402
 
 DEFAULT_GLOSSARY = REPO_ROOT / "workspace" / "configs" / "glossary.yaml"
-DEFAULT_ENTITY_INDEX = REPO_ROOT / "workspace" / "indexes" / "entity_index.json"
-DEFAULT_TERM_USAGE_INDEX = REPO_ROOT / "workspace" / "indexes" / "term_usage_index.json"
+DEFAULT_ENTITY_INDEX = Path("workspace/indexes/entity_index.json")
+DEFAULT_TERM_USAGE_INDEX = Path("workspace/indexes/term_usage_index.json")
 DEFAULT_OUTPUT = REPO_ROOT / "workspace" / "consistency_audit" / "glossary_conflict_audit.json"
 
 
@@ -69,14 +73,16 @@ def main(argv: list[str] | None = None) -> int:
 
     repo_root = args.repo_root if args.repo_root.is_absolute() else REPO_ROOT / args.repo_root
     glossary_path = args.glossary if args.glossary.is_absolute() else repo_root / args.glossary
-    entity_path = (
-        args.entity_index if args.entity_index.is_absolute() else repo_root / args.entity_index
-    )
     output_path = args.output if args.output.is_absolute() else repo_root / args.output
 
     if not glossary_path.is_file():
         print(f"audit_glossary_conflicts: FAIL glossary not found: {glossary_path}")
         return 2
+    try:
+        entity_path = reroute_legacy_index_path(args.entity_index, repo_root=repo_root)
+    except IndexWorkspaceStorageError as exc:
+        print(f"audit_glossary_conflicts: {exc}", file=sys.stderr)
+        return 78
     if not entity_path.is_file():
         print(f"audit_glossary_conflicts: FAIL entity index not found: {entity_path}")
         return 2
@@ -86,8 +92,11 @@ def main(argv: list[str] | None = None) -> int:
         usage_path = args.term_usage_index
         if usage_path is None:
             usage_path = DEFAULT_TERM_USAGE_INDEX
-        elif not usage_path.is_absolute():
-            usage_path = repo_root / usage_path
+        try:
+            usage_path = reroute_legacy_index_path(usage_path, repo_root=repo_root)
+        except IndexWorkspaceStorageError as exc:
+            print(f"audit_glossary_conflicts: {exc}", file=sys.stderr)
+            return 78
         if usage_path.is_file():
             term_usage_index = _load_json(usage_path, "term usage index")
 

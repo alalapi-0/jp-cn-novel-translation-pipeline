@@ -1,0 +1,29 @@
+{
+  "governor": "/root/hub_connection_governor",
+  "contract": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-APPROVAL-BINDING-v1",
+  "candidate": "107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67",
+  "decision": "APPROVE",
+  "basis": "Fresh independentJudgev2 verifiedall50hashes/all12criteria;62focusedpytest/35UI3existingskips/fourvisuals/preservation passed. Root544pytest5existingskips/gate72PASS2WARN.",
+  "authorized_next_action": "Root may stage exactcandidate, normalcommit/mainpush; delivery onlyafterremoteancestryandCI.",
+  "metadata_clarification": "Exact independent_acceptance_pending row is decisionmetadata. Register content-addressed preimage->[]; reverse onlythistransition fororiginalsemanticidentity; no generalblockerexclusion. Keep frozenhub-source and revalidatestrictYAML/source afterapproval. Samecontract/budget, no newreviewneeded.",
+  "limitations": [
+    "Originalintegration/liveHub/realcorpus/translation excluded.",
+    "7unchanged developer-only advisories nonblocking."
+  ],
+  "prior_decisions": [
+    {
+      "governor": "/root/hub_connection_governor",
+      "contract": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-APPROVAL-BINDING-v1",
+      "candidate": "0ce177d79161b4e68575ff39c0cb7d9deebcf70b2d5acafd2c9c4f4bff4a9ad0",
+      "decision": "REQUEST_REPAIR",
+      "basis": "Fresh Judge independently reproduced stale A rejection overwriting current B approval; criteria3/7/12 fail.",
+      "requirements": [
+        "Require valid current expected_identity for every segment-status mutation under existing project lock.",
+        "Missing/invalid/stale mutation leaves segment/issue/note/newer approval untouched.",
+        "Frontend sends displayed identity for rejection and keeps failure truthful.",
+        "Tests stale rejection preserve export/TM;fresh rejection omits both;mixed patch atomicity;real browser conflict."
+      ],
+      "next_action": "Bounded forward repair under unchanged v1, preserve prior evidence, full relevant checks and new fresh Judge; no delivery of rejected candidate."
+    }
+  ]
+}

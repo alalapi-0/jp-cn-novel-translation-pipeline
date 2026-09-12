@@ -1,0 +1,134 @@
+{
+  "candidate": "107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67",
+  "contract": "ALL-PROJECTS-CODEX-GOVERNANCE-V1-LIGHT-NOVEL-APPROVAL-BINDING-v1",
+  "status": "delivered",
+  "remote": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline",
+  "branch": "main",
+  "code_commit": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+  "observed_main": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+  "code_ci": {
+    "run_id": 34204195336,
+    "url": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline/actions/runs/34204195336",
+    "head_sha": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "check:tooling",
+        "conclusion": "success"
+      },
+      {
+        "name": "test:ui (optional)",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "metadata_transition": {
+    "path": [
+      "codex_governance",
+      "blockers"
+    ],
+    "preimage": [
+      {
+        "code": "independent_acceptance_pending",
+        "reason": "Prior candidate0ce177d7 was rejected for stale rejection. Forward repair and full local checks passed; fresh independent acceptance remains pending.",
+        "affected_items": [
+          "LIGHT-NOVEL-APPROVAL-BINDING-v1"
+        ],
+        "recovery_condition": "Fresh Judge PASS and Governor approval, then normal remote main delivery and CI verification.",
+        "retry_entry": "docs/reports/all-projects-governance/approval-binding/candidate.json",
+        "waiting_for_user": false
+      }
+    ],
+    "preimage_sha256": "5df931421b2930b59fe287356162f7970e22bf81d905061d193f194058265455",
+    "postimage": [],
+    "authority": "/root/hub_connection_governor explicit APPROVE after freshJudgePASS; exact decision-only row removal. No general blockers exclusion."
+  },
+  "scope": "Isolated candidate only. Original checkout integration and live Hub refresh not performed.",
+  "post_approval_state": {
+    "sha256": "6983286a2b5b0bda9779bc21f1f68ac311a702d55b0b1f78c862894ba91e0a00",
+    "accepted": true,
+    "blockers": [],
+    "delivery": "pending_delivery",
+    "source_validation": "PASS",
+    "state_sha256": "6983286a2b5b0bda9779bc21f1f68ac311a702d55b0b1f78c862894ba91e0a00",
+    "declaration_sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913",
+    "business": {
+      "current_work": {
+        "objective": "修复内容变更后的审核绑定、Codex 验证入口与 Hub 状态接入",
+        "phase": "governance",
+        "round": "LIGHT-NOVEL-APPROVAL-BINDING-v1",
+        "status": "complete",
+        "completed": true,
+        "accepted": true,
+        "next_action": "Commit and normally push the approved candidate to remote main; verify commit ancestry and applicable CI before marking delivery. Original integration/live Hub remain later.",
+        "owner_role": "Codex Root"
+      },
+      "progress": {
+        "completed": null,
+        "total": null,
+        "counting_basis": "本单元是流程治理，不以历史翻译章数或旧轮次 completed 计算项目完成率。",
+        "milestones": null
+      },
+      "blockers": [],
+      "verification": {
+        "status": "checks_passed:544 Python /35 browser;5+3 existing skips; gate72PASS2WARN",
+        "evidence_refs": [
+          "docs/reports/all-projects-governance/approval-binding/checks.json",
+          "docs/reports/all-projects-governance/approval-binding/backend-before.json",
+          "docs/reports/all-projects-governance/approval-binding/browser-before.json",
+          "docs/reports/all-projects-governance/approval-binding/browser-after.json",
+          "docs/reports/all-projects-governance/approval-binding/hub-source.json",
+          "docs/reports/all-projects-governance/approval-binding/preservation.json"
+        ],
+        "accepted_basis": "Fresh Judge PASS and Governor APPROVE for semantic 107a40622163b0dc9f8e252541c90f5ac20a729153619df3367bfc737fcbff67; docs/reports/all-projects-governance/approval-binding/judge.json and governor.json."
+      },
+      "delivery": {
+        "status": "pending_delivery",
+        "remote": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline",
+        "branch": "main",
+        "commit": null,
+        "receipt_ref": "docs/reports/all-projects-governance/approval-binding/delivery.json"
+      }
+    },
+    "unknown_fields": {
+      "progress.completed": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+      "progress.total": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+      "progress.milestones": "当前未发布逐项验收里程碑。",
+      "delivery.commit": "唯一状态源未提供已核验的远端主分支交付收据；不推断 delivered。"
+    }
+  },
+  "history_preserved": true,
+  "remote_contains_code": "verified_equal_remote_SHA_and_merge_base_ancestor",
+  "receipt_commit": "Recorded by native delivery output and subsequent Hub management receipt; no self-referential commit hash.",
+  "post_delivery_source": {
+    "kind": "shared_Hub2_validator_and_source_reader",
+    "shared_code_commit": "1b5dd803ab156f30a33299347b5afcf06b0b8066",
+    "success": true,
+    "declaration_sha256": "b5f5a1a6ddbe9de00bd60d0aa1992dc49c08ec12793a2afb7e8fc417ad332913",
+    "state_sha256": "4f55e0868376d8eda44d66970ea442d5eb94bf2c7aea882d54fc3e72611c50e3",
+    "unknown_fields": {
+      "progress.completed": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+      "progress.total": "本治理单元不发布数量进度；不将历史章节计数当作当前分母。",
+      "progress.milestones": "当前未发布逐项验收里程碑。"
+    },
+    "cases": {
+      "initial_exact_candidate": "PASS",
+      "unchanged_repeat_same_update_key": "PASS",
+      "one_source_field_change_only_corresponding_business_field_changes": "PASS",
+      "corrupt_source_returns_failure_with_actual_hash": "PASS"
+    },
+    "scope": "Candidate declaration validated; not installed in original or reflected in live Hub.",
+    "traced_fields": 18,
+    "accepted": true,
+    "blockers": [],
+    "delivery": {
+      "status": "delivered",
+      "remote": "https://github.com/alalapi-0/jp-cn-novel-translation-pipeline",
+      "branch": "main",
+      "commit": "40624481a2a42dd0af4e03f8aab0f4fb936fd298",
+      "receipt_ref": "docs/reports/all-projects-governance/approval-binding/delivery.json"
+    },
+    "next_action": "Integrate the accepted files into the original checkout under a separate owned unit, preserving existing dirty work; then refresh the live Hub source. This isolated unit is delivered; overall project governance remains in progress."
+  }
+}

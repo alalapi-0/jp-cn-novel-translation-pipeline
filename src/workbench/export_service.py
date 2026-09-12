@@ -79,7 +79,13 @@ def export_from_manifest(
     status_mode: str = "approved",
 ) -> dict[str, Any]:
     from workbench.project_registry import get_project_manifest
-    from workbench.review_state import get_project_review_state
+    from workbench.review_state import (
+        approval_identity,
+        get_project_review_state,
+        is_formally_approved,
+        segment_id,
+        segment_text,
+    )
 
     manifest = get_project_manifest(repo_root, project_id)
     if manifest is None:
@@ -116,21 +122,40 @@ def export_from_manifest(
     skipped_status_counts: dict[str, int] = {}
     segments_exported = 0
     for idx, seg in enumerate(manifest.segments, start=1):
-        seg_id = str(seg.get("id") or seg.get("segment_id") or "")
+        seg_id = segment_id(seg)
         state_entry = review_segments.get(seg_id, {}) if seg_id else {}
-        merged_status = str(
+        requested_status = str(
             (state_entry.get("status") if isinstance(state_entry, dict) else None)
             or seg.get("status")
             or "pending"
         ).strip().lower()
-        if not merged_status:
-            merged_status = "pending"
-        status_summary[merged_status] = int(status_summary.get(merged_status) or 0) + 1
-        if mode == "approved" and merged_status != "approved":
-            skipped_status_counts[merged_status] = int(skipped_status_counts.get(merged_status) or 0) + 1
+        if not requested_status:
+            requested_status = "pending"
+        current_identity = approval_identity(
+            project_id=manifest.project_id,
+            language_direction=manifest.language_direction,
+            segment=seg,
+        )
+        formally_approved = is_formally_approved(
+            state_entry,
+            current_identity,
+            segment=seg,
+        )
+        effective_status = (
+            "approved"
+            if formally_approved
+            else "reapproval_required"
+            if requested_status == "approved"
+            else requested_status
+        )
+        status_summary[effective_status] = int(status_summary.get(effective_status) or 0) + 1
+        if mode == "approved" and not formally_approved:
+            skipped_status_counts[effective_status] = (
+                int(skipped_status_counts.get(effective_status) or 0) + 1
+            )
             continue
-        source = str(seg.get("source") or seg.get("source_text") or "").strip()
-        draft = str(seg.get("draft") or seg.get("draft_text") or seg.get("target_text") or "").strip()
+        source = segment_text(seg, "source", "source_text")
+        draft = segment_text(seg, "draft", "draft_text", "target_text", "translation")
         if not source and not draft:
             continue
         segments_exported += 1
@@ -145,7 +170,7 @@ def export_from_manifest(
                 "**译文：**",
                 draft,
                 "",
-                f"_status: {merged_status}_",
+                f"_status: {effective_status}_",
                 "",
                 "---",
                 "",

@@ -21,15 +21,31 @@ def _load(name: str, path: Path):
     return mod
 
 
-def test_tool_probe_build_report():
+def test_tool_probe_build_report(tmp_path, monkeypatch):
     tp = _load("tp_test", REPO_ROOT / "scripts" / "tool_probe.py")
+    # Composition tests must not inspect a developer's Cursor/profile/credentials.
+    config = tmp_path / "synthetic_mcp.json"
+    config.write_text("{}")
+    monkeypatch.setattr(tp, "MCP_CONFIG", config)
+    monkeypatch.setattr(tp, "probe_local_tools", lambda: {"git": {"available": True}})
+    monkeypatch.setattr(tp, "probe_mcp_configured", lambda: [
+        {"name": "synthetic-browser", "callable_now": "true", "probe_result": "fixture"},
+        {"name": "synthetic-docs", "callable_now": "config_only", "probe_result": "fixture"},
+    ])
+    for name in ("probe_cursor_artifacts", "probe_cursor_cli", "probe_codex_compat",
+                 "probe_web_search", "probe_github", "probe_browser_stack"):
+        monkeypatch.setattr(tp, name, lambda *_args: {"fixture": True})
     report = tp.build_report()
-    assert report["status"] in ("passed", "partial")
-    assert "local_tools" in report
+    assert report["status"] == "passed"
+    assert report["local_tools"] == {"git": {"available": True}}
+    assert report["mcp_probe_summary"]["total_configured"] == 2
+    assert report["mcp_probe_summary"]["callable_true"] == 1
+    assert report["mcp_probe_summary"]["callable_config_only"] == 1
 
 
-def test_user_view_static_checks():
+def test_user_view_static_checks(monkeypatch):
     uv = _load("uv_test", REPO_ROOT / "scripts" / "user_view_test.py")
+    monkeypatch.setattr(uv, "_port_open", lambda *_args: False)
     report = uv.run_checks()
     assert report["checks"]
     assert "playwright_config" in [c["name"] for c in report["checks"]]

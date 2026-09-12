@@ -1,6 +1,4 @@
 (function () {
-  const STORAGE_KEY = "light_novel_workbench_state_v1";
-  const ISSUE_STORAGE_KEY = "light_novel_issue_state_v1";
   const ACTIVE_PROJECT_KEY = "light_novel_active_project_v1";
 
   let reviewData = null;
@@ -9,6 +7,10 @@
   let workbenchContext = null;
   let currentIssuesProjectId = "";
   let reviewStateCache = { segments: {}, issues: {} };
+  let reviewStateProjectId = "";
+  let reviewStateEpoch = 0;
+  let reviewActionError = "";
+  let reviewSaveInFlight = false;
   let runtimeApiStatus = null;
   let quickstartGenerating = false;
   let quickstartRealApiInFlight = false;
@@ -21,6 +23,8 @@
   const SEGMENT_STATUS_ZH = {
     pending: "待审核",
     approved: "已通过",
+    review_required: "需重新审核",
+    reapproval_required: "需重新审核",
     rejected: "已驳回",
     draft: "草稿",
   };
@@ -91,6 +95,8 @@
     pending: "待审核",
     rejected: "已驳回",
     approved: "已通过",
+    review_required: "需重新审核",
+    reapproval_required: "需重新审核",
     draft: "草稿",
   };
 
@@ -374,32 +380,6 @@
       .replace(/"/g, "&quot;");
   }
 
-  function loadLocalReviewState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : { segments: {} };
-    } catch {
-      return { segments: {} };
-    }
-  }
-
-  function loadLocalIssueState() {
-    try {
-      const raw = localStorage.getItem(ISSUE_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : { issues: {} };
-    } catch {
-      return { issues: {} };
-    }
-  }
-
-  function saveLocalReviewState(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function saveLocalIssueState(state) {
-    localStorage.setItem(ISSUE_STORAGE_KEY, JSON.stringify(state));
-  }
-
   function loadActiveProjectId() {
     try {
       return localStorage.getItem(ACTIVE_PROJECT_KEY) || "";
@@ -419,69 +399,74 @@
   }
 
   async function loadReviewStateForProject(projectId) {
-    if (!projectId) {
-      reviewStateCache = { segments: {}, issues: {} };
-      return reviewStateCache;
-    }
+    const epoch = ++reviewStateEpoch;
+    reviewStateProjectId = projectId || "";
+    reviewActionError = "";
+    reviewStateCache = { segments: {}, issues: {} };
+    if (!projectId) return reviewStateCache;
     try {
-      const res = await fetch(
-        `/api/projects/${encodeURIComponent(projectId)}/review-state`
-      );
-      if (res.ok) {
-        const payload = await res.json();
-        reviewStateCache = payload.review_state || { segments: {}, issues: {} };
-        reviewStateCache.segments = reviewStateCache.segments || {};
-        reviewStateCache.issues = reviewStateCache.issues || {};
-        return reviewStateCache;
-      }
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/review-state`);
+      if (!res.ok) throw new Error("read failed");
+      const payload = await res.json();
+      if (epoch !== reviewStateEpoch) return reviewStateCache;
+      reviewStateCache = payload.review_state || { segments: {}, issues: {} };
+      reviewStateCache.segments = reviewStateCache.segments || {};
+      reviewStateCache.issues = reviewStateCache.issues || {};
     } catch (_err) {
-      /* fallback below */
+      if (epoch !== reviewStateEpoch) return reviewStateCache;
+      reviewActionError = "无法读取已保存的审核结果，请刷新后重试。浏览器旧草稿仍保留，但不作为审核通过依据。";
+      log(reviewActionError);
     }
-    const local = loadLocalReviewState();
-    reviewStateCache = {
-      segments: local.segments || {},
-      issues: loadLocalIssueState().issues || {},
-    };
     return reviewStateCache;
   }
 
+  function validApprovalIdentity(identity) {
+    return typeof identity === "string" && /^sha256:[a-f0-9]{64}$/.test(identity);
+  }
+
   async function patchReviewState(projectId, patch) {
-    if (!projectId) return false;
+    if (!projectId || projectId !== reviewStateProjectId) return false;
+    const epoch = reviewStateEpoch;
+    reviewActionError = "";
     try {
-      const res = await fetch(
-        `/api/projects/${encodeURIComponent(projectId)}/review-state`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
-        }
-      );
-      if (res.ok) {
-        const payload = await res.json();
-        reviewStateCache = payload.review_state || reviewStateCache;
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/review-state`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (epoch !== reviewStateEpoch || projectId !== reviewStateProjectId) return false;
+      if (res.ok && payload.review_state) {
+        reviewStateCache = payload.review_state;
         return true;
       }
+      reviewActionError = res.status === 409
+        ? "内容或审核版本已变化，本次操作未保存。请刷新页面，核对最新内容后重新审核。"
+        : "审核结果未保存。请确认连接后重试；当前操作不会被标记为已通过。";
     } catch (_err) {
-      /* local fallback */
+      if (epoch !== reviewStateEpoch || projectId !== reviewStateProjectId) return false;
+      reviewActionError = "无法连接服务，审核结果未保存。请恢复连接并刷新后重试。";
     }
-    if (patch.segments) {
-      const local = loadLocalReviewState();
-      local.segments = { ...(local.segments || {}), ...patch.segments };
-      saveLocalReviewState(local);
-      reviewStateCache.segments = local.segments;
+    // Preserve legacy browser drafts in storage, but never promote a failed
+    // server write into a formal approval or a persisted issue decision.
+    for (const id of Object.keys(patch.segments || {})) {
+      reviewStateCache.segments[id] = {
+        ...reviewStateCache.segments[id], status: "review_required", approval_identity: null,
+      };
     }
-    if (patch.issues) {
-      const localIssues = loadLocalIssueState();
-      localIssues.issues = { ...(localIssues.issues || {}), ...patch.issues };
-      saveLocalIssueState(localIssues);
-      reviewStateCache.issues = localIssues.issues;
-    }
+    log(reviewActionError);
     return false;
   }
 
   function segmentStatus(segment, state) {
     const id = segment.id || segment.segment_id;
-    return state.segments?.[id]?.status || segment.status || "pending";
+    const review = state.segments?.[id];
+    const status = review?.status || segment.status || "pending";
+    if (status === "approved" || status === "rejected") {
+      return validApprovalIdentity(segment.approval_identity) &&
+        review?.approval_identity === segment.approval_identity ? status : "review_required";
+    }
+    return status;
   }
 
   function issueStatus(issue, issueState) {
@@ -1515,8 +1500,8 @@
             ? "acknowledged"
             : "open";
       const entry = { status: next, at: new Date().toISOString() };
-      await patchReviewState(currentIssuesProjectId, { issues: { [id]: entry } });
-      log(`issue ${id} → ${next} (persisted)`);
+      const saved = await patchReviewState(currentIssuesProjectId, { issues: { [id]: entry } });
+      if (saved) log(`issue ${id} → ${next} (persisted)`);
       bindIssuesPage(report);
     });
 
@@ -1531,18 +1516,7 @@
   async function applyAutoApprove(segment, projectId) {
     const cfg = getConfig();
     if (!cfg.AUTO_APPROVE && !cfg.dryRunAutoApprove) return false;
-    const id = segment.id || segment.segment_id;
-    await patchReviewState(projectId, {
-      segments: {
-        [id]: {
-          status: "approved",
-          autoApprove: true,
-          at: new Date().toISOString(),
-        },
-      },
-    });
-    log(`AUTO_APPROVE: ${id} → approved`);
-    return true;
+    return applyReviewSegmentAction(segment.id || segment.segment_id, "auto", projectId);
   }
 
   function bindReviewPage(data) {
@@ -1624,7 +1598,7 @@
     const selectedOpenIssues = openIssuesForSegment(selectedId, state);
     const showAutoBtn = Boolean(cfg.AUTO_APPROVE || cfg.dryRunAutoApprove);
     const autoBtnHtml = showAutoBtn
-      ? `<button type="button" data-action="auto" data-id="${escapeHtml(selectedId)}">触发自动通过</button>`
+      ? `<button type="button" data-action="auto" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>触发自动通过</button>`
       : "";
 
     const queueHtml = data.segments
@@ -1669,6 +1643,7 @@
         </section>
         <aside class="review-meta">
           <h3>状态与操作</h3>
+          ${reviewActionError ? `<p role="alert" tabindex="-1" class="issue-mark review-save-error">${escapeHtml(reviewActionError)} <a href="${escapeHtml(window.location.pathname + window.location.search)}">刷新后重新审核</a></p>` : ""}
           <div class="review-meta-section">
             <div class="panel-title">审核状态</div>
             <p>${renderBadge(selectedStatus)} ${generationModeBadge(selectedSeg)}</p>
@@ -1681,8 +1656,8 @@
           <div class="review-meta-section">
             <div class="panel-title">操作</div>
             <div class="actions">
-              <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}">通过</button>
-              <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}">驳回</button>
+              <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>${reviewSaveInFlight ? "保存中…" : "通过"}</button>
+              <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>驳回</button>
               ${autoBtnHtml}
             </div>
           </div>
@@ -1701,8 +1676,8 @@
       mobileBar.hidden = false;
       mobileBar.innerHTML = `
         <div class="actions">
-          <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}">通过</button>
-          <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}">驳回</button>
+          <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>${reviewSaveInFlight ? "保存中…" : "通过"}</button>
+          <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>驳回</button>
         </div>`;
     }
 
@@ -2143,27 +2118,38 @@
   }
 
   async function applyReviewSegmentAction(id, action, projectId) {
-    if (!id || !reviewData) return;
+    if (!id || !reviewData || reviewSaveInFlight) return false;
     const seg = reviewData.segments.find((s) => (s.id || s.segment_id) === id);
-    if (!seg) return;
+    if (!seg) return false;
     const cfg = getConfig();
     let entry;
+    if (["approve", "auto", "reject"].includes(action) && !validApprovalIdentity(seg.approval_identity)) {
+      reviewActionError = "当前内容缺少可验证的审核版本。请刷新并在对应项目中审核，旧草稿不会自动通过。";
+      bindReviewPage(reviewData);
+      document.querySelector(".review-save-error")?.focus();
+      return false;
+    }
     if (action === "approve" || action === "auto") {
-      entry = {
-        status: "approved",
-        autoApprove: action === "auto" || Boolean(cfg.AUTO_APPROVE),
-        at: new Date().toISOString(),
-      };
-      log(`${action === "auto" ? "AUTO_APPROVE" : "manual"}: ${id} approved`);
+      entry = { status: "approved", expected_identity: seg.approval_identity,
+        autoApprove: action === "auto" || Boolean(cfg.AUTO_APPROVE), at: new Date().toISOString() };
     } else if (action === "reject") {
-      entry = { status: "rejected", at: new Date().toISOString() };
-      log(`rejected: ${id}`);
+      entry = { status: "rejected", expected_identity: seg.approval_identity, at: new Date().toISOString() };
     } else {
-      return;
+      return false;
     }
     const activeProjectId = workbenchContext?.activeProjectId || projectId;
-    await patchReviewState(activeProjectId, { segments: { [id]: entry } });
+    reviewSaveInFlight = true;
+    reviewActionError = "";
     bindReviewPage(reviewData);
+    const saved = await patchReviewState(activeProjectId, { segments: { [id]: entry } });
+    reviewSaveInFlight = false;
+    bindReviewPage(reviewData);
+    if (saved) log(`${id}: ${entry.status} (persisted)`);
+    const focusButton = [...document.querySelectorAll(`.review-meta button[data-action="${action}"], #review-mobile-actions button[data-action="${action}"]`)]
+      .find(button => button.offsetParent !== null);
+    if (saved) focusButton?.focus({ preventScroll: true });
+    else document.querySelector(".review-save-error")?.focus();
+    return saved;
   }
 
   async function handleReviewSegmentAction(btn, projectId) {
