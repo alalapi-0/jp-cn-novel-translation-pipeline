@@ -76,6 +76,16 @@ npm run check:tooling  # 内含 pytest + MCP 检查
 
 勿直接 `python3 -m pytest`（系统 Python 可能缺依赖）；若无 `.venv`，`npm run test:py` 会提示创建虚拟环境。
 
+本机登记的 Linux 工作区使用忽略的 `config/linux.outputs.local.json`：
+`schema: 1`、`repoRoot` 为工作区绝对路径、`mountPoint: /data`、`uuid` 为 DATA 的 UUID，
+`outputRoot: /data/ProjectOutputs/light-novel/playwright`。每次 Playwright 运行的截图、trace
+和 `.last-run.json` 写入 `runs/<随机 UUID>/output`；历史文件放在独立的 `archive`。
+开始前核对挂载设备、路径与当前用户归属，结束后再核对；缺失或错误的 DATA 映射会终止运行，
+包括设有 `CI` 的本机运行。运行中拔盘后的持续安全未验收，请保持 DATA 连接。
+其他 clone 无本机映射时沿用 `artifacts/playwright`。显式 `--output` 与 `--reporter` 保留
+Playwright 语义；DATA 中的显式输出只能选择尚不存在的 `runs/<新目录名>/output`，避免清理已有文件。
+映射和运行上下文无需提交；可用 `node --test tests/test_playwright_output_storage.mjs` 检查存储边界。
+
 审核工作台默认 **不自动通过** segment（`AUTO_APPROVE=false`）；自动推进试验可在 URL 加 `?auto_approve=1`。
 
 **翻译记忆/资产沉淀：**

@@ -140,6 +140,7 @@ artifacts/screenshots/*
 .playwright-mcp/
 playwright-report/
 test-results/
+config/linux.outputs.local.json
 
 # Continuous Agent runtime generated reports
 .agent_runtime/inspection_reports/*

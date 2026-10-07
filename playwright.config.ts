@@ -1,9 +1,11 @@
 import { defineConfig } from "@playwright/test";
 import { existsSync } from "node:fs";
+import { resolvePlaywrightOutput } from "./scripts/playwright_output_storage.mjs";
 
 const port = Number(process.env.PLAYWRIGHT_PORT || "5174");
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("Invalid test port");
 const python = existsSync(".venv/bin/python") ? ".venv/bin/python" : "python3";
+const output = resolvePlaywrightOutput({ repoRoot: __dirname });
 
 export default defineConfig({
   testDir: "tests/ui",
@@ -15,7 +17,9 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  outputDir: "artifacts/playwright",
+  outputDir: output.outputDir,
+  metadata: { lightNovelOutputStorage: output.metadata },
+  globalTeardown: "./scripts/playwright_output_storage.mjs",
   webServer: {
     command: `${python} scripts/serve_ui_fixture.py --port ${port}`,
     port,
