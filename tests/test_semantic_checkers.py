@@ -15,6 +15,7 @@ from quality_review.checkers import (  # noqa: E402
     reset_issue_counter,
 )
 from quality_review.runner import run_review  # noqa: E402
+from workbench.project_registry import build_source_inventory
 from quality_review.workbench_adapter import (  # noqa: E402
     run_review_for_workbench,
     segments_doc_from_workbench,
@@ -82,9 +83,11 @@ def test_fixture_includes_semantic_issue_types():
 
 
 def test_workbench_adapter_maps_segments():
+    imported_source = [{"id": "seg-005", "source": "彼女は学校に行かなかった。"}]
     doc = segments_doc_from_workbench(
         project_id="demo-jp-cn",
         language_direction="JP_TO_CN",
+        source_inventory=build_source_inventory(imported_source, language_direction="JP_TO_CN"),
         segments=[
             {
                 "id": "seg-005",

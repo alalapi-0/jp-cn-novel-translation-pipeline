@@ -38,8 +38,12 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Install Python test runner
-        run: python3 -m pip install -r requirements-dev.txt
+      - name: Install isolated test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap python3-venv
+          /usr/bin/python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
 
       - name: Install Node dependencies
         run: npm ci
@@ -75,8 +79,12 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Install Python test runner
-        run: python3 -m pip install -r requirements-dev.txt
+      - name: Install isolated test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap python3-venv
+          /usr/bin/python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
 
       - name: Install Node dependencies
         run: npm ci
@@ -85,4 +93,6 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Playwright UI smoke
-        run: npm run test:ui
+        run: |
+          export LN_UI_CHROMIUM="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          .venv/bin/python scripts/isolated_checks.py --entry ui

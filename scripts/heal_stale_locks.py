@@ -107,6 +107,7 @@ def heal(repo_root: Path, *, apply: bool) -> dict:
         "pid": sched["pid"],
         "alive": sched["alive"],
         "stale": sched["stale"],
+        "unknown": sched['unknown'],
     }
     if sched["exists"] and sched["stale"]:
         if apply:
@@ -126,6 +127,11 @@ def heal(repo_root: Path, *, apply: bool) -> dict:
             )
     elif sched["exists"]:
         report["kept"].append(report["scheduler_lock"]["path"])
+        if sched['unknown']:
+            report['needs_attention'].append({
+                'path': report['scheduler_lock']['path'],
+                'action': 'inspect manually (unknown process identity; preserved)',
+            })
 
     return report
 

@@ -12,6 +12,7 @@ from .config import AssetExtractionConfig
 from .loader import LoadedChapter
 from .rule_based_extractor import extract_all_rule_based
 from .types import BaseAsset
+from .knowledge import model_claims
 
 _PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts" / "asset_extraction_prompt_v0.1.0.md"
 
@@ -60,6 +61,7 @@ def _parse_model_assets(raw: str) -> list[dict[str, Any]]:
 def _dict_to_base_asset(item: dict[str, Any]) -> BaseAsset:
     return BaseAsset(
         asset_id=str(item.get("asset_id", "ma-unknown")),
+        knowledge_claims=model_claims(item.get("knowledge_claims"),asset_id=str(item.get("asset_id","ma-unknown"))),
         asset_type=str(item.get("asset_type", "unknown")),
         abstraction_level=item.get("abstraction_level", "medium"),  # type: ignore[arg-type]
         copyright_safety_level=item.get("copyright_safety_level", "caution"),  # type: ignore[arg-type]

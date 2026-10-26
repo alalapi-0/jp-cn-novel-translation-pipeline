@@ -16,7 +16,7 @@
   ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "type": "string", "const": "1.0.0" },
+    "schema_version": { "type": "string", "enum": ["1.0.0", "1.1.0"] },
     "project_id": { "type": "string" },
     "language_direction": {
       "type": "string",
@@ -27,6 +27,7 @@
       "enum": [
         "draft",
         "machine_translated",
+        "machine_checked",
         "review_needed",
         "term_conflict",
         "voice_conflict",
@@ -39,6 +40,8 @@
     },
     "generated_at": { "type": "string", "format": "date-time" },
     "generated_by": { "type": "string" },
+    "review_actor_type": { "type": "string", "const": "machine" },
+    "approval_state": { "type": "string", "const": "not_granted" },
     "issues": {
       "type": "array",
       "items": { "$ref": "#/$defs/review_issue" }
@@ -53,6 +56,20 @@
       }
     }
   },
+  "dependentRequired": {
+    "review_actor_type": ["approval_state"],
+    "approval_state": ["review_actor_type"]
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "schema_version": { "const": "1.1.0" } }, "required": ["schema_version"] },
+      "then": { "required": ["review_actor_type", "approval_state"] }
+    },
+    {
+      "if": { "required": ["review_actor_type"] },
+      "then": { "properties": { "review_status": { "not": { "enum": ["human_reviewed", "final"] } } } }
+    }
+  ],
   "$defs": {
     "review_issue": {
       "type": "object",

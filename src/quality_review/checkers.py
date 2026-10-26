@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import hashlib
+from collections import Counter
 from typing import Any, Iterable
 
 from .types import ReviewIssue, utc_now_iso
@@ -23,37 +25,6 @@ _CN_NEGATION_RE = re.compile(
     r"(?:没有|未|非|不|没|无|未能|未曾|不会|不是|没去|没有去|未能)"
 )
 _CN_AFFIRM_MOTION_RE = re.compile(r"(?:去了|来到|到达|抵达|会来|会来吧|来到了|去到|登上|前去|回去|跑到|会来呢)")
-_AUTO_FIX_DENYLIST = {
-    "狙击蚁",
-    "秘遗物",
-    "全队",
-    "组队",
-    "团队战",
-    "派对会场",
-    "复活点",
-    "领导者",
-    "队长",
-    "老大",
-    "领队",
-    "首领",
-    "头目",
-    "领头",
-    "女兵",
-    "白袍",
-    "斗篷",
-    "黑斗篷",
-    "阿玛莉",
-    "马尔曼",
-    "马尔曼（マーマン）",
-    "马曼",
-    "吸血鬼",
-    "エルフ",
-    "コトノハ",
-    "グライテン",
-    "ドラゴン",
-    "邦布大人",
-    "班布大人",
-}
 
 
 def _is_word_char(ch: str) -> bool:
@@ -105,13 +76,6 @@ def _is_system_style_fragment(text: str) -> bool:
     compact = re.sub(r"\s+", "", text or "")
     if not compact:
         return False
-    if compact in {
-        "ありがとうございます",
-        "Ｌ(・)Ｐ(・)が(・)減(・)って(・)い(・)た(・)。",
-        "L(・)P(・)が(・)減(・)って(・)い(・)た(・)。",
-    }:
-        return True
-
     ascii_like_chars = sum(
         1
         for ch in compact
@@ -231,12 +195,6 @@ def check_term_consistency(
                     continue
                 if not _source_occurs(term.get("source", ""), source_text):
                     continue
-                normalized_wrong = [a for a in wrong_aliases if a not in _AUTO_FIX_DENYLIST]
-                if not normalized_wrong:
-                    continue
-                uses_wrong = True
-                if not uses_wrong:
-                    continue
                 locked = bool(term.get("locked"))
                 issue_type = "LOCKED_TERM_VIOLATION" if locked else "INCONSISTENT_TERM"
                 severity = "high" if locked else "medium"
@@ -273,62 +231,80 @@ def check_term_consistency(
 
 
 def check_segment_alignment(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
-    """Compare expected segment ids vs present ids and orphan list."""
+    """Compare an independent source scope with every target occurrence."""
     issues: list[ReviewIssue] = []
     project_id = segments_doc["project_id"]
     direction = segments_doc["language_direction"]
     chapter_id = segments_doc.get("chapter_id", "ch-unknown")
-    expected: set[str] = set(segments_doc.get("expected_segment_ids", []))
-    present: set[str] = set()
-    segment_by_id: dict[str, dict[str, Any]] = {}
+    def structural(rule, description, sid="", *, paragraph_id="", location="", **evidence):
+        issues.append(_base_issue(project_id=project_id, language_direction=direction,
+            chapter_id=chapter_id, segment_id=sid, paragraph_id=paragraph_id,
+            issue_type="SEGMENT_ALIGNMENT_ERROR", severity="high", description=description,
+            suggested_fix="核对固定源清单与对应译文；未知范围不得标为完整",
+            created_by="checker.segment_alignment",
+            evidence={"rule": rule, "input_location": location,
+                      "confidence": {"kind": "deterministic_structure_not_semantic_probability", "value": 1.0}, **evidence}))
 
-    for para in segments_doc.get("paragraphs", []):
-        paragraph_id = para.get("paragraph_id", "")
-        for seg in para.get("segments", []):
-            sid = seg.get("segment_id", "")
-            if not sid:
-                continue
-            present.add(sid)
-            segment_by_id[sid] = {**seg, "paragraph_id": paragraph_id}
-
-    for missing in sorted(expected - present):
-        issues.append(
-            _base_issue(
-                project_id=project_id,
-                language_direction=direction,
-                chapter_id=chapter_id,
-                segment_id=missing,
-                issue_type="SEGMENT_ALIGNMENT_ERROR",
-                severity="high",
-                description=f"期望 segment「{missing}」在译文中缺失",
-                suggested_fix="补全对应 segment 译文或修正对齐表",
-                created_by="checker.segment_alignment",
-                evidence={"expected_segment_id": missing},
-            )
-        )
-
-    for orphan in sorted(segments_doc.get("orphan_segment_ids", [])):
-        if orphan in expected:
+    raw_expected = segments_doc.get("expected_segment_ids")
+    known_scope = isinstance(raw_expected, list)
+    expected_list = []
+    if not known_scope:
+        structural("unknown_expected_source", "缺少独立源清单，覆盖范围未知")
+    else:
+        for i, sid in enumerate(raw_expected):
+            if not isinstance(sid, str) or not sid.strip():
+                structural("invalid_expected_id", "源清单含无效片段 ID", location=f"expected_segment_ids[{i}]")
+            else:
+                expected_list.append(sid)
+        if not expected_list:
+            structural("empty_expected_source", "源清单没有有效片段，不得以空集合证明完成")
+    expected = set(expected_list)
+    for sid, count in Counter(expected_list).items():
+        if count > 1:
+            structural("duplicate_expected_id", "源清单片段 ID 重复", sid, occurrences=count)
+    present = Counter(); rows = []
+    paragraphs = segments_doc.get("paragraphs", [])
+    if not isinstance(paragraphs, list):
+        structural("invalid_paragraphs", "段落容器格式无效"); paragraphs = []
+    for pi, para in enumerate(paragraphs):
+        if not isinstance(para, dict) or not isinstance(para.get("segments", []), list):
+            structural("invalid_segment_container", "片段容器格式无效", location=f"paragraphs[{pi}]")
             continue
-        issues.append(
-            _base_issue(
-                project_id=project_id,
-                language_direction=direction,
-                chapter_id=chapter_id,
-                segment_id=orphan,
-                issue_type="SEGMENT_ALIGNMENT_ERROR",
-                severity="high",
-                description=f"译文存在未在期望列表中的 segment「{orphan}」",
-                suggested_fix="删除多余 segment 或更新 expected_segment_ids",
-                created_by="checker.segment_alignment",
-                evidence={"orphan_segment_id": orphan},
-            )
-        )
+        paragraph_id = str(para.get("paragraph_id", ""))
+        for si, seg in enumerate(para.get("segments", [])):
+            location = f"paragraphs[{pi}].segments[{si}]"
+            sid = seg.get("segment_id") if isinstance(seg, dict) else None
+            if not isinstance(sid, str) or not sid.strip():
+                structural("invalid_target_id", "译文片段缺少有效 ID", paragraph_id=paragraph_id, location=location)
+                continue
+            present[sid] += 1
+            if present[sid] > 1:
+                structural("duplicate_target_id", "译文片段 ID 重复，不能按字典覆盖", sid,
+                           paragraph_id=paragraph_id, location=location, occurrence=present[sid])
+            rows.append((sid, seg, paragraph_id, location))
+    for sid in sorted(expected - set(present)):
+        structural("missing_target_id", f"期望 segment「{sid}」在译文中缺失", sid, expected_segment_id=sid)
+    orphans = segments_doc.get("orphan_segment_ids", [])
+    orphans = {s for s in orphans if isinstance(s, str) and s} if isinstance(orphans, list) else set()
+    unexpected = (set(present) - expected) if known_scope else set()
+    for sid in sorted(unexpected | (orphans - expected)):
+        structural("unexpected_target_id", f"译文存在未在源清单中的 segment「{sid}」", sid, orphan_segment_id=sid)
 
-    for sid, seg in segment_by_id.items():
+    source_hashes = segments_doc.get("source_expected_sha256", {})
+    for sid, seg, paragraph_id, location in rows:
         source = seg.get("source_text", "") or ""
         target = seg.get("target_text", "") or ""
-        if not source or not target:
+        if not isinstance(source, str) or not source.strip():
+            structural("empty_source", "片段原文为空或格式无效", sid, paragraph_id=paragraph_id, location=location)
+        if not isinstance(target, str) or not target.strip():
+            structural("empty_target", "片段译文为空或格式无效", sid, paragraph_id=paragraph_id, location=location)
+        if isinstance(source, str) and source.strip() and isinstance(source_hashes, dict) and sid in source_hashes:
+            actual = hashlib.sha256(source.encode()).hexdigest()
+            if actual != source_hashes[sid]:
+                structural("source_revision_mismatch", "当前原文与导入时固定版本不一致", sid,
+                           paragraph_id=paragraph_id, location=location,
+                           expected_source_sha256=source_hashes[sid], actual_source_sha256=actual)
+        if not isinstance(source, str) or not isinstance(target, str) or not source.strip() or not target.strip():
             continue
         src_len = _text_length_units(source, direction)
         tgt_len = _text_length_units(target, direction)
@@ -339,7 +315,7 @@ def check_segment_alignment(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
                     project_id=project_id,
                     language_direction=direction,
                     chapter_id=chapter_id,
-                    paragraph_id=seg.get("paragraph_id", ""),
+                    paragraph_id=paragraph_id,
                     segment_id=sid,
                     issue_type="OMISSION",
                     severity="high",
@@ -472,8 +448,14 @@ def check_mistranslation(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
     return issues
 
 
-def check_refinement_diff(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
-    """Flag draft vs refined divergence when refined changes locked-term surface forms."""
+def check_refinement_diff(segments_doc: dict[str, Any], work_rules=None) -> list[ReviewIssue]:
+    """Explicit historical comparison only; no default work-specific target terms."""
+    if work_rules is None:
+        return []
+    from consistency.work_rules import WorkRules
+    if not isinstance(work_rules, WorkRules):
+        raise ValueError('explicit selected WorkRules required')
+    work_rules.require_document(segments_doc)
     issues: list[ReviewIssue] = []
     project_id = segments_doc["project_id"]
     direction = segments_doc["language_direction"]
@@ -486,7 +468,7 @@ def check_refinement_diff(segments_doc: dict[str, Any]) -> list[ReviewIssue]:
             refined = (seg.get("refined_text") or "").strip()
             if not draft or not refined or draft == refined:
                 continue
-            if "魔法结晶" in refined and "魔法结晶" not in draft:
+            if any(term in refined and term not in draft for term in work_rules.get('legacy_refinement_targets')):
                 issues.append(
                     _base_issue(
                         project_id=project_id,
@@ -519,7 +501,6 @@ def run_all_checkers(
     issues.extend(check_segment_alignment(segments_doc))
     issues.extend(check_placeholder_lost(segments_doc))
     issues.extend(check_mistranslation(segments_doc))
-    issues.extend(check_refinement_diff(segments_doc))
     return issues
 
 

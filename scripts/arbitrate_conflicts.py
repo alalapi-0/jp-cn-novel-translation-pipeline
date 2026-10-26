@@ -26,6 +26,7 @@ from providers.cost_guard import CostGuard, CostGuardConfig  # noqa: E402
 from providers.fake_provider import FakeProvider  # noqa: E402
 from providers.registry import ProviderMode, get_provider  # noqa: E402
 from translation.run_progress import safe_load_json  # noqa: E402
+from providers.controlled_run import atomic_write_json  # noqa: E402
 
 DEFAULT_GLOSSARY_AUDIT_REL = Path("workspace") / "consistency_audit" / "glossary_conflict_audit.json"
 DEFAULT_OUTPUT_REL = Path("workspace") / "consistency_audit" / "arbitration_report.json"
@@ -35,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Arbitrate rule-undecidable glossary conflicts (FS-037)")
     parser.add_argument("--glossary-audit", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--max-api-calls", type=int, default=DEFAULT_MAX_API_CALLS)
     parser.add_argument("--dry-run", action="store_true", help="No API calls; emit placeholder decisions")
@@ -47,6 +49,11 @@ def main(argv: list[str] | None = None) -> int:
     audit_path = glossary_audit if glossary_audit.is_absolute() else repo_root / glossary_audit
     output = args.output or DEFAULT_OUTPUT_REL
     output_path = output if output.is_absolute() else repo_root / output
+    dry_run = args.dry_run or not args.real_api
+    if dry_run:
+        output_path = output_path.with_name(output_path.stem + ".simulation" + output_path.suffix)
+    checkpoint = args.checkpoint or Path("workspace/consistency_audit/arbitration_progress.json")
+    checkpoint_path = checkpoint if checkpoint.is_absolute() else repo_root / checkpoint
 
     if not audit_path.is_file():
         print(f"arbitrate_conflicts: FAIL glossary audit not found: {audit_path}")
@@ -56,6 +63,9 @@ def main(argv: list[str] | None = None) -> int:
     candidates = select_arbitration_candidates(glossary_audit)
 
     if args.real_api and not args.dry_run:
+        if args.max_api_calls <= 0:
+            print("arbitrate_conflicts: FAIL real API requires --max-api-calls > 0")
+            return 2
         guard = CostGuard(
             CostGuardConfig.from_env(log_dir=repo_root / "workspace" / "model_runs"),
         )
@@ -71,13 +81,14 @@ def main(argv: list[str] | None = None) -> int:
         candidates,
         provider=provider,
         max_api_calls=args.max_api_calls,
-        dry_run=args.dry_run or not args.real_api,
+        dry_run=dry_run,
+        checkpoint_path=checkpoint_path if not dry_run else None,
+        repo_root=repo_root,
     )
     if args.real_api and not args.dry_run:
         report["dry_run"] = False
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    atomic_write_json(output_path, report)
 
     try:
         display_output = str(output_path.relative_to(repo_root))
@@ -93,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
             f"api_calls={summary['api_calls']}/{summary['max_api_calls']} "
             f"-> {summary['output']}"
         )
-    return 0
+    return 0 if summary["status"] in {"PASS", "NO_OP", "SIMULATED"} else 1
 
 
 if __name__ == "__main__":

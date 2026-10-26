@@ -1,166 +1,70 @@
 # Translation Production Protocol
 
-> v1.0（2026-06-18）。本协议配合 `docs/product_final_state_spec.md` v2.0 使用，是后续作品翻译执行的主路径说明。若旧 Roadmap / Round Report 要求 refinement、R-MR 或 production_candidate，以本协议和最终规格为准。
+版本：v1.1，2026-10-23。与[最终规格](product_final_state_spec.md)、[一致性协议](translation_consistency_protocol.md)共同定义产品行为。当前任务、已验收范围及下一步只来自 `governance/round_state.yaml` 当前 `codex_governance`；本文不授予 API、模型、预算、调度、发布或 Git 权限。
 
-## 1. 生产终点
+## 1. 生产终点与版本
 
-自动化生产终点是：
+主线为：登记原文及版本 → 翻译候选 → 结构/覆盖校验 → 源文条件下一致性与语义审查 → 有证据的有限局部修订 → 接受明确候选版本 → 唯一正式导出 → 用户最后校准。
 
-```text
-output_cn/translated/full_volume_cn.md
-output_cn/final_export_manifest.json
-reports/final_translation_singleton_check.json
-```
+默认 JP_TO_CN 正式译文为 `output_cn/translated/full_volume_cn.md`，配套 `output_cn/final_export_manifest.json` 与 `reports/final_translation_singleton_check.json`。CN_TO_JP 使用项目选定的日文目标输出与同构 manifest；每个作品、方向、接受版本只有一个正式指针。分章、双语及 Workbench 导出是辅助视图，不能竞争正式版本。
 
-默认只保留一份最终译文。分章译文、双语导出、Workbench 临时导出均为可再生成辅助产物，不作为最终版本保留。
+不要求生成 baseline 正文、不以 baseline_lock 阶段阻塞主线。冻结的旧译、旧框架同条件重跑、修订前像是私有比较/恢复材料；三者不能混为真值，也不作为第二份当前正式稿。refinement、R-MR、production_candidate 及 refined 优先选择均为历史路线，不能恢复为必经步骤。
 
-## 2. 标准流程
+## 2. 输入与中间态
 
-```text
-Import Source
-→ Build stable chapter / paragraph / segment ids
-→ Translate by API mode or Agent quota mode
-→ Run deterministic validation
-→ Run consistency audit
-→ Apply approved deterministic/local fixes
-→ Lock baseline
-→ Export singleton final translation
-→ Run singleton check
-→ Optional human_approved_final by user only
-```
+原文、旧译、用户修改及知识资料须先登记来源、路径、版本、权限与原分母；来源未知者排除。原件只读，候选和可恢复版本另存。旧 `approved`、`locked`、用户修改稿标签保留来源，不自动证明语义正确或真人批准。
 
-不再存在必经的 refinement / R-MR / production_candidate 阶段。
+每个结果至少关联：作品、方向、run、执行模式、数据/代码/Prompt/知识版本、chapter/paragraph/segment/logical ID、源文 revision 与 span、候选 revision、生产者与审查者、失败和预算记录。合法合句/拆句用多对多 span 关系表示；无法对齐是待核验状态，不能直接判漏译。
 
-## 3. 执行模式
+API 与 Agent 额度模式写入同构结构化中间态，包括 `source_text`、`draft_text`、`status`、`execution_mode`、provider/model 身份及时间。聊天文本、文件存在和旧完成标记不能代替该证据链。固定实体、章范围、语言特例与格式偏好属于选定作品配置，不能复制到通用核心；未核配置不可抑制问题或自动改写。
 
-### API Mode
+## 3. 执行方式与准入
 
-用于外部真实 API 生产翻译。
+| 模式 | 必要条件 | 记录与限制 |
+|---|---|---|
+| 外部 API | 当前明确付费授权；真实 guard；安全凭据入口；对应 pause/lock/worker 门禁 | 每个 provider attempt、重试和 fallback 在入口前持久预留输入与最大输出；未知实际账单/Token 保留未知 |
+| Agent 额度 | 当前明确授权的作品、输入和候选范围；通过同一校验/恢复/导出契约 | `execution_mode=agent_quota_translation`；原生隐藏 Token/重试不可见时不得声称已硬限 |
+| mock / dry-run | 已确认合成样例和隔离根 | 只写模拟命名空间；模拟完成不能跳过后续真实任务；不声称真实翻译成功 |
 
-必须满足：
+调度器保持现有 pause；不得由本协议或已配置凭据恢复。当前优化启用 Prompt 单独授权的直接受控工程/Agent 实验按其范围登记，不启动 scheduler，也不改变其生产暂停状态。没有本次付费授权时外部 API 预算为 0。更贵模型、部署、提高预算/并发及公开发布均需各自的当前授权。
 
-* 用户允许真实 API；
-* cost guard 生效；
-* `max-api-calls`、`max-segments` 或 wall-time budget 至少一个生效；
-* pause / lock / orphan gates 全部通过；
-* 不打印、不提交 API Key；
-* 每批输出必须进入统一 segment schema；
-* 失败 segment 不得污染 final export。
+## 4. 有限操作预算与恢复
 
-### Agent Quota Mode
+每个完整源文版本对应的修正单元累计最多 2 次修订、8 次可观测模型操作、1,200 秒；生成、审阅、风格与失败重试共用计数。每轮最多 10 单元或 2,400 秒，先到即保存。只有已证实 429/5xx 等暂态故障可额外重试一次，并计入总上限；连续两次无新证据/收益关闭该修订路线。更严的现有限制优先。
 
-用于直接使用当前 Agent 自身额度完成翻译。
+先持久预留再进入已注册调用。重启、更换 run/Agent/检查点名称不能清零来源单元的操作、修订、失败或成本；未确认的调用仍计入已消耗/未知，不能盲重放。回调超时后的拒绝不等于能够强制抢占任意原生模型调用。
 
-必须满足：
+恢复先核真实模式、计划/运行/完整源文/候选版本与修订身份，再判断精确失败 ID、pending 写入及自有前像。身份不明、模拟或过期事务不得修改真实目标/检查点；不覆盖并发改稿。崩溃后确认已有提交，避免多发调用；预算、前像与原失败记录均保留。
 
-* 用户明确允许或当前任务明确要求；
-* 每轮只处理有限章节 / segment；
-* 翻译结果必须写入与 API Mode 同构的 `segments.json` / run metadata；
-* 必须记录 `execution_mode=agent_quota_translation`；
-* 必须保留 stable ids；
-* 必须经过一致性检查和 singleton export；
-* 不得把聊天文本直接复制成最终交付文件。
+## 5. 检查、修订与接受
 
-### Mock / Dry Run Mode
+工程完整性、忠实度、长文一致性、文学表达、个人偏好与资源分别评价。长度/正则/术语匹配是告警，零 issue 仅为机器检查通过，不是语义或文学验收。关键误译不能被文采或偏好得分抵消。
 
-用于测试、治理、UI 和门禁，不得伪装成真实翻译。
+每条问题附源/译版本与 span、类型、严重度、置信度及证据。先核原义和知识，再选择不改、一次简单修订、问题驱动修订或必要的段落/场景级重译；复杂方法没有预设优势。证据不足保留原稿并记录未定项。
 
-## 4. 统一产物契约
+至少一个不参与改写的评价视角；匿名 A/B 交换顺序，同模型多角色的独立性局限须记录。保留集目标/裁决/反馈不能用于调 Prompt、阈值或策略。未校准维度不得自动接受。源文必要上下文可用于评估。
 
-无论译文来自 API 还是 Agent，后续步骤只认结构化产物：
+实例修正、作品规则、通用机制及个人偏好候选分流；单个反例不能生成全局禁令。术语可按说话人、时代、叙事阶段或语境合法多译；频次、locked 或旧 approved 不能强制唯一词面。
 
-```yaml
-chapter_id:
-paragraph_id:
-segment_id:
-source_text:
-draft_text:
-status:
-provider:
-model:
-execution_mode:
-run_id:
-created_at:
-updated_at:
-```
+## 6. 审查身份与保护
 
-允许的 `execution_mode`：
+| 证据来源 | 可以声明 | 不能自动声明 |
+|---|---|---|
+| 机器 checker | machine_checked、具体告警、覆盖状态 | human_reviewed、语义无误、final |
+| Agent / PSH proxy | 附生产者、版本和范围的代理建议/代理接受 | 真实用户反馈、真人批准、PSH 规则提权 |
+| 真实用户反馈 | 可核身份、原反馈及精确版本 | 对其他候选或全书的笼统批准 |
+| 用户明确最终确认 | 通过受信入口绑定精确候选的 human_approved_final | 发布、付费或其他外部权限 |
 
-```text
-api_translation
-agent_quota_translation
-mock
-dry_run
-```
+旧 `requires_human_review` 等字段不是批准凭据；常规有证据争议由已授权代理处理，不要求用户逐段审批。现有实现不能签发可信人审时保留不可用，文档不新增签发器。保护原文、旧译、人工修改稿和既有正式稿；局部修订写候选及前像，不直接覆盖原件。
 
-## 5. 一致性门禁
+## 7. canonical 与安全导出
 
-翻译完成后必须运行：
+先冻结 expected 源清单及接受 revision，核完整范围、缺/空/重复章、segment/span 覆盖与审查/知识依赖，再暂存、验证、原子切换唯一正式指针。不得依赖 mtime、refined 优先或旧完成标记选择权威；缺项/异常保留旧正式稿和恢复点。
 
-```bash
-python3 scripts/run_consistency_fix_all.py --dry-run
-python3 scripts/audit_actual_chapter_content.py --chapters 1 612 --output <report>.json
-python3 scripts/build_term_variant_report.py --chapters 1 612 --output <report>.json
-python3 scripts/export_consistency_final_volume.py --json
-python3 scripts/check_final_translation_singleton.py --json
-```
+当前旧脚本的身份/完整性缺口由优化计划 P2.R02/P2.R03 解决；本文是目标合同，不证明这些入口已采用。不得运行旧全书写入/清理命令来证明文档已落地。真实 UI、canonical、PSH 和导出验收分别保留自己的实际证据。
 
-对新作品，章节范围按实际章节数替换。不得硬编码 612。
+## 8. Done 与交接
 
-## 6. 局部修正规则
+生产完成须覆盖登记的原分母：全部预期源文/章节/段落有有效输出；无未解决关键错误、缺漏或阻塞失败；合法多译/保护字面量有局部证据，未定项不隐去；同一接受版本通过结构、语义范围、一致性和 singleton 检查；恢复可用，资源收束。输出包括版本、失败、资源/隐藏计量局限及精确下一步。
 
-只允许以下自动修正：
-
-* 已锁定且 source-guarded 的术语替换；
-* 明确占位符恢复；
-* 明确格式修复；
-* 明确漏段补译；
-* 用户确认过的局部重译。
-
-禁止：
-
-* 无证据全局替换；
-* 改写 human_edited segment；
-* 为追求“文采”做全书润色；
-* 未经用户确认切换成更贵模型；
-* 生成多份互相竞争的最终译文。
-
-## 7. 调度语义
-
-`local_scheduler_status.py --json` 的主线 phase：
-
-```text
-draft
-consistency
-final_export
-final_ready
-```
-
-`baseline_lock`、`refinement`、`final_review`、`production_candidate` 为 legacy phase，不得作为下一轮主任务。
-
-## 8. 新作品启动清单
-
-1. 导入原文并生成 stable ids。
-2. 建立或导入 glossary / character_profile / style_profile。
-3. 选择 API Mode 或 Agent Quota Mode。
-4. 设定每轮范围和预算。
-5. 执行翻译。
-6. 执行一致性检查。
-7. 导出 singleton final translation。
-8. 运行 singleton check。
-9. 更新 latest-agent-report 和 round_state。
-
-## 9. Done
-
-生产翻译 Done：
-
-* 全部章节 completed；
-* failed / blocking validation_failed 为 0；
-* consistency dry-run changed_segments 为 0；
-* term variance 为 0；
-* singleton check passed；
-* no active worker；
-* no orphan worker；
-* 最终译文只有一份；
-* 未标记 human_approved_final；
-* 未对外发布。
+工程 PASS、小样本和文件单例不证明全书文学质量。用户最后回看校准与自动化交付区分，`human_approved_final` 仅由用户明确确认；未发布，不自动发布。

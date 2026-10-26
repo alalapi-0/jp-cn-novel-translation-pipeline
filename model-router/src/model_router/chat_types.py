@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable, ContextManager
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,8 @@ class ChatOptions:
     stream: bool = False
     timeout_sec: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Internal adapter hook: every retry/fallback obtains its own durable reservation.
+    attempt_context: Callable[..., ContextManager] | None = None
 
 
 @dataclass

@@ -23,7 +23,7 @@ from consistency.manifest import (
     find_segments_files,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 3
 
 _SEGMENT_ID_RE = re.compile(r"^ch-(\d+)-seg-(\d+)$", re.IGNORECASE)
 
@@ -56,6 +56,9 @@ def _segment_entry(
     source_text = segment.get("source_text") or ""
     draft_text = segment.get("draft_text") or ""
     parsed = parse_segment_id(segment_id)
+    from translation.source_versions import validate_source_binding, review_dependencies, value_sha
+    binding = segment.get('source_binding')
+    if binding is not None: binding=validate_source_binding(binding,source_text)
     return {
         "segment_id": segment_id,
         "chapter_id": chapter_id,
@@ -69,6 +72,14 @@ def _segment_entry(
         "status": str(segment.get("status") or ""),
         "has_draft": bool(str(draft_text).strip()),
         "has_source": bool(str(source_text).strip()),
+        "source_sha256": hashlib.sha256(source_text.encode()).hexdigest(),
+        "target_sha256": hashlib.sha256(draft_text.encode()).hexdigest(),
+        "source_binding_sha256": binding['binding_sha256'] if binding else None,
+        "dependency_sha256": value_sha(review_dependencies(segment,source_text)),
+        "logical_id": binding['logical_id'] if binding else None,
+        "source_revision": binding['source_revision'] if binding else None,
+        "source_spans": binding['source_spans'] if binding else None,
+        "source_binding_status": 'bound_metadata' if binding else 'legacy_unknown',
     }
 
 
@@ -183,9 +194,9 @@ def _detect_chapter_issues(
     return by_id, missing_segments, misalignments
 
 
-def iter_chapter_scans(path: Path, *, run_id: str) -> Iterator[tuple[int, dict[str, Any]]]:
+def iter_chapter_scans(path: Path, *, run_id: str, source_bytes: bytes | None = None) -> Iterator[tuple[int, dict[str, Any]]]:
     """Stream chapters from one segments.json without retaining body text."""
-    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc = json.loads(source_bytes if source_bytes is not None else path.read_bytes())
     for chapter in doc.get("chapters") or []:
         chapter_id = str(chapter.get("chapter_id") or "")
         chapter_number = chapter_number_from_id(chapter_id)
@@ -209,9 +220,9 @@ def iter_chapter_scans(path: Path, *, run_id: str) -> Iterator[tuple[int, dict[s
         }
 
 
-def scan_segments_file(path: Path, *, run_id: str) -> dict[int, dict[str, Any]]:
+def scan_segments_file(path: Path, *, run_id: str, source_bytes: bytes | None = None) -> dict[int, dict[str, Any]]:
     """Extract per-chapter segment metadata from one segments.json (no text in output)."""
-    return {num: bucket for num, bucket in iter_chapter_scans(path, run_id=run_id)}
+    return {num: bucket for num, bucket in iter_chapter_scans(path, run_id=run_id,source_bytes=source_bytes)}
 
 
 def _normalize_chapter_bucket(raw: dict[Any, Any]) -> dict[int, dict[str, Any]]:
@@ -239,7 +250,7 @@ def _merge_chapter_buckets(
 
 def _content_hash(segments: dict[str, dict[str, Any]]) -> str:
     parts = [
-        f"{sid}:{meta.get('status')}:{meta.get('source_length')}:{meta.get('draft_length')}"
+        f"{sid}:{meta.get('status')}:{meta.get('source_sha256')}:{meta.get('target_sha256')}:{meta.get('source_binding_sha256')}:{meta.get('dependency_sha256')}"
         for sid, meta in sorted(segments.items())
     ]
     return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()[:16]
@@ -252,7 +263,8 @@ def build_segment_index(
     run_dirs: list[Path] | None = None,
 ) -> dict[str, Any]:
     """Build (incrementally) the segment index document."""
-    prev_files: dict[str, Any] = (previous_index or {}).get("segment_files") or {}
+    prior = previous_index if (previous_index or {}).get('schema_version')==SCHEMA_VERSION else {}
+    prev_files: dict[str, Any] = (prior or {}).get("segment_files") or {}
     segments_paths = find_segments_files(repo_root, run_dirs)
 
     segment_files_section: dict[str, Any] = {}
@@ -262,7 +274,8 @@ def build_segment_index(
 
     for path in segments_paths:
         key = str(path)
-        fp = file_fingerprint(path)
+        raw=path.read_bytes()
+        fp = file_fingerprint(path,source_bytes=raw)
         run_id = path.parent.name
         prev = prev_files.get(key)
         if prev and prev.get("fingerprint") == fp:
@@ -270,7 +283,7 @@ def build_segment_index(
             segment_files_section[key] = prev
             reused += 1
         else:
-            bucket = scan_segments_file(path, run_id=run_id)
+            bucket = scan_segments_file(path, run_id=run_id,source_bytes=raw)
             segment_files_section[key] = {
                 "fingerprint": fp,
                 "run_id": run_id,

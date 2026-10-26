@@ -70,9 +70,9 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _fingerprint(path: Path) -> str:
-    stat = path.stat()
-    return f"{stat.st_size}:{int(stat.st_mtime)}"
+def _fingerprint(path: Path, *, source_bytes: bytes | None = None) -> str:
+    from consistency.manifest import file_fingerprint
+    return file_fingerprint(path,source_bytes=source_bytes)
 
 
 def _chapter_num(chapter_id: str | None) -> int | None:
@@ -190,9 +190,10 @@ def scan_entity_file(
     chapter_min: int | None = None,
     chapter_max: int | None = None,
     all_terms: list[GlossaryEntry] | None = None,
+    source_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     """Stream one segments.json; returns entity + unlisted buckets (no text)."""
-    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc = json.loads(source_bytes if source_bytes is not None else path.read_bytes())
     chapters = doc.get("chapters") or []
     entity_bucket: dict[str, Any] = {}
     unlisted_bucket: dict[str, Any] = {}
@@ -408,6 +409,31 @@ def rank_unlisted_high_freq(
     return rows[:top_n]
 
 
+def _file_term_dependencies(raw, terms, glossary_all, chapter_min, chapter_max):
+    """Compute the exact term subset consulted for this file's observable scan.
+
+    A new source/target hit or a known-fragment rule joins the digest, including
+    absent->present transitions. Unrelated glossary edits leave the file reusable.
+    """
+    from translation.source_versions import value_sha
+    doc=json.loads(raw);sources=[];targets=[]
+    for ch in doc.get('chapters') or []:
+        num=_chapter_num(str(ch.get('chapter_id') or ''))
+        if chapter_min is not None and (num is None or num<chapter_min): continue
+        if chapter_max is not None and (num is None or num>chapter_max): continue
+        for row in ch.get('segments') or []:
+            sources.append(row.get('source_text') or '');targets.append(row.get('draft_text') or '')
+    candidates={c for text in sources for c in _extract_unlisted_candidates(text)}
+    relevant=[term.to_dict() for term in terms if
+        any(_contains_standalone_term(term.source_term,t) for t in sources) or
+        (term.target_term and any(_contains_standalone_term(term.target_term,t)
+         or f'【{term.target_term}】' in t or f'《{term.target_term}》' in t for t in targets))]
+    known=_known_source_terms(glossary_all or terms)
+    fragments=sorted(k for k in known if any(c==k or c in k for c in candidates))
+    return value_sha({'algorithm':'entity-file-terms/3','terms':relevant,'known_fragments':fragments,
+                      'chapter_filter':[chapter_min,chapter_max]})
+
+
 def build_entity_index(
     terms: list[GlossaryEntry],
     segments_files: list[Path],
@@ -421,6 +447,9 @@ def build_entity_index(
     """Build (incrementally) the entity index document."""
     entity_terms = filter_entity_terms(terms)
     glossary_all = all_terms if all_terms is not None else terms
+    from translation.source_versions import value_sha
+    dependency_sha256=value_sha({'algorithm':'entity-index-content/2',
+        'terms':[term.to_dict() for term in terms],'all_terms':[term.to_dict() for term in glossary_all]})
 
     prev_files: dict[str, Any] = (previous_index or {}).get("files") or {}
     prev_filter = (previous_index or {}).get("chapter_filter")
@@ -436,9 +465,11 @@ def build_entity_index(
 
     for path in ordered_paths:
         key = str(path)
-        fp = _fingerprint(path)
+        raw=path.read_bytes();fp = _fingerprint(path,source_bytes=raw)
+        local_dependency=_file_term_dependencies(raw,entity_terms,glossary_all,chapter_min,chapter_max)
         prev = prev_files.get(key)
-        if prev and prev.get("fingerprint") == fp and prev_filter == current_filter:
+        if (prev and prev.get("fingerprint") == fp and prev_filter == current_filter
+                and prev.get('dependency_sha256')==local_dependency):
             files_section[key] = prev
             reused += 1
             entity_file_buckets.append((key, prev.get("entities") or {}))
@@ -450,8 +481,10 @@ def build_entity_index(
             chapter_min=chapter_min,
             chapter_max=chapter_max,
             all_terms=glossary_all,
+            source_bytes=raw,
         )
         files_section[key] = {
+            "dependency_sha256": local_dependency,
             "fingerprint": fp,
             "entities": scan["entities"],
             "unlisted": scan["unlisted"],
@@ -496,6 +529,7 @@ def build_entity_index(
         "generated_at": utc_now_iso(),
         "chapter_filter": current_filter,
         "entity_categories": list(ENTITY_CATEGORIES),
+        "dependency_sha256": dependency_sha256,
         "files": files_section,
         "stats": {
             "files_total": len(files_section),

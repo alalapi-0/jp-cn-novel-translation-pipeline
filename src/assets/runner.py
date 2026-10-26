@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from .asset_safety_validator import partition_by_safety, validate_assets
+from .asset_safety_validator import validate_assets
 from .config import AssetExtractionConfig, load_asset_extraction_config
 from .loader import (
     apply_segment_limit,
@@ -131,7 +131,9 @@ def run_asset_extraction(
 
     source_corpus = collect_source_corpus(chapters)
     safety_results = validate_assets(all_assets, source_corpus=source_corpus)
-    safe_assets, blocked_assets = partition_by_safety(all_assets, safety_results)
+    safe_assets=[];blocked_assets=[]
+    for asset,result in zip(all_assets,safety_results):
+        (safe_assets if result.passed and result.copyright_safety_level!='unsafe' else blocked_assets).append(asset)
 
     segments_processed = sum(len(c.segments) for c in chapters)
     stats = {
@@ -189,17 +191,18 @@ def run_asset_extraction(
     if write_public:
         pub = repo_root / "assets_extracted"
         pub.mkdir(parents=True, exist_ok=True)
-        for name in (
-            "narrative_assets.jsonl",
-            "game_design_assets.jsonl",
-            "naming_pattern_assets.jsonl",
-            "chapter_structure_assets.jsonl",
-        ):
-            src = out_root / name
-            if src.is_file():
-                (pub / f"{extraction_run_id}_{name}").write_text(
-                    src.read_text(encoding="utf-8"), encoding="utf-8"
-                )
+        # Match the actual checked object, never a possibly duplicated model ID.
+        public_allowed={id(asset) for asset in safe_assets}
+        for key in ('narrative','game_design','naming_pattern','chapter_structure'):
+            rows=[]
+            for asset in buckets.get(key,[]):
+                if id(asset) not in public_allowed:continue
+                row=asset.to_dict()
+                # Source evidence and work-specific claims stay in private output.
+                row.pop('knowledge_claims',None)
+                rows.append(json.dumps(row,ensure_ascii=False)+'\n')
+            (pub/f'{extraction_run_id}_{key}_assets.jsonl').write_text(''.join(rows),encoding='utf-8')
+
 
     return {
         "run_id": extraction_run_id,

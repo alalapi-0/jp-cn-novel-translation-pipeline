@@ -42,6 +42,9 @@ class CheckResult:
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from isolated_checks import require_view, run as run_isolated
+
 REPORT_PATH = REPO_ROOT / "docs" / "reports" / "agent_gate_report.md"
 GATE_RESULT_PATH = REPO_ROOT / "reports" / "gate_result.json"
 
@@ -138,6 +141,11 @@ def _file_exists(check_id: str, path: Path) -> CheckResult:
 
 
 def _git(args: Sequence[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    # Host Git is queried read-only before isolation; no .git or credentials are
+    # mounted into the synthetic view. Report this frozen metadata honestly.
+    if os.environ.get("LN_SYNTHETIC_CHECK_ROOT") == str(REPO_ROOT):
+        snapshot = require_view(REPO_ROOT)["git"][json.dumps(list(args))]
+        return subprocess.CompletedProcess(["git", *args], **snapshot)
     return subprocess.run(
         ["git", *args],
         cwd=cwd,
@@ -1248,6 +1256,7 @@ def check_git_status_summary() -> list[CheckResult]:
 
 
 def run_all_checks(*, strict: bool = False, strict_layer: bool = False) -> list[CheckResult]:
+    require_view(REPO_ROOT)
     results: list[CheckResult] = []
     results.extend(check_docs_exist())
     results.extend(check_roadmaps(strict))
@@ -1356,6 +1365,9 @@ def write_report(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if os.environ.get("LN_SYNTHETIC_CHECK_ROOT") != str(REPO_ROOT):
+        return run_isolated("gate", list(argv) if argv is not None else sys.argv[1:])
+    require_view(REPO_ROOT)
     parser = argparse.ArgumentParser(description="Deterministic agent gate for light_novel repo")
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON to stdout")
     parser.add_argument(

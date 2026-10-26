@@ -11,7 +11,8 @@ from typing import Any
 
 PROGRESS_SCHEMA_VERSION = 1
 VALID_STATUSES = frozenset(
-    {"pending", "in_progress", "completed", "failed", "aborted", "blocked"}
+    {"pending", "in_progress", "completed",
+    "simulated", "failed", "aborted", "blocked"}
 )
 RECOVERY_LABELS = frozenset(
     {

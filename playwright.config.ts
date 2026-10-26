@@ -15,6 +15,8 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     trace: "on-first-retry",
+    launchOptions: process.env.LN_SYNTHETIC_CHECK_ROOT && process.env.LN_UI_CHROMIUM
+      ? { executablePath: process.env.LN_UI_CHROMIUM } : {},
     screenshot: "only-on-failure",
   },
   outputDir: output.outputDir,

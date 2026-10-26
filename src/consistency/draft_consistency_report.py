@@ -99,9 +99,13 @@ def _level_stats(repo_root: Path) -> dict[str, Any]:
             "api_calls": arbitration.get("api_calls"),
             "max_api_calls": arbitration.get("max_api_calls"),
             "within_budget": not arbitration.get("budget_exhausted"),
+            "execution_status": arbitration.get("status"),
+            "dry_run": bool(arbitration.get("dry_run")),
         },
         "level_5_retranslate": {
             "present": bool(retranslate),
+            "execution_status": retranslate.get("status"),
+            "dry_run": bool(retranslate.get("dry_run") or (retranslate.get("last_batch") or {}).get("dry_run")),
             "total_segments": retranslate.get("total_segments"),
             "completed_segments": len(retranslate.get("completed_segment_ids") or []),
             "remaining_segments": max(
@@ -129,6 +133,15 @@ def build_draft_consistency_report(repo_root: Path) -> dict[str, Any]:
         for key, (name, rel_dir) in ARTIFACTS.items()
         if key not in ("retranslate_progress", "fix_plan_status", "arbitration_report")
     }
+    arbitration = levels["level_4_arbitration"]
+    retranslate = levels["level_5_retranslate"]
+    fixes = levels["fix_plan_status"]
+    simulated = arbitration["dry_run"] or retranslate["dry_run"] or fixes.get("dry_run")
+    incomplete = (not all(artifacts_present.values())
+                  or bool(arbitration.get("candidate_count") and arbitration.get("execution_status") != "PASS")
+                  or bool(levels["level_3_fix_plan"].get("retranslate_segment_count") and not fixes.get("all_closed")))
+    failed = arbitration.get("execution_status") == "FAIL" or retranslate.get("execution_status") == "failed"
+    status = "SIMULATED" if simulated else "FAIL" if blocking or failed else "INCOMPLETE" if incomplete else "PASS"
 
     return {
         "schema_version": 1,
@@ -137,12 +150,12 @@ def build_draft_consistency_report(repo_root: Path) -> dict[str, Any]:
         "round": "FS-037",
         "total_source_chapters": total_chapters,
         "blocking_conflicts": blocking,
-        "status": "PASS" if blocking == 0 else "FAIL",
+        "status": status,
         "artifacts_present": artifacts_present,
         "progressive_disclosure": levels,
         "recommendation": (
             "ready_for_final_export"
-            if blocking == 0 and artifacts_present.get("chapter_manifest")
+            if status == "PASS" and artifacts_present.get("chapter_manifest")
             else "resolve_blocking_before_final_export"
         ),
     }

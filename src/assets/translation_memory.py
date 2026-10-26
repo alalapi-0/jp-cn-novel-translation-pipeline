@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal
@@ -42,16 +42,28 @@ class TranslationPair:
     status: str
     source_ref: str
     chapter_id: str = ""
+    acceptance_provenance: dict[str, Any] | None = None
+    dependencies: dict[str, Any] = field(default_factory=dict)
+    qualification: str = "unreviewed_translation"
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        from translation.source_versions import text_sha, value_sha
+        row = {
             "segment_id": self.segment_id,
             "source_text": self.source_text,
             "target_text": self.target_text,
             "status": self.status,
             "source_ref": self.source_ref,
             "chapter_id": self.chapter_id,
+            "acceptance_provenance": self.acceptance_provenance,
+            "qualification": self.qualification,
+            "dependencies": self.dependencies,
+            "source_sha256": text_sha(self.source_text),
+            "target_sha256": text_sha(self.target_text),
         }
+        row["pair_id"] = value_sha({k:row[k] for k in ("source_ref","chapter_id","segment_id")})
+        row["version_sha256"] = value_sha(row)
+        return row
 
 
 def _utc_now() -> str:
@@ -83,7 +95,8 @@ def _collect_manifest_pairs(
     *,
     status_mode: AssetStatusMode,
 ) -> tuple[list[TranslationPair], str]:
-    from workbench.project_registry import get_project_manifest
+    from workbench.project_registry import load_project_manifest
+    from workbench.project_id import validate_project_id
     from workbench.review_state import (
         approval_identity,
         get_project_review_state,
@@ -92,9 +105,14 @@ def _collect_manifest_pairs(
         segment_text,
     )
 
-    manifest = get_project_manifest(repo_root, project_id)
-    if manifest is None:
+    from translation.source_versions import review_dependencies
+    project_id=validate_project_id(project_id)
+    root=repo_root/'workspace/manifests';path=root/f'{project_id}.json'
+    if not path.is_file() or not path.resolve().is_relative_to(root.resolve()):
         raise KeyError(f"unknown project_id: {project_id}")
+    manifest=load_project_manifest(path)
+    if manifest.project_id!=project_id:
+        raise ValueError('translation memory manifest identity differs')
     review_state = get_project_review_state(repo_root, project_id)
     review_segments = review_state.get("segments") if isinstance(review_state, dict) else {}
     if not isinstance(review_segments, dict):
@@ -102,6 +120,8 @@ def _collect_manifest_pairs(
 
     pairs: list[TranslationPair] = []
     for seg in manifest.segments:
+        if seg.get("dependency_resolution_errors"):
+            continue
         seg_id = segment_id(seg)
         state_entry = review_segments.get(seg_id, {}) if seg_id else {}
         status = str(
@@ -135,6 +155,9 @@ def _collect_manifest_pairs(
                     status=status,
                     source_ref=f"manifest:{project_id}",
                     chapter_id=str(seg.get("chapter") or ""),
+                    acceptance_provenance=state_entry.get("decision_provenance") if status_mode == "approved" else None,
+                    dependencies=review_dependencies(seg, source),
+                    qualification="nonhuman_candidate" if status_mode == "approved" else "unreviewed_translation",
                 )
             )
     return pairs, manifest.language_direction
@@ -143,7 +166,20 @@ def _collect_manifest_pairs(
 def _resolve_source_run_root(repo_root: Path, source_run: str) -> Path:
     from assets.loader import resolve_source_run_root
 
-    return resolve_source_run_root(repo_root, source_run)
+    path=resolve_source_run_root(repo_root, source_run)
+    allowed=[repo_root/'workspace/runs',repo_root/'workspace/diagnostics/real_api_runs']
+    if not any(path.resolve().is_relative_to(root.resolve()) for root in allowed):
+        raise ValueError('translation memory source run outside registered run roots')
+    segments=path/'segments.json'
+    if not segments.resolve().is_relative_to(path.resolve()):
+        raise ValueError('translation memory segment source escaped its run')
+    return path
+
+
+def _chapter_key(value):
+    text=str(value)
+    match=re.fullmatch(r'(?:ch-)?0*(\d+)',text,re.IGNORECASE)
+    return str(int(match.group(1))) if match else text
 
 
 def _collect_run_pairs(
@@ -156,18 +192,51 @@ def _collect_run_pairs(
     path = run_root / "segments.json"
     doc = json.loads(path.read_text(encoding="utf-8"))
     pairs: list[TranslationPair] = []
+    from translation.source_versions import review_dependencies
+    # Both entry routes require the same current Workbench/CAS evidence. A run's
+    # approved label alone remains readable data, never an acceptance authority.
+    accepted = []
+    if status_mode == "approved":
+        project_id = doc.get('project_id')
+        if not isinstance(project_id, str) or not project_id:
+            return pairs, str(doc.get("language_direction") or "JP_TO_CN")
+        accepted, direction = _collect_manifest_pairs(repo_root, project_id, status_mode='approved')
+        if direction != str(doc.get('language_direction') or 'JP_TO_CN'):
+            return [], direction
+    from workbench.project_registry import _resolve_manifest_dependencies
+    from translation.source_versions import dependency_versions
+    flattened=[row for ch in doc.get('chapters') or [] for row in ch.get('segments') or [] if isinstance(row,dict)]
+    resolved=_resolve_manifest_dependencies(repo_root,{**doc,'segments':flattened})
+    rows=iter(resolved['segments'])
+    catalog=dependency_versions(resolved.get('dependency_versions',{}))
     for ch in doc.get("chapters") or []:
         chapter_id = str(ch.get("chapter_id") or "")
         for seg in ch.get("segments") or []:
             if not isinstance(seg, dict):
                 continue
+            seg=dict(next(rows))
+            if seg.get('dependency_resolution_errors'): continue
+            if 'dependency_keys' in seg:
+                keys=seg['dependency_keys']
+                if (not isinstance(keys,list) or any(not isinstance(k,str) for k in keys)
+                        or len(set(keys))!=len(keys) or any(k not in catalog for k in keys)):
+                    raise ValueError('missing or ambiguous run dependency versions')
+                seg['dependency_versions']={k:catalog[k] for k in keys}
             status = str(seg.get("status") or "").strip().lower()
-            if not _status_allowed(status, status_mode):
+            if not _status_allowed(status, "translated"):
                 continue
             source = _segment_text(seg, "source_text", "source")
-            target = _segment_text(seg, "refined_text", "draft_text", "target_text", "translation")
+            target = _segment_text(seg, "draft", "draft_text", "target_text", "translation")
             seg_id = _segment_text(seg, "segment_id", "id")
             if source and target:
+                deps=review_dependencies(seg, source)
+                if status_mode == 'approved':
+                    matches=[p for p in accepted if p.segment_id==seg_id and p.source_text==source
+                             and p.target_text==target and p.dependencies==deps
+                             and _chapter_key(p.chapter_id)==_chapter_key(chapter_id)]
+                    if len(matches)==1:
+                        pairs.append(replace(matches[0], source_ref=f'run:{source_run}', chapter_id=chapter_id))
+                    continue
                 pairs.append(
                     TranslationPair(
                         segment_id=seg_id,
@@ -176,6 +245,7 @@ def _collect_run_pairs(
                         status=status,
                         source_ref=f"run:{source_run}",
                         chapter_id=chapter_id,
+                        dependencies=deps,
                     )
                 )
     return pairs, str(doc.get("language_direction") or "JP_TO_CN")
@@ -273,7 +343,7 @@ def _render_context_prompt(asset_doc: dict[str, Any], *, max_pairs: int = 12) ->
     for term in asset_doc.get("proper_noun_candidates", [])[:10]:
         hint = term.get("target_hint") or ""
         lines.append(f"- Proper noun candidate: {term.get('source')}{' => ' + hint if hint else ''}")
-    for pair in asset_doc.get("approved_pairs", [])[:max_pairs]:
+    for pair in asset_doc.get("translation_pairs", asset_doc.get("approved_pairs", []))[:max_pairs]:
         lines.append(
             f"- Pair {pair.get('segment_id')}: {pair.get('source_text')} => {pair.get('target_text')}"
         )
@@ -395,16 +465,25 @@ def build_translation_memory_assets(
             if isinstance(item, dict):
                 terms.append(item)
 
-    approved_pairs = [p.to_dict() for p in pairs]
+    translation_pairs = [p.to_dict() for p in pairs]
+    ids=[p["pair_id"] for p in translation_pairs]
+    if len(set(ids))!=len(ids):
+        raise ValueError("ambiguous duplicate translation memory pair identity")
     asset_doc: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "asset_kind": "translation_memory",
         "mode": mode,
         "status_mode": status_mode,
+        "approval_scope": "nonhuman_candidate" if status_mode == "approved" else "unreviewed_translation",
+        "human_approved_final": False,
+        "is_canonical": False,
         "created_at": _utc_now(),
         "language_direction": language_direction,
         "source_refs": [source_ref],
-        "approved_pairs": approved_pairs,
+        "translation_pairs": translation_pairs,
+        "approved_pairs": translation_pairs if status_mode == "approved" else [],
+        "machine_pairs": translation_pairs if status_mode == "translated" else [],
+        "withdrawn_pair_ids": [],
         "segment_map": {p.segment_id: p.target_text for p in pairs if p.segment_id},
         "term_candidates": _ordered_unique(terms, "source", limit=120),
         "proper_noun_candidates": proper_nouns,
@@ -440,10 +519,68 @@ def load_translation_asset_context(path: Path) -> dict[str, Any]:
     return data
 
 
-def render_translation_asset_context(path: Path) -> str:
+def _current_asset_context(path: Path, *, repo_root: Path | None = None) -> dict[str, Any]:
+    """Read-through validation; never updates or deletes the saved audit snapshot."""
     data = load_translation_asset_context(path)
-    prompt = str(data.get("context_prompt") or "").strip()
-    return prompt or _render_context_prompt(data)
+    if data.get('schema_version') != 2 or data.get('withdrawn') is True:
+        return {}
+    if repo_root is None:
+        resolved=path.resolve()
+        if resolved.parent.parts[-3:] != ('workspace','assets','translation_memory'):
+            return {}
+        repo_root=resolved.parents[3]
+    refs=data.get('source_refs')
+    if not isinstance(refs,list) or len(refs)!=1 or not isinstance(refs[0],str):
+        return {}
+    origin, _, name=refs[0].partition(':')
+    mode=data.get('status_mode')
+    if mode not in {'approved','translated'}: return {}
+    try:
+        if origin=='manifest':
+            pairs,direction=_collect_manifest_pairs(repo_root,name,status_mode=mode)
+        elif origin=='run':
+            pairs,direction=_collect_run_pairs(repo_root,name,status_mode=mode)
+        else: return {}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}  # Missing/ambiguous/stale dependency is withheld, not repaired.
+    if direction!=data.get('language_direction'): return {}
+    current={};duplicates=set()
+    for pair in pairs:
+        row=pair.to_dict();pid=row['pair_id']
+        if pid in current: duplicates.add(pid)
+        current[pid]=row
+    saved=data.get('translation_pairs')
+    withdrawn=data.get('withdrawn_pair_ids',[])
+    if not isinstance(saved,list) or not isinstance(withdrawn,list): return {}
+    counts={}
+    for row in saved:
+        if isinstance(row,dict) and isinstance(row.get('pair_id'),str):
+            counts[row['pair_id']]=counts.get(row['pair_id'],0)+1
+    valid=[]
+    for row in saved:
+        if not isinstance(row,dict): continue
+        pid=row.get('pair_id')
+        if not isinstance(pid,str): continue
+        now=current.get(pid)
+        if counts.get(pid)!=1 or pid in duplicates or pid in withdrawn or now is None: continue
+        # Full semantic row equality also rejects modified pair payloads or forged digests.
+        if row!=now: continue
+        valid.append(now)
+    if not valid: return {}
+    # Derived terms/style cannot outlive any parent; recompute only from fresh pairs.
+    objects=[TranslationPair(segment_id=r['segment_id'],source_text=r['source_text'],
+        target_text=r['target_text'],status=r['status'],source_ref=r['source_ref'],
+        chapter_id=r['chapter_id']) for r in valid]
+    terms,nouns=_extract_terms(objects)
+    return {**data,'translation_pairs':valid,'approved_pairs':valid if mode=='approved' else [],
+            'machine_pairs':valid if mode=='translated' else [],'term_candidates':terms,
+            'proper_noun_candidates':nouns,'phrase_candidates':_phrase_candidates(objects),
+            'style_notes':_style_notes(objects)}
+
+
+def render_translation_asset_context(path: Path, *, repo_root: Path | None = None) -> str:
+    data = _current_asset_context(path, repo_root=repo_root)
+    return _render_context_prompt(data) if data else ''
 
 
 def select_batch_context_hits(
@@ -453,11 +590,12 @@ def select_batch_context_hits(
     max_terms: int = 8,
     max_pairs: int = 6,
     max_character_notes: int = 4,
+    repo_root: Path | None = None,
 ) -> str:
     """Return compact glossary/character hits for one batch (no full asset dump)."""
     if not batch_source_texts:
         return ""
-    data = load_translation_asset_context(path)
+    data = _current_asset_context(path, repo_root=repo_root)
     haystack = "\n".join(batch_source_texts)
 
     lines: list[str] = []
@@ -486,7 +624,7 @@ def select_batch_context_hits(
         )
 
     pair_hits = 0
-    for pair in data.get("approved_pairs", []):
+    for pair in data.get("translation_pairs", []):
         if pair_hits >= max_pairs:
             break
         source = str(pair.get("source_text") or "").strip()

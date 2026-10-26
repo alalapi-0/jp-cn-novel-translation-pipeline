@@ -164,8 +164,8 @@ def test_arbitration_dry_run_respects_cap() -> None:
     guard = CostGuard(CostGuardConfig(max_test_cost_usd=1.0))
     provider = FakeProvider(cost_guard=guard)
     report = run_arbitration(candidates, provider=provider, max_api_calls=2, dry_run=True)
-    assert report["arbitrated_count"] == 2
-    assert report["budget_exhausted"] is True
+    assert report["arbitrated_count"] == report["api_calls"] == 0
+    assert report["simulated_count"] == 2 and report["preview_truncated"] is True
 
 
 def test_retranslate_dry_run_checkpoint(fixture_repo: Path) -> None:
@@ -180,19 +180,21 @@ def test_retranslate_dry_run_checkpoint(fixture_repo: Path) -> None:
         limit=1,
         dry_run=True,
     )
-    assert result["batch_completed"] == 1
-    assert result["status"] in ("partial", "closed")
+    assert result["batch_completed"] == result["api_calls"] == 0
+    assert result["simulated_segments"] == 1 and result["status"] == "simulated"
     cp = json.loads(
-        (fixture_repo / "workspace/consistency_audit/retranslate_progress.json").read_text()
+        Path(result["checkpoint_path"]).read_text()
     )
-    assert "ch-001-seg-001" in cp["completed_segment_ids"]
+    assert cp["completed_segment_ids"] == []
+    assert "ch-001-seg-001" in cp["simulated_segment_ids"]
+    assert not (fixture_repo / "workspace/consistency_audit/retranslate_progress.json").exists()
 
 
-def test_retranslate_real_apply_updates_draft(fixture_repo: Path) -> None:
+def test_known_fake_provider_cannot_apply_real_draft(fixture_repo: Path) -> None:
     plan = json.loads((fixture_repo / "workspace/consistency_audit/local_fix_plan.json").read_text())
     guard = CostGuard(CostGuardConfig(max_test_cost_usd=1.0))
     provider = FakeProvider(cost_guard=guard)
-    run_consistency_retranslate(
+    result = run_consistency_retranslate(
         plan,
         fixture_repo,
         provider=provider,
@@ -203,7 +205,8 @@ def test_retranslate_real_apply_updates_draft(fixture_repo: Path) -> None:
     seg_path = fixture_repo / "workspace/runs/run_test_draft_stage_b_50ch/segments.json"
     doc = json.loads(seg_path.read_text())
     draft = doc["chapters"][0]["segments"][0]["draft_text"]
-    assert draft.startswith("[fake]")
+    assert draft == '示例残留カナ'
+    assert result['dry_run'] is True and result['completed_segments'] == 0
 
 
 def test_fix_plan_status_partial_after_pilot() -> None:
@@ -211,7 +214,7 @@ def test_fix_plan_status_partial_after_pilot() -> None:
     status = build_fix_plan_status(plan, {"completed_segments": 2, "remaining_segments": 8, "status": "partial"})
     assert status["retranslate_tasks"]["status"] == "partial"
     assert status["retranslate_tasks"]["pilot_validated"] is True
-    assert status["deferred"]["status"] == "closed"
+    assert status["deferred"]["status"] == "pending" and status["all_closed"] is False
 
 
 def test_consistency_retranslate_planner_implemented() -> None:
@@ -255,9 +258,9 @@ def test_build_draft_consistency_report_fixture(fixture_repo: Path) -> None:
         encoding="utf-8",
     )
     report = build_draft_consistency_report(fixture_repo)
-    assert report["status"] == "PASS"
+    assert report["status"] == "SIMULATED"
     assert report["blocking_conflicts"] == 0
-    assert report["recommendation"] == "ready_for_final_export"
+    assert report["recommendation"] != "ready_for_final_export"
 
 
 def test_arbitrate_conflicts_cli(tmp_path: Path, monkeypatch) -> None:
@@ -275,4 +278,5 @@ def test_arbitrate_conflicts_cli(tmp_path: Path, monkeypatch) -> None:
     spec.loader.exec_module(mod)
     rc = mod.main(["--repo-root", str(tmp_path), "--dry-run", "--json"])
     assert rc == 0
-    assert (audit_dir / "arbitration_report.json").is_file()
+    assert (audit_dir / "arbitration_report.simulation.json").is_file()
+    assert not (audit_dir / "arbitration_report.json").exists()

@@ -20,6 +20,7 @@ class BaseAsset:
     pattern_description: str
     generated_examples: list[str] = field(default_factory=list)
     source_chapter_ids: list[str] = field(default_factory=list)
+    knowledge_claims: list[dict[str, Any]] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     safety_notes: list[str] = field(default_factory=list)
 

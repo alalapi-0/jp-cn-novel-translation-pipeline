@@ -1,24 +1,9 @@
 #!/usr/bin/env python3
-"""Build a full-book term/name rendering-variant report (FS-design §4.1).
+"""Read-only term observations for an explicitly selected work/target manifest.
 
-For every registered character (workspace/configs/character_profile.yaml)
-and locked+approved glossary entry (workspace/configs/glossary.yaml), scan
-every chapter's source_text for occurrences of the JP source term, then
-check what the corresponding CN text (refined_text if present, else
-draft_text -- same precedence as export_refined_runs.py::_cn_text) actually
-renders it as. Tally the distinct CN renderings observed per term.
-
-This complements scripts/fix_terminology_consistency.py: that script can
-only *replace* variants already listed in a `forbidden`/`aliases` list. This
-report surfaces UNRECOGNIZED renderings -- spellings nobody has registered
-yet -- which is exactly what a rule-replacement pass cannot find on its own.
-
-Default output: the guarded external review workspace (ReviewIssue-shaped).
-
-Usage:
-    python3 scripts/build_term_variant_report.py [--chapters START END]
+Registry hints are selected policy data, never implicit approved/locked assets.
+Contextual explanations are visible alongside observations, not hidden issues.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -31,11 +16,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-import yaml  # noqa: E402
-
-from glossary.store import GlossaryStore  # noqa: E402
-from fix_terminology_consistency import AUTO_FIX_DENYLIST  # noqa: E402
-from run_consistency_fix_all import discover_canonical_files  # noqa: E402
+from consistency.work_rules import (add_work_rule_arguments, policy_from_arguments,
+    selected_chapter_range, selected_target_paths, read_target_document)  # noqa: E402
 from review_workspace_storage import (  # noqa: E402
     reroute_legacy_review_path,
     review_workspace_path,
@@ -54,113 +36,24 @@ def _is_registry_noise(source: str, kind: str) -> bool:
     return kind == "other" and any(ch in KANA_RE for ch in source)
 
 
-def build_registry(repo_root: Path) -> list[dict]:
-    """Return [{term_id, source, canonical, known_variants:set, kind}].
-
-    character_profile.yaml is the authority for person names (per
-    docs/translation_pipeline_consistency_redesign_proposal.md §3.4); a
-    glossary.yaml entry whose source term duplicates a character_profile
-    name is skipped here to avoid reporting the same finding twice.
-    """
-    registry: list[dict] = []
-    person_sources: set[str] = set()
-
-    cp_path = repo_root / "workspace" / "configs" / "character_profile.yaml"
-    cp = yaml.safe_load(cp_path.read_text(encoding="utf-8"))
-    for c in cp.get("characters", []) or []:
-        source = _strip(c.get("name"))
-        canonical = _strip(c.get("target_name"))
-        if not source or not canonical:
-            continue
-        known = {v.strip() for v in (c.get("forbidden") or []) if v and v.strip()}
-        known.add(canonical)
-        person_sources.add(source)
-        registry.append({
-            "term_id": f"character_profile:{source}",
-            "source": source,
-            "canonical": canonical,
-            "known_variants": known,
-            "kind": "person_name",
-        })
-
-    store = GlossaryStore(repo_root / "workspace" / "configs" / "glossary.yaml")
-    for entry in store.entries():
-        if not (entry.locked and entry.approved_by_user):
-            continue
-        source = _strip(entry.source_term)
-        canonical = _strip(entry.target_term)
-        if not source or not canonical or source in person_sources:
-            continue
-        kind = entry.category or "other"
-        if _is_registry_noise(source, kind):
-            continue
-        known = {_strip(a) for a in (entry.aliases or []) if a and a.strip()}
-        known.add(canonical)
-        registry.append({
-            "term_id": f"glossary:{entry.source_term}",
-            "source": source,
-            "canonical": canonical,
-            "known_variants": known,
-            "kind": kind,
-        })
-
-    return registry
+def build_registry(repo_root: Path, work_rules=None) -> list[dict]:
+    if work_rules is None:
+        raise ValueError('explicit selected work registry required; no ambient assets')
+    return [{**row, 'known_variants': set(row['aliases']) | {row['canonical']}}
+            for row in work_rules.get('term_registry')]
 
 
 def cn_text(seg: dict) -> str:
-    return seg.get("refined_text") or seg.get("draft_text") or ""
+    return seg.get("draft_text") or ""
 
 
 _KANA = KANA_RE
 
 
-def is_allowed_contextual_rendering(term: dict, src: str, cn: str) -> bool:
-    """Return true for source/target pairs that are correct contextual renderings.
-
-    These are intentionally checker suppressions rather than glossary aliases:
-    adding them as aliases would make the automatic fixer rewrite natural prose
-    such as "未经证实" back to the canonical label "确定".
-    """
-    source = term["source"]
-    if source == "確定" and "未確定" in src and "未经证实" in cn:
-        return True
-    if source == "スケルトン" and "スケルトン系" in src and "骷髅系" in cn:
-        return True
-    if source == "完全" and "完全武装" in src and "全副武装" in cn:
-        return True
-    if source == "完全" and "完全無欠" in src and "完美无缺" in cn:
-        return True
-    if source == "完全" and "完全犯罪" in src and "完美犯罪" in cn:
-        return True
-    if source == "完全" and "不完全燃焼" in src and "没尽兴" in cn:
-        return True
-    if source == "ホワイト" and "超ホワイト仕様" in src and "终身雇佣制" in cn:
-        return True
-    if source == "ヒューマン" and "・ヒューマン" in src and "Human" in cn:
-        return True
-    if source == "プレイヤー" and "本戦出場プレイヤー組" in src and "选手组" in cn:
-        return True
-    if source == "レア" and "レア自身" in src and any(surface in cn for surface in ("她自己", "自己")):
-        return True
-    if source == "リスポーン" and "复活" in cn:
-        return True
-    if source == "下級" and "下級吸血鬼" in src and "低阶吸血鬼" in cn:
-        return True
-    if source == "ダンジョン" and "ダンジョン実装" in src and "地下城实装" in cn:
-        return True
-    if source == "アンデッド" and any(surface in cn for surface in ("不死族", "亡灵", "不死系", "不死生物", "不死巨人")):
-        return True
-    if source == "エサ" and "エサ用" in src and any(surface in cn for surface in ("供食用", "食用", "饵食")):
-        return True
-    if source == "上級" and "上級者" in src and any(surface in cn for surface in ("高级玩家", "中高级玩家")):
-        return True
-    if source == "オーク" and "オーク・オライオン" in src and any(
-        surface in cn for surface in ("奥克·奥莱恩", "奥克·奥赖恩", "兽人·猎户座")
-    ):
-        return True
-    if source == "オーク" and "幻獣王オーク" in src and "奥克" in cn:
-        return True
-    return False
+def is_allowed_contextual_rendering(term: dict, src: str, cn: str, work_rules=None) -> bool:
+    """A selected contextual explanation never silently removes an observation."""
+    return bool(work_rules and any(row['source'] == term['source'] and row['source_contains'] in src
+        and any(value in cn for value in row['target_contains_any']) for row in work_rules.get('contextual_variants')))
 
 
 def find_standalone_occurrences(source: str, text: str) -> int:
@@ -187,28 +80,34 @@ def find_standalone_occurrences(source: str, text: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--chapters", type=int, nargs=2, metavar=("START", "END"), default=(1, 612))
+    parser.add_argument("--chapters", type=int, nargs=2, metavar=("START", "END"), default=None)
+    add_work_rule_arguments(parser)
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
+    try:
+        policy=policy_from_arguments(args,REPO_ROOT)
+        if policy is None:raise ValueError('explicit version-pinned work policy required')
+        start,end=selected_chapter_range(args,policy)
+        files=selected_target_paths(REPO_ROOT,policy)
+    except ValueError as error:parser.error(str(error))
     output_path = (
         review_workspace_path("term_variant_report_full.json")
         if args.output is None
         else reroute_legacy_review_path(args.output)
     )
-    start, end = args.chapters
 
-    registry = build_registry(REPO_ROOT)
+    registry = build_registry(REPO_ROOT, policy)
     print(f"registered terms: {len(registry)}", file=sys.stderr)
 
     # term_id -> {rendering: {"count": int, "chapters": Counter}}
     stats: dict[str, dict[str, dict]] = {t["term_id"]: {} for t in registry}
     by_id = {t["term_id"]: t for t in registry}
 
-    files = discover_canonical_files()
+    contextual_explanations=[]
     print(f"canonical files: {len(files)}", file=sys.stderr)
 
     for f in sorted(files):
-        doc = json.loads(f.read_text(encoding="utf-8"))
+        doc = read_target_document(REPO_ROOT,policy,f)
         for ch in doc.get("chapters", []):
             try:
                 num = int(ch["chapter_id"].split("-")[-1])
@@ -227,8 +126,8 @@ def main() -> int:
                     if find_standalone_occurrences(term["source"], src) == 0:
                         continue
                     rendering = None
-                    if is_allowed_contextual_rendering(term, src, cn):
-                        continue
+                    if is_allowed_contextual_rendering(term, src, cn, policy):
+                        contextual_explanations.append({'term_id':term['term_id'],'segment_id':seg.get('segment_id'), 'policy_sha256':policy.sha256})
                     for variant in sorted(term["known_variants"], key=len, reverse=True):
                         if variant in cn:
                             rendering = variant
@@ -247,8 +146,6 @@ def main() -> int:
     for term_id, renderings in stats.items():
         term = by_id[term_id]
         non_canonical = {k: v for k, v in renderings.items() if k != term["canonical"]}
-        if non_canonical and all(k in AUTO_FIX_DENYLIST for k in non_canonical):
-            continue
         if not non_canonical:
             continue
         unrecognized = renderings.get("UNRECOGNIZED")
@@ -273,13 +170,15 @@ def main() -> int:
             "note": (
                 "Contains UNRECOGNIZED renderings not in canonical/known_variants -- new variant, needs review."
                 if unrecognized
-                else "Only already-known forbidden variants observed (should already be fixed by fix_terminology_consistency.py; if not, that's a sync gap)."
+                else "Selected policy aliases differ from its canonical hint; review the evidence before choosing a rendering."
             ),
         })
 
     issues.sort(key=lambda i: (i["severity"] != "high", -sum(v["count"] for v in i["evidence"]["variants_observed"].values())))
 
     report = {
+        'mode':'review_only', 'work_rules_sha256':policy.sha256,
+        'contextual_explanations':contextual_explanations,
         "schema": "term_variant_report_full",
         "chapter_range": [start, end],
         "terms_registered": len(registry),

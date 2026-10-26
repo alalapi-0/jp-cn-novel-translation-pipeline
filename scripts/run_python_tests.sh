@@ -3,6 +3,9 @@ set -eu
 
 REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$REPO_ROOT"
+if [ "${LN_SYNTHETIC_CHECK_ROOT:-}" != "$REPO_ROOT" ] || [ ! -f .synthetic-check-view.json ]; then
+  exec python3 scripts/isolated_checks.py --entry pytest -- "$@"
+fi
 
 VENV_PY=".venv/bin/python"
 # CI installs the same declared development requirements into its disposable Python.

@@ -31,24 +31,37 @@ def export_segments_doc(
     path: Path,
     *,
     repo_root: Path | None = None,
+    language_direction: str = "JP_TO_CN",
 ) -> None:
+    if language_direction not in {'JP_TO_CN','CN_TO_JP'}:
+        raise ValueError('unsupported source export direction')
     doc: dict[str, Any] = {
-        "language_direction": "JP_TO_CN",
+        "language_direction": language_direction,
         "pipeline_stage": "draft",
         "chapters": [],
     }
     for ch in chapters:
+        from .source_versions import validate_source_binding
+        for segment in ch.segments:
+            if ch.source_revision and segment.source_binding is None:
+                raise ValueError('versioned chapter has an unbound source segment')
+            if segment.source_binding is not None:
+                binding=validate_source_binding(segment.source_binding,segment.source_text)
+                if binding['chapter_id']!=ch.chapter_id or binding['source_revision']!=ch.source_revision:
+                    raise ValueError('segment source binding differs from exported chapter')
         doc["chapters"].append(
             {
                 "chapter_id": ch.chapter_id,
                 "chapter_label": ch.chapter_label,
                 "source_path": ch.source_path,
+                **({'source_revision':ch.source_revision,'parser_version':ch.parser_version} if ch.source_revision else {}),
                 "segments": [
                     {
                         "segment_id": s.segment_id,
                         "source_text": s.source_text,
                         "draft_text": s.draft_text,
                         "status": s.status,
+                        **({'source_binding':s.source_binding} if s.source_binding is not None else {}),
                     }
                     for s in ch.segments
                 ],

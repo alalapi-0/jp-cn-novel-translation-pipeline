@@ -1,0 +1,27 @@
+{
+  "schema": "work-rules/1",
+  "activation": "review_only",
+  "work_id": "synthetic-example-not-selected",
+  "source_revision": "0000000000000000000000000000000000000000000000000000000000000000",
+  "language_direction": "JP_TO_CN",
+  "target_files": [],
+  "rules": {
+    "auto_fix_denylist": [],
+    "source_rules": [],
+    "protected_variant_prefixes": {},
+    "protected_variant_suffixes": {},
+    "source_prefix_exclusions": {},
+    "legacy_refinement_targets": [],
+    "normalize_punctuation": false,
+    "term_registry": [],
+    "contextual_variants": [],
+    "audit": {
+      "target_field": "draft_text",
+      "english_terms": [],
+      "protected_literals": [],
+      "punctuation_rules": [],
+      "characters": [],
+      "previous_issues": []
+    }
+  }
+}

@@ -8,9 +8,9 @@ Implements docs/product_final_state_spec.md §9.3 / §9.4:
   doubt, do not spend money).
 
 - lock file   workspace/control/scheduler_running.lock
-  Mutual exclusion between ticks. If the lock exists and its pid is alive,
-  a new tick must exit. A stale lock (dead pid or unreadable payload) may be
-  safely cleared, either explicitly or via acquire(reclaim_stale=True).
+  Tick identity is PID + process start ticks + boot/host identity + nonce.
+  Serialized metadata transitions prevent competing reclaims. Only a proved
+  stale local identity may be reclaimed; malformed/foreign identities block.
 """
 
 from __future__ import annotations
@@ -19,6 +19,10 @@ import json
 import os
 import socket
 import tempfile
+import stat
+import uuid
+
+from providers.controlled_run import checkpoint_lock
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,8 +55,12 @@ def pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
         return True
-    except OSError:
+    except PermissionError:
+        return True
+    except ProcessLookupError:
         return False
+    except OSError:
+        return True
 
 
 def pause_file_path(repo_root: Path | None = None) -> Path:
@@ -134,122 +142,208 @@ def clear_pause(repo_root: Path | None = None) -> bool:
 # Lock file protocol (spec §9.4)
 # ---------------------------------------------------------------------------
 
-def read_lock(repo_root: Path | None = None) -> dict[str, Any] | None:
-    """Return lock payload, None when absent, or {"malformed": True} on bad JSON."""
-    path = lock_file_path(repo_root)
-    if not path.is_file():
-        return None
+_OWNED_NONCES: dict[str, str] = {}
+
+
+def _boot_id() -> str:
+    return Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+
+
+def _start_ticks(pid: int) -> int | None:
     try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"malformed": True}
-    if not isinstance(doc, dict):
-        return {"malformed": True}
-    return doc
+        text = Path(f'/proc/{pid}/stat').read_text()
+    except FileNotFoundError:
+        return None
+    # comm may itself contain spaces and parentheses; fields start after its
+    # final closing parenthesis. Field22 is index19 after field3(state).
+    fields = text[text.rindex(')') + 2:].split()
+    return None if fields[0] == 'Z' else int(fields[19])
+
+
+def _snapshot(path: Path):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISREG(info.st_mode):
+        raise SchedulerLockError('unknown_lock_identity')
+    raw = path.read_bytes()
+    again = path.lstat()
+    if (info.st_dev, info.st_ino, info.st_mtime_ns) != (again.st_dev, again.st_ino, again.st_mtime_ns):
+        raise SchedulerLockError('lock_changed')
+    return info.st_dev, info.st_ino, raw
+
+
+def read_lock(repo_root: Path | None = None) -> dict[str, Any] | None:
+    try:
+        snapshot = _snapshot(lock_file_path(repo_root))
+        if snapshot is None:
+            return None
+        doc = json.loads(snapshot[2])
+        return doc if isinstance(doc, dict) else {'malformed': True}
+    except (OSError, ValueError, SchedulerLockError):
+        return {'malformed': True}
 
 
 def lock_status(repo_root: Path | None = None) -> dict[str, Any]:
-    """Describe the current lock: exists / pid / alive / stale / holder payload."""
     doc = read_lock(repo_root)
+    result = {'exists': doc is not None, 'pid': None, 'alive': False,
+              'stale': False, 'unknown': False, 'holder': doc}
     if doc is None:
-        return {"exists": False, "pid": None, "alive": False, "stale": False, "holder": None}
-    pid = int(doc.get("pid") or 0)
-    alive = pid_alive(pid)
-    # Malformed payloads and dead pids are both stale: nobody provably owns it.
-    stale = not alive
-    return {"exists": True, "pid": pid or None, "alive": alive, "stale": stale, "holder": doc}
+        return result
+    pid = doc.get('pid')
+    if type(pid) is not int or pid <= 0 or doc.get('host', socket.gethostname()) != socket.gethostname():
+        return dict(result, unknown=True)
+    result['pid'] = pid
+    if 'schema' not in doc:
+        # A live legacy PID gives no possession/start identity. A proved dead
+        # local legacy PID remains explicitly reclaimable without rewriting it.
+        alive = pid_alive(pid)
+        return dict(result, alive=alive, stale=not alive, unknown=alive)
+    if type(doc.get('schema')) is not int or doc['schema'] != 2 or 'host' not in doc:
+        return dict(result, unknown=True)
+    ticks, boot, nonce = doc.get('start_ticks'), doc.get('boot_id'), doc.get('nonce')
+    if (type(ticks) is not int or ticks <= 0 or not isinstance(boot, str) or not boot
+            or not isinstance(nonce, str) or len(nonce) != 32
+            or any(c not in '0123456789abcdef' for c in nonce)):
+        return dict(result, unknown=True)
+    try:
+        if str(uuid.UUID(boot)) != boot:
+            raise ValueError('noncanonical boot identity')
+    except (ValueError, AttributeError):
+        return dict(result, unknown=True)
+    try:
+        if boot != _boot_id():
+            return dict(result, stale=True)
+        current = _start_ticks(pid)
+    except (OSError, ValueError, IndexError):
+        return dict(result, unknown=True)
+    alive = current == ticks
+    return dict(result, alive=alive, stale=not alive)
 
 
-def acquire_lock(
-    *,
-    owner: str = "local_scheduler_tick",
-    repo_root: Path | None = None,
-    reclaim_stale: bool = False,
-    pid: int | None = None,
-) -> dict[str, Any]:
-    """Atomically acquire the scheduler lock.
+@contextmanager
+def _transition(path: Path):
+    # Stable sidecar is never unlinked: all supported acquire/release/reclaim
+    # paths serialize their read/compare/write lifecycle using the same inode.
+    try:
+        with checkpoint_lock(path.with_name(path.name + '.transition')):
+            yield
+    except RuntimeError as exc:
+        if str(exc) == 'checkpoint is already in use':
+            raise SchedulerLockError('lock_held', {'reason': 'transition_in_use'}) from exc
+        raise
 
-    Raises SchedulerLockError(reason="lock_held") when an alive holder exists,
-    and SchedulerLockError(reason="stale_lock") when a stale lock exists and
-    reclaim_stale is False. With reclaim_stale=True a stale lock is cleared
-    and acquisition retried once.
-    """
+
+def _sync_directory(path: Path):
+    fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _remove_exact(path: Path, snapshot):
+    if _snapshot(path) != snapshot:
+        raise SchedulerLockError('lock_changed')
+    path.unlink()
+    _sync_directory(path)
+
+
+def _publish_lock(path: Path, payload):
+    fd, name = tempfile.mkstemp(prefix='.scheduler-lock-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+            json.dump(payload, handle, ensure_ascii=False)
+            handle.write('\n');handle.flush();os.fsync(handle.fileno())
+        # Publish a complete file only when absent, never overwrite a holder.
+        os.link(name, path)
+        _sync_directory(path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def acquire_lock(*, owner='local_scheduler_tick', repo_root=None,
+                 reclaim_stale=False, pid=None) -> dict[str, Any]:
+    own_pid = os.getpid()
+    if pid is not None and (type(pid) is not int or pid != own_pid):
+        raise SchedulerLockError('not_current_process')
+    try:
+        ticks, boot = _start_ticks(own_pid), _boot_id()
+        if ticks is None:
+            raise ValueError('missing current process identity')
+    except (OSError, ValueError, IndexError) as exc:
+        raise SchedulerLockError('process_identity_unavailable') from exc
+    payload = {'schema': 2, 'pid': own_pid, 'start_ticks': ticks, 'boot_id': boot,
+               'host': socket.gethostname(), 'nonce': uuid.uuid4().hex,
+               'owner': owner, 'created_at': utc_now()}
     path = lock_file_path(repo_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "pid": int(pid if pid is not None else os.getpid()),
-        "owner": owner,
-        "host": socket.gethostname(),
-        "created_at": utc_now(),
-    }
-    for attempt in (1, 2):
-        try:
-            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
+    with _transition(path):
+        snapshot = _snapshot(path)
+        if snapshot is not None:
             status = lock_status(repo_root)
-            if status["alive"]:
-                raise SchedulerLockError("lock_held", holder=status["holder"])
-            if not reclaim_stale or attempt == 2:
-                raise SchedulerLockError("stale_lock", holder=status["holder"])
-            clear_stale_lock(repo_root)
-            continue
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(payload, handle, ensure_ascii=False, indent=2)
-            handle.write("\n")
-        return payload
-    raise SchedulerLockError("unreachable")  # pragma: no cover
+            if status['alive']:
+                raise SchedulerLockError('lock_held', status['holder'])
+            if status['unknown']:
+                raise SchedulerLockError('unknown_lock_identity', status['holder'])
+            if not status['stale'] or not reclaim_stale:
+                raise SchedulerLockError('stale_lock', status['holder'])
+            _remove_exact(path, snapshot)
+        try:
+            _publish_lock(path, payload)
+        except FileExistsError as exc:
+            raise SchedulerLockError('lock_changed') from exc
+        _OWNED_NONCES[str(path.resolve())] = payload['nonce']
+    return payload
 
 
-def release_lock(
-    *,
-    repo_root: Path | None = None,
-    pid: int | None = None,
-    force: bool = False,
-) -> bool:
-    """Release the lock owned by `pid` (default: current process).
+def release_lock(*, repo_root=None, pid=None, force=False, nonce=None) -> bool:
+    """Release exact possession; force cannot override a live/unknown holder.
 
-    Refuses to remove a lock held by a different alive pid unless force=True.
-    Returns True when a lock file was removed.
+    Proven stale local records can be cleared, retaining legacy dead-PID cleanup.
     """
     path = lock_file_path(repo_root)
-    doc = read_lock(repo_root)
-    if doc is None:
-        return False
-    own_pid = int(pid if pid is not None else os.getpid())
-    holder_pid = int(doc.get("pid") or 0)
-    if not force and holder_pid != own_pid and pid_alive(holder_pid):
-        raise SchedulerLockError("not_lock_owner", holder=doc)
-    path.unlink(missing_ok=True)
+    with _transition(path):
+        snapshot = _snapshot(path)
+        if snapshot is None:
+            return False
+        status = lock_status(repo_root);doc = status['holder']
+        own_pid = os.getpid() if pid is None else pid
+        token = nonce if nonce is not None else _OWNED_NONCES.get(str(path.resolve()))
+        owned = (own_pid == os.getpid() and doc.get('pid') == own_pid
+                 and status['alive'] and not status['unknown']
+                 and token is not None and token == doc.get('nonce'))
+        if not owned and not status['stale']:
+            raise SchedulerLockError('not_lock_owner', doc)
+        _remove_exact(path, snapshot)
+        _OWNED_NONCES.pop(str(path.resolve()), None)
     return True
 
 
 def clear_stale_lock(repo_root: Path | None = None) -> bool:
-    """Remove the lock only when it is stale. Returns True when removed.
-
-    Raises SchedulerLockError(reason="lock_held") if the holder pid is alive.
-    """
-    status = lock_status(repo_root)
-    if not status["exists"]:
-        return False
-    if status["alive"]:
-        raise SchedulerLockError("lock_held", holder=status["holder"])
-    lock_file_path(repo_root).unlink(missing_ok=True)
+    path = lock_file_path(repo_root)
+    with _transition(path):
+        snapshot = _snapshot(path)
+        if snapshot is None:
+            return False
+        status = lock_status(repo_root)
+        if status['alive']:
+            raise SchedulerLockError('lock_held', status['holder'])
+        if status['unknown'] or not status['stale']:
+            raise SchedulerLockError('unknown_lock_identity', status['holder'])
+        _remove_exact(path, snapshot)
     return True
 
 
 @contextmanager
-def scheduler_lock(
-    *,
-    owner: str = "local_scheduler_tick",
-    repo_root: Path | None = None,
-    reclaim_stale: bool = False,
-) -> Iterator[dict[str, Any]]:
-    """Context manager: acquire on enter, always release own lock on exit."""
+def scheduler_lock(*, owner='local_scheduler_tick', repo_root=None,
+                   reclaim_stale=False) -> Iterator[dict[str, Any]]:
     payload = acquire_lock(owner=owner, repo_root=repo_root, reclaim_stale=reclaim_stale)
     try:
         yield payload
     finally:
-        release_lock(repo_root=repo_root, pid=payload["pid"])
+        release_lock(repo_root=repo_root, pid=payload['pid'], nonce=payload['nonce'])
 
 
 def safe_to_start_real_api(repo_root: Path | None = None) -> dict[str, Any]:

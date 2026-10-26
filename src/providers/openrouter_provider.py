@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .cost_guard import CostGuard
+from .cost_guard import CostGuard, CostGuardConfig
 from .tokens import estimate_cost_usd
 from .types import GenerateOptions, Message, ModelResult
 
@@ -40,7 +40,7 @@ class OpenRouterProvider:
         _ensure_model_router_path()
         from model_router.providers.openaiCompatible import OpenAICompatibleProvider  # noqa: WPS433
 
-        self.cost_guard = cost_guard
+        self.cost_guard = cost_guard or CostGuard(CostGuardConfig.from_env())
         self.model_name = model_name or os.environ.get("DRAFT_MODEL", DEFAULT_MODEL)
         key_env = "OPENROUTER_API_KEY"
         if api_key:
@@ -67,32 +67,36 @@ class OpenRouterProvider:
         from model_router import ChatMessage  # noqa: WPS433
 
         options = options or GenerateOptions()
-        est_tokens = 0
-        if self.cost_guard is not None:
-            est_tokens, _ = self.cost_guard.check_before_call(messages)
+        if not isinstance(options, GenerateOptions):
+            raise ValueError('registered content entry requires typed GenerateOptions')
+        self.cost_guard.require_content_entry(options.pipeline_stage)
 
         chat_messages = [ChatMessage(role=m.role, content=m.content) for m in messages]
-        try:
-            result = self._inner.chat(
-                chat_messages,
-                model=self.model_name,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                stream=False,
-                timeout_sec=self.timeout_sec,
-            )
-        except Exception as exc:
-            raise RuntimeError(str(exc)) from exc
-        self.network_calls += 1
+        with self.cost_guard.attempt(messages, self.max_tokens,
+                                     provider_id=self.provider_id, model_name=self.model_name) as reservation:
+            self.network_calls += 1
+            try:
+                result = self._inner.chat(
+                    chat_messages,
+                    model=self.model_name,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    stream=False,
+                    timeout_sec=min(self.timeout_sec, reservation["timeout_sec"]),
+                )
+            except Exception as exc:
+                raise RuntimeError(str(exc)) from exc
+            reservation["observed_usage"] = result.usage.to_dict()
 
         usage = result.usage.to_dict()
-        total_tokens = int(usage.get("total_tokens") or est_tokens)
+        usage["budget_reserved_tokens"] = reservation["reserved_tokens"]
+        usage["budget_cumulative_reserved_tokens"] = self.cost_guard.spent_tokens
+        usage["budget_cumulative_attempts"] = self.cost_guard.call_count
+        total_tokens = int(usage.get("total_tokens") or usage["budget_reserved_tokens"])
         cost = estimate_cost_usd(
             total_tokens,
             self.cost_guard.config.cost_per_million_tokens if self.cost_guard else 0.5,
         )
-        if self.cost_guard is not None:
-            self.cost_guard.record_call(total_tokens, cost)
 
         model_result = ModelResult(
             provider_id=result.provider,

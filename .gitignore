@@ -157,3 +157,13 @@ config/linux.outputs.local.json
 
 # Generated inventory (committed summary: repo_inventory.example.json)
 governance/repo_inventory.generated.json
+
+# Owner-local runtime, generated bundles and private task messages
+/.local/
+/deploy/rr/build/
+/deploy/rr/build-r*-previous/
+/docs/pch-rebuild-20261020/
+/research/p2s-resource-analysis/
+/docs/rr/HANDOFF.md
+/docs/optimization/EXECUTION_PROMPT.md
+/docs/optimization/INTEGRATION_TASK_PACKAGES.md

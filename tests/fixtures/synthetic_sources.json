@@ -1,0 +1,116 @@
+{
+  "schema": "synthetic-fixture-provenance/1",
+  "code_snapshot": "6342df6138915d49fddc08cf7f3ec99c1f042be6",
+  "files": {
+    "configs/README.md": {
+      "sha256": "46f6c0d8d021c363e751825185a007ec771805ba45bcdf8bec5247bf341337e3",
+      "provenance": "Synthetic-only explicit work-rule format documentation or empty review-only template; no real work data, private archive or credentials",
+      "reviewed_for": "P2.R01.T02 content-audit; old P1 isolation safety retained"
+    },
+    "configs/character_profile.yaml": {
+      "sha256": "3ee433fcc731e0c04c590271cfc069a0abe8f282a310549769d5eb12d4357f3f",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "configs/glossary.yaml": {
+      "sha256": "63fdb3ce06eadf8d3bd4ae508a80939872f53feb4e009b3aee9931cd169eb4d7",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "configs/model_profiles.yaml": {
+      "sha256": "ff4a15f147975838dd47fba531cffcd3d7688f52cb2d593574c063e08dbd307d",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "configs/style_profile.yaml": {
+      "sha256": "5db282613aaca5cc22586de4330ea4695f3f3ceab165c76996873cd942d613b7",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "configs/world_bible.yaml": {
+      "sha256": "82c8a71552983915f4e4aab87d2c37ab1644151011f7275bdd8f62b7a9b60627",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/.gitkeep": {
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/e2e_trial_chapter.md": {
+      "sha256": "eabd380886b5f1c04df2883983ac04e997dce3cd9fd9286b93728ec355cce297",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/review_glossary.fixture.json": {
+      "sha256": "7ecd0554ec683942d7a1a96b6fd88d2deca19b6bd874e1b82a5f011cc9a1d516",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/review_issue_report.example.json": {
+      "sha256": "120a9f965c8e503e11640ddcdc81d8d293bd07c1796d6cd74b4289e06c98f119",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/review_segments.fixture.json": {
+      "sha256": "e57a8ec85a52840e443f0428f4c7dcdcfdfb384dca819fa8b14d0611989f7dc5",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/vector_index_mock.example.json": {
+      "sha256": "39ad86ff98aa2eeb6033d8040341115a681be38712dec40d0c96483fc9ab6ecb",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/vector_source_manifest.example.json": {
+      "sha256": "38f52f81dc0508a75911e3efa689ef8594e99b2e6a7da6a12bdf191f2c22fba1",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/workbench_project.demo-cn-jp.example.json": {
+      "sha256": "dbcda17e17009c14d1bdaf82b31d622effbc70a86e985c6aa94dc6318e6a9601",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "data/examples/workbench_project.demo-jp-cn.example.json": {
+      "sha256": "ecc8870b3aea72a4a0024e82778509b7379968eb7ede2e1dae55da4fb2d68c3e",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "tests/fixtures/asset_extraction_segments.json": {
+      "sha256": "39650756d5780bb9aeefc17a393d5ac2b25c4e61e6128d4d3ef524b32fc9ee1f",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "tests/fixtures/refine_pilot_segments.json": {
+      "sha256": "60d958ccb0822f09845092dd6e89119d5da01f2ebb924e0943bfe78d8bb89626",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "tests/fixtures/refinement_check_character_profile.yaml": {
+      "sha256": "da87408c8c098710e475fdf4d8a21d084f263c7fe19bf34b519a7ad3a4bce3b6",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "tests/fixtures/refinement_check_glossary.yaml": {
+      "sha256": "05d493074b069d3e4c93f3459cb330932184140c862e354f2db5cb1b13d96847",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "tests/fixtures/refinement_check_segments_fail.json": {
+      "sha256": "b7980e2a2892a29d436a5367ea173306ca250e4e53f831d5531c9487ea01736a",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "tests/fixtures/refinement_check_segments_pass.json": {
+      "sha256": "8fb923fb2dc04cfa5daef0143affc0d1f54cb43297b91ff57f7fae728f99f99f",
+      "provenance": "committed synthetic/sanitized regression fixture or template; e2e header, example labels, tests and configs/README; not private workspace",
+      "reviewed_for": "P1.R01.T02"
+    },
+    "configs/work_rules.example.json": {
+      "sha256": "078cf06be0e4e1c29ffc0fe4e04350a8866676a20a3f9b4551492a523220f92b",
+      "provenance": "Synthetic-only explicit work-rule format documentation or empty review-only template; no real work data, private archive or credentials",
+      "reviewed_for": "P2.R01.T02 content-audit; old P1 isolation safety retained"
+    }
+  }
+}

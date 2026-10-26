@@ -19,6 +19,27 @@
       </nav>
     </header>
     <main>
+      <section class="card version-workflow" id="version-workflow" aria-labelledby="version-workflow-title">
+        <h2 id="version-workflow-title">源文与候选版本</h2>
+        <p id="version-summary" role="status" aria-live="polite">加载版本信息…</p>
+        <p class="meta">导入候选不自动获得 Agent 身份。页面的通过意见、机器建议、Agent/PSH 接受和用户最终批准分别记录；这里不签发用户最终批准。</p>
+        <div class="actions">
+          <button type="button" id="version-refresh">刷新版本</button>
+          <button type="button" id="version-restore" aria-describedby="version-recovery-hint" disabled>恢复上一份候选</button>
+          <button type="button" id="version-download" disabled>下载 Agent 任务输入</button>
+          <button type="button" id="native-generate" disabled>用本机 Agent 生成完整候选</button>
+          <button type="button" id="native-review" disabled>独立 Agent 审查当前候选</button>
+          <button type="button" id="native-cancel" disabled>取消当前 Agent 任务</button>
+          <label class="button-link">导入候选 JSON<input id="version-candidate-file" type="file" accept=".json" /></label>
+          <button type="button" id="version-select" disabled>选择已获接受的当前版本</button>
+        </div>
+        <p class="meta">原生任务使用本机已有 ChatGPT 额度和当前默认模型。生成与独立审查分别执行；准入失败会保留候选，Agent 接受仍不代表用户最终批准。</p>
+        <p id="native-admission-status" class="meta" role="status"></p>
+        <p id="version-recovery-hint" class="meta" role="status">加载恢复信息…</p>
+        <details><summary>版本与恢复信息</summary><pre id="version-details"></pre></details>
+        <p id="version-action-result" role="status" aria-live="polite"></p>
+        <p><a id="version-review-link" href="/review.html">对照与拒绝候选</a> · <a id="version-issues-link" href="/issues.html">查看问题</a> · <a id="version-export-link" href="/export.html">前往导出</a></p>
+      </section>
       <div class="card review-toolbar">
         <p class="meta">
           当前项目：<strong id="active-project-label">—</strong>

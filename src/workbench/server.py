@@ -18,7 +18,7 @@ from workbench.pipeline_status import (
     list_production_runs,
     production_run_segments_for_review,
 )
-from workbench.dry_run_generate import generate_segments_from_sample
+from workbench.dry_run_generate import generate_segments_from_sample, source_segments_from_sample
 from workbench.error_mapper import map_provider_error
 from workbench.real_api_generate import generate_segments_real_api
 from workbench.export_service import export_status, run_export
@@ -54,9 +54,12 @@ from workbench.project_registry import (
     retry_project,
     set_active_project_id,
     patch_project_review_state_cas,
+    get_project_review_state_payload,
     update_project_segments,
 )
 from workbench.review_state import get_project_review_state
+from workbench import canonical_service
+from workbench.review_state import ReviewStateConflictError
 from assets.translation_memory import (
     ExternalAssetExtractionUnavailable,
     build_translation_memory_assets,
@@ -98,6 +101,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             length = int(self.headers.get("Content-Length") or 0)
             if length <= 0:
                 return {}
+            if length > 32 * 1024 * 1024: raise ValueError("request exceeds32MiB; split input before importing")
             raw = self.rfile.read(length)
             data = json.loads(raw.decode("utf-8"))
             if not isinstance(data, dict):
@@ -358,6 +362,24 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         },
                     )
                     return
+                if rest.endswith('/native-agent-status'):
+                    project_id=self._parse_project_id(rest[:-len('/native-agent-status')])
+                    from workbench.native_agent import admission_status
+                    try: admission=admission_status(repo_root)
+                    except RuntimeError: admission={'blocked':True,'reason':'原生准入正在检查或记录需要核验。'}
+                    self._send_json(HTTPStatus.OK,{'admission':admission,'generation_job':get_project_generation_job(repo_root,project_id)})
+                    return
+                if rest.endswith("/canonical-selection"):
+                    project_id = self._parse_project_id(rest[:-len("/canonical-selection")])
+                    try:
+                        value=canonical_service.selection_status(repo_root, project_id)
+                        from workbench.native_agent import admission_status
+                        try: admission=admission_status(repo_root)
+                        except RuntimeError: admission={'blocked':True,'reason':'原生准入记录需要核验。'}
+                        value['native_status']={'admission':admission,'generation_job':get_project_generation_job(repo_root,project_id)}
+                        self._send_json(HTTPStatus.OK,value)
+                    except (ValueError, KeyError, FileNotFoundError) as exc: self._bad_request(str(exc))
+                    return
                 if rest.endswith("/review-state"):
                     project_id = self._parse_project_id(rest[: -len("/review-state")])
                     if get_project_manifest(repo_root, project_id) is None:
@@ -370,7 +392,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         HTTPStatus.OK,
                         {
                             "project_id": project_id,
-                            "review_state": get_project_review_state(repo_root, project_id),
+                            "review_state": get_project_review_state_payload(repo_root, project_id),
                         },
                     )
                     return
@@ -423,7 +445,14 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                             {"error": f"unknown project_id: {project_id}"},
                         )
                         return
-                    self._send_json(HTTPStatus.OK, manifest.to_workbench_payload())
+                    from workbench.canonical_service import native_generation_provenance
+                    payload = manifest.to_workbench_payload()
+                    provenance = {'status':'unverified', 'execution_mode':None}
+                    if any(s.get('generated_by') == 'native_agent_quota' for s in manifest.segments):
+                        provenance = native_generation_provenance(repo_root, project_id, expected_segments=manifest.segments)
+                    for segment in payload['segments']:
+                        segment['native_provenance'] = provenance
+                    self._send_json(HTTPStatus.OK, payload)
                     return
                 if rest.endswith("/quality-review"):
                     project_id = self._parse_project_id(rest[: -len("/quality-review")])
@@ -442,6 +471,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         project_id=manifest.project_id,
                         language_direction=manifest.language_direction,
                         segments=list(manifest.segments),
+                        source_inventory=manifest.source_inventory,
                     )
                     self._send_json(HTTPStatus.OK, report.to_dict())
                     return
@@ -478,6 +508,82 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._invalid_project_id(exc)
                 except ValueError as exc:
                     self._bad_request(str(exc))
+                return
+
+            if path == "/api/source-import":
+                try:
+                    result = canonical_service.import_sources(repo_root, project_id=body.get("project_id", ""), name=body.get("name", ""),
+                        language_direction=body.get("language_direction", "JP_TO_CN"), chapters=body.get("chapters"))
+                    self._send_json(HTTPStatus.CREATED, result)
+                except (ValueError, KeyError, FileNotFoundError, ManifestWriteInProgressError) as exc: self._bad_request(str(exc))
+                return
+            if path.startswith('/api/projects/') and path.endswith(('/native-agent-job','/native-agent-cancel')):
+                try:
+                    import ipaddress
+                    origin=urlparse(self.headers.get('Origin',''))
+                    if (not ipaddress.ip_address(self.client_address[0]).is_loopback
+                            or origin.scheme != 'http' or origin.hostname not in {'localhost','127.0.0.1','::1'}
+                            or origin.port != self.server.server_port
+                            or self.headers.get('Content-Type','').split(';')[0] != 'application/json'):
+                        self._send_json(HTTPStatus.FORBIDDEN,{'error':'原生任务仅接受本机 Workbench 同源请求。'})
+                        return
+                    if path.endswith('/native-agent-cancel'):
+                        if set(body)!={'request_id'}:raise ValueError('cancel accepts the active request_id only')
+                        from workbench.native_agent import cancel_job
+                        self._send_json(HTTPStatus.OK,cancel_job(repo_root,path.split('/')[3],body['request_id']))
+                        return
+                    fields={'expected_manifest_sha256','request_id','action'}
+                    if body.get('action')=='compare_revision':fields.add('segment_id')
+                    if set(body) != fields:
+                        raise ValueError('native request accepts action, request_id and current manifest only')
+                    from workbench.native_agent import execute_job
+                    result=execute_job(repo_root,path.split('/')[3],**body)
+                    self._send_json(HTTPStatus.OK,result)
+                except (canonical_service.CanonicalVersionConflict,ApprovalIdentityConflictError,ReviewStateConflictError) as exc:
+                    self._send_json(HTTPStatus.CONFLICT,{'error':str(exc)})
+                except (GenerationInProgressError, ManifestWriteInProgressError):
+                    self._send_json(HTTPStatus.CONFLICT,{'error':'已有生成任务运行；未重复执行。'})
+                except (ValueError,KeyError) as exc:
+                    self._bad_request(str(exc))
+                except (RuntimeError,OSError) as exc:
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE,{'error':'原生 Agent 准入或执行未完成；候选与审核已保留。请查看生成任务，勿盲目重试。','error_code':type(exc).__name__})
+                return
+            if path.startswith('/api/projects/') and path.endswith('/candidate-restore'):
+                try:
+                    import ipaddress
+                    origin=urlparse(self.headers.get('Origin',''))
+                    if (not ipaddress.ip_address(self.client_address[0]).is_loopback or
+                            origin.scheme != 'http' or origin.hostname not in {'localhost','127.0.0.1','::1'} or
+                            origin.port != self.server.server_port or
+                            self.headers.get('Content-Type','').split(';')[0] != 'application/json'):
+                        self._send_json(HTTPStatus.FORBIDDEN,{'error':'恢复仅接受本机 Workbench 同源请求。'})
+                        return
+                    if set(body) != {'expected_manifest_sha256','confirm_restore'} or body['confirm_restore'] is not True:
+                        raise ValueError('请确认恢复上一份候选；变动段落需要重新审核。')
+                    result=canonical_service.restore_previous_candidates(repo_root,path.split('/')[3],
+                        expected_manifest_sha256=body['expected_manifest_sha256'])
+                    self._send_json(HTTPStatus.OK,result)
+                except (canonical_service.CanonicalVersionConflict,ManifestWriteInProgressError) as exc:
+                    self._send_json(HTTPStatus.CONFLICT,{'error':str(exc)})
+                except (ValueError,KeyError,TypeError,OSError,RuntimeError) as exc:
+                    self._bad_request(str(exc))
+                return
+            if path.startswith("/api/projects/") and any(path.endswith('/'+suffix) for suffix in ("candidate-import", "select-version", "canonical-export")):
+                project_id = path.split('/')[3]
+                try:
+                    expected = body.get("expected_manifest_sha256")
+                    if not isinstance(expected, str) or len(expected) != 64: raise ValueError("current version required; refresh first")
+                    if path.endswith('/candidate-import'):
+                        result = canonical_service.import_candidates(repo_root, project_id, expected_manifest_sha256=expected,
+                            source_inventory_sha256=body.get("source_inventory_sha256"), candidates=body.get("candidates"))
+                    elif path.endswith('/select-version'):
+                        result = canonical_service.select_revision(repo_root, project_id, expected_manifest_sha256=expected, target_fields=body.get("target_fields"))
+                    else:
+                        if body.get("confirm_replace") is not True: raise ValueError("请确认切换当前方向的唯一正式稿；旧快照将保留。")
+                        result = canonical_service.export_selected(repo_root, project_id, expected_manifest_sha256=expected)
+                    self._send_json(HTTPStatus.OK, result)
+                except canonical_service.CanonicalVersionConflict as exc: self._send_json(HTTPStatus.CONFLICT, {"error": str(exc)})
+                except (ValueError, KeyError, OSError, RuntimeError) as exc: self._bad_request(str(exc))
                 return
 
             if path == "/api/export/run":
@@ -632,6 +738,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 if not sample_text:
                     self._bad_request("sample_text is required")
                     return
+                imported_source_segments = source_segments_from_sample(sample_text)
                 try:
                     request_id = self._parse_request_id(body.get("request_id"))
                 except ValueError as exc:
@@ -755,6 +862,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                             project_id,
                             segments,
                             status="review_pending",
+                            source_segments=imported_source_segments,
                         )
                     except ManifestWriteInProgressError as exc:
                         mark_generation_failed(
@@ -840,7 +948,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._bad_request("segments or issues patch required")
                     return
                 try:
-                    review_state = patch_project_review_state_cas(
+                    patch_project_review_state_cas(
                         repo_root,
                         project_id,
                         segments=segments,
@@ -862,7 +970,7 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     return
                 self._send_json(
                     HTTPStatus.OK,
-                    {"project_id": project_id, "review_state": review_state},
+                    {"project_id": project_id, "review_state": get_project_review_state_payload(repo_root, project_id)},
                 )
                 return
 

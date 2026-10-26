@@ -1,211 +1,64 @@
 # Translation Consistency Protocol
 
-Status: current protocol for full-book consistency governance.
-Created: 2026-06-18.
-Applies to: any future JP_TO_CN or CN_TO_JP novel project that wants the same deterministic consistency effect. Pair with `docs/translation_production_protocol.md` for the translation execution path.
+版本：v1.1，2026-10-23。适用于 JP_TO_CN 与 CN_TO_JP；配合[最终规格](product_final_state_spec.md)及[生产协议](translation_production_protocol.md)。当前优化按唯一[主计划](optimization/PROJECT_REASSESSMENT_AND_PLAN.md)及 `governance/round_state.yaml` 当前单元推进；历史报告不能恢复旧任务。
 
-## 1. Purpose
+## 1. 原义、版本与证据
 
-This protocol turns the current full-book consistency work into a repeatable process for future agents and future works.
+核验顺序为：同一 revision/span 的原文与必要语境 → 版本明确的候选/接受译文 → 有出处和叙事有效期的知识 → 可核用户反馈 → 旧资产/报告线索。原文不确定时保留不确定；旧译、canonical 标签、locked/approved 及旧报告都不能自证正确。
 
-The goal is not to memorize this novel's names. The goal is to preserve the method:
+所有冲突附作品/方向、source revision、chapter/paragraph/segment/span、target revision、类型、严重度、置信度、依据和处理状态。合句/拆句采用多对多对齐；对齐失败不是自动漏译。抽取候选须区分事实、推断、未知及撤回版本；后章事实不得泄漏进前章。
 
-1. Treat current source segments and current target segments as the factual base.
-2. Treat glossary, character profile, old QA reports, and round notes as hints until revalidated.
-3. Build source-conditioned rules only when evidence supports them.
-4. Dry-run before apply.
-5. Finish with a zero-change dry-run and one canonical final translation file.
+## 2. 渐进展开与全范围覆盖
 
-## 2. Authority Order
+1. metadata/manifest：登记范围与 expected 源清单。
+2. segment/span、实体/术语和知识索引。
+3. 变体、残留、缺漏及冲突统计。
+4. 只展开当前问题及必要前后语境。
+5. 规则不足时，按授权/预算进行独立语义审查，允许 abstain。
+6. 有证据的局部修订/重译、再审查、接受精确版本与安全导出。
 
-When consistency evidence conflicts, use this order:
+登记全范围的确定性遍历是覆盖核查，不能省略；渐进展开限制的是模型上下文。全书统计和索引不能把全书原文/译文/知识一次送给模型。
 
-1. Original source segment for the same `segment_id`.
-2. Current canonical target segment selected by the latest canonical run discovery.
-3. Locked and user-approved glossary or character profile entry.
-4. Current structured consistency report.
-5. Older CA/Round reports.
-6. Free-form notes.
+## 3. 作品规则与合法多译
 
-Old reports can explain why a rule exists, but they are not proof that the current text is wrong.
+通用核心只保留结构、定位、来源、版本、方向和规则执行机制。实际姓名/物种/技能/别称、特例段 ID、章范围、格式偏好、保护字面量和词面例外属于显式选择且版本固定的作品配置。未知或未核规则保留线索，不能默认载入所有作品。
 
-## 3. Required Inputs
+同一原词可因角色、称呼、叙事时期或语境有合法多译；同译多源也不自动错误。频次最多不等于原义正确。仲裁返回有出处的语境条件/多个译法或无法判断，不能仅凭频次强选一个全书 canonical 词面。
 
-For each work:
+自动修改须同时满足：源文条件成立；当前语境及版本无歧义；修改不损失含义/角色差异/伏笔；独立语义证据足以支持；保护人工稿与原件；变更可恢复且复验幂等。不满足时生成待核问题或候选，不能为了清零告警扩大全局别名。
 
-- source chapter files or parsed source segments;
-- canonical segment store with stable `chapter_id`, `paragraph_id`, and `segment_id`;
-- glossary with `source_term`, `target_term`, `aliases`, `locked`, `approved_by_user`, `category`;
-- character profile with source names, target names, aliases, forbidden variants, voice notes;
-- optional world bible and style profile;
-- ignored local workspace for generated reports and patch logs.
+`AUTO_FIX_DENYLIST` 只限制机械修改，不应隐去审查问题；保护字面量/语境豁免须有同段源译证据。标点、称谓、系统提示或技能括号是作品/方向策略，不能把某部作品的习惯规定为所有中文小说规则。
 
-For this repository, the implementation reads canonical segments through `run_consistency_fix_all.discover_canonical_files()`.
-For a new work, implement an equivalent resolver before writing any fix rule.
+## 4. 有限修订流程
 
-## 4. Progressive Disclosure Workflow
+先检查原义与知识 → 定位问题 → 对比不改、一次简单修订、问题驱动修订 → 必要时段落/场景级重译 → 独立再审查。保留原稿与接受前像，不把多次改写本身当收益。
 
-Use this order. Do not start by expanding or loading the full book into model context.
+共享[生产协议§4](translation_production_protocol.md#4-有限操作预算与恢复)的 2 次修订、8 次可观测操作、1,200 秒单元上限及 10 单元/2,400 秒轮上限；失败/审阅/风格/重试都计数。连续两次无新证据/收益终止该修订路线。不能“重复直到零变化”而无限执行；到限保存未定项和恢复点。
 
-1. Level 0: manifest and chapter coverage.
-2. Level 1: segment index and entity/glossary registry.
-3. Level 2: conflict statistics, residual counts, and variant buckets.
-4. Level 3: expand only conflict segment IDs and short references.
-5. Level 4: model arbitration only for unresolved high-impact conflicts under explicit budget.
-6. Level 5: source-conditioned local fix, retranslation, or human decision.
+机器零 issue、术语表面统一或长度正常不是语义通过。忠实度、长文一致性、文学表达、个人偏好、工程与资源分维度；严重误译独立阻断接受。未校准维度和证据不足项保留原稿，不伪造 PASS。
 
-Every report must state how many items reached each level.
+## 5. 审查与批准
 
-## 5. Rule Admission Criteria
+机器、Agent、PSH proxy、真实用户反馈和用户最终批准分开记录。代理可以在当前授权范围内接受有证据的候选，不能制造 `human_reviewed`、`human_approved_final` 或伪称真人反馈，不能把自己的结果提升为 PSH 规则。
 
-A replacement rule may be automatic only when all conditions are true:
+至少一个未参与改写的评价视角；匿名 A/B 交换顺序，并记录同模型多角色的独立性限制。用户不承担常规逐段审批，只在最后回看校准及真实缺失权限/不可逆选择时决定。原有可信人审入口缺失时仍不可用，本文不改变其权限/签发边界。
 
-- The rule has a source guard: the relevant source term or source phrase occurs in the same segment.
-- The target-side variant is unambiguous in that source context.
-- The canonical replacement is locked, approved, or explicitly decided by the user.
-- The rule does not rewrite an accepted contextual rendering.
-- The rule is idempotent: a second dry-run reports 0 changed segments.
-- The rule preserves segment boundaries and does not alter source text, human-edited text, or legacy baseline body snapshots.
+## 6. 必要检查
 
-If any condition is false, write a review issue or deferred decision instead of a replacement rule.
+覆盖/缺章、segment/span 对齐、空/重复目标、语言残留、占位符、术语/角色关系、叙事有效期、说话人/主宾/否定/因果/伏笔、版本依赖和单一正式导出分别报告。正则、长度及残留启发式只是提示；无法覆盖的维度标未知。
 
-## 6. Denylist and Suppression Rules
+实例问题留在实例，作品规则留在作品配置，跨独立案例成立的机制缺陷才进入通用核心，个人偏好候选交 PSH。保留集目标/裁决/反馈不能进入开发策略或偏好调参；核原义可使用必要源上下文。
 
-Keep two separate concepts:
+## 7. 接受与导出
 
-- `AUTO_FIX_DENYLIST`: target surfaces that should remain visible in reports but must never be mechanically rewritten.
-- Contextual suppression: source/target pairs that are correct in context and should not become glossary aliases.
+接受绑定 source/input/知识/反馈/Prompt/模型及 target revision，不依靠 mtime 选权威。源文或相关依赖改变时使受影响的缓存/审核/TM/导出失效；旧记录可读，不自动升级批准。
 
-Do not put natural contextual renderings into glossary aliases just to silence a checker. That turns a local exception into a global replacement rule.
+导出先验证登记分母与单一接受版本，暂存完整内容，验证后切换；缺章、空章、过期审查、重复、写入失败均保旧稿。默认 JP_TO_CN 正式输出为 `output_cn/translated/full_volume_cn.md`；CN_TO_JP 使用项目选定日文目标。辅助分章/双语/Workbench 输出明确标为辅助，历史快照不与当前正式指针竞争。
 
-Examples of contextual categories that need suppression rather than replacement:
+旧 `run_consistency_fix_all.py`、术语 fixer、审计/导出脚本中的固定作品规则、章范围、mtime/refined 选择是待迁移实现，不是本文的通用执行定义。对应优化任务尚未验收时不能据文档启动真实全书写入或删除旧导出。方法栈保留历史来源，但不恢复 R-MR/refinement 主线。
 
-- common words that also occur inside names;
-- honorific or nickname forms;
-- forum/player handles that should be romanized;
-- species or role names whose Chinese rendering depends on nearby nouns;
-- in-world opaque literals or mojibake that intentionally survive in both source and target;
-- source phrases whose target is idiomatic rather than literal.
+## 8. Done 与保留边界
 
-## 7. Checker Expectations
+完成须按原登记分母核清所有预期内容与知识类别、合法变体及未定项；无未解决关键误译/阻塞失败；同一接受版本的语义范围、覆盖、一致性、正式导出与恢复均有证据；资源已核归属并收束。零差异 dry-run、单例文件和合成测试不能代替真实全范围验收。
 
-At minimum, future projects need these deterministic checks:
-
-- chapter coverage and missing chapter check;
-- segment alignment and orphan segment check;
-- target source-language residual check;
-- placeholder or replacement-character residual check;
-- locked term violation check;
-- name/term variant report;
-- old workbench/export duplicate check;
-- final singleton export check.
-
-The checker output should be structured JSON with counts, segment IDs, and short references only. Do not store full real text in tracked reports.
-
-### 7.1 Punctuation Style Rules
-
-For Chinese final exports, deterministic punctuation cleanup must follow these rules:
-
-- Role speech and dialogue use Chinese curved quotation marks: `“...”`.
-- Quoted non-skill text nested inside dialogue uses Chinese single quotation marks: `‘...’`.
-- Japanese dialogue brackets `「...」`, Japanese emphasis/title brackets `『...』`, and ASCII dialogue quotes should not remain in Chinese body text.
-- Skill names use only `〈...〉`, including magic and active ability names. Do not use `『...』`, `「...」`, `“...”`, or `《...》` for skill names.
-- System messages, UI notices, and world announcements keep `《...》` and must be bolded in Markdown: `**《...》**`.
-- Chapter headings may preserve a user-specified title format, but body text must follow the Chinese punctuation rules above.
-- Ambiguous brackets that could be either a title, item, nickname, or skill must be reported for human review instead of being globally rewritten.
-
-## 8. Fix Execution Protocol
-
-Use this sequence for every full-book consistency pass:
-
-1. Run current actual-content audit.
-2. Run current term/name variant report.
-3. Run fixer dry-run and write a diff log.
-4. Review non-zero changes for overbroad aliases.
-5. Apply only high-confidence source-conditioned fixes.
-6. Run fixer dry-run again.
-7. Repeat until dry-run changed segments = 0.
-8. Re-run actual-content audit and variant report.
-9. Export singleton final translation.
-10. Run final singleton check.
-11. Write final report and append agent audit log.
-12. Clean old round logs and stale exported copies. Preserve runs, checkpoints, source, patch logs, and legacy baseline history unless the user explicitly asks to remove obsolete baseline body text from the current workspace.
-
-For this repository, the command shape is:
-
-```bash
-python3 scripts/audit_actual_chapter_content.py --chapters 1 612
-python3 scripts/build_term_variant_report.py --chapters 1 612
-python3 scripts/run_consistency_fix_all.py --dry-run
-python3 scripts/run_consistency_fix_all.py
-python3 scripts/export_consistency_final_volume.py --json
-python3 scripts/check_final_translation_singleton.py --json
-python3 scripts/finalize_consistency_run.py --cleanup-round-logs --json
-```
-
-New projects should keep the same command semantics even if filenames differ.
-
-## 9. Final Artifact Rule
-
-The final translation handoff must have exactly one canonical target text file.
-
-For this repository:
-
-- canonical final translation: `output_cn/translated/full_volume_cn.md`;
-- manifest: `output_cn/final_export_manifest.json`;
-- singleton check: `reports/final_translation_singleton_check.json`.
-
-Per-chapter files, bilingual exports, Workbench exports, old CA logs, and round logs are regenerable working artifacts. They must not be presented as final versions.
-
-If a project needs bilingual or per-chapter output, generate it with explicit flags and mark it as auxiliary, not as the canonical final translation.
-
-## 10. Safety Rules
-
-Agents must not:
-
-- read or print `.env`;
-- call real API during a governance consistency pass;
-- auto-mark `human_approved_final`;
-- overwrite source, human_approved_final, human-edited text, or legacy baseline body snapshots;
-- delete runs, checkpoints, patch logs, or review history;
-- commit real source text or real translation text;
-- use old reports as the factual base for new fixes;
-- add broad aliases from a single local exception.
-
-Agents may:
-
-- clean generated round logs after writing a final report;
-- delete stale exported copies under ignored output directories;
-- update scripts, docs, manifests, and tracked summary reports;
-- archive or disable legacy launchers that bypass current scheduler gates.
-
-## 11. New Work Bootstrap Checklist
-
-Before translating a new work, create or adapt:
-
-- stable chapter and segment ID rules;
-- canonical segment resolver;
-- locked glossary and character profile schema;
-- source residual checker for the target language;
-- placeholder checker;
-- term/name variant report;
-- source-conditioned fixer with denylist and suppression support;
-- singleton final export manifest and checker;
-- final consistency report template.
-
-Do not copy this novel's actual names or replacements to a new work. Copy only the workflow, schemas, checker categories, and guardrails.
-
-## 12. Done Criteria
-
-A consistency pass is done only when:
-
-- fixer dry-run changed segments = 0;
-- target source-language residual count = 0 or all residuals are documented protected literals;
-- placeholder/replacement-character residual count = 0;
-- term variance count = 0 for locked/approved terms;
-- unrecognized variant count = 0 or all remaining items are deferred with segment IDs;
-- singleton final translation check passes;
-- final report exists;
-- audit log was appended;
-- no active or orphan worker exists;
-- no real API was called unless the round explicitly authorized it.
+不得读取/打印 `.env`、泄露真实正文或私人风格证据；不得覆盖原文、旧译、人工修改稿、可信最终批准或恢复历史。任何清理/发布/Git/付费/调度变更必须遵从当前授权，文档不新增权限。唯一当前状态记录失败、已验收范围、下一步；报告只作证据。

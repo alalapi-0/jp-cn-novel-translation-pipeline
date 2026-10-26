@@ -82,81 +82,38 @@ def test_refine_dry_run_plan_from_baseline(
 
 
 def test_refine_fake_provider_e2e(refine_baseline_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    monkeypatch.setenv("CONTROLLED_RUN_ENABLED", "1")
-    monkeypatch.setenv("TRANSLATION_ROUND_ID", "R-MR-TEST")
-    monkeypatch.setenv("MAX_TEST_COST_USD", "1.0")
-    run_id = "micro_validate_refine_e2e"
-
-    def factory(guard: object) -> FakeProvider:
-        return FakeProvider(cost_guard=guard)  # type: ignore[arg-type]
-
-    summary, run_root = run_refine_micro_round(
-        repo_root=refine_baseline_repo,
-        run_id=run_id,
-        chapter_start=171,
-        chapter_end=172,
-        chapter_offset=170,
-        provider_factory=factory,
-        round_id="R-MR-TEST",
-    )
-    assert summary.refined_segments == 7
-    assert summary.api_calls >= 1
-    assert summary.provider_mode == "custom"
-    doc = json.loads((run_root / "segments.json").read_text(encoding="utf-8"))
-    _, refined = _count_refine_totals(doc)
-    assert refined == 7
-    progress = json.loads((run_root / "run_progress.json").read_text(encoding="utf-8"))
-    assert progress["status"] == "completed"
-    assert (run_root / "micro_round_progress.json").is_file()
-    provenance = json.loads((run_root / "input_provenance.json").read_text(encoding="utf-8"))
-    assert provenance["input_source"] == "draft_full_baseline"
-    assert provenance["baseline_read_only"] is True
+    monkeypatch.setenv('ALLOW_LEGACY_REFINEMENT', '1')
+    before = {str(p):p.read_bytes() for p in refine_baseline_repo.rglob('*') if p.is_file()}
+    calls = []
+    def factory(guard):
+        calls.append(1)
+        return FakeProvider(cost_guard=guard)
+    for cap in (1, 8):
+        with pytest.raises(RuntimeError, match='legacy_refinement_disabled'):
+            run_refine_micro_round(repo_root=refine_baseline_repo, run_id='deprecated_resume',
+                chapter_start=171, chapter_end=172, chapter_offset=170,
+                provider_factory=factory, run_budget=RunBudget(max_api_calls=cap))
+    after = {str(p):p.read_bytes() for p in refine_baseline_repo.rglob('*') if p.is_file()}
+    assert calls == [] and after == before
 
 
 def test_refine_resume_no_duplicate_refine(
     refine_baseline_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    monkeypatch.setenv("CONTROLLED_RUN_ENABLED", "1")
-    monkeypatch.setenv("TRANSLATION_ROUND_ID", "R-MR-RESUME")
-    monkeypatch.setenv("MAX_TEST_COST_USD", "1.0")
-    run_id = "micro_validate_refine_resume"
-
-    def factory(guard: object) -> FakeProvider:
-        return FakeProvider(cost_guard=guard)  # type: ignore[arg-type]
-
-    budget = RunBudget(max_segments=4, max_api_calls=0)
-    first, _ = run_refine_micro_round(
-        repo_root=refine_baseline_repo,
-        run_id=run_id,
-        chapter_start=171,
-        chapter_end=172,
-        chapter_offset=170,
-        provider_factory=factory,
-        run_budget=budget,
-        round_id="R-MR-RESUME",
-    )
-    assert first.refined_segments == 4
-    first_calls = first.api_calls
-
-    budget2 = RunBudget(max_segments=10, max_api_calls=0)
-    second, run_root = run_refine_micro_round(
-        repo_root=refine_baseline_repo,
-        run_id=run_id,
-        chapter_start=171,
-        chapter_end=172,
-        chapter_offset=170,
-        provider_factory=factory,
-        run_budget=budget2,
-        round_id="R-MR-RESUME",
-    )
-    assert second.refined_segments == 3
-    assert second.api_calls < first_calls + second.refined_segments
-    doc = json.loads((run_root / "segments.json").read_text(encoding="utf-8"))
-    _, refined = _count_refine_totals(doc)
-    assert refined == 7
+    monkeypatch.setenv('ALLOW_LEGACY_REFINEMENT', '1')
+    before = {str(p):p.read_bytes() for p in refine_baseline_repo.rglob('*') if p.is_file()}
+    calls = []
+    def factory(guard):
+        calls.append(1)
+        return FakeProvider(cost_guard=guard)
+    for cap in (1, 8):
+        with pytest.raises(RuntimeError, match='legacy_refinement_disabled'):
+            run_refine_micro_round(repo_root=refine_baseline_repo, run_id='deprecated_resume',
+                chapter_start=171, chapter_end=172, chapter_offset=170,
+                provider_factory=factory, run_budget=RunBudget(max_api_calls=cap))
+    after = {str(p):p.read_bytes() for p in refine_baseline_repo.rglob('*') if p.is_file()}
+    assert calls == [] and after == before
 
 
 def test_bootstrap_skips_when_run_exists(refine_baseline_repo: Path) -> None:
@@ -195,3 +152,14 @@ def test_run_micro_round_refine_cli_dry_run(
     )
     assert code == 0
     assert payload["total_segments"] == 7
+
+
+def test_deprecated_live_route_refuses_before_environment_or_worker_effects(refine_baseline_repo,monkeypatch):
+    monkeypatch.setattr(RUN_MR,'REPO_ROOT',refine_baseline_repo)
+    monkeypatch.setenv('ALLOW_LEGACY_REFINEMENT','1')
+    def denied(*_):raise AssertionError('deprecated route read local environment')
+    monkeypatch.setattr(RUN_MR,'apply_local_env',denied)
+    before={str(p):p.read_bytes() for p in refine_baseline_repo.rglob('*') if p.is_file()}
+    code,payload=RUN_MR.run_micro_round(phase='refine',dry_run=False,real_api=True)
+    assert code==2 and payload['error']=='legacy_refinement_disabled'
+    assert before=={str(p):p.read_bytes() for p in refine_baseline_repo.rglob('*') if p.is_file()}

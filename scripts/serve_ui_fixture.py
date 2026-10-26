@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import sys
@@ -23,6 +24,8 @@ def main() -> None:
             os.environ.pop(key, None)
     os.environ["REAL_API_TESTS_ENABLED"] = "false"
     os.environ.pop("ALLOW_LEGACY_REFINEMENT", None)
+    from isolated_checks import require_view
+    require_view()
     from workbench.server import serve
     cache = ROOT / ".cache"
     cache.mkdir(exist_ok=True)
@@ -32,6 +35,17 @@ def main() -> None:
         examples.mkdir(parents=True)
         for source in (ROOT / "data/examples").glob("workbench_project.*.example.json"):
             shutil.copyfile(source, examples / source.name)
+        # Explicit negative fixture: preserve an unavailable-native admission.
+        # UI tests exercise the actual HTTP refusal path without ever trying
+        # to start Codex, inspect a login or issue a model/approval decision.
+        from workbench import native_agent
+        manager, _ = native_agent._gate(fixture)
+        native_agent._save_gate(manager, {'schema':1,'attempts':[{
+            'input_fingerprint':native_agent._configuration_input(fixture),
+            'status':'failed','error_class':'SyntheticNativeUnavailable',
+            'synthetic_fixture':True,
+        }]})
+        (ROOT / ".ui-fixture-root.json").write_text(json.dumps({"root":str(fixture),"synthetic_only":True}))
         print("Workbench synthetic fixture server; no production state or credentials", flush=True)
         serve(fixture, ROOT / "frontend", host="127.0.0.1", port=args.port)
 

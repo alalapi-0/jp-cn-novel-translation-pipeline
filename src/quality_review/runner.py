@@ -55,7 +55,7 @@ def derive_review_status(issues: list[ReviewIssue]) -> str:
     if "OVER_REFINEMENT" in types:
         return "style_issue"
     if not issues:
-        return "human_reviewed"
+        return "machine_checked"
     return "review_needed"
 
 
@@ -67,14 +67,22 @@ def run_review(
     segments_doc: dict[str, Any] | None = None,
     glossary_doc: dict[str, Any] | None = None,
 ) -> ReviewReport:
+    default_fixture = segments_doc is None and segments_path is None
     if segments_doc is None:
         segments_doc = load_json(segments_path or DEFAULT_SEGMENTS)
+    glossary_source = "explicit_document_unverified"
     if glossary_doc is None:
-        glossary_doc = load_json(glossary_path or DEFAULT_GLOSSARY)
+        if glossary_path is not None:
+            glossary_doc = load_json(glossary_path); glossary_source = "explicit_path_unverified"
+        elif default_fixture:
+            glossary_doc = load_json(DEFAULT_GLOSSARY); glossary_source = "synthetic_demo_fixture"
+        else:
+            glossary_doc = {"terms": []}; glossary_source = "none_no_project_glossary"
     issues = run_all_checkers(segments_doc, glossary_doc)
     summary = summarize_issues(issues)
+    summary["glossary_source"] = glossary_source
     return ReviewReport(
-        schema_version="1.0.0",
+        schema_version="1.1.0",
         project_id=segments_doc["project_id"],
         language_direction=segments_doc["language_direction"],
         review_status=derive_review_status(issues),
@@ -87,6 +95,13 @@ def run_review(
 
 def validate_report_dict(report: dict[str, Any]) -> list[str]:
     errors: list[str] = []
+    if report.get("schema_version") == "1.1.0" or "review_actor_type" in report or "approval_state" in report:
+        if report.get("review_actor_type") != "machine":
+            errors.append("machine report requires explicit machine review actor")
+        if report.get("approval_state") != "not_granted":
+            errors.append("machine report cannot grant approval")
+        if report.get("review_status") in {"human_reviewed", "final"}:
+            errors.append("machine check cannot claim human review or final approval")
     for key in REQUIRED_REPORT_KEYS:
         if key not in report:
             errors.append(f"report missing key: {key}")

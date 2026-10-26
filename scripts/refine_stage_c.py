@@ -153,118 +153,25 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="Print summary JSON to stdout")
     args = parser.parse_args()
 
-    if os.environ.get("ALLOW_LEGACY_REFINEMENT") != "1":
-        message = (
-            "refine_stage_c.py is deprecated and disabled by default. "
-            "Use docs/translation_production_protocol.md: translate -> consistency -> singleton final export."
-        )
-        if args.json:
-            print(
-                json.dumps(
-                    {
-                        "status": "blocked",
-                        "reason": "legacy_refinement_disabled",
-                        "message": message,
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            )
-        else:
-            print(message, file=sys.stderr)
-        return 2
-
-    apply_local_env(REPO_ROOT)
-    run_id = args.run_id.strip() or _default_run_id()
-    if not run_id:
-        print("missing --run-id and no run_id in workspace/stage_state.json", file=sys.stderr)
-        return 2
-
-    limit = args.limit_segments
-    if limit < 1 or limit > STAGE_C_MAX_SEGMENTS:
-        print(f"--limit-segments must be 1..{STAGE_C_MAX_SEGMENTS}", file=sys.stderr)
-        return 2
-
-    lock_fd = _acquire_refine_lock(run_id)
-    if lock_fd < 0:
-        return 2
-
-    worker, reason = _registry.register_worker(
-        task_type="refine",
-        stage="refine_stage_c",
-        run_id=run_id,
+    message = (
+        "refine_stage_c.py is deprecated and disabled. "
+        "Use docs/translation_production_protocol.md: translate -> consistency -> singleton final export."
     )
-    if worker is None:
-        print(reason, file=sys.stderr)
-        _release_lock(lock_fd, run_id)
-        return 2
-
-    worker_id = worker["worker_id"]
-    stage_state_path = args.stage_state_path
-
-    def heartbeat() -> None:
-        _registry.heartbeat_worker(worker_id)
-
-    try:
-        _update_stage_state(
-            run_id,
-            "in_progress",
-            {"limit_segments": limit, "dry_run": args.dry_run},
-            state_path=stage_state_path,
-        )
-        try:
-            summary, run_root = run_refine_controlled(
-                repo_root=REPO_ROOT,
-                run_id=run_id,
-                limit_segments=limit,
-                force_dry_run=args.dry_run,
-                heartbeat_cb=heartbeat,
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "reason": "legacy_refinement_disabled",
+                    "message": message,
+                },
+                ensure_ascii=False,
+                indent=2,
             )
-        except Exception as exc:
-            _update_stage_state(run_id, "failed", {"error": str(exc)}, state_path=stage_state_path)
-            _registry.unregister_worker(worker_id, status="failed")
-            print(f"refine failed: {exc}", file=sys.stderr)
-            return 2
-
-        ok = not summary.aborted
-        remaining_refine = _count_remaining_refine(run_root)
-        status, _ = _resolve_refine_stage_status(
-            "completed" if ok else "failed",
-            remaining_refine=remaining_refine,
-            aborted=summary.aborted,
         )
-        payload = {
-            "refined_segments": summary.refined_segments,
-            "api_calls": summary.api_calls,
-            "provider_mode": summary.provider_mode,
-            "model_name": summary.model_name,
-            "run_root": str(run_root.relative_to(REPO_ROOT)),
-            "spent_usd": summary.spent_usd,
-            "spent_tokens": summary.spent_tokens,
-            "aborted": summary.aborted,
-            "abort_reason": summary.abort_reason,
-            "remaining_refine_segments": remaining_refine,
-        }
-        _update_stage_state(
-            run_id,
-            status,
-            payload,
-            state_path=stage_state_path,
-            remaining_refine=remaining_refine,
-        )
-        _registry.unregister_worker(worker_id, status=status)
-
-        if args.json:
-            print(json.dumps(payload, ensure_ascii=False, indent=2))
-        else:
-            print(
-                f"run_id={run_id} status={status} refined={summary.refined_segments} "
-                f"api_calls={summary.api_calls} cost_usd={summary.spent_usd:.6f} "
-                f"mode={summary.provider_mode}"
-            )
-        return 0 if ok else 1
-    finally:
-        _release_lock(lock_fd, run_id)
+    else:
+        print(message, file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":

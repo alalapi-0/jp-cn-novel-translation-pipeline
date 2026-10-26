@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from translation.source_versions import text_sha, value_sha
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_GLOSSARY_PATH = _REPO_ROOT / "workspace" / "configs" / "glossary.yaml"
@@ -26,19 +27,22 @@ DEFAULT_MAX_GLOSSARY_TERMS = 24
 DEFAULT_MAX_CHARACTERS = 6
 DEFAULT_CHAR_BUDGET = 2000  # characters as a cheap token proxy for CJK text
 
-# (path, size, mtime) -> parsed doc; cheap process-local cache
-_DOC_CACHE: dict[tuple[str, int, int], Any] = {}
+# One exact byte generation per file; equal-size/same-second writes stay visible.
+_DOC_CACHE: dict[str, tuple[str, Any]] = {}
 
 
 def _load_yaml_cached(path: Path) -> Any:
-    if not path.is_file():
+    try: raw=path.read_bytes()
+    except FileNotFoundError:
+        _DOC_CACHE.pop(str(path.resolve()),None)
         return None
-    stat = path.stat()
-    key = (str(path), stat.st_size, int(stat.st_mtime))
-    if key not in _DOC_CACHE:
-        _DOC_CACHE.clear()  # keep at most one generation per file set
-        _DOC_CACHE[key] = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return _DOC_CACHE[key]
+    key=str(path.resolve());digest=text_sha(raw.decode('utf-8'))
+    cached=_DOC_CACHE.get(key)
+    if cached is None or cached[0]!=digest:
+        if cached is None and len(_DOC_CACHE)>=128:
+            _DOC_CACHE.pop(next(iter(_DOC_CACHE)))
+        _DOC_CACHE[key]=(digest,yaml.safe_load(raw.decode('utf-8')))
+    return _DOC_CACHE[key][1]
 
 
 @dataclass
@@ -48,6 +52,11 @@ class ConfigsAssetContext:
     characters: list[str] = field(default_factory=list)
     char_count: int = 0
     truncated: bool = False
+    dependency_versions: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def dependency_sha256(self) -> str:
+        return value_sha(self.dependency_versions)
 
     @property
     def empty(self) -> bool:
@@ -143,9 +152,9 @@ def build_configs_asset_context(
         return result
     haystack = "\n".join(batch_source_texts)
 
-    hit_entries = [e for e in _glossary_entries(glossary_path) if not e.get("deleted") and _entry_hit(e, haystack)]
+    hit_entries = [e for e in _glossary_entries(glossary_path) if not e.get("deleted") and not e.get("withdrawn") and _entry_hit(e, haystack)]
     hit_entries.sort(key=_entry_priority)
-    hit_chars = [c for c in _characters(character_path) if _character_hit(c, haystack)]
+    hit_chars = [c for c in _characters(character_path) if not c.get("deleted") and not c.get("withdrawn") and _character_hit(c, haystack)]
 
     lines: list[str] = []
     used = 0
@@ -163,19 +172,23 @@ def build_configs_asset_context(
 
     if hit_entries:
         _try_add("Glossary (batch hits; locked terms must be used verbatim):")
-        for entry in hit_entries[:max_glossary_terms]:
+        for ordinal,entry in enumerate(hit_entries[:max_glossary_terms]):
             if not _try_add(_glossary_line(entry)):
                 break
             result.glossary_terms.append(str(entry.get("source_term") or ""))
+            key="glossary:"+value_sha([str(glossary_path.resolve()),entry.get("source_term"),ordinal])
+            result.dependency_versions[key]=value_sha(entry)
         if len(hit_entries) > max_glossary_terms:
             truncated = True
 
     if hit_chars:
         _try_add("Character notes (batch hits):")
-        for char in hit_chars[:max_characters]:
+        for ordinal,char in enumerate(hit_chars[:max_characters]):
             if not _try_add(_character_line(char)):
                 break
             result.characters.append(str(char.get("name") or ""))
+            key="character:"+value_sha([str(character_path.resolve()),char.get("name"),ordinal])
+            result.dependency_versions[key]=value_sha(char)
         if len(hit_chars) > max_characters:
             truncated = True
 

@@ -91,3 +91,38 @@ def test_human_edited_not_auto_fixable(segments_doc, glossary_doc):
     human = [i for i in issues if i.human_edited_segment]
     for issue in human:
         assert issue.auto_fixable is False
+
+
+def clean_machine_report():
+    doc = {"project_id": "synthetic-clean", "language_direction": "JP_TO_CN",
+           "chapter_id": "ch-synthetic", "expected_segment_ids": ["s1"],
+           "paragraphs": [{"paragraph_id": "p1", "segments": [
+               {"segment_id": "s1", "source_text": "風が吹く。", "target_text": "风吹过。"}]}]}
+    return run_review(segments_doc=doc, glossary_doc={"terms": []}, generated_by="human_user_claim")
+
+
+def test_zero_issue_machine_result_cannot_create_human_review():
+    report = clean_machine_report()
+    assert not report.issues and report.review_status == "machine_checked"
+    data = report.to_dict()
+    assert data["schema_version"] == "1.1.0"
+    assert data["review_actor_type"] == "machine"
+    assert data["approval_state"] == "not_granted"
+    assert validate_report_dict(data) == []
+
+
+def test_zero_issue_report_schema_separates_machine_and_legacy_human_claims():
+    import jsonschema
+    from quality_review.runner import SCHEMA_PATH
+    schema = json.loads(SCHEMA_PATH.read_text())
+    data = clean_machine_report().to_dict()
+    jsonschema.validate(data, schema)
+    data.update(review_actor_type="machine", approval_state="not_granted", review_status="human_reviewed")
+    with pytest.raises(jsonschema.ValidationError): jsonschema.validate(data, schema)
+    assert validate_report_dict(data)
+    # Old records remain readable; absent actor evidence never becomes new approval.
+    del data["review_actor_type"]; del data["approval_state"]
+    data["schema_version"] = "1.0.0"
+    legacy = json.loads(json.dumps(data))
+    assert validate_report_dict(data) == [] and data == legacy
+    jsonschema.validate(data, schema)

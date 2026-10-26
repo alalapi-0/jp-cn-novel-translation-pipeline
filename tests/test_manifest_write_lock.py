@@ -127,7 +127,7 @@ def test_manifest_change_blocks_concurrent_approval_then_rejects_stale_cas(
     identity_b = approval_identity(
         project_id="approval-lock-test",
         language_direction="JP_TO_CN",
-        segment=segment_b,
+        segment=registry.get_project_manifest(tmp_path,"approval-lock-test").segments[0],
     )
     result = patch_project_review_state_cas(
         tmp_path,
@@ -159,7 +159,7 @@ def test_stale_rejection_cannot_override_fresh_approval(tmp_path: Path) -> None:
     identity_b = approval_identity(
         project_id=project_id,
         language_direction="JP_TO_CN",
-        segment=segment_b,
+        segment=registry.get_project_manifest(tmp_path,project_id).segments[0],
     )
     patch_project_review_state_cas(
         tmp_path,
@@ -289,13 +289,10 @@ def test_formal_approval_rejects_blank_selected_content(
     segment: dict,
 ) -> None:
     project_id = "blank-content-test"
-    create_project_manifest(
-        tmp_path,
-        project_id=project_id,
-        name="Blank",
-        language_direction="JP_TO_CN",
-        segments=[segment],
-    )
+    # Legacy malformed sources remain readable; new imports reject them earlier.
+    from workbench.project_registry import save_project_manifest
+    save_project_manifest(tmp_path, {"project_id": project_id, "name": "Blank",
+                          "language_direction": "JP_TO_CN", "segments": [segment]})
     identity = approval_identity(
         project_id=project_id,
         language_direction="JP_TO_CN",

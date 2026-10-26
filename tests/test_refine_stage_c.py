@@ -64,14 +64,11 @@ def test_refine_controlled_dry_run_60_segments(tmp_path: Path, monkeypatch: pyte
         json.dumps({"stage_c_eligible": True}),
         encoding="utf-8",
     )
-    summary, _ = run_refine_controlled(
-        repo_root=tmp_path,
-        run_id=run_id,
-        limit_segments=60,
-        force_dry_run=True,
-    )
-    assert summary.refined_segments == 60
-    assert (run_root / "run_progress.json").is_file()
+    before = (run_root / 'segments.json').read_bytes()
+    with pytest.raises(RuntimeError, match='legacy_refinement_disabled'):
+        run_refine_controlled(repo_root=tmp_path, run_id=run_id, limit_segments=60, force_dry_run=True)
+    assert (run_root / 'segments.json').read_bytes() == before
+    assert not (run_root / 'run_progress.json').exists()
 
 
 def test_refine_pilot_dry_run_module(pilot_run_dir: Path, monkeypatch: pytest.MonkeyPatch):
@@ -81,27 +78,17 @@ def test_refine_pilot_dry_run_module(pilot_run_dir: Path, monkeypatch: pytest.Mo
     from translation.refine_runner import run_refine_pilot
 
     repo = pilot_run_dir.parent.parent.parent
-    summary, _ = run_refine_pilot(
-        repo_root=repo,
-        run_id=pilot_run_dir.name,
-        limit_segments=10,
-        force_dry_run=True,
-    )
-    assert summary.refined_segments == 2
-    doc = json.loads((pilot_run_dir / "segments.json").read_text(encoding="utf-8"))
-    refined = [
-        s
-        for ch in doc["chapters"]
-        for s in ch["segments"]
-        if (s.get("refined_text") or "").strip()
-    ]
-    assert len(refined) == 2
-    assert (pilot_run_dir / "refine_diff.json").is_file()
+    before = (pilot_run_dir / 'segments.json').read_bytes()
+    with pytest.raises(RuntimeError, match='legacy_refinement_disabled'):
+        run_refine_pilot(repo_root=repo, run_id=pilot_run_dir.name, limit_segments=10, force_dry_run=True)
+    assert (pilot_run_dir / 'segments.json').read_bytes() == before
+    assert not (pilot_run_dir / 'refine_diff.json').exists()
 
 
-def test_refine_stage_c_cli_disabled_by_default(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+@pytest.mark.parametrize('legacy_override', ['', '1'])
+def test_refine_stage_c_cli_disabled_by_default(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, legacy_override):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    monkeypatch.delenv("ALLOW_LEGACY_REFINEMENT", raising=False)
+    monkeypatch.setenv('ALLOW_LEGACY_REFINEMENT', legacy_override)
     monkeypatch.setenv("REAL_API_TESTS_ENABLED", "false")
     run_id = "run_20260602_203645_draft_stage_b_50ch"
     stage_state = tmp_path / "stage_state.json"

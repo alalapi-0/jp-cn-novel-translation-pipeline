@@ -2,6 +2,8 @@
   const ACTIVE_PROJECT_KEY = "light_novel_active_project_v1";
 
   let reviewData = null;
+  let versionState = null;
+  let versionEpoch = 0;
   let issueReport = null;
   let issuesBySegment = {};
   let workbenchContext = null;
@@ -22,7 +24,8 @@
 
   const SEGMENT_STATUS_ZH = {
     pending: "待审核",
-    approved: "已通过",
+    approved: "Agent/PSH 已接受",
+    unverified_claim: "通过意见（身份未验证）",
     review_required: "需重新审核",
     reapproval_required: "需重新审核",
     rejected: "已驳回",
@@ -71,10 +74,14 @@
   function updateModeBanner(status) {
     const banner = document.getElementById("mode-banner");
     if (!banner || !status) return;
+    if (versionState?.source_versioned) { banner.textContent = "长篇项目 · Agent 额度任务 / 导入候选 · 尚无用户最终批准"; return; }
     banner.textContent = `${workbenchModeLabel(status)} · ${apiModeLabel(status)} · api_mode=${status.api_mode}`;
   }
 
   function draftPanelTitle(status, segment) {
+    if (segment?.generated_by === "native_agent_quota") return nativeGenerationVerified(segment) ? "译文（本机 Agent 额度）" : "译文（来源未核验）";
+    if (segment?.generated_by === "imported_candidate") return "译文（导入候选）";
+    if (segment?.generated_by === "imported_source") return "尚无候选译文";
     if (segment?.generated_by === "real_api") return "译文（真实 API）";
     if (status?.api_mode === "real_api") return "译文";
     return "译文（mock / dry-run）";
@@ -94,7 +101,8 @@
   const EXPORT_SKIP_STATUS_ZH = {
     pending: "待审核",
     rejected: "已驳回",
-    approved: "已通过",
+    approved: "Agent/PSH 已接受",
+    unverified_claim: "通过意见（身份未验证）",
     review_required: "需重新审核",
     reapproval_required: "需重新审核",
     draft: "草稿",
@@ -462,6 +470,7 @@
     const id = segment.id || segment.segment_id;
     const review = state.segments?.[id];
     const status = review?.status || segment.status || "pending";
+    if (status === "approved" && review?.approval_identity === segment.approval_identity && !state.decision_summaries?.[id]?.candidate_accepted) return "unverified_claim";
     if (status === "approved" || status === "rejected") {
       return validApprovalIdentity(segment.approval_identity) &&
         review?.approval_identity === segment.approval_identity ? status : "review_required";
@@ -517,10 +526,16 @@
   }
 
   function generationModeBadge(segment) {
+    if (segment?.generated_by === "native_agent_quota") return nativeGenerationVerified(segment) ? '<span class="badge badge-neutral">本机 Agent 额度</span>' : '<span class="badge badge-neutral">来源未核验</span>';
+    if (segment?.generated_by?.startsWith("imported_")) return '<span class="badge badge-neutral">导入资料</span>';
     if (segment?.generated_by === "real_api") {
       return '<span class="badge badge-real-api">真实 API</span>';
     }
     return '<span class="badge badge-mock">mock</span>';
+  }
+
+  function nativeGenerationVerified(segment) {
+    return segment?.native_provenance?.status === "verified" && segment?.native_provenance?.execution_mode === "agent_quota_translation";
   }
 
   function showQuickstartError(message, fieldId) {
@@ -1598,7 +1613,7 @@
     const selectedOpenIssues = openIssuesForSegment(selectedId, state);
     const showAutoBtn = Boolean(cfg.AUTO_APPROVE || cfg.dryRunAutoApprove);
     const autoBtnHtml = showAutoBtn
-      ? `<button type="button" data-action="auto" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>触发自动通过</button>`
+      ? `<button type="button" data-action="auto" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>模拟标记（非接受）</button>`
       : "";
 
     const queueHtml = data.segments
@@ -1647,6 +1662,7 @@
           <div class="review-meta-section">
             <div class="panel-title">审核状态</div>
             <p>${renderBadge(selectedStatus)} ${generationModeBadge(selectedSeg)}</p>
+            <p class="meta" id="review-decision-truth">决定来源：${escapeHtml(state.decision_summaries?.[selectedId]?.actor_type || "unknown")} · ${state.decision_summaries?.[selectedId]?.candidate_accepted ? "当前非人类接受有效" : "尚无当前 Agent/PSH 接受"} · 未获用户最终批准</p>
           </div>
           <div class="review-meta-section">
             <div class="panel-title">元数据</div>
@@ -1656,7 +1672,7 @@
           <div class="review-meta-section">
             <div class="panel-title">操作</div>
             <div class="actions">
-              <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>${reviewSaveInFlight ? "保存中…" : "通过"}</button>
+              <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>${reviewSaveInFlight ? "保存中…" : "记录通过意见"}</button>
               <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>驳回</button>
               ${autoBtnHtml}
             </div>
@@ -1676,7 +1692,7 @@
       mobileBar.hidden = false;
       mobileBar.innerHTML = `
         <div class="actions">
-          <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>${reviewSaveInFlight ? "保存中…" : "通过"}</button>
+          <button type="button" class="primary" data-action="approve" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>${reviewSaveInFlight ? "保存中…" : "记录通过意见"}</button>
           <button type="button" class="danger" data-action="reject" data-id="${escapeHtml(selectedId)}" ${reviewSaveInFlight ? "disabled" : ""}>驳回</button>
         </div>`;
     }
@@ -2110,6 +2126,7 @@
           issuesBySegment = {};
         }
         bindReviewPage({ segments: next.segments });
+        await setupVersionWorkflow(projectId);
         log(`review project → ${projectId}`);
       } catch (err) {
         log(`project load failed: ${err.message}`);
@@ -2142,6 +2159,7 @@
     reviewActionError = "";
     bindReviewPage(reviewData);
     const saved = await patchReviewState(activeProjectId, { segments: { [id]: entry } });
+    await setupVersionWorkflow(activeProjectId);
     reviewSaveInFlight = false;
     bindReviewPage(reviewData);
     if (saved) log(`${id}: ${entry.status} (persisted)`);
@@ -2242,6 +2260,7 @@
           }
           setupReviewProjectSelector(next);
           bindReviewPage({ segments: next.segments || [] });
+          await setupVersionWorkflow(next.activeProjectId);
           log(`review empty lifecycle: ${action} ${activeProjectId}`);
         } catch (err) {
           log(`review empty lifecycle failed: ${err.message}`);
@@ -2603,12 +2622,171 @@
     }
   }
 
+
+  async function versionRequest(path, body) {
+    const response = await fetch(path, body === undefined ? {} : {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `请求失败（${response.status}）`);
+    return payload;
+  }
+
+  function setupSourceImport() {
+    const form=document.getElementById("long-import-form"); if(!form)return;
+    form.addEventListener("submit",async event=>{
+      event.preventDefault();const button=form.querySelector("button");const result=document.getElementById("long-import-result");
+      button.disabled=true;result.textContent="正在校验与冻结完整源章节…";
+      try {
+        const files=[...document.getElementById("long-source-files").files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+        const chapters=[];
+        for(const file of files) chapters.push({filename:file.name,text:new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(await file.arrayBuffer())});
+        const value=await versionRequest("/api/source-import",{project_id:document.getElementById("long-project-id").value.trim(),name:document.getElementById("long-project-name").value.trim(),language_direction:document.getElementById("long-direction").value,chapters});
+        result.innerHTML=`已导入 ${value.chapters} 章 / ${value.segments_total} 段。尚未调用模型。 <a href="/review.html?project=${encodeURIComponent(value.project_id)}">进入候选与审核 →</a>`;
+      } catch(error) { result.textContent=`导入未完成：${error.message}`;result.setAttribute("role","alert"); }
+      finally {button.disabled=false;}
+    });
+  }
+
+  async function setupVersionWorkflow(projectId) {
+    const panel=document.getElementById("version-workflow");if(!panel)return;
+    const epoch=++versionEpoch;
+    let refreshSequence=0;
+    let nativeBusy=false;
+    let recoveryBusy=false;
+    const restoreButton=document.getElementById('version-restore');
+    let nativeRequest=null;
+    const cancelButton=document.getElementById('native-cancel');
+    if(cancelButton)cancelButton.onclick=async()=>{
+      if(!nativeRequest)return;
+      const current=nativeRequest;cancelButton.disabled=true;
+      try {await versionRequest(`/api/projects/${encodeURIComponent(current.project)}/native-agent-cancel`,{request_id:current.id});
+        if(epoch===versionEpoch)result.textContent='已请求取消；正在等待当前 Agent 退出并保留现有候选。';
+      }catch(error){if(epoch===versionEpoch){showError(error);cancelButton.disabled=!nativeRequest;}}
+    };
+    let pid=projectId || new URLSearchParams(location.search).get("project");
+    if(!pid) { const registry=await fetchProjectsApi();pid=registry.active_project_id || registry.projects?.[0]?.id || ""; }
+    const result=document.getElementById("version-action-result");
+    const showError=error=>{result.textContent=`未完成：${error.message}`;result.setAttribute("role","alert");};
+    const refresh=async()=>{
+      if(epoch!==versionEpoch)return;
+      const sequence=++refreshSequence;
+      versionState=null;document.getElementById("version-select").disabled=true;
+      if(restoreButton)restoreButton.disabled=true;
+      const canonical=document.getElementById("canonical-export");if(canonical)canonical.disabled=true;
+      try {
+        const value=await versionRequest(`/api/projects/${encodeURIComponent(pid)}/canonical-selection`);
+        const nativeStatus=value.native_status;
+        if(epoch!==versionEpoch || sequence!==refreshSequence)return;
+        versionState=value;
+        document.getElementById("version-summary").textContent=value.source_versioned
+          ? `${value.project_id} · ${value.chapters} 章 / ${value.segments_total} 段 · 候选 ${value.segments_with_target}/${value.segments_total} · 当前 Agent/PSH 接受 ${value.current_agent_accepted}/${value.segments_total} · ${value.selected_current ? "已选择当前接受版本" : "尚未选择可导出版本"}`
+          : "短样例 / 旧资料没有完整冻结源清单；正式导出前请从首页导入完整源章节。";
+        document.getElementById("version-details").textContent=JSON.stringify({source_inventory_sha256:value.source_inventory_sha256,manifest_sha256:value.manifest_sha256,accepted_revision_sha256:value.accepted_revision_sha256,actor_counts:value.actor_counts,generation_mode:value.generation_mode,generation_state:value.generation_state,human_approved_final:false},null,2);
+        document.getElementById("version-select").disabled=recoveryBusy || !value.can_select;
+        document.getElementById("version-download").disabled=!value.source_versioned;
+        document.getElementById("version-candidate-file").disabled=recoveryBusy || !value.source_versioned;
+        const nativeGenerate=document.getElementById("native-generate");
+        const nativeReview=document.getElementById("native-review");
+        const job=nativeStatus.generation_job;
+        const active=job?.mode==='agent_quota_translation' && ['queued','running'].includes(job.status);
+        const recoveryActive=job && ['queued','running'].includes(job.status);
+        if(restoreButton)restoreButton.disabled=nativeBusy || recoveryBusy || recoveryActive || !value.recovery?.available;
+        const recoveryHint=document.getElementById('version-recovery-hint');
+        if(recoveryHint)recoveryHint.textContent=recoveryActive ? '生成任务仍在运行，退出后可恢复。' : (value.recovery?.reason || '没有可恢复的上一份候选。');
+        if(active)nativeRequest={project:pid,id:job.request_id};
+        if(cancelButton)cancelButton.disabled=!active;
+        const blocked=nativeBusy || recoveryBusy || active || nativeStatus.admission.blocked;
+        const nativeHint=document.getElementById('native-admission-status');
+        if(nativeHint)nativeHint.textContent=nativeStatus.admission.blocked ? nativeStatus.admission.reason : (active ? '当前 Agent 任务仍在运行；取消后需等待退出。' : '');
+        if(nativeGenerate)nativeGenerate.disabled=blocked || !value.source_versioned || value.segments_with_target>0;
+        if(nativeReview)nativeReview.disabled=blocked || !value.source_versioned || value.segments_with_target!==value.segments_total;
+        if(canonical)canonical.disabled=!value.selected_current || !document.getElementById("canonical-confirm").checked;
+        for(const name of ["review","issues","export"])document.getElementById(`version-${name}-link`).href=`/${name}.html?project=${encodeURIComponent(pid)}`;
+        updateModeBanner(runtimeApiStatus);
+      } catch(error){if(epoch===versionEpoch && sequence===refreshSequence)showError(error);}
+    };
+    document.getElementById("version-refresh").onclick=refresh;
+    if(restoreButton)restoreButton.onclick=async()=>{
+      if(!versionState || nativeBusy || recoveryBusy || !versionState.recovery?.available)return;
+      const manifest=versionState.manifest_sha256;
+      if(!window.confirm(`恢复上一份候选？将替换 ${versionState.recovery.changed_draft_count} 段候选，变动段落需要重新审核。当前候选会保留为快照，可再次恢复；正式稿不变。`))return;
+      recoveryBusy=true;restoreButton.disabled=true;result.setAttribute('role','status');
+      for(const id of ['native-generate','native-review','version-select','version-candidate-file']) {
+        const control=document.getElementById(id);if(control)control.disabled=true;
+      }
+      result.textContent='正在恢复上一份候选…';
+      let navigating=false;
+      try {
+        await versionRequest(`/api/projects/${encodeURIComponent(pid)}/candidate-restore`,{expected_manifest_sha256:manifest,confirm_restore:true});
+        if(epoch===versionEpoch){navigating=true;location.href=`/review.html?project=${encodeURIComponent(pid)}`;}
+      }catch(error){if(epoch===versionEpoch)showError(error);}
+      finally{recoveryBusy=false;if(!navigating && epoch===versionEpoch)await refresh();}
+    };
+    for(const [id,action] of [["native-generate","generate"],["native-review","review"]]) {
+      const button=document.getElementById(id);if(!button)continue;
+      button.onclick=async()=>{
+        if(!versionState || nativeBusy || recoveryBusy)return;
+        const requestProject=pid;const requestEpoch=epoch;
+        const manifest=versionState.manifest_sha256;
+        nativeBusy=true;button.disabled=true;
+        if(restoreButton)restoreButton.disabled=true;
+        nativeRequest={project:requestProject,id:crypto.randomUUID()};
+        if(cancelButton)cancelButton.disabled=false;
+        document.getElementById("native-generate").disabled=true;
+        document.getElementById("native-review").disabled=true;
+        result.setAttribute("role","status");
+        result.textContent=action==="generate" ? "正在检查原生准入并生成完整候选…" : "独立 Agent 正在审查当前源文与候选…";
+        try {
+          const response=await versionRequest(`/api/projects/${encodeURIComponent(requestProject)}/native-agent-job`,{
+            expected_manifest_sha256:manifest,request_id:nativeRequest.id,action});
+          if(requestEpoch!==versionEpoch)return;
+          result.textContent=action==="generate" ? "原生候选已生成；请对照内容并运行独立 Agent 审查。" : `独立 Agent 审查完成；当前接受 ${response.selection.current_agent_accepted}/${response.selection.segments_total} 段。可在下方查看或拒绝候选；未签发用户最终批准。`;
+        } catch(error) {if(requestEpoch===versionEpoch)showError(error);}
+        finally {nativeBusy=false;nativeRequest=null;if(cancelButton)cancelButton.disabled=true;if(requestEpoch===versionEpoch)await refresh();}
+      };
+    }
+    document.getElementById("version-download").onclick=()=>{
+      if(!versionState)return;
+      const value={mode:"agent_quota_translation",generation_started:false,source_inventory_sha256:versionState.source_inventory_sha256,expected_manifest_sha256:versionState.manifest_sha256,
+        source_segments:versionState.segments.map(s=>({segment_id:s.segment_id,source:s.source})),
+        output_format:{source_inventory_sha256:versionState.source_inventory_sha256,candidates:versionState.segments.map(s=>({segment_id:s.segment_id,target_text:""}))}};
+      const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download=`${pid}-agent-input.json`;link.click();URL.revokeObjectURL(url);
+      result.textContent="已下载任务输入。下载和导入不会运行模型或签发审核；请由受控 Agent 执行后导入绑定候选，再核验接受记录。";
+    };
+    document.getElementById("version-candidate-file").onchange=async event=>{
+      const input=event.target;const file=input.files[0];if(!file || !versionState)return;
+      input.disabled=true;
+      try {const packet=JSON.parse(await file.text());await versionRequest(`/api/projects/${encodeURIComponent(pid)}/candidate-import`,{expected_manifest_sha256:versionState.manifest_sha256,source_inventory_sha256:packet.source_inventory_sha256,candidates:packet.candidates});location.href=`/review.html?project=${encodeURIComponent(pid)}`;}
+      catch(error){showError(error);input.disabled=false;input.value="";}
+    };
+    document.getElementById("version-select").onclick=async event=>{
+      event.target.disabled=true;
+      try {await versionRequest(`/api/projects/${encodeURIComponent(pid)}/select-version`,{expected_manifest_sha256:versionState.manifest_sha256,target_fields:Object.fromEntries(versionState.segments.map(s=>[s.segment_id,"draft"]))});result.textContent="已选择当前 Agent/PSH 接受版本；未签发用户最终批准。";await refresh();}
+      catch(error){showError(error);await refresh();}
+    };
+    const confirm=document.getElementById("canonical-confirm");
+    if(confirm)confirm.onchange=()=>document.getElementById("canonical-export").disabled=!confirm.checked || !versionState?.selected_current;
+    const exportButton=document.getElementById("canonical-export");
+    if(exportButton)exportButton.onclick=async()=>{
+      exportButton.disabled=true;const target=document.getElementById("canonical-result");
+      try {const value=await versionRequest(`/api/projects/${encodeURIComponent(pid)}/canonical-export`,{expected_manifest_sha256:versionState.manifest_sha256,confirm_replace:confirm.checked});target.textContent=`唯一正式稿已导出：${value.chapters_exported} 章 / ${value.segments_exported} 段。接受版本 ${value.accepted_revision.revision_sha256.slice(0,12)}；旧快照已保留。未获用户最终批准。`;}
+      catch(error){target.textContent=`导出未完成，旧稿已保留：${error.message}`;target.setAttribute("role","alert");}
+      finally{await refresh();}
+    };
+    await refresh();
+  }
+
   async function bootstrapWorkbench() {
+    setupSourceImport();
     setupQuickstartForm();
     try {
       if (document.getElementById("export-zh-dir")) {
         const params = new URLSearchParams(window.location.search);
-        await bindExportPage(params.get("project") || loadActiveProjectId());
+        // Bind export actions before the first asynchronous version load, so
+        // an immediate click cannot disappear while the page is initialising.
+        await Promise.all([
+          bindExportPage(params.get("project") || loadActiveProjectId()),
+          setupVersionWorkflow(params.get("project") || ""),
+        ]);
         await refreshRuntimeApiStatus();
         return;
       }
@@ -2673,6 +2851,7 @@
       setupReviewClickHandler(workbenchContext.activeProjectId);
       setupReviewKeyboardHandler(workbenchContext.activeProjectId);
       bindReviewPage({ segments: workbenchContext.segments });
+      await setupVersionWorkflow(workbenchContext.activeProjectId);
       await runAutoApproveIfEnabled(
         { segments: workbenchContext.segments },
         workbenchContext.activeProjectId

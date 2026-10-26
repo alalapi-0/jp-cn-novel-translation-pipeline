@@ -9,6 +9,9 @@ if [ "$#" -gt 0 ]; then
   }
   surface=codex
 fi
+if [ "${LN_SYNTHETIC_CHECK_ROOT:-}" != "$(pwd)" ] || [ ! -f .synthetic-check-view.json ]; then
+  exec python3 scripts/isolated_checks.py --entry tooling -- "$@"
+fi
 if [ -x .venv/bin/python ]; then
   check_python=.venv/bin/python
 elif [ "${CI:-}" = "true" ]; then
@@ -35,6 +38,6 @@ run_gate scripts/check_protocol_standard.py
 if [ "$surface" = legacy ]; then
   "$check_python" scripts/scan_repo_inventory.py
 else
-  echo "Codex scope: Cursor/tool and MCP inventory probes are excluded; all repository quality tests remain enabled."
+  echo "Codex scope: all permitted repository tests run in isolation; Cursor/inventory probe tests are explicitly excluded by current owner authority."
 fi
 "$check_python" -m pytest tests/ -q

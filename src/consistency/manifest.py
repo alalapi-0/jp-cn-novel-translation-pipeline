@@ -41,9 +41,12 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def file_fingerprint(path: Path) -> str:
-    stat = path.stat()
-    return f"{stat.st_size}:{int(stat.st_mtime)}"
+def file_fingerprint(path: Path, *, source_bytes: bytes | None = None) -> str:
+    """Exact content identity; equal-size, same-timestamp edits cannot hit cache."""
+    if source_bytes is not None:
+        return 'sha256:'+hashlib.sha256(source_bytes).hexdigest()
+    with path.open('rb') as stream:
+        return 'sha256:'+hashlib.file_digest(stream,'sha256').hexdigest()
 
 
 def chapter_number_from_id(chapter_id: str | None) -> int | None:

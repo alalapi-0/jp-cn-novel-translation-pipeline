@@ -57,9 +57,9 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _fingerprint(path: Path) -> str:
-    stat = path.stat()
-    return f"{stat.st_size}:{int(stat.st_mtime)}"
+def _fingerprint(path: Path, *, source_bytes: bytes | None = None) -> str:
+    from consistency.manifest import file_fingerprint
+    return file_fingerprint(path,source_bytes=source_bytes)
 
 
 def _chapter_num(chapter_id: str | None) -> int | None:
@@ -87,9 +87,10 @@ def scan_segments_file(
     *,
     chapter_min: int | None = None,
     chapter_max: int | None = None,
+    source_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     """Stream one segments.json; returns {term_key: stats} for hit terms only."""
-    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc = json.loads(source_bytes if source_bytes is not None else path.read_bytes())
     chapters = doc.get("chapters") or []
     bucket: dict[str, Any] = {}
     for chapter in chapters:
@@ -233,6 +234,8 @@ def build_usage_index(
     previous_index: prior document; files whose fingerprint and chapter
     filter match are reused without re-scanning.
     """
+    from translation.source_versions import value_sha
+    dependency_sha256=value_sha({'algorithm':'term-usage-content/2','terms':[term.to_dict() for term in terms]})
     prev_files: dict[str, Any] = (previous_index or {}).get("files") or {}
     prev_filter = (previous_index or {}).get("chapter_filter")
     current_filter = [chapter_min, chapter_max]
@@ -243,14 +246,15 @@ def build_usage_index(
     ordered_paths = sorted(segments_files, key=lambda p: p.stat().st_mtime)
     for path in ordered_paths:
         key = str(path)
-        fp = _fingerprint(path)
+        raw=path.read_bytes();fp = _fingerprint(path,source_bytes=raw)
         prev = prev_files.get(key)
-        if prev and prev.get("fingerprint") == fp and prev_filter == current_filter:
+        if (prev and prev.get("fingerprint") == fp and prev_filter == current_filter
+                and (previous_index or {}).get('dependency_sha256')==dependency_sha256):
             files_section[key] = prev
             reused += 1
             continue
         bucket = scan_segments_file(
-            path, terms, chapter_min=chapter_min, chapter_max=chapter_max
+            path, terms, chapter_min=chapter_min, chapter_max=chapter_max,source_bytes=raw
         )
         files_section[key] = {"fingerprint": fp, "terms": bucket}
         scanned += 1
@@ -269,6 +273,7 @@ def build_usage_index(
         "schema_version": SCHEMA_VERSION,
         "generated_at": utc_now_iso(),
         "chapter_filter": current_filter,
+        "dependency_sha256": dependency_sha256,
         "files": files_section,
         "stats": {
             "files_total": len(files_section),

@@ -8,7 +8,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .cost_guard import CostGuard
+from contextlib import contextmanager
+
+from .cost_guard import CostGuard, CostGuardConfig
 from .tokens import estimate_cost_usd
 from .types import GenerateOptions, Message, ModelResult
 
@@ -43,7 +45,7 @@ class RouterProvider:
 
         self._chat = chat
         self._ChatOptions = ChatOptions
-        self.cost_guard = cost_guard
+        self.cost_guard = cost_guard or CostGuard(CostGuardConfig.from_env())
         self.profile = profile or os.environ.get("MODEL_ROUTER_DEFAULT_PROFILE") or "draft_translation"
         self.model_name = model_name or os.environ.get("DRAFT_MODEL", "")
         self.provider_override = provider
@@ -54,9 +56,9 @@ class RouterProvider:
 
     def generate(self, messages: list[Message], options: GenerateOptions | None = None) -> ModelResult:
         options = options or GenerateOptions()
-        est_tokens = 0
-        if self.cost_guard is not None:
-            est_tokens, _ = self.cost_guard.check_before_call(messages)
+        if not isinstance(options, GenerateOptions):
+            raise ValueError('registered content entry requires typed GenerateOptions')
+        self.cost_guard.require_content_entry(options.pipeline_stage)
 
         profile = self._resolve_profile(options)
         chat_opts = self._ChatOptions(
@@ -66,20 +68,21 @@ class RouterProvider:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             timeout_sec=self.timeout_sec,
+            attempt_context=self._attempt_context,
         )
 
         payload = [{"role": m.role, "content": m.content} for m in messages]
         result = self._chat(payload, chat_opts)
-        self.network_calls += 1
 
         usage = result.usage.to_dict()
-        total_tokens = int(usage.get("total_tokens") or est_tokens)
+        usage["budget_reserved_tokens"] = self._last_reservation["reserved_tokens"]
+        usage["budget_cumulative_reserved_tokens"] = self.cost_guard.spent_tokens
+        usage["budget_cumulative_attempts"] = self.cost_guard.call_count
+        total_tokens = int(usage.get("total_tokens") or usage["budget_reserved_tokens"])
         cost = estimate_cost_usd(
             total_tokens,
             self.cost_guard.config.cost_per_million_tokens if self.cost_guard else 0.5,
         )
-        if self.cost_guard is not None:
-            self.cost_guard.record_call(total_tokens, cost)
 
         model_result = ModelResult(
             provider_id=result.provider,
@@ -95,6 +98,14 @@ class RouterProvider:
         model_result.mark_finished("ok")
         self._write_model_run(model_result, options)
         return model_result
+
+    @contextmanager
+    def _attempt_context(self, messages, target):
+        with self.cost_guard.attempt(messages, target.max_tokens,
+                                     provider_id=target.provider_id, model_name=target.model) as reservation:
+            self._last_reservation = reservation
+            self.network_calls += 1
+            yield reservation
 
     def _resolve_profile(self, options: GenerateOptions) -> str:
         stage = (options.pipeline_stage or "").strip().lower()

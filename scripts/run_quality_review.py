@@ -18,7 +18,6 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from quality_review.runner import (  # noqa: E402
     EXAMPLE_REPORT,
-    DEFAULT_GLOSSARY,
     DEFAULT_SEGMENTS,
     SCHEMA_PATH,
     aggregate_exit_code,
@@ -39,14 +38,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--segments",
         type=Path,
-        default=DEFAULT_SEGMENTS,
-        help="Segments fixture JSON",
+        default=None,
+        help="Segments JSON (omitted: synthetic demonstration)",
     )
     parser.add_argument(
         "--glossary",
         type=Path,
-        default=DEFAULT_GLOSSARY,
-        help="Glossary fixture JSON",
+        default=None,
+        help="Explicit glossary JSON; custom segments never inherit demo terms",
     )
     parser.add_argument(
         "-o",
@@ -68,10 +67,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="Print report JSON to stdout")
     args = parser.parse_args(argv)
 
-    if not args.segments.is_file():
+    if not (args.segments or DEFAULT_SEGMENTS).is_file():
         print(f"missing segments fixture: {args.segments}", file=sys.stderr)
         return 2
-    if not args.glossary.is_file():
+    if args.glossary is not None and not args.glossary.is_file():
         print(f"missing glossary fixture: {args.glossary}", file=sys.stderr)
         return 2
     if not SCHEMA_PATH.is_file():
@@ -93,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        label = {0: "PASS", 1: "WARNING", 2: "BLOCKED"}[exit_code]
+        label = {0: "CHECKED_WITH_ISSUES", 1: "CHECKED_NO_ISSUES", 2: "INVALID_REPORT"}[exit_code]
         print(f"quality_review: {label} (exit {exit_code})")
         print(f"issues={report.summary['total']} status={report.review_status}")
         for itype, count in sorted(report.summary["by_type"].items()):

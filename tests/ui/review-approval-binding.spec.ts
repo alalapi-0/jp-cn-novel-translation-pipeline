@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
-  test(`approval binds exact content and stale save stays unaccepted ${viewport.width}`, async ({ page, request }, testInfo) => {
+  test(`unverified opinion binds exact content and stale save stays unaccepted ${viewport.width}`, async ({ page, request }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: "reduce" });
     const projectId = `approval-${viewport.width}-${Date.now()}`;
@@ -21,7 +21,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
       const response = await request.post(`/api/projects/${projectId}/dry-run-generate`, { data: { sample_text: text } });
       expect(response.ok()).toBeTruthy();
     };
-    const approvedBadge = page.locator(".review-meta .badge[data-status='approved']");
+    const approvedBadge = page.locator(".review-meta .badge[data-status='unverified_claim']");
     const approve = () => viewport.width < 500
       ? page.locator("#review-mobile-actions button[data-action='approve']")
       : page.locator(".review-meta button[data-action='approve']");
@@ -72,11 +72,11 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await page.reload();
     await expect(approvedBadge).toBeVisible();
     const freshExport = await request.post("/api/export/run", { data: { project_id: projectId, source: "manifest", status_mode: "approved" } });
-    expect(freshExport.status()).toBe(200);
-    expect((await freshExport.json()).segments_exported).toBe(1);
+    expect(freshExport.status()).toBe(400);
+    expect((await freshExport.json()).error).toContain("no approved segments");
     const freshMemory = await request.post("/api/translation-assets/build", { data: { project_id: projectId, mode: "agent", status_mode: "approved" } });
-    expect(freshMemory.status()).toBe(200);
-    expect((await freshMemory.json()).stats.pairs).toBe(1);
+    expect(freshMemory.status()).toBe(400);
+    expect((await freshMemory.json()).error).toContain("no approved translation pairs");
     await page.screenshot({ path: testInfo.outputPath("fresh-approved.png"), fullPage: true });
     const identityB = (await (await request.get(`/api/projects/${projectId}/workbench-data`)).json()).segments[0].approval_identity;
     await generate("Synthetic content C.");
@@ -118,7 +118,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     expect(failedRequests).toEqual([]);
     expect(failedResponses).toEqual([{path: `/api/projects/${projectId}/review-state`, status: 409}, {path: `/api/projects/${projectId}/review-state`, status: 409}]);
     expect(consoleErrors.filter(text => !text.includes("409 (Conflict)"))).toEqual([]);
-    await testInfo.attach("browser-evidence", {body: JSON.stringify({viewport, identityA, pageErrors: errors, consoleErrors, failedRequests, failedResponses, staleExportStatus: 400, freshExportStatus: 200, freshMemoryPairs: 1, staleRejectionStatus: 409, newerApprovalPreserved: true, freshRejectionPersisted: true, changedContentInvalidatesRejection: true, rejectedExportAndMemoryStatus: 400}, null, 2), contentType:"application/json"});
+    await testInfo.attach("browser-evidence", {body: JSON.stringify({viewport, identityA, pageErrors: errors, consoleErrors, failedRequests, failedResponses, staleExportStatus: 400, freshExportStatus: 400, freshMemoryPairs: 0, staleRejectionStatus: 409, newerApprovalPreserved: true, freshRejectionPersisted: true, changedContentInvalidatesRejection: true, rejectedExportAndMemoryStatus: 400}, null, 2), contentType:"application/json"});
     expect(await page.evaluate(() => localStorage.getItem("light_novel_workbench_state_v1"))).toBeNull();
     expect(errors).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
@@ -136,6 +136,6 @@ test("legacy browser approval is retained as data but cannot become formal on re
   await page.route(`**/api/projects/${projectId}/quality-review`, route => route.fulfill({json:{issues:[]}}));
   await page.goto(`/review.html?project=${projectId}`);
   await expect(page.locator(".review-meta .badge[data-status='approved']")).toHaveCount(0);
-  await expect(page.getByRole("alert")).toContainText("无法读取");
+  await expect(page.locator("#review-root").getByRole("alert")).toContainText("无法读取");
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("light_novel_workbench_state_v1")!))).toEqual(old);
 });

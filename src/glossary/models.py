@@ -90,6 +90,7 @@ class GlossaryEntry:
     # store-managed extension fields (schema additionalProperties: true)
     conflict: bool = False
     deleted: bool = False
+    knowledge_claims: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.source_term or not str(self.source_term).strip():
@@ -97,6 +98,9 @@ class GlossaryEntry:
         self.source_term = str(self.source_term)
         validate_category(self.category)
         self.confidence = validate_confidence(self.confidence)
+        from assets.knowledge import KnowledgeClaim
+        if type(self.knowledge_claims) is not list:raise GlossaryError("knowledge_claims must be a list")
+        self.knowledge_claims=[KnowledgeClaim(row).to_dict() for row in self.knowledge_claims]
         now = utc_now_iso()
         self.created_at = self.created_at or now
         self.updated_at = self.updated_at or now
@@ -129,6 +133,9 @@ class GlossaryEntry:
         }
         # extension fields written only when set, keeping migrated/template
         # files byte-stable until these states are actually used
+        if self.knowledge_claims:
+            from copy import deepcopy
+            doc["knowledge_claims"]=deepcopy(self.knowledge_claims)
         if self.conflict:
             doc["conflict"] = True
         if self.deleted:

@@ -78,7 +78,8 @@ def test_unknown_pid_lock_never_auto_deleted(tmp_path: Path) -> None:
 
 def test_scheduler_stale_lock_cleared_with_apply(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
-    lock = write_scheduler_lock(repo, pid=0)  # dead pid
+    process = subprocess.Popen([sys.executable, '-c', 'pass']);process.wait()
+    lock = write_scheduler_lock(repo, pid=process.pid)  # proved dead local PID
     report = heal_mod.heal(repo, apply=True)
     assert not lock.exists()
     assert "workspace/control/scheduler_running.lock" in report["healed"]
@@ -90,6 +91,15 @@ def test_scheduler_live_lock_kept(tmp_path: Path) -> None:
     report = heal_mod.heal(repo, apply=True)
     assert lock.exists()
     assert "workspace/control/scheduler_running.lock" in report["kept"]
+
+
+def test_unknown_scheduler_identity_preserved_and_reported(tmp_path):
+    repo = make_repo(tmp_path)
+    lock = write_scheduler_lock(repo, pid=0)
+    before = lock.read_bytes()
+    report = heal_mod.heal(repo, apply=True)
+    assert lock.read_bytes() == before and report['healed'] == []
+    assert any('unknown' in row['action'] for row in report['needs_attention'])
 
 
 def test_cli_json_dry_run(tmp_path: Path) -> None:

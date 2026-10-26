@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import fs from "node:fs";
+import {trustedSyntheticAgentSetup} from "./trusted-native-fixture";
 
 test.describe.configure({ mode: "serial" });
 
@@ -38,9 +40,9 @@ test("review state persists after reload", async ({ page, request }) => {
   });
   await page.goto(`/review.html?project=${projectId}`);
   await page.getByRole("button", { name: "通过" }).first().click();
-  await expect(page.locator(".badge[data-status='approved']").first()).toBeVisible();
+  await expect(page.locator(".badge[data-status='unverified_claim']").first()).toBeVisible();
   await page.reload();
-  await expect(page.locator(".badge[data-status='approved']").first()).toBeVisible();
+  await expect(page.locator(".badge[data-status='unverified_claim']").first()).toBeVisible();
 });
 
 test("review page supports keyboard shortcuts for segment triage", async ({ page, request }) => {
@@ -59,7 +61,7 @@ test("review page supports keyboard shortcuts for segment triage", async ({ page
   await page.keyboard.press("j");
   await expect(page.locator("#seg-seg-002")).toHaveClass(/is-active/);
   await page.keyboard.press("a");
-  await expect(page.locator(".review-meta .badge[data-status='approved']")).toBeVisible();
+  await expect(page.locator(".review-meta .badge[data-status='unverified_claim']")).toBeVisible();
 
   await page.keyboard.press("k");
   await expect(page.locator("#seg-seg-001")).toHaveClass(/is-active/);
@@ -89,6 +91,7 @@ test("export manifest exports only selected project", async ({ page, request }) 
       },
     },
   });
+  trustedSyntheticAgentSetup(projectId, ["seg-001"]);
   await page.goto(`/export.html?project=${projectId}`);
   await page.locator("#export-manifest-btn").click();
   await expect(page.locator("#export-success-card")).toBeVisible();
@@ -112,6 +115,7 @@ test("export manifest默认仅导出 approved 并显示跳过统计", async ({ p
       },
     },
   });
+  trustedSyntheticAgentSetup(projectId, ["seg-001"]);
   await page.goto(`/export.html?project=${projectId}`);
   await page.locator("#export-manifest-btn").click();
   await expect(page.locator("#export-result")).toContainText(/status_mode=approved/);
@@ -121,11 +125,21 @@ test("export manifest默认仅导出 approved 并显示跳过统计", async ({ p
   );
 });
 
-test("dry-run 按钮双击只触发一次生成请求", async ({ page }) => {
+test("dry-run 按钮双击只触发一次生成请求", async ({ page }, testInfo) => {
   const projectId = `pw-dry-dbl-${Date.now()}`;
+  const errors: string[] = [], consoleErrors: string[] = [];
+  const network: { method: string; path: string; status: number }[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (["error", "warning"].includes(message.type())) consoleErrors.push(message.text());
+  });
+  page.on("response", (response) => network.push({
+    method: response.request().method(), path: new URL(response.url()).pathname, status: response.status(),
+  }));
   let createCount = 0;
   let generateCount = 0;
-  let generateInFlight = false;
+  let releaseGeneration!: () => void;
+  const generationResponse = new Promise<void>((resolve) => { releaseGeneration = resolve; });
 
   await page.route(/.*\/api\/projects(\?.*)?$/, async (route) => {
     const method = route.request().method();
@@ -159,20 +173,8 @@ test("dry-run 按钮双击只触发一次生成请求", async ({ page }) => {
 
   await page.route(`**/api/projects/${projectId}/dry-run-generate`, async (route) => {
     generateCount += 1;
-    if (generateInFlight) {
-      await route.fulfill({
-        status: 409,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: "generation_in_progress",
-          project_id: projectId,
-          request_id: "dry-req-1",
-          generation_job: { request_id: "dry-req-1", status: "running", mode: "dry_run" },
-        }),
-      });
-      return;
-    }
-    generateInFlight = true;
+    // Keep the first operation pending through both pointer clicks and submits.
+    await generationResponse;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -223,11 +225,35 @@ test("dry-run 按钮双击只触发一次生成请求", async ({ page }) => {
   await page.locator("#qs-project-name").fill("DryDouble");
   await page.locator("#qs-sample-text").fill("テスト");
   const btn = page.locator("#qs-dry-run-btn");
-  await Promise.all([btn.click(), btn.click()]);
+  try {
+    await btn.dblclick();
+    await expect.poll(() => generateCount).toBe(1);
+    await expect(btn).toBeDisabled();
+    // Disabled buttons suppress pointer clicks; requestSubmit also checks the
+    // form's in-flight guard for keyboard/programmatic duplicate submissions.
+    await page.locator("#quickstart-form").evaluate((form: HTMLFormElement) => {
+      form.requestSubmit();
+      form.requestSubmit();
+    });
+    expect(createCount).toBe(1);
+    expect(generateCount).toBe(1);
+    await page.screenshot({ path: testInfo.outputPath("quickstart-busy.png") });
+  } finally {
+    releaseGeneration();
+  }
   await expect(page.locator("#quickstart-result")).toContainText(/dry-run|生成.*segment/);
   await expect(page.locator("#quickstart-result")).not.toContainText(/generation_in_progress|失败/);
+  await expect(btn).toBeEnabled();
   expect(createCount).toBe(1);
-  expect(generateCount).toBeLessThanOrEqual(2);
+  expect(generateCount).toBe(1);
+  await page.screenshot({ path: testInfo.outputPath("quickstart-complete.png") });
+  expect(errors).toEqual([]);
+  expect(consoleErrors).toEqual([]);
+  expect(network.filter((response) => response.status >= 400)).toEqual([]);
+  fs.writeFileSync(testInfo.outputPath("quickstart-evidence.json"), JSON.stringify({
+    classification: "isolated synthetic HTTP responses; actual pointer double-click and duplicate form submits; no native/model calls",
+    browser: page.context().browser()?.version(), createCount, generateCount, errors, consoleErrors, network,
+  }, null, 2));
 });
 
 test("review selector hides test projects by default", async ({ page, request }) => {

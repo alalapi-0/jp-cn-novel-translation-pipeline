@@ -174,7 +174,7 @@ def test_parse_e2e_sample():
     assert len(ch.segments) >= 1
 
 
-def test_draft_resume_hydrates_segments_json(tmp_path, monkeypatch):
+def test_legacy_draft_resume_hydrates_segments_json(tmp_path, monkeypatch):
     """Resume must load draft_text from segments.json and skip already-translated batches."""
     monkeypatch.setenv("CONTROLLED_RUN_ENABLED", "true")
     monkeypatch.setenv("REAL_API_TESTS_ENABLED", "false")
@@ -231,53 +231,16 @@ def test_draft_resume_hydrates_segments_json(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    class StubProvider:
-        provider_id = "stub"
-        model_name = "stub-model"
-        network_calls = 0
-
-        def __init__(self, cost_guard=None):
-            self.cost_guard = cost_guard
-
-        def generate(self, messages, options=None):
-            from providers.types import ModelResult
-
-            self.network_calls += 1
-            fixed = {
-                "items": [{"segment_id": "ch-001-seg-002", "translation": "段落二。"}]
-            }
-            raw = json.dumps(fixed, ensure_ascii=False)
-            result = ModelResult(
-                provider_id=self.provider_id,
-                model_name=self.model_name,
-                raw_output=raw,
-                parsed_output=fixed,
-            )
-            result.mark_finished("ok")
-            if self.cost_guard:
-                self.cost_guard.record_call(10, 0.0001)
-            return result
-
-    provider_holder: dict[str, StubProvider] = {}
-
-    def factory(guard):
-        provider_holder["p"] = StubProvider(cost_guard=guard)
-        return provider_holder["p"]
-
-    summary, _ = run_draft_stage_a(
-        repo_root=tmp_path,
-        input_dir=input_dir,
-        limit_chapters=1,
-        run_id=run_id,
-        provider_factory=factory,
-    )
-    assert provider_holder["p"].network_calls == 1
-    assert summary.translated_segments == 2
-    report = json.loads((run_root / "draft_quality_report.json").read_text(encoding="utf-8"))
-    assert report["passed"] is True
+    before_segments=(run_root/"segments.json").read_bytes()
+    cp_path=cp_dir/f"{run_id}.json";before_checkpoint=cp_path.read_bytes()
+    with pytest.raises(RuntimeError,match="unverified legacy"):
+        run_draft_stage_a(repo_root=tmp_path,input_dir=input_dir,limit_chapters=1,run_id=run_id,
+                          provider_factory=lambda guard: type("Synthetic",(),{"provider_id":"stub","model_name":"stub-model"})())
+    assert (run_root/"segments.json").read_bytes()==before_segments
+    assert cp_path.read_bytes()==before_checkpoint
 
 
-def test_draft_resume_retranslates_when_checkpoint_done_but_no_draft(tmp_path, monkeypatch):
+def test_legacy_draft_resume_retranslates_when_checkpoint_done_but_no_draft(tmp_path, monkeypatch):
     """Checkpoint may list a segment done while segments.json lost draft_text; must re-translate."""
     monkeypatch.setenv("CONTROLLED_RUN_ENABLED", "true")
     monkeypatch.setenv("REAL_API_TESTS_ENABLED", "false")
@@ -322,43 +285,10 @@ def test_draft_resume_retranslates_when_checkpoint_done_but_no_draft(tmp_path, m
         encoding="utf-8",
     )
 
-    class StubProvider:
-        provider_id = "stub"
-        model_name = "stub-model"
-        network_calls = 0
-
-        def __init__(self, cost_guard=None):
-            self.cost_guard = cost_guard
-
-        def generate(self, messages, options=None):
-            from providers.types import ModelResult
-
-            self.network_calls += 1
-            fixed = {"items": [{"segment_id": "ch-001-seg-001", "translation": "段落一。"}]}
-            raw = json.dumps(fixed, ensure_ascii=False)
-            result = ModelResult(
-                provider_id=self.provider_id,
-                model_name=self.model_name,
-                raw_output=raw,
-                parsed_output=fixed,
-            )
-            result.mark_finished("ok")
-            return result
-
-    provider_holder: dict[str, StubProvider] = {}
-
-    def factory(guard):
-        provider_holder["p"] = StubProvider(cost_guard=guard)
-        return provider_holder["p"]
-
-    summary, _ = run_draft_stage_a(
-        repo_root=tmp_path,
-        input_dir=input_dir,
-        limit_chapters=1,
-        run_id=run_id,
-        provider_factory=factory,
-    )
-    assert provider_holder["p"].network_calls == 1
-    assert summary.translated_segments == 1
-    cp = json.loads((cp_dir / f"{run_id}.json").read_text(encoding="utf-8"))
-    assert cp["status"] == "completed"
+    before_segments=(run_root/"segments.json").read_bytes()
+    cp_path=cp_dir/f"{run_id}.json";before_checkpoint=cp_path.read_bytes()
+    with pytest.raises(RuntimeError,match="unverified legacy"):
+        run_draft_stage_a(repo_root=tmp_path,input_dir=input_dir,limit_chapters=1,run_id=run_id,
+                          provider_factory=lambda guard: type("Synthetic",(),{"provider_id":"stub","model_name":"stub-model"})())
+    assert (run_root/"segments.json").read_bytes()==before_segments
+    assert cp_path.read_bytes()==before_checkpoint

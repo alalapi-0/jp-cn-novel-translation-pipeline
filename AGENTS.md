@@ -7,6 +7,8 @@
 - 默认读本文件本节与 `governance/round_state.yaml`。后者是唯一当前状态；`codex_governance` 是当前授权治理单元，其余历史字段和旧报告不能恢复旧轮次或证明整个作品已完成。
 - 产品行为按 `docs/product_final_state_spec.md`；领域流程再读对应协议。审核/导出/TM 修复读 `src/workbench/` 对应实现和测试；不默认全文读取所有路线图。
 - Codex 可以独立执行当前已授权任务，无需 Cursor 交接、探针、配置或进程。禁止从 Codex 执行 `.cursor`、`tool_probe.py`、`scan_repo_inventory.py` 或 Cursor MCP 检查。
+- 所有者已授权本仓库每个实施轮结束时，将已验证且非敏感的工程变更提交并正常同步到既有 GitHub `main`，再继续下一轮；不逐轮重复询问。保护分支、CI 与当前明确的任务限制仍须遵守。
+- 公开仓库只接收工程材料。真实正文、凭据、数据库、私人任务消息和运行审计明细留在本地。`governance/round_state.yaml` 与规划文档若包含这些本地细节，提交其脱敏工程检查点，保留本机完整文件；远端摘要不能代替本地运行证据或恢复已关闭的资料读取机会。
 - 先按 README 的开发依赖说明建立项目 `.venv`（隔离工作树可使用自己的忽略环境），执行 `.venv/bin/python scripts/agent_gate.py --json`。门禁只运行当前隔离样例；不能在真实工作区上用样例覆盖已有运行数据。
 - 正常验证：`npm run check:tooling -- --surface codex` 保留 gate、报告、引用、协议及完整 Python 测试；UI 变更另跑 `npm run test:ui`，使用隔离样例与独立服务，不复用未知端口服务。
 - 每个有状态变化的执行单元更新唯一状态；报告是验收证据，不是第二个下一轮权威。`hub.connection.yaml` 只维护稳定映射；业务字段由状态源派生。

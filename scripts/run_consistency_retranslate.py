@@ -29,9 +29,10 @@ from providers.cost_guard import CostGuard, CostGuardConfig  # noqa: E402
 from providers.fake_provider import FakeProvider  # noqa: E402
 from providers.registry import ProviderMode, get_provider  # noqa: E402
 from translation.run_progress import safe_load_json  # noqa: E402
+from providers.controlled_run import atomic_write_json  # noqa: E402
 
-DEFAULT_FIX_PLAN = REPO_ROOT / "workspace" / "consistency_audit" / "local_fix_plan.json"
-DEFAULT_STATUS = REPO_ROOT / "workspace" / "consistency_audit" / "fix_plan_status.json"
+DEFAULT_FIX_PLAN = Path("workspace/consistency_audit/local_fix_plan.json")
+DEFAULT_STATUS = Path("workspace/consistency_audit/fix_plan_status.json")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -51,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = args.repo_root if args.repo_root.is_absolute() else REPO_ROOT / args.repo_root
     plan_path = args.fix_plan if args.fix_plan.is_absolute() else repo_root / args.fix_plan
     cp_path = args.checkpoint or (repo_root / DEFAULT_CHECKPOINT_REL)
+    if not cp_path.is_absolute(): cp_path = repo_root / cp_path
     status_path = args.status_output if args.status_output.is_absolute() else repo_root / args.status_output
 
     if not plan_path.is_file():
@@ -59,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
 
     plan = safe_load_json(plan_path) or {}
     dry_run = args.dry_run or not args.real_api
+    if dry_run:
+        status_path = status_path.with_name(status_path.stem + ".simulation" + status_path.suffix)
 
     if args.real_api and not dry_run:
         guard = CostGuard(CostGuardConfig.from_env(log_dir=repo_root / "workspace" / "model_runs"))
@@ -84,8 +88,7 @@ def main(argv: list[str] | None = None) -> int:
         checkpoint_path=cp_path,
     )
     fix_status = build_fix_plan_status(plan, result)
-    status_path.parent.mkdir(parents=True, exist_ok=True)
-    status_path.write_text(json.dumps(fix_status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    atomic_write_json(status_path, fix_status)
 
     summary = {
         "fix_plan_status": str(status_path.relative_to(repo_root)),
@@ -99,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
             f"completed={result['completed_segments']}/{result['total_segments']} "
             f"api_calls={result['api_calls']} dry_run={result['dry_run']}"
         )
-    return 0
+    return 0 if dry_run or result["status"] == "closed" else 1
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from workbench.export_service import export_status, run_export  # noqa: E402
 from workbench.project_registry import patch_project_review_state_cas  # noqa: E402
-from workbench.review_state import approval_identity, patch_project_review_state  # noqa: E402
+from workbench.review_state import DecisionActor, approval_identity, patch_project_review_state  # noqa: E402
 
 
 def _write_manifest(repo: Path) -> None:
@@ -53,6 +53,7 @@ def _write_manifest(repo: Path) -> None:
     patch_project_review_state_cas(
         repo,
         "demo-jp-cn",
+        decision_actor=DecisionActor("agent", "synthetic-test-agent"),
         segments={
             "seg-1": {"status": "approved", "expected_identity": identity},
         },

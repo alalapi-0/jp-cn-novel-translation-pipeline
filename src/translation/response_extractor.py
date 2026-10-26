@@ -44,14 +44,14 @@ def _try_json_load(text: str) -> Any | None:
     return None
 
 
-def _normalize_items(data: Any) -> list[dict[str, Any]]:
+def _normalize_items(data: Any) -> list[Any]:
     if isinstance(data, list):
-        return [x for x in data if isinstance(x, dict)]
+        return data
     if isinstance(data, dict):
         if "items" in data and isinstance(data["items"], list):
-            return [x for x in data["items"] if isinstance(x, dict)]
+            return data["items"]
         if "translations" in data and isinstance(data["translations"], list):
-            return [x for x in data["translations"] if isinstance(x, dict)]
+            return data["translations"]
         if "segment_id" in data and "translation" in data:
             return [data]
     return []
@@ -59,6 +59,8 @@ def _normalize_items(data: Any) -> list[dict[str, Any]]:
 
 def extract_translations(raw_output: str, expected_segment_ids: list[str]) -> ExtractionResult:
     errors: list[str] = []
+    if not isinstance(raw_output, str):
+        return ExtractionResult(parse_status="failed", parse_errors=["invalid_raw_output_type"])
     data = _try_json_load(raw_output)
     if data is None:
         return ExtractionResult(
@@ -76,16 +78,22 @@ def extract_translations(raw_output: str, expected_segment_ids: list[str]) -> Ex
     items: list[ExtractedItem] = []
     seen: set[str] = set()
     for row in rows:
-        sid = str(row.get("segment_id", "")).strip()
-        trans = str(
-            row.get("translation", row.get("refined_translation", row.get("target_text", "")))
-        ).strip()
-        if not sid:
+        if not isinstance(row, dict):
+            errors.append("invalid_item_type")
+            continue
+        sid = row.get("segment_id", "")
+        if not isinstance(sid, str) or not sid.strip():
             errors.append("missing_segment_id")
             continue
+        sid = sid.strip()
+        trans = row.get("translation", row.get("refined_translation", row.get("target_text", "")))
+        if not isinstance(trans, str):
+            errors.append(f"invalid_translation_type:{sid}")
+            continue
+        trans = trans.strip()
         if sid in seen:
             errors.append(f"duplicate_segment_id:{sid}")
-            continue
+            # Keep both records as evidence; never silently choose a duplicate.
         seen.add(sid)
         items.append(
             ExtractedItem(

@@ -56,6 +56,8 @@ class ReviewReport:
             "project_id": self.project_id,
             "language_direction": self.language_direction,
             "review_status": self.review_status,
+            "review_actor_type": "machine",
+            "approval_state": "not_granted",
             "generated_at": self.generated_at,
             "generated_by": self.generated_by,
             "issues": [i.to_dict() for i in self.issues],

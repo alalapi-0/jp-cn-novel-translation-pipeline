@@ -298,4 +298,4 @@ def run_tick(
             return _finish(root, result, "error", reason="dispatched_command_failed")
         return _finish(root, result, "completed", reason=None)
     finally:
-        release_lock(repo_root=root, pid=lock["pid"])
+        release_lock(repo_root=root, pid=lock["pid"], nonce=lock["nonce"])

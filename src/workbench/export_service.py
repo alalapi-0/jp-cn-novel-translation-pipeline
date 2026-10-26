@@ -35,7 +35,24 @@ def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str
     final_path = repo_root / CANONICAL_FINAL_REL
     manifest_path = repo_root / CANONICAL_MANIFEST_REL
     manifest = {}
-    if manifest_path.is_file():
+    snapshot_integrity = "legacy_unverified"
+    snapshot_revision = None
+    from translation.atomic_bundle import read_current
+    try:
+        current = read_current(repo_root / "output_cn")
+        if current:
+            doc = json.loads((current["path"] / "manifest.json").read_bytes())
+            volume = (current["path"] / "volume.md").read_bytes()
+            import hashlib
+            if (not isinstance(doc, dict) or doc.get("schema_version") != 3
+                    or hashlib.sha256(volume).hexdigest() != doc.get("volume_sha256")):
+                raise ValueError("canonical export bundle mismatch")
+            manifest = doc
+            snapshot_integrity = "verified_snapshot_only"
+            snapshot_revision = current["revision"]
+    except (OSError, ValueError, KeyError):
+        snapshot_integrity = "invalid_snapshot"
+    if snapshot_integrity == "legacy_unverified" and manifest_path.is_file():
         try:
             doc = json.loads(manifest_path.read_text(encoding="utf-8"))
             if isinstance(doc, dict):
@@ -55,6 +72,9 @@ def export_status(repo_root: Path, *, project_id: str | None = None) -> dict[str
         "draft_runs_available": run_count,
         "production_summary": {
             "canonical_final_translation": str(CANONICAL_FINAL_REL),
+            "snapshot_integrity": snapshot_integrity,
+            "bundle_revision": snapshot_revision,
+            "accepted_revision_sha256": (manifest.get("accepted_revision") or {}).get("revision_sha256"),
             "canonical_final_exists": final_path.is_file(),
             "canonical_final_translation_count": manifest.get("canonical_final_translation_count"),
             "final_translation_policy": manifest.get("final_translation_policy"),
@@ -85,6 +105,7 @@ def export_from_manifest(
         is_formally_approved,
         segment_id,
         segment_text,
+        review_decision_summary,
     )
 
     manifest = get_project_manifest(repo_root, project_id)
@@ -100,8 +121,6 @@ def export_from_manifest(
 
     zh_dir = repo_root / WORKBENCH_EXPORT_ROOT_REL / "translated"
     bi_dir = repo_root / WORKBENCH_EXPORT_ROOT_REL / "bilingual"
-    zh_dir.mkdir(parents=True, exist_ok=True)
-    bi_dir.mkdir(parents=True, exist_ok=True)
 
     stem = f"workbench_{project_id}"
     zh_path = zh_dir / f"{stem}_cn.md"
@@ -121,6 +140,7 @@ def export_from_manifest(
     status_summary: dict[str, int] = {}
     skipped_status_counts: dict[str, int] = {}
     segments_exported = 0
+    acceptance_actor_counts: dict[str, int] = {}
     for idx, seg in enumerate(manifest.segments, start=1):
         seg_id = segment_id(seg)
         state_entry = review_segments.get(seg_id, {}) if seg_id else {}
@@ -141,6 +161,7 @@ def export_from_manifest(
             current_identity,
             segment=seg,
         )
+        decision = review_decision_summary(state_entry, current_identity, segment=seg)
         effective_status = (
             "approved"
             if formally_approved
@@ -159,6 +180,9 @@ def export_from_manifest(
         if not source and not draft:
             continue
         segments_exported += 1
+        if formally_approved:
+            actor = decision["actor_type"]
+            acceptance_actor_counts[actor] = acceptance_actor_counts.get(actor, 0) + 1
         zh_lines.append(draft)
         zh_lines.append("")
         bi_lines.extend(
@@ -171,6 +195,7 @@ def export_from_manifest(
                 draft,
                 "",
                 f"_status: {effective_status}_",
+                f"_approval_actor: {decision['actor_type']}; scope: nonhuman_candidate_",
                 "",
                 "---",
                 "",
@@ -182,12 +207,29 @@ def export_from_manifest(
             "no approved segments available for export; approve at least one segment or use status_mode='draft'"
         )
 
-    zh_path.write_text("\n".join(zh_lines).strip() + "\n", encoding="utf-8")
-    bi_path.write_text("\n".join(bi_lines).strip() + "\n", encoding="utf-8")
+    from translation.atomic_bundle import publish_bundle
+    def recheck():
+        if get_project_manifest(repo_root, project_id) != manifest:
+            raise RuntimeError("manifest changed during auxiliary export")
+        if get_project_review_state(repo_root, project_id) != review_state:
+            raise RuntimeError("review state changed during auxiliary export")
+    bundle = publish_bundle(repo_root / WORKBENCH_EXPORT_ROOT_REL,
+        {"volume.md": ("\n".join(zh_lines).strip() + "\n").encode(),
+         "bilingual.md": ("\n".join(bi_lines).strip() + "\n").encode(),
+         "manifest.json": json.dumps({"project_id": project_id, "is_canonical": False,
+              "approval_scope": "nonhuman_candidate" if mode == "approved" else "unreviewed_preview",
+              "human_approved_final": False, "segments_exported": segments_exported}, sort_keys=True).encode()},
+        {f"translated/{stem}_cn.md": "volume.md", f"bilingual/{stem}_bilingual.md": "bilingual.md"},
+        pointer=f".workbench-{project_id}-current", before_commit=recheck)
     return {
         "source": "manifest",
         "project_id": project_id,
+        "bundle_revision": bundle["bundle_revision"],
         "status_mode": mode,
+        "approval_scope": "nonhuman_candidate" if mode == "approved" else "unreviewed_preview",
+        "acceptance_actor_counts": acceptance_actor_counts,
+        "human_approved_final": False,
+        "is_canonical": False,
         "segments_total": len(manifest.segments),
         "segments_exported": segments_exported,
         "segments_skipped_status": skipped_status_counts,

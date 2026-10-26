@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import sys
@@ -19,14 +20,18 @@ if str(REPO_SCRIPTS) not in sys.path:
 
 from plan_translation_batches import plan_batches, split_failed_batch  # noqa: E402
 
-from providers.controlled_run import ControlledRunConfig, ControlledRunManager
+from providers.controlled_run import ControlledRunConfig, ControlledRunManager, checkpoint_lock
+from translation.draft_execution import DraftExecution
+from providers.content_unit_budget import ContentUnitBudget
 from providers.cost_guard import CostGuard, CostGuardConfig, CostGuardError
 from providers.registry import ProviderMode, get_provider
 from providers.types import GenerateOptions
-from translation.chapter_parser import ParsedChapter, Segment, list_chapter_files, parse_chapter_file
+from translation.chapter_parser import ParsedChapter, Segment, list_chapter_files, parse_chapter_file, chapter_id_from_path
 from translation.exporter import export_chapter_markdown, export_segments_doc
 from translation.pipeline_events import classify_error, emit_event
 from translation.prompt_builder import build_batch_messages
+from translation.context_policy import SourceContextCatalog, SourceContextPolicy
+from translation.narrative_context import NarrativeContextCatalog
 from translation.response_extractor import extract_translations
 from translation.run_progress import init_run_metadata, write_run_progress
 from translation.stop_control import StopRequested, check_stop_or_raise
@@ -34,7 +39,7 @@ from translation.validator import validate_draft_items
 
 MAX_CHARS_PER_BATCH = 5_500
 MAX_SEGMENTS_PER_BATCH = 8
-MAX_API_RETRIES = 3
+MAX_API_RETRIES = 2
 STAGE_A_MAX_CHAPTERS = 5
 STAGE_B_MAX_CHAPTERS = 50
 DEFAULT_BATCH_TOKEN_BUDGET = 12_000
@@ -48,7 +53,7 @@ WALL_TIME_START_SAFETY_SECONDS = 5.0
 
 @dataclass
 class RunBudget:
-    max_api_calls: int = 0
+    max_api_calls: int | None = None
     max_segments: int = 0
     max_wall_seconds: float = 0.0
     progress_interval_seconds: float = 30.0
@@ -58,7 +63,7 @@ class RunBudget:
     last_progress_at: float = 0.0
 
     def exhausted(self) -> bool:
-        if self.max_api_calls > 0 and self.api_calls_used >= self.max_api_calls:
+        if self.max_api_calls is not None and self.api_calls_used >= self.max_api_calls:
             return True
         if self.max_segments > 0 and self.segments_used >= self.max_segments:
             return True
@@ -143,6 +148,7 @@ class ChapterRunResult:
     message: str
     segments_translated: int = 0
     api_calls: int = 0
+    validation_warnings: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -160,6 +166,9 @@ class DraftRunSummary:
     aborted: bool = False
     abort_reason: str = ""
     tick_paused: bool = False
+    simulated: bool = False
+    simulated_segments: int = 0
+    provider_attempts: int = 0
 
 
 class DraftRunEarlyExit(Exception):
@@ -224,21 +233,23 @@ def _split_batches_planned(
     return batches
 
 
-def _apply_items(chapter: ParsedChapter, batch: list[Segment], raw_output: str) -> tuple[bool, str]:
+def _apply_items(chapter: ParsedChapter, batch: list[Segment], raw_output: str,
+                 *, warnings: list[dict[str, Any]] | None = None) -> tuple[bool, str]:
     expected = [s.segment_id for s in batch]
+    if any(not isinstance(sid, str) or not sid.strip() for sid in expected):
+        return False, "validate:invalid_expected_id"
     source_lengths = {s.segment_id: len(s.source_text) for s in batch}
     extracted = extract_translations(raw_output, expected)
-    if extracted.parse_status == "failed":
+    if extracted.parse_status != "ok":
         return False, ";".join(extracted.parse_errors) or "extract_failed"
 
     validation = validate_draft_items(extracted.items, expected, source_lengths)
     if not validation.passed:
         codes = ",".join(i.code for i in validation.issues[:5])
-        if extracted.parse_status != "ok":
-            return False, f"validate:{codes}"
-        # partial coverage still fails the batch for controlled run
-        if any(i.code == "segment_id_coverage" for i in validation.issues):
-            return False, f"validate:{codes}"
+        return False, f"validate:{codes}"
+
+    if warnings is not None:
+        warnings.extend(validation.to_dict()["issues"])
 
     by_id = {i.segment_id: i.translation for i in extracted.items}
     for seg in batch:
@@ -257,6 +268,8 @@ def run_draft_stage_a(
     run_id: str | None = None,
     provider_factory: Callable[[CostGuard], Any] | None = None,
     asset_context_path: Path | None = None,
+    source_context_policy: SourceContextPolicy | None = None,
+    narrative_catalog: NarrativeContextCatalog | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_A_MAX_CHAPTERS:
         raise ValueError(f"Stage A hard limit: max {STAGE_A_MAX_CHAPTERS} chapters")
@@ -269,6 +282,8 @@ def run_draft_stage_a(
         run_id=run_id,
         provider_factory=provider_factory,
         asset_context_path=asset_context_path,
+        source_context_policy=source_context_policy,
+        narrative_catalog=narrative_catalog,
     )
 
 
@@ -290,6 +305,8 @@ def run_draft_stage_b(
     compact_context: bool = False,
     asset_context_path_resolved: Path | None = None,
     run_budget: RunBudget | None = None,
+    source_context_policy: SourceContextPolicy | None = None,
+    narrative_catalog: NarrativeContextCatalog | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > STAGE_B_MAX_CHAPTERS:
         raise ValueError(f"Stage B hard limit: max {STAGE_B_MAX_CHAPTERS} chapters")
@@ -311,6 +328,8 @@ def run_draft_stage_b(
         compact_context=compact_context,
         asset_context_path_resolved=asset_context_path_resolved,
         run_budget=run_budget,
+        source_context_policy=source_context_policy,
+        narrative_catalog=narrative_catalog,
     )
 
 
@@ -382,28 +401,34 @@ def _default_run_id(spec: DraftStageSpec) -> str:
     return f"{spec.run_id_prefix}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:8]}"
 
 
-def _load_asset_context(repo_root: Path, path: Path | None) -> tuple[str, str]:
-    if path is None:
-        return "", ""
-    resolved = path if path.is_absolute() else repo_root / path
-    if not resolved.is_file():
-        raise FileNotFoundError(f"asset context not found: {resolved}")
-    from assets.translation_memory import render_translation_asset_context
-
-    rendered = render_translation_asset_context(resolved)
-    try:
-        rel = str(resolved.relative_to(repo_root))
-    except ValueError:
-        rel = str(resolved)
-    return rendered, rel
-
-
 def _segment_needs_translation(seg: Segment) -> bool:
     """Skip segments with draft_text; re-translate checkpoint-done segments missing draft."""
     return not (seg.draft_text or "").strip()
 
 
-def run_draft_stage(
+def run_draft_stage(*, spec, repo_root, input_dir, **kwargs):
+    if kwargs.get('asset_context_path') is not None or kwargs.get('asset_context_path_resolved') is not None:
+        raise ValueError('unscoped asset context is disabled; provide source-bound narrative_catalog')
+    selected=list_chapter_files(input_dir,kwargs['limit_chapters'],offset=kwargs.get('chapter_offset',0))
+    ids=[chapter_id_from_path(path) for path in selected]
+    if len(set(ids))!=len(ids):
+        raise ValueError('duplicate draft chapter identity; source binding is ambiguous')
+    run_id=kwargs.pop("run_id", None) or _default_run_id(spec)
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", run_id) or run_id in {".", ".."}:
+        raise ValueError("invalid draft run identity")
+    guard=CostGuard(CostGuardConfig.from_env())
+    factory=kwargs.get("provider_factory")
+    mode=ProviderMode.FAKE if not guard.allow_real_network() else ProviderMode.REAL
+    provider=factory(guard) if factory else get_provider(mode,cost_guard=guard)
+    simulated=getattr(provider,"provider_id","") in {"fake","dry_run","fake_provider","dry_run_provider"}
+    base=repo_root/"workspace"/("simulations" if simulated else "")
+    run_root=base/"runs"/run_id
+    with checkpoint_lock(run_root/"draft_execution"):
+        return _run_draft_stage_owned(spec=spec,repo_root=repo_root,input_dir=input_dir,run_id=run_id,
+            _prepared=(guard,provider,simulated,base),**kwargs)
+
+
+def _run_draft_stage_owned(
     *,
     spec: DraftStageSpec,
     repo_root: Path,
@@ -422,42 +447,22 @@ def run_draft_stage(
     compact_context: bool = False,
     asset_context_path_resolved: Path | None = None,
     run_budget: RunBudget | None = None,
+    source_context_policy: SourceContextPolicy | None = None,
+    narrative_catalog: NarrativeContextCatalog | None = None,
+    _prepared: tuple | None = None,
 ) -> tuple[DraftRunSummary, Path]:
     if limit_chapters > spec.limit_chapters:
         raise ValueError(f"{spec.scope} hard limit: max {spec.limit_chapters} chapters")
     run_id = run_id or _default_run_id(spec)
-    run_root = repo_root / "workspace" / "runs" / run_id
+    guard, provider, simulated, base = _prepared
+    run_root = base / "runs" / run_id
     draft_dir = run_root / "draft"
-    draft_dir.mkdir(parents=True, exist_ok=True)
-
-    init_run_metadata(
-        run_root,
-        run_id=run_id,
-        phase="draft",
-        stage=spec.stage_key,
-        scope=spec.scope,
-        chapter_offset=chapter_offset,
-    )
-
-    guard = CostGuard(CostGuardConfig.from_env())
-    ctrl_cfg = ControlledRunConfig.from_env(checkpoint_dir=repo_root / "workspace" / "checkpoints")
+    ctrl_cfg = ControlledRunConfig.from_env(checkpoint_dir=base / "checkpoints")
     ctrl_cfg.run_id = run_id
     controlled = ControlledRunManager(ctrl_cfg)
     controlled.require_enabled()
-
-    if provider_factory is not None:
-        provider = provider_factory(guard)
-        provider_mode = "custom"
-        model_name = getattr(provider, "model_name", "unknown")
-    else:
-        mode = ProviderMode.FAKE if not guard.allow_real_network() else ProviderMode.REAL
-        provider = get_provider(mode, cost_guard=guard)
-        if mode == ProviderMode.FAKE:
-            provider_mode = "fake"
-            model_name = provider.model_name
-        else:
-            provider_mode = "real/model_router"
-            model_name = provider.model_name or os.environ.get("DRAFT_MODEL", "")
+    provider_mode = "fake" if simulated else ("custom" if provider_factory else "real/model_router")
+    model_name = getattr(provider, "model_name", "unknown")
 
     chapter_paths = list_chapter_files(input_dir, limit_chapters, offset=chapter_offset)
     if not chapter_paths:
@@ -465,11 +470,22 @@ def run_draft_stage(
             f"no chapter files under {input_dir} (offset={chapter_offset}, limit={limit_chapters})"
         )
 
-    parsed_chapters = [parse_chapter_file(p) for p in chapter_paths]
-    asset_context, asset_context_ref = _load_asset_context(repo_root, asset_context_path)
-    asset_resolved = asset_context_path
-    if asset_resolved is not None and not asset_resolved.is_absolute():
-        asset_resolved = repo_root / asset_resolved
+    source_bytes={str(p):p.read_bytes() for p in chapter_paths}
+    source_hashes={key:hashlib.sha256(raw).hexdigest() for key,raw in source_bytes.items()}
+    parsed_chapters = [parse_chapter_file(p,source_bytes=source_bytes[str(p)]) for p in chapter_paths]
+    chapter_ids = [ch.chapter_id for ch in parsed_chapters]
+    segment_ids = [s.segment_id for ch in parsed_chapters for s in ch.segments]
+    if len(set(chapter_ids)) != len(chapter_ids) or len(set(segment_ids)) != len(segment_ids):
+        raise ValueError('duplicate draft chapter or segment identity; source binding is ambiguous')
+    if any(hashlib.sha256(p.read_bytes()).hexdigest()!=source_hashes[str(p)] for p in chapter_paths):
+        raise RuntimeError("source changed while parsing draft inputs")
+    source_context_policy=SourceContextPolicy() if source_context_policy is None else source_context_policy
+    if not isinstance(source_context_policy,SourceContextPolicy):raise ValueError("invalid source context policy")
+    source_catalog=SourceContextCatalog(parsed_chapters)
+    narrative_catalog=NarrativeContextCatalog(source_catalog) if narrative_catalog is None else narrative_catalog
+    if not isinstance(narrative_catalog,NarrativeContextCatalog) or narrative_catalog.source.sha256!=source_catalog.sha256:
+        raise ValueError("narrative context differs from selected source catalog")
+    asset_context, asset_context_ref = "", ""
     use_planner = batch_token_budget > 0 or max_segments_per_call > 0
     if use_planner and batch_token_budget <= 0:
         batch_token_budget = DEFAULT_BATCH_TOKEN_BUDGET
@@ -487,8 +503,27 @@ def run_draft_stage(
                 os.environ.get("MICRO_ROUND_PROGRESS_INTERVAL", "30") or 30
             ),
         )
+    if run_budget is None:
+        run_budget = RunBudget()
+    identity = {"run_id":run_id,"mode":provider_mode,"stage":spec.stage_key,
+        "sources":[{"path":str(p.resolve()),"sha256":source_hashes[str(p)]} for p in chapter_paths],
+        "asset_context_sha256":hashlib.sha256(asset_context.encode()).hexdigest() if isinstance(asset_context,str) else hashlib.sha256(json.dumps(asset_context,sort_keys=True,ensure_ascii=False).encode()).hexdigest(),
+        "provider":getattr(provider,"provider_id","unknown"),"model":model_name,
+        "planner":[batch_token_budget,max_segments_per_call,compact_context],
+        "source_context":source_catalog.identity(source_context_policy),
+        "narrative_context":narrative_catalog.identity(),
+        "source_bindings":[{'chapter_id':ch.chapter_id,'source_revision':ch.source_revision,
+                            'parser_version':ch.parser_version,
+                            'bindings':[seg.source_binding for seg in ch.segments]} for ch in parsed_chapters]}
+    execution = DraftExecution(controlled,run_budget,guard,run_root,identity)
+    execution.content_units = {ch.chapter_id: ContentUnitBudget(base / 'checkpoints',
+        source_bytes[str(path)].decode('utf-8')) for ch, path in zip(parsed_chapters, chapter_paths)}
+    controlled.draft_execution = execution
+    draft_dir.mkdir(parents=True,exist_ok=True)
+    init_run_metadata(run_root,run_id=run_id,phase="draft",stage=spec.stage_key,scope=spec.scope,chapter_offset=chapter_offset)
     _hydrate_from_segments_json(run_root, parsed_chapters)
-    _hydrate_from_draft_md(run_root, parsed_chapters)
+    execution.reconcile_done(parsed_chapters,simulated)
+    controlled.draft_execution.save_segments(parsed_chapters)
     total_expected = sum(len(ch.segments) for ch in parsed_chapters)
     translated_before = _count_translated_segments(parsed_chapters)
 
@@ -507,13 +542,16 @@ def run_draft_stage(
         controlled.checkpoint.status == "completed"
         or controlled.checkpoint.status.startswith("aborted")
     ):
-        controlled.checkpoint.status = "in_progress"
-        controlled.save()
+        execution.set_status("in_progress")
     summary = DraftRunSummary(
         run_id=run_id,
         provider_mode=provider_mode,
         model_name=model_name,
         asset_context_path=asset_context_ref,
+        api_calls=0 if simulated else run_budget.api_calls_used,
+        simulated=simulated,
+        total_segments=total_expected,
+        provider_attempts=execution.state.get("provider_attempts",0),
     )
 
     try:
@@ -539,17 +577,21 @@ def run_draft_stage(
             batch_token_budget=batch_token_budget if use_planner else 0,
             max_segments_per_call=max_segments_per_call if use_planner else 0,
             compact_context=compact_context or use_planner,
-            asset_resolved=asset_resolved,
             run_budget=run_budget,
+            execution=execution,
+            source_catalog=source_catalog,source_context_policy=source_context_policy,
+            narrative_catalog=narrative_catalog,
         )
     except DraftRunTickExit as tick_exit:
         tick_exit.summary.tick_paused = True
         tick_exit.summary.translated_segments = _count_translated_segments(parsed_chapters)
+        if tick_exit.summary.simulated:
+            tick_exit.summary.simulated_segments=tick_exit.summary.translated_segments
+            tick_exit.summary.translated_segments=0
         if guard:
             tick_exit.summary.spent_usd = guard.spent_usd
             tick_exit.summary.spent_tokens = guard.spent_tokens
-        controlled.checkpoint.status = "in_progress"
-        controlled.save()
+        execution.set_status("in_progress")
         write_run_progress(
             run_root,
             run_id=run_id,
@@ -560,7 +602,7 @@ def run_draft_stage(
             total_segments=total_expected,
             completed_segments=tick_exit.summary.translated_segments,
         )
-        export_segments_doc(parsed_chapters, run_root / "segments.json")
+        controlled.draft_execution.save_segments(parsed_chapters)
         _write_run_artifacts(
             repo_root,
             run_root,
@@ -590,7 +632,7 @@ def run_draft_stage(
             completed_segments=summary.translated_segments,
             last_error_type="stopped_by_controller",
         )
-        export_segments_doc(parsed_chapters, run_root / "segments.json")
+        controlled.draft_execution.save_segments(parsed_chapters)
         _write_run_artifacts(
             repo_root,
             run_root,
@@ -604,15 +646,16 @@ def run_draft_stage(
         raise
 
     summary.translated_segments = _count_translated_segments(parsed_chapters)
-    if guard:
-        summary.spent_usd = guard.spent_usd
-        summary.spent_tokens = guard.spent_tokens
-    elif controlled.checkpoint.spent_usd:
-        summary.spent_usd = controlled.checkpoint.spent_usd
-        summary.spent_tokens = controlled.checkpoint.spent_tokens
+    summary.spent_usd=max(guard.spent_usd,controlled.checkpoint.spent_usd)
+    summary.spent_tokens=max(guard.spent_tokens,controlled.checkpoint.spent_tokens)
 
-    controlled.complete()
-    final_status = "failed" if summary.aborted else "completed"
+    if simulated:
+        execution.set_status("simulated")
+        summary.simulated_segments=summary.translated_segments
+        summary.translated_segments=0
+    else:
+        controlled.complete()
+    final_status = "simulated" if simulated else ("failed" if summary.aborted else "completed")
     write_run_progress(
         run_root,
         run_id=run_id,
@@ -635,7 +678,7 @@ def run_draft_stage(
         input_dir,
         chapter_offset=chapter_offset,
     )
-    export_segments_doc(parsed_chapters, run_root / "segments.json")
+    controlled.draft_execution.save_segments(parsed_chapters)
     _write_quality_reports(run_root, spec, summary, parsed_chapters)
     return summary, run_root
 
@@ -712,9 +755,14 @@ def _run_chapter_batches(
     batch_token_budget: int = 0,
     max_segments_per_call: int = 0,
     compact_context: bool = False,
-    asset_resolved: Path | None = None,
     run_budget: RunBudget | None = None,
+    execution: DraftExecution | None = None,
+    source_catalog: SourceContextCatalog | None = None,
+    source_context_policy: SourceContextPolicy | None = None,
+    narrative_catalog: NarrativeContextCatalog | None = None,
 ) -> None:
+    source_catalog=source_catalog or SourceContextCatalog(parsed_chapters)
+    source_context_policy=SourceContextPolicy() if source_context_policy is None else source_context_policy
     tick_start = time.monotonic()
     segments_this_tick = 0
     tick_limited = tick_max_segments > 0 or tick_max_wall_seconds > 0
@@ -726,7 +774,6 @@ def _run_chapter_batches(
 
     for chapter in parsed_chapters:
         ch_result = ChapterRunResult(chapter_id=chapter.chapter_id, ok=True, message="ok")
-        summary.total_segments += len(chapter.segments)
 
         if use_planner:
             batch_list = _split_batches_planned(
@@ -741,6 +788,9 @@ def _run_chapter_batches(
 
         while batch_queue:
             batch = batch_queue.pop(0)
+            pending = [s for s in batch if _segment_needs_translation(s)]
+            if not pending:
+                continue
             if tick_limited and _tick_budget_exhausted(
                 tick_start=tick_start,
                 segments_this_tick=segments_this_tick,
@@ -749,52 +799,36 @@ def _run_chapter_batches(
             ):
                 raise DraftRunTickExit(summary, run_root)
             if run_budget and run_budget.exhausted():
-                export_segments_doc(parsed_chapters, run_root / "segments.json")
+                controlled.draft_execution.save_segments(parsed_chapters)
                 controlled.save()
                 raise DraftRunTickExit(summary, run_root)
 
             check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
-            pending = [s for s in batch if _segment_needs_translation(s)]
-            if not pending:
-                continue
+            if run_budget and run_budget.max_segments > 0:
+                remaining_segments=max(0,run_budget.max_segments-run_budget.segments_used)
+                pending=pending[:remaining_segments]
+                if not pending:raise DraftRunTickExit(summary,run_root)
             if heartbeat_cb:
                 heartbeat_cb()
             check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
 
-            glossary_hits = ""
-            if compact_context:
-                hit_blocks: list[str] = []
-                if asset_resolved and asset_resolved.is_file():
-                    from assets.translation_memory import select_batch_context_hits
-
-                    tm_hits = select_batch_context_hits(
-                        asset_resolved,
-                        [s.source_text for s in pending],
-                    )
-                    if tm_hits:
-                        hit_blocks.append(tm_hits)
-                # FS-016: configs asset layer (batch-hit subset only, spec §22)
-                from translation.configs_asset_context import build_configs_asset_context
-
-                configs_ctx = build_configs_asset_context(
-                    [s.source_text for s in pending]
-                )
-                if not configs_ctx.empty:
-                    hit_blocks.append(configs_ctx.text)
-                glossary_hits = "\n".join(hit_blocks)
-
+            source_context=source_catalog.before(pending,source_context_policy)
+            narrative_context=narrative_catalog.for_batch(pending) if narrative_catalog is not None else None
             messages = build_batch_messages(
                 pending,
                 chapter_label=chapter.chapter_label,
                 asset_context=asset_context if not compact_context else None,
                 compact_context=compact_context,
-                glossary_hits=glossary_hits,
+                source_context=source_context,
+                narrative_context=narrative_context,
             )
             options = GenerateOptions(
                 project_id="light-novel-jp-cn",
                 language_direction="JP_TO_CN",
                 pipeline_stage="draft_translation",
                 input_reference=chapter.chapter_id,
+                metadata={'source_context_sha256':source_context.to_dict()['sha256'],
+                          'narrative_context_sha256':narrative_context.to_dict()['sha256'] if narrative_context else None},
             )
             result = None
             last_exc: Exception | None = None
@@ -808,7 +842,7 @@ def _run_chapter_batches(
                         and remaining <= WALL_TIME_START_SAFETY_SECONDS
                     )
                 ):
-                    export_segments_doc(parsed_chapters, run_root / "segments.json")
+                    controlled.draft_execution.save_segments(parsed_chapters)
                     controlled.save()
                     raise DraftRunTickExit(summary, run_root)
                 _bound_provider_timeout(
@@ -819,23 +853,46 @@ def _run_chapter_batches(
                 if heartbeat_cb:
                     heartbeat_cb()
                 check_stop_or_raise(worker_id=worker_id, run_id=run_id, repo_root=repo_root)
+                reserved=False
                 try:
-                    result = provider.generate(messages, options)
+                    execution.reserve(messages,[s.segment_id for s in pending])
+                    reserved=True
+                    if not summary.simulated:
+                        summary.api_calls=run_budget.api_calls_used
+                    ch_result.api_calls+=1
+                    try:
+                        unit = execution.content_units[chapter.chapter_id]
+                        with unit.operation(messages, role='generation', revision=0, run_id=run_id) as lease:
+                            old_lease = execution.guard.content_unit_lease
+                            execution.guard.content_unit_lease = lease
+                            try:
+                                result = provider.generate(messages, options)
+                            finally:
+                                execution.guard.content_unit_lease = old_lease
+                    except BaseException as call_error:
+                        execution.finish(call_error)
+                        raise
+                    finally:
+                        summary.provider_attempts=max(summary.provider_attempts,execution.guard.call_count)
+                    if result.dry_run and not summary.simulated:
+                        raise RuntimeError("simulation result cannot complete real draft work")
+                    execution.finish()
                     last_exc = None
-                except (CostGuardError, RuntimeError, OSError) as exc:
+                except Exception as exc:
                     last_exc = exc
                     result = None
-                    if attempt >= MAX_API_RETRIES:
+                    if isinstance(exc,CostGuardError) or not reserved or attempt >= MAX_API_RETRIES or not execution.state["attempts"] or not execution.state["attempts"][-1]["retry_eligible"]:
                         break
                     time.sleep(min(30, 5 * attempt))
                     continue
-                ok, msg = _apply_items(chapter, pending, result.raw_output)
+                execution.verify_sources()
+                ok, msg = _apply_items(chapter, pending, result.raw_output,
+                                       warnings=ch_result.validation_warnings)
                 if ok:
                     break
+                execution.finish(RuntimeError(msg))
                 result = None
-                if attempt >= MAX_API_RETRIES:
-                    break
-                time.sleep(min(30, 5 * attempt))
+                break
 
             if last_exc is not None or result is None:
                 exc = last_exc or RuntimeError(msg or "provider returned no result")
@@ -891,10 +948,8 @@ def _run_chapter_batches(
                 )
                 raise DraftRunEarlyExit(summary, run_root)
 
-            summary.api_calls += 1
-            ch_result.api_calls += 1
-            if run_budget:
-                run_budget.api_calls_used += 1
+            # Persist the complete candidate before committing any done IDs.
+            controlled.draft_execution.save_segments(parsed_chapters)
 
             segments_flush_interval = max(
                 1, int(os.environ.get("SEGMENTS_FLUSH_INTERVAL", "10"))
@@ -902,7 +957,7 @@ def _run_chapter_batches(
             segments_since_flush = 0
             for seg in pending:
                 if seg.status == "machine_translated":
-                    if not controlled.is_segment_done(seg.segment_id):
+                    if not summary.simulated and not controlled.is_segment_done(seg.segment_id):
                         controlled.mark_segment_done(
                             seg.segment_id,
                             tokens=result.estimated_tokens // max(len(pending), 1),
@@ -920,11 +975,11 @@ def _run_chapter_batches(
                         tick_max_segments=tick_max_segments,
                         tick_max_wall_seconds=tick_max_wall_seconds,
                     ):
-                        export_segments_doc(parsed_chapters, run_root / "segments.json")
+                        controlled.draft_execution.save_segments(parsed_chapters)
                         controlled.save()
                         raise DraftRunTickExit(summary, run_root)
-                    if run_budget and run_budget.exhausted():
-                        export_segments_doc(parsed_chapters, run_root / "segments.json")
+                    if run_budget and run_budget.exhausted() and _count_translated_segments(parsed_chapters) < total_expected:
+                        controlled.draft_execution.save_segments(parsed_chapters)
                         controlled.save()
                         raise DraftRunTickExit(summary, run_root)
                     write_run_progress(
@@ -939,9 +994,9 @@ def _run_chapter_batches(
                         last_completed_segment_id=seg.segment_id,
                     )
                     if segments_since_flush >= segments_flush_interval:
-                        export_segments_doc(parsed_chapters, run_root / "segments.json")
+                        controlled.draft_execution.save_segments(parsed_chapters)
                         segments_since_flush = 0
-            export_segments_doc(parsed_chapters, run_root / "segments.json")
+            controlled.draft_execution.save_segments(parsed_chapters)
             controlled.save()
             if run_budget and run_budget.should_write_progress():
                 completed = _count_translated_segments(parsed_chapters)
@@ -958,7 +1013,7 @@ def _run_chapter_batches(
             if heartbeat_cb:
                 heartbeat_cb()
 
-        export_chapter_markdown(chapter, draft_dir)
+        controlled.draft_execution.save_chapter(chapter, draft_dir)
         summary.chapters.append(ch_result)
 
 
@@ -973,7 +1028,7 @@ def _write_run_artifacts(
     *,
     chapter_offset: int = 0,
 ) -> None:
-    export_segments_doc(chapters, run_root / "segments.json")
+    # The caller already persists the bound segments before writing derived metadata.
     existing_meta = {}
     meta_path = run_root / "run_metadata.json"
     if meta_path.is_file():
@@ -995,7 +1050,11 @@ def _write_run_artifacts(
         "input_dir": str(input_dir.relative_to(repo_root)),
         "limit_chapters": len(chapter_paths),
         "chapter_offset": chapter_offset,
-        "real_api_called": summary.provider_mode.startswith("real"),
+        "real_api_called": False if not summary.provider_mode.startswith("real") or summary.provider_attempts==0 else None,
+        "provider_method_attempts": summary.provider_attempts,
+        "real_network_observation": "unknown" if summary.provider_mode.startswith("real") and summary.provider_attempts else "no_registered_provider_dispatch",
+        "simulated": summary.simulated,
+        "execution_mode": "mock" if summary.simulated else ("api_translation" if summary.provider_mode.startswith("real") else "unknown"),
         "summary": {
             "total_segments": summary.total_segments,
             "translated_segments": summary.translated_segments,
@@ -1019,12 +1078,13 @@ def _write_quality_reports(
     chapters: list[ParsedChapter],
 ) -> None:
     total = summary.total_segments
-    done = _count_translated_segments(chapters)
+    done = 0 if summary.simulated else _count_translated_segments(chapters)
     summary.translated_segments = done
     coverage = done / total if total else 0.0
     chapter_ok = all(c.ok for c in summary.chapters)
     passed = (
         not summary.aborted
+        and not summary.simulated
         and chapter_ok
         and coverage >= 0.98
         and done == total
@@ -1037,6 +1097,7 @@ def _write_quality_reports(
         "phase": "draft",
         "stage": spec.stage_key,
         "scope": spec.scope,
+        "quality_scope": "structural_draft_completeness_only; semantic_review_pending",
         "coverage_ratio": round(coverage, 4),
         "segments_total": total,
         "segments_translated": done,
@@ -1050,6 +1111,7 @@ def _write_quality_reports(
                 "ok": c.ok,
                 "message": c.message,
                 "segments_translated": c.segments_translated,
+                "validation_warnings": c.validation_warnings,
             }
             for c in summary.chapters
         ],

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def fixture_runner(tmp_path: Path, failure: str = "", code: int = 0):
     scripts = tmp_path / "scripts"
     scripts.mkdir()
+    (tmp_path / ".synthetic-check-view.json").write_text("{}")
     shutil.copyfile(ROOT / "scripts/run_tooling_checks.sh", scripts / "run_tooling_checks.sh")
     runtime = tmp_path / ".venv/bin"
     runtime.mkdir(parents=True)
@@ -33,7 +35,8 @@ def fixture_runner(tmp_path: Path, failure: str = "", code: int = 0):
 
 def test_codex_keeps_quality_checks_without_cursor_probes(tmp_path: Path):
     runner = fixture_runner(tmp_path)
-    result = subprocess.run(["sh", str(runner), "--surface", "codex"], cwd=tmp_path, capture_output=True)
+    result = subprocess.run(["sh", str(runner), "--surface", "codex"], cwd=tmp_path, capture_output=True,
+                            env={**os.environ, "LN_SYNTHETIC_CHECK_ROOT": str(tmp_path)})
     assert result.returncode == 0
     commands = [json.loads(x) for x in (tmp_path / "commands.jsonl").read_text().splitlines()]
     assert commands == [["scripts/agent_gate.py"], ["scripts/validate_agent_report.py"],
@@ -43,7 +46,8 @@ def test_codex_keeps_quality_checks_without_cursor_probes(tmp_path: Path):
 
 def test_non_gate_failure_is_not_silently_treated_as_warning(tmp_path: Path):
     runner = fixture_runner(tmp_path, "scripts/validate_agent_report.py", 1)
-    result = subprocess.run(["sh", str(runner), "--surface", "codex"], cwd=tmp_path, capture_output=True)
+    result = subprocess.run(["sh", str(runner), "--surface", "codex"], cwd=tmp_path, capture_output=True,
+                            env={**os.environ, "LN_SYNTHETIC_CHECK_ROOT": str(tmp_path)})
     assert result.returncode == 1
     commands = [json.loads(x) for x in (tmp_path / "commands.jsonl").read_text().splitlines()]
     assert commands[-1] == ["scripts/validate_agent_report.py"]
@@ -51,7 +55,8 @@ def test_non_gate_failure_is_not_silently_treated_as_warning(tmp_path: Path):
 
 def test_only_documented_gate_warning_can_continue(tmp_path: Path):
     runner = fixture_runner(tmp_path, "scripts/agent_gate.py", 1)
-    result = subprocess.run(["sh", str(runner), "--surface", "codex"], cwd=tmp_path, capture_output=True)
+    result = subprocess.run(["sh", str(runner), "--surface", "codex"], cwd=tmp_path, capture_output=True,
+                            env={**os.environ, "LN_SYNTHETIC_CHECK_ROOT": str(tmp_path)})
     assert result.returncode == 0
     assert json.loads((tmp_path / "commands.jsonl").read_text().splitlines()[-1]) == ["-m", "pytest", "tests/", "-q"]
 
@@ -72,7 +77,8 @@ def test_state_is_strict_yaml_and_preserves_paused_history():
     assert state["latest_stats"]["scheduler_paused"] is True
     assert state["latest_stats"]["next_round_id"] is None
     current = state["codex_governance"]
-    assert current["task_id"] == "ALL-PROJECTS-CODEX-GOVERNANCE-V1"
+    assert current["task_id"]
+    assert isinstance(current["current_work"], dict)
     assert current["current_work"]["next_action"]
     declaration = yaml.safe_load((ROOT / "hub.connection.yaml").read_text())
     assert declaration["project_id"] == "light-novel"

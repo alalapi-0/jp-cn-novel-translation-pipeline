@@ -717,3 +717,16 @@ kbd {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Version workflow follows the existing dark tokens and remains readable on mobile. */
+.card, .dashboard-triage > *, .review-layout > *, .actions > * { min-width: 0; }
+input, select, textarea { max-width: 100%; }
+pre, code, .meta, .version-workflow, #long-import-result { overflow-wrap: anywhere; }
+pre { white-space: pre-wrap; max-width: 100%; }
+a { color: var(--accent); }
+.version-workflow input[type="file"] { display: block; margin-top: .5rem; }
+:focus-visible { outline: 2px solid var(--warn); outline-offset: 3px; }
+@media (max-width: 640px) { .version-workflow .actions { flex-direction: column; align-items: stretch; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+
+.version-workflow label:has(input:disabled) { opacity: .55; cursor: default; }

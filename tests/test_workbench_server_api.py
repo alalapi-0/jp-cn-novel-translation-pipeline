@@ -70,15 +70,109 @@ def _post(base: str, path: str, payload: dict) -> tuple[int, dict]:
     return res.status, json.loads(body) if body else {}
 
 
-def _patch(base: str, path: str, payload: dict) -> tuple[int, dict]:
+def test_candidate_recovery_http_origin_confirmation_exact_fields_and_stale(api_env):
+    from workbench.canonical_service import import_sources,import_candidates
+    root=api_env['repo_root'];base=str(api_env['base'])
+    state=import_sources(root,project_id='api-recovery',name='Synthetic',language_direction='JP_TO_CN',
+        chapters=[{'filename':'003-synthetic.md','text':'# 章\n\n合成原文。'}])
+    state=import_candidates(root,'api-recovery',expected_manifest_sha256=state['manifest_sha256'],
+        source_inventory_sha256=state['source_inventory_sha256'],candidates=[{'segment_id':r['segment_id'],'target_text':'合成候选。'} for r in state['segments']])
+    path=root/'workspace/manifests/api-recovery.json';raw=path.read_bytes()
+    body={'expected_manifest_sha256':state['manifest_sha256'],'confirm_restore':True}
+    def post(payload,origin):
+        host,port=base.split(':');conn=HTTPConnection(host,int(port),timeout=10)
+        headers={'Content-Type':'application/json'}
+        if origin is not None:headers['Origin']=origin
+        conn.request('POST','/api/projects/api-recovery/candidate-restore',body=json.dumps(payload),headers=headers)
+        response=conn.getresponse();result=(response.status,json.loads(response.read()));conn.close();return result
+    for origin in [None,'https://example.invalid','http://127.0.0.1:1']:
+        assert post(body,origin)[0]==403 and path.read_bytes()==raw
+    for forged in [{**body,'actor_type':'agent'},{**body,'snapshot_path':'../outside'},
+                   {**body,'confirm_restore':False},{**body,'expected_manifest_sha256':'../outside'}]:
+        assert post(forged,'http://'+base)[0]==400 and path.read_bytes()==raw
+    status,result=post(body,'http://'+base)
+    assert status==200 and result['action']=='restore_unreviewed_drafts' and not result['approval_issued']
+    assert not result['selection']['can_select'] and result['selection']['segments_with_target']==0
+    restored=path.read_bytes();assert post(body,'http://'+base)[0]==409 and path.read_bytes()==restored
+
+
+def _patch(base: str, path: str, payload: dict, headers: dict | None = None) -> tuple[int, dict]:
     host, port = base.split(":")
     conn = HTTPConnection(host, int(port), timeout=10)
     data = json.dumps(payload).encode("utf-8")
-    conn.request("PATCH", path, body=data, headers={"Content-Type": "application/json"})
+    conn.request("PATCH", path, body=data, headers={"Content-Type": "application/json", **(headers or {})})
     res = conn.getresponse()
     body = res.read().decode("utf-8")
     conn.close()
     return res.status, json.loads(body) if body else {}
+
+
+def _accept_as_agent(root: Path, project_id: str, segment_id: str, identity: str):
+    # Trusted synthetic service setup; an HTTP request cannot supply this context.
+    from workbench.project_registry import patch_project_review_state_cas
+    from workbench.review_state import DecisionActor
+    return patch_project_review_state_cas(root, project_id,
+        decision_actor=DecisionActor("agent", "synthetic-test-agent"),
+        segments={segment_id: {"status": "approved", "expected_identity": identity}})
+
+
+def test_canonical_and_native_status_reads_do_not_enter_native_admission(api_server,monkeypatch):
+    from workbench import native_agent
+    def forbidden(*a,**k):raise AssertionError('native work on ordinary HTTP read')
+    monkeypatch.setattr(native_agent,'_configuration_input',forbidden)
+    monkeypatch.setattr(native_agent,'_metadata',forbidden)
+    monkeypatch.setattr(native_agent.subprocess,'Popen',forbidden)
+    pid='status-read-only'
+    assert _post(api_server,'/api/projects',{'project_id':pid,'name':'Synthetic','language_direction':'JP_TO_CN'})[0]==201
+    code,value=_get(api_server,f'/api/projects/{pid}/canonical-selection')
+    assert code==200 and value['native_status']['admission']['attempts']==0
+    code,value=_get(api_server,f'/api/projects/{pid}/native-agent-status')
+    assert code==200 and value['admission']['attempts']==0
+
+
+def test_http_actor_body_and_headers_cannot_grant_approval(api_server):
+    project_id = "http-provenance-test"
+    _post(api_server, "/api/projects", {"project_id": project_id, "name": "Provenance", "language_direction": "JP_TO_CN"})
+    _post(api_server, f"/api/projects/{project_id}/dry-run-generate", {"sample_text": "風が吹く。"})
+    identity = _segment_identity(api_server, project_id, "seg-001")
+    code, body = _patch(api_server, f"/api/projects/{project_id}/review-state", {
+        "decision_actor": {"actor_type": "agent", "actor_ref": "forged"},
+        "segments": {"seg-001": {"status": "approved", "expected_identity": identity,
+            "actor_type": "human", "human_reviewed": True, "human_approved_final": True,
+            "decision_provenance": {"actor_type": "agent", "approval_identity": identity}}}},
+        headers={"X-Review-Actor": "human", "X-Native-User": "unverified"})
+    assert code == 200
+    state = body["review_state"]; entry = state["segments"]["seg-001"]
+    assert entry["decision_provenance"]["actor_type"] == "unknown"
+    assert "human_reviewed" not in entry and "human_approved_final" not in entry
+    decision = state["decision_summaries"]["seg-001"]
+    assert decision["candidate_accepted"] is False and decision["human_approved_final"] is False
+    code, loaded = _get(api_server, f"/api/projects/{project_id}/review-state")
+    assert code == 200 and loaded["review_state"]["decision_summaries"] == state["decision_summaries"]
+    for path, request in [("/api/export/run", {"source": "manifest", "project_id": project_id}),
+                          ("/api/translation-assets/build", {"project_id": project_id})]:
+        code, error = _post(api_server, path, request)
+        assert code == 400 and "no approved" in error["error"]
+    code, _ = _patch(api_server, f"/api/projects/{project_id}/review-state", {"segments": {
+        "seg-001": {"status": "human_approved_final", "expected_identity": identity}}})
+    assert code == 409
+
+
+def test_quality_review_http_uses_frozen_input_scope(api_env):
+    from workbench.project_registry import get_project_manifest, update_project_segments
+    base = str(api_env["base"]); root = api_env["repo_root"]
+    code, _ = _post(base, "/api/projects", {"project_id": "source-coverage-test", "name": "Source", "language_direction": "JP_TO_CN"})
+    assert code == 201
+    code, _ = _post(base, "/api/projects/source-coverage-test/dry-run-generate", {"sample_text": "風が吹く。\n\n雨が降る。"})
+    assert code == 200
+    original = get_project_manifest(root, "source-coverage-test")
+    assert len(original.source_inventory["entries"]) == 2
+    update_project_segments(root, original.project_id, [{**original.segments[0], "draft": "风吹过。"}])
+    code, report = _get(base, "/api/projects/source-coverage-test/quality-review")
+    assert code == 200 and report["review_status"] == "review_needed"
+    assert report["summary"]["source_inventory_status"] == "pinned_source_import"
+    assert report["summary"]["glossary_source"] == "none_no_project_glossary"
+    assert any(i["segment_id"] == "seg-002" and i["evidence"].get("rule") == "missing_target_id" for i in report["issues"])
 
 
 def _segment_identity(base: str, project_id: str, segment_id: str) -> str:
@@ -194,6 +288,7 @@ def test_review_state_patch(api_server: str) -> None:
 
 def test_approval_identity_cas_rejects_stale_content_without_partial_write(
     api_server: str,
+    api_repo_root: Path,
 ) -> None:
     project_id = "pw-approval-cas"
     _post(
@@ -282,6 +377,10 @@ def test_approval_identity_cas_rejects_stale_content_without_partial_write(
     assert code == 200
     assert fresh["review_state"]["segments"]["seg-001"]["approval_identity"] == identity_b
     assert fresh["review_state"]["segments"]["seg-001"]["note"] == "preserve me"
+    assert fresh["review_state"]["decision_summaries"]["seg-001"]["candidate_accepted"] is False
+    code, error = _post(api_server, "/api/export/run", {"source": "manifest", "project_id": project_id})
+    assert code == 400 and "no approved segments" in error["error"]
+    _accept_as_agent(api_repo_root, project_id, "seg-001", identity_b)
 
     code, metadata = _patch(
         api_server,
@@ -529,6 +628,7 @@ def test_export_manifest_approved_only_uses_review_state(
     )
     assert code == 200
 
+    _accept_as_agent(api_repo_root, project_id, "seg-001", identity)
     code, payload = _post(
         api_server,
         "/api/export/run",
@@ -579,6 +679,7 @@ def test_build_translation_assets_api_uses_approved_only(
     )
     assert code == 200
 
+    _accept_as_agent(api_repo_root, project_id, "seg-001", identity)
     code, payload = _post(
         api_server,
         "/api/translation-assets/build",
@@ -599,7 +700,7 @@ def test_build_translation_assets_api_uses_approved_only(
     assert status["stats"]["pairs"] == 1
 
 
-def test_translation_assets_external_api_reports_clear_error(api_server: str) -> None:
+def test_translation_assets_external_api_reports_clear_error(api_server: str, api_repo_root: Path) -> None:
     project_id = "pw-assets-external-blocked"
     _post(
         api_server,
@@ -619,6 +720,7 @@ def test_translation_assets_external_api_reports_clear_error(api_server: str) ->
     )
     assert code == 200
 
+    _accept_as_agent(api_repo_root, project_id, "seg-001", identity)
     code, payload = _post(
         api_server,
         "/api/translation-assets/build",

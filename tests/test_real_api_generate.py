@@ -49,3 +49,11 @@ def test_real_api_rejects_paragraph_over_400_chars(monkeypatch: pytest.MonkeyPat
             language_direction="JP_TO_CN",
             repo_root=tmp_path,
         )
+
+
+def test_real_api_sample_refuses_extra_paragraphs_instead_of_truncating(monkeypatch,tmp_path):
+    monkeypatch.setenv('OPENROUTER_API_KEY','test-key')
+    monkeypatch.setenv('REAL_API_TESTS_ENABLED','true')
+    monkeypatch.setenv('MAX_TEST_COST_USD','0.05')
+    with pytest.raises(ValueError,match='sample exceeds 3 paragraphs'):
+        generate_segments_real_api(sample_text='a\n\nb\n\nc\n\nd',language_direction='JP_TO_CN',repo_root=tmp_path)

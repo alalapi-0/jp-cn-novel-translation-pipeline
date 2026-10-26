@@ -193,7 +193,7 @@ def test_max_terms_cap(assets, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_draft_prompt_includes_hits_in_compact_mode(assets):
+def test_draft_prompt_withholds_unscoped_hits_in_compact_mode(assets):
     glossary, characters = assets
     ctx = build_configs_asset_context(
         BATCH_TEXTS, glossary_path=glossary, character_path=characters
@@ -209,7 +209,8 @@ def test_draft_prompt_includes_hits_in_compact_mode(assets):
         glossary_hits=ctx.text,
     )
     user = messages[1].content
-    assert "サンプルギルド => 示例公会 [locked]" in user
+    assert "サンプルギルド => 示例公会 [locked]" not in user
+    assert "withheld_unscoped" in user
     assert "サンプル迷宮" not in user  # subset rule survives into prompt
 
 

@@ -20,23 +20,16 @@ def fake_draft(source: str, *, direction: str) -> str:
     return f"（dry-run 中译占位）{source[:120]}"
 
 
+def source_segments_from_sample(sample_text: str) -> list[dict[str, Any]]:
+    """All imported source paragraphs; no model output or preview truncation."""
+    return [{"id": f"seg-{i:03d}", "segment_id": f"seg-{i:03d}", "chapter": 1, "source": para}
+            for i, para in enumerate(_split_paragraphs(sample_text), start=1)]
+
+
 def generate_segments_from_sample(
     *,
     sample_text: str,
     language_direction: str = "JP_TO_CN",
 ) -> list[dict[str, Any]]:
-    paragraphs = _split_paragraphs(sample_text)
-    segments: list[dict[str, Any]] = []
-    for idx, para in enumerate(paragraphs, start=1):
-        seg_id = f"seg-{idx:03d}"
-        segments.append(
-            {
-                "id": seg_id,
-                "segment_id": seg_id,
-                "chapter": 1,
-                "source": para,
-                "draft": fake_draft(para, direction=language_direction),
-                "status": "pending",
-            }
-        )
-    return segments
+    return [{**row, "draft": fake_draft(row["source"], direction=language_direction), "status": "pending"}
+            for row in source_segments_from_sample(sample_text)]

@@ -4,13 +4,24 @@
   "title": "World Bible (spec §7.10)",
   "description": "世界观设定 schema：14 分类枚举。模板 configs/world_bible.yaml；真实数据 workspace/configs/world_bible.yaml。",
   "type": "object",
-  "required": ["schema_version", "entries"],
+  "required": [
+    "schema_version",
+    "entries"
+  ],
   "properties": {
-    "schema_version": {"type": "integer", "minimum": 1},
-    "meta": {"type": "object", "additionalProperties": true},
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "entries": {
       "type": "array",
-      "items": {"$ref": "#/definitions/world_entry"}
+      "items": {
+        "$ref": "#/definitions/world_entry"
+      }
     }
   },
   "additionalProperties": false,
@@ -31,9 +42,18 @@
         "updated_at"
       ],
       "properties": {
-        "entry_id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9_\\-]+$"},
-        "name": {"type": "string", "minLength": 1},
-        "target_name": {"type": "string"},
+        "entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_name": {
+          "type": "string"
+        },
         "category": {
           "type": "string",
           "enum": [
@@ -53,15 +73,227 @@
             "other"
           ]
         },
-        "summary": {"type": ["string", "null"]},
-        "details": {"type": ["string", "null"]},
-        "related_terms": {"type": "array", "items": {"type": "string"}},
-        "first_seen_chapter": {"type": ["integer", "null"], "minimum": 1},
-        "notes": {"type": ["string", "null"]},
-        "created_at": {"type": "string", "minLength": 1},
-        "updated_at": {"type": "string", "minLength": 1}
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "details": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "related_terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "first_seen_chapter": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "knowledge_claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/knowledge_claim"
+          }
+        }
       },
       "additionalProperties": true
+    },
+    "knowledge_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "category",
+        "statement"
+      ],
+      "properties": {
+        "schema": {
+          "const": "knowledge-claim/1"
+        },
+        "claim_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "enum": [
+            "glossary",
+            "character",
+            "world",
+            "summary",
+            "relationship",
+            "address",
+            "creative_pattern",
+            "unknown"
+          ]
+        },
+        "statement": {
+          "type": "string"
+        },
+        "epistemic_status": {
+          "enum": [
+            "assertion",
+            "inference",
+            "unknown"
+          ]
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "producer": {
+          "enum": [
+            "model",
+            "rule",
+            "import",
+            "owner",
+            "unknown"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_catalog_sha256",
+              "chapter_id",
+              "segment_id",
+              "source_sha256",
+              "start_char",
+              "end_char",
+              "quote"
+            ],
+            "properties": {
+              "source_catalog_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "chapter_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "segment_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "start_char": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "end_char": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "quote": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effective_until": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subject_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "object_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "predicate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "speaker_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "alternatives": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "target",
+              "condition"
+            ],
+            "properties": {
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "condition": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "withdrawn": {
+          "type": "boolean"
+        },
+        "semantic_truth": {
+          "const": "not_verified"
+        }
+      }
     }
   }
 }

@@ -20,14 +20,16 @@
 # 1. Node 依赖（Playwright UI 测试 + MCP 检查）
 npm ci
 
-# 2. Python 虚拟环境与单元测试（避免 PEP 668 系统 Python 限制）
+# 2. 先核合成边界（Linux 需要 bubblewrap；缺失时关闭入口，不回落真实工作区）
+python3 scripts/isolated_checks.py --entry probe
+
+# 3. Python 虚拟环境与单元测试（避免 PEP 668 系统 Python 限制）
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest tests/ -q
-# 或：npm run test:py
+npm run test:py -- tests/ -q
 
-# 3. 启动前端 + Workbench API（默认端口 5174）
+# 4. 启动前端 + Workbench API（默认端口 5174）
 npm run dev:frontend
 # 浏览器打开 http://127.0.0.1:5174/
 ```
@@ -71,10 +73,18 @@ result = chat(
 ```bash
 npm run test:py        # 推荐：自动使用 .venv/bin/python -m pytest
 npm run test:ui        # Playwright（自动起 5174 dev server）
-npm run check:tooling  # 内含 pytest + MCP 检查
+npm run check:tooling -- --surface codex  # 合成门禁、协议及允许的 Python 测试
 ```
 
-勿直接 `python3 -m pytest`（系统 Python 可能缺依赖）；若无 `.venv`，`npm run test:py` 会提示创建虚拟环境。
+测试通过 `npm run test:py`、`.venv/bin/python scripts/agent_gate.py --json` 或 Codex tooling 入口运行。
+它们只复制工程白名单和 `tests/fixtures/synthetic_sources.json` 登记的合成样例到磁盘临时视图，
+在独立 Linux mount/network namespace 中运行；真实 workspace、原文、输出、`.env`、PSH、凭据和外网不可用。
+复用 `.venv` 时仅只读挂载依赖。直接 pytest 在收集前拒绝真实根；不会播种或切换真实 active manifest。
+历史文档只投影存在性，当前工程文档按需复制；报告为合成报告，不冒充真实作品验收。
+当前所有者禁止执行 Cursor/库存探针，因此 `test_scan_repo_inventory.py` 与
+`test_tool_probe_build_report` 明确排除，其他测试保留（既有环境条件 skip 单独报告）。
+收尾删除临时视图，最小回执和合成报告保存在已忽略的 `workspace/tooling/isolated-checks/`。
+未安装 bubblewrap 或不支持隔离 namespace 的宿主会失败关闭；此隔离入口尚未移植到其他系统。
 
 本机登记的 Linux 工作区使用忽略的 `config/linux.outputs.local.json`：
 `schema: 1`、`repoRoot` 为工作区绝对路径、`mountPoint: /data`、`uuid` 为 DATA 的 UUID，

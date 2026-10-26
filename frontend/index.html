@@ -19,6 +19,18 @@
       </nav>
     </header>
     <main>
+      <section class="card" id="long-import-card" aria-labelledby="long-import-title">
+        <h2 id="long-import-title">导入长篇原文</h2>
+        <p class="meta">完整章节导入 → Agent 额度任务 → 导入绑定候选 → 核验与选择版本 → 唯一正式导出。短样例仍在下方，不能代替长篇执行。</p>
+        <form id="long-import-form" class="stack-form">
+          <label>新项目 ID<input id="long-project-id" required placeholder="my-novel" /></label>
+          <label>项目名称<input id="long-project-name" /></label>
+          <label>方向<select id="long-direction"><option value="JP_TO_CN">日译中</option><option value="CN_TO_JP">中译日</option></select></label>
+          <label>源章节文件（UTF-8 .md / .txt，可多选，按文件名顺序导入）<input id="long-source-files" type="file" accept=".md,.txt" multiple required /></label>
+          <button class="primary" type="submit">导入完整源章节</button>
+        </form>
+        <p id="long-import-result" role="status" aria-live="polite"></p>
+      </section>
       <section class="dashboard-triage" aria-label="工作台概览">
         <div class="triage-col card" id="triage-mode">
           <h2>当前模式</h2>
@@ -79,7 +91,8 @@
       </div>
 
       <div class="card" id="quickstart-card">
-        <h2>创建 dry-run 项目</h2>
+        <h2>短样例验证（mock / 外部 API）</h2>
+        <p class="meta">外部 API 小样本最多 3 段、每段 400 字。长篇请使用上方完整源文导入；样例入口不会作为全书执行。</p>
         <div id="quickstart-error-bar" class="error-bar" role="alert" hidden></div>
         <form id="quickstart-form" class="stack-form" action="#" method="post">
           <label id="qs-project-id-label">

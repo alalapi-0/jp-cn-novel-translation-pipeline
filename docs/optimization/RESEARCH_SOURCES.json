@@ -1,0 +1,914 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-10-22",
+  "status": "planning_research_complete_execution_unverified",
+  "sources": [
+    {
+      "id": "R-P01",
+      "title": "What Does LLM Refinement Actually Improve? A Systematic Study on Document-Level Literary Translation",
+      "url": "https://aclanthology.org/2026.acl-long.268/",
+      "full_text_url": "https://aclanthology.org/2026.acl-long.268.pdf",
+      "publication_date": "2026-07-02/2026-07-07",
+      "snapshot": "ACL 2026 published PDF, accessed 2026-10-22",
+      "evidence_class": "日中文学直接实验；部分人工细查为其他语对",
+      "languages_domain": "WMT24-Literary: en→cs/de/es/ja/ru/zh及ja→zh",
+      "method_evidence": "§3比较九种翻译/修订粒度组合和五种策略；细粒度修订仍提供完整原文与完整初译。§4-6结合MQM-FSP、人工评价、译者/修订者强弱和编辑位置分析。文档翻译后片段修订较稳定；一般修订提示在该设置优于错误定向和先评后改。",
+      "limitations": "收益主要为流畅、风格、术语；忠实度收益较弱且不稳定。专业译者A/B子实验仅en→de/es，不能等同全部日中人工验证。网页摘要写六模型，PDF写九模型，以PDF为准。",
+      "maintenance": "正式论文已发布；未定位独立代码发布或独立复现，不声称持续维护",
+      "licenses": {
+        "code": "未知",
+        "models": "各实验模型分别适用自身条款",
+        "data": "WMT24各数据源条款；未核定再分发权"
+      },
+      "resource_cost": "多次推理增加时间和Token；完整文档上下文重复输入有显著开销，论文Limitations明确效率问题",
+      "project_gap": "不能把该结论解释成无上下文逐句润色，也不能保证定位并修复意义错误",
+      "decision": "采用有上下文局部修订及简单修订对照；拒绝以模型自评或修订次数作为质量证据",
+      "decision_ids": [
+        "D02",
+        "D03",
+        "D04",
+        "D08"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P2.R04.T01",
+        "P5.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P02",
+      "title": "Extending Automatic Machine Translation Evaluation to Book-Length Documents",
+      "url": "https://aclanthology.org/2025.emnlp-main.1645/",
+      "full_text_url": "https://aclanthology.org/2025.emnlp-main.1645.pdf",
+      "publication_date": "2025-11-04/2025-11-09",
+      "snapshot": "EMNLP 2025 published PDF, accessed 2026-10-22",
+      "evidence_class": "含日中评价直接证据；整书文学判断为有限外推",
+      "languages_domain": "元评价包括en→de/en→es/ja→zh；另做长文本翻译实验",
+      "method_evidence": "§3-5以人为删除源侧或译侧句子构造增漏译，比较指标与人工评价相关性。SEGALE按分句、连续span对齐、评分聚合处理长文；基于Vecalign并自适应搜索跳过惩罚，处理空对齐。",
+      "limitations": "对齐阈值过高会强配无关文本，过低会产生伪空对齐。Limitations明确底层指标仍为句级且未显式建模篇章信息。无法对齐不自动等于漏译。",
+      "maintenance": "公开实现NVlabs/SEGALE；工程快照与许可由工程研究记录补充",
+      "licenses": {
+        "code": "见独立SEGALE工程记录",
+        "models": "分句/embedding/评分模型分别核验",
+        "data": "各WMT及书籍来源分别核验"
+      },
+      "resource_cost": "分句、embedding、对齐和指标推理；无需将整本书一次送入评分模型，但底层模型可能需要GPU",
+      "project_gap": "可改善跨边界比较，不能替代稳定源文span、来源版本或人物/伏笔审查",
+      "decision": "借鉴多对多span与空对齐诊断；先做合成对齐消融，再决定是否引入依赖",
+      "decision_ids": [
+        "D04",
+        "D05"
+      ],
+      "verification_tasks": [
+        "P1.R02.T01",
+        "P1.R03.T01",
+        "P5.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P03",
+      "title": "How Good Are LLMs for Literary Translation, Really? Literary Translation Evaluation with Humans and LLMs",
+      "url": "https://aclanthology.org/2025.naacl-long.548/",
+      "full_text_url": "https://aclanthology.org/2025.naacl-long.548.pdf",
+      "publication_date": "2025-04-29/2025-05-04",
+      "snapshot": "NAACL 2025 published PDF; repository inspected 2026-10-22",
+      "evidence_class": "其他语种文学外推",
+      "languages_domain": "en→zh、de→en、en→de、de→zh；段落级文学",
+      "method_evidence": "§3-5构建含核实出版人译和九个MT系统的LitEval，比较学生/专业译者、MQM/SQM/BWS以及自动指标；专业经验与评价方式显著影响判断。",
+      "limitations": "四个高资源语对，通常每语对单一评审，仅一致性分析增加评审；段落级，不含日中直接验证。BWS适合相对选择但缺少可执行的错误定位。",
+      "maintenance": "https://github.com/zhangr2021/LitMT_eval 可访问；研究发布，不据提交数推断维护承诺",
+      "licenses": {
+        "code": "仓库未显示统一许可证，未知",
+        "models": "第三方模型各自条款",
+        "data": "README明确academic purposes only且须申请同意条件；不能视为自由再分发"
+      },
+      "resource_cost": "原研究人工成本约4500欧元，不是本项目预算；可复用评价思路而非复刻标注规模",
+      "project_gap": "工程PASS、术语一致和LLM偏好不构成文学质量验收",
+      "decision": "采用匿名A/B和分维度判断，与证据化错误定位并用；不强制用户逐轮人工标注",
+      "decision_ids": [
+        "D04",
+        "D07"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P5.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P04",
+      "title": "LiTransProQA: An LLM-based Literary Translation Evaluation Metric with Professional Question Answering",
+      "url": "https://aclanthology.org/2025.emnlp-main.1482/",
+      "full_text_url": "https://aclanthology.org/2025.emnlp-main.1482.pdf",
+      "publication_date": "2025-11-04/2025-11-09",
+      "snapshot": "EMNLP 2025 published PDF; NL2G/LiTransProQA main page accessed 2026-10-22",
+      "evidence_class": "多语文学评价外推；无已确认日中专项结果",
+      "languages_domain": "LitEval四语对及LiteraryTran/PAR3多语→英语；段落级",
+      "method_evidence": "§4将六方面45个问题经专业译者投票及开发集敏感性筛成25问，回答yes/no/maybe；测试集不参与筛选，比较加权、步骤化与简单提示。",
+      "limitations": "段落级，缺连续章和全书评价；专业意见不代表用户偏好。§3.1 PAR3由450比较保留372，排除了人评偏好MT的案例，需登记选择偏差。",
+      "maintenance": "https://github.com/NL2G/LiTransProQA 可访问；未经本项目复现",
+      "licenses": {
+        "code": "冲突待核：PDF Ethics称CC-BY-SA-4.0，当前GitHub显示CC0-1.0；第三方子组件另有许可",
+        "models": "各模型独立许可/API条款",
+        "data": "包含受版权保护文学，论文按学术研究原则使用；不代表本项目可任意分发"
+      },
+      "resource_cost": "每评价单元至少一次LLM判断；无须训练即可试验问答机制；本轮未安装或调用",
+      "project_gap": "yes/no/maybe聚合没有自动提供本项目所需原译文证据span和批准身份",
+      "decision": "借鉴六维问答并增加证据定位/不确定性；暂不搬代码、不采用其总分作批准门",
+      "decision_ids": [
+        "D04",
+        "D06",
+        "D07"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P2.R04.T01",
+        "P4.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P05",
+      "title": "MSLC25: Metric Performance on Low-Quality Machine Translation, Empty Strings, and Language Variants",
+      "url": "https://aclanthology.org/2025.wmt-1.69/",
+      "full_text_url": "https://aclanthology.org/2025.wmt-1.69.pdf",
+      "publication_date": "2025-11-08/2025-11-09",
+      "snapshot": "WMT 2025 published PDF; nrc-cnrc/MSLC inspected 2026-10-22",
+      "evidence_class": "日→中直接证据但新闻领域",
+      "languages_domain": "主要ja→zh新闻；补充英语及cs→en",
+      "method_evidence": "§3分低中质量系统集MSLC-A与空串/混语/错语等MSLC-B；六个NMT质量层级覆盖通常高质量榜单遗漏的区域。检验指标面对明显异常是否仍给误导分数。",
+      "limitations": "是挑战集描述，不是所有现象的充分研究；部分角落实验仅概念验证。不能用新闻结果保证小说忠实度。",
+      "maintenance": "https://github.com/nrc-cnrc/MSLC 含2023/2024/2025发布材料",
+      "licenses": {
+        "code": "仓库内容CC-BY-4.0；工具依赖另查",
+        "models": "各被测指标模型分别核验",
+        "data": "仓库声明CC-BY-4.0；底层WMT来源义务仍需核对"
+      },
+      "resource_cost": "可控异常构造成本低；指标推理成本随所选模型变化",
+      "project_gap": "空译文/错语言应由硬检查优先阻断，不能把高分视为异常免检",
+      "decision": "采用合成负例和指标适用域校准；记录误报漏报，拒绝未经校准通用阈值",
+      "decision_ids": [
+        "D04"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P2.R01.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P06",
+      "title": "The MQM Error Typology",
+      "url": "https://www.themqm.org/mqm-pillars/typology/",
+      "license_url": "https://www.themqm.org/about-us/license-and-copyright/",
+      "publication_date": "页面未标发布日期；2026-10-22读取",
+      "snapshot": "MQM Council current web page",
+      "evidence_class": "评价分类规范，非系统效果实验证据",
+      "languages_domain": "通用翻译质量分类",
+      "method_evidence": "七个高层维度，Accuracy下区分增译、误译、漏译；允许按实际用途选择粒度，Core为较简化通用子集。",
+      "limitations": "分类表本身不证明评审可靠，也不能把文学偏好差异一律判错；需要校准标注/模型和任务严重度。",
+      "maintenance": "官方MQM Council网站可访问",
+      "licenses": {
+        "code": "不适用",
+        "models": "不适用",
+        "data": "原创分类/定义/文档CC-BY-4.0，保留归属和改动说明"
+      },
+      "resource_cost": "无模型硬依赖；人工或模型标注有额外成本",
+      "project_gap": "现有规则检查与语义审查需明确能力边界",
+      "decision": "采用简化错误类型及严重度；文学/偏好单独报告，关键误译不可被文采加分抵消",
+      "decision_ids": [
+        "D04",
+        "D06",
+        "D09"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P2.R04.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P07",
+      "title": "(Perhaps) Beyond Human Translation: Harnessing Multi-Agent Collaboration for Translating Ultra-Long Literary Texts",
+      "url": "https://aclanthology.org/2025.tacl-1.42/",
+      "full_text_url": "https://aclanthology.org/2025.tacl-1.42.pdf",
+      "publication_date": "2025-08",
+      "snapshot": "TACL 2025 final PDF; earlier preprint is 2024, not new 2025 method origin",
+      "evidence_class": "其他语对文学外推；工程流程启发",
+      "languages_domain": "WMT2023 DLLT中英文学；补充en→zh/de短文本",
+      "method_evidence": "§3准备期指南/词表与执行期翻译、本地化、校对；不同协作机制；§5迭代和角色消融，并用单语人类偏好和双语LLM偏好评价。",
+      "limitations": "单语偏好无法充分验证忠实；LLM偏好非独立真值。超过两次迭代增益很小，长文有退化；短文本未普遍胜过简单模型。",
+      "maintenance": "minghao-wu/transagents为公开工程参考；工程快照与许可见工程研究记录",
+      "licenses": {
+        "code": "见工程研究记录",
+        "models": "实验使用第三方API条款",
+        "data": "WMT2023 DLLT及原始来源条款需独立核验；论文CC-BY-4.0不等于数据许可"
+      },
+      "resource_cost": "论文Table7该实验TransAgents约13.1小时/$487.3，对照GPT-4-Turbo约1.1小时/$42.1；不能作为当前报价",
+      "project_gap": "角色数量不替代来源、状态真实性和受控修订",
+      "decision": "借鉴有限迭代/指南；不默认引入翻译公司式角色阵容",
+      "decision_ids": [
+        "D03",
+        "D08",
+        "D09"
+      ],
+      "verification_tasks": [
+        "P2.R04.T01",
+        "P5.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P08",
+      "title": "Creativity Bias: How Machine Evaluation Struggles with Creativity in Literary Translations",
+      "url": "https://arxiv.org/abs/2605.13596",
+      "full_text_url": "https://arxiv.org/html/2605.13596v1",
+      "publication_date": "2026-05-13",
+      "snapshot": "arXiv v1; repository labels EAMT 2026",
+      "evidence_class": "独立后续反向证据，其他语言文学外推；非TransAgents复现",
+      "languages_domain": "en→nl、ru→nl、en→ca；诗、短篇、惊悚",
+      "method_evidence": "§3对人译、机译、译后编辑进行专业译者创造性变化/错误标注，比较自动指标及多种LLM判题策略。",
+      "limitations": "六个短源文本、27译文，每个约150词；不足以证明整书效果，未测日中。作者明确探索性。",
+      "maintenance": "https://github.com/INCREC/Creativity_bias 可访问；不据仓库存在声称独立复现",
+      "licenses": {
+        "code": "仓库Apache-2.0",
+        "models": "第三方模型条款",
+        "data": "单独数据再利用范围未核定；论文arXiv CC-BY-NC-ND-4.0不自动适用于代码"
+      },
+      "resource_cost": "专业标注昂贵；本项目只吸收反例/偏差意识，不复制标注工程",
+      "project_gap": "LLM可偏好机器文本并惩罚合法创造性解法，风格评分不可直接提升为事实",
+      "decision": "采用合法变体反例、允许并列/不确定；不以自动审美评分强制改稿",
+      "decision_ids": [
+        "D04",
+        "D06",
+        "D07",
+        "D09"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P4.R02.T01",
+        "P5.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P09",
+      "title": "AI translation of literary texts is fine, but readers still prefer human translations",
+      "url": "https://arxiv.org/abs/2606.26040",
+      "full_text_url": "https://arxiv.org/html/2606.26040v2",
+      "publication_date": "2026-06-24; v2 2026-09-09",
+      "snapshot": "arXiv v2，页面称已接收Findings EMNLP 2026；不把接收声明当会议已举行",
+      "evidence_class": "独立后续评价；日→英文学外推，非日→中",
+      "languages_domain": "法/波兰/日语→英语，15部新近小说开篇",
+      "method_evidence": "§2以独立开发集比较五方案，选双Agent流程；局部2–3轮/全局最多2轮。15名读者比较约8K词节选及对齐片段；读者偏好与自动指标不一致。",
+      "limitations": "主方案仅小幅领先，作者不声称决定性胜出。每书两读者，开篇非全书，英语目标；人类身份信念也影响偏好。",
+      "maintenance": "https://github.com/Yves575/lait 可访问，公开代码与受控语料分离",
+      "licenses": {
+        "code": "MIT但par3/metricx/LiTransProQA保留各自条款",
+        "models": "第三方模型/订阅条款",
+        "data": "源文和人译不在公开仓库，需受控研究访问；不可按MIT推断语料开放"
+      },
+      "resource_cost": "论文注明两Agent订阅实验总计$400，不是本项目成本承诺；后续减少第三轮因增益有限",
+      "project_gap": "自动质量门不能证明读者文学体验；连续片段回归不可只看孤句",
+      "decision": "借鉴局部+全局两层有限审查和代表性连续区段；拒绝照搬Agent规模",
+      "decision_ids": [
+        "D03",
+        "D04",
+        "D06",
+        "D07",
+        "D08"
+      ],
+      "verification_tasks": [
+        "P2.R04.T01",
+        "P5.R01.T01",
+        "P5.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-P10",
+      "title": "Towards Style Alignment in Cross-Cultural Translation",
+      "url": "https://aclanthology.org/2025.acl-long.1550/",
+      "full_text_url": "https://aclanthology.org/2025.acl-long.1550.pdf",
+      "publication_date": "2025-07-27/2025-08-01",
+      "snapshot": "ACL 2025 published PDF; repository inspected 2026-10-22",
+      "evidence_class": "风格机制启发；含中日语言但非小说个人风格保证",
+      "languages_domain": "维基互动/社交短文/问答；礼貌、亲密、正式度，多语言含日中",
+      "method_evidence": "§2-5训练语言特定风格量化器；RASTA用embedding风格映射检索few-shot示例，比较普通翻译与保留风格提示，并做小规模双语人评。",
+      "limitations": "仅三种风格；量化器有误差，内容与风格不可总是独立。检索误差可传播；不证明用户偏好、作者声音、角色差异均可自动保存。",
+      "maintenance": "https://github.com/shreyahavaldar/style_alignment 可访问；单次研究发布",
+      "licenses": {
+        "code": "未见统一许可，未知",
+        "models": "embedding/LLM分别核验",
+        "data": "各原始语料许可分别核验"
+      },
+      "resource_cost": "原方法需风格量化器和embedding语料；本项目不应为该论文新建训练或向量基础设施",
+      "project_gap": "用户偏好不是语言整体文化风格，也不是全角色统一说话方式",
+      "decision": "采用风格与语义分测、授权快照及场景作用域；不直接采用训练/RAG方案",
+      "decision_ids": [
+        "D06",
+        "D07",
+        "D08",
+        "D09"
+      ],
+      "verification_tasks": [
+        "P4.R01.T01",
+        "P4.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "ENG-GALTRANSL",
+      "name": "GalTransl",
+      "url": "https://github.com/GalTransl/GalTransl",
+      "checked_on": "2026-10-22",
+      "snapshot": "64a2f846511d73cf283d95ce6156a0ca7c04b2ab",
+      "snapshot_committed_at": "2026-10-20T01:56:38Z",
+      "date_meaning": "代码提交时间，不是方法或模型发布日期",
+      "evidence_class": "日中视觉小说/小说工程直接参考；未验证文学质量增益",
+      "language_domain": "Galgame、视觉小说；包含小说后端和多模型接口",
+      "method": "按真实前驱句恢复有限上下文；ID约束解析；失败重试和缩批；缓存源文核验；局部修订前像比较与撤销保护",
+      "code_evidence": [
+        "GalTransl/Backend/BaseTranslate.py:1703-1749 _collect_restore_context_items/restore_context：从首个待译句.prev_tran向前追溯，跳过空译文/失败标记，再恢复顺序",
+        "GalTransl/Backend/ForNovelTranslate.py:53-96 translate：输入携带index并调用restore_context",
+        "GalTransl/Backend/ForNovelTranslate.py:194-260：解析缺句检测、缩批与失败回退",
+        "GalTransl/Agent/tools/proofread.py:181-220 ProofreadFixer._patch_file：先读后改、前像变化拒绝覆盖、限制可修改字段、拒绝空译文",
+        "GalTransl/Agent/tools/proofread.py:407-437 _tool_revert_proofread_changes：after快照一致才允许撤销",
+        "GalTransl/Cache.py：_build_cache_key_for_tran使用相邻源句和speaker；get_transCache_from_json检查post_src变化"
+      ],
+      "evidence_urls": [
+        "https://github.com/GalTransl/GalTransl/blob/64a2f846511d73cf283d95ce6156a0ca7c04b2ab/GalTransl/Backend/BaseTranslate.py#L1703-L1749",
+        "https://github.com/GalTransl/GalTransl/blob/64a2f846511d73cf283d95ce6156a0ca7c04b2ab/GalTransl/Agent/tools/proofread.py#L181-L220"
+      ],
+      "limitations": "真实前文仍可能传播旧误译；按句ID和行数的解析并不证明语义完整；复杂Agent及日志机制不应整体移植。仅静态阅读，未验证上游运行行为。",
+      "maintenance": "核实默认分支2026-10-20有提交；不能由活跃度推断质量",
+      "licenses": {
+        "code": "GPL-3.0，仓库LICENSE/页面明确",
+        "models": "外接模型各自条款，未统一授权",
+        "data": "未核实；不把sample/字典公开等同可自由使用"
+      },
+      "resources": "上下文增大输入Token；局部改写及复核增加调用；已有缓存/缩批可减少重复，未实测成本",
+      "gap": "需要以源文/上下文/规则版本建立完整依赖失效，不能仅借邻句缓存键",
+      "decision": "采用机制参考，不直接引入依赖；复用现有实现后只补缺口",
+      "task_ids": [
+        "P2.R02.T01",
+        "P2.R04.T01",
+        "P3.R02.T01"
+      ],
+      "decision_ids": [
+        "D01",
+        "D02",
+        "D03"
+      ],
+      "title": "GalTransl",
+      "verification_tasks": [
+        "P2.R02.T01",
+        "P2.R04.T01",
+        "P3.R02.T01"
+      ],
+      "resource_cost": "上下文增大输入Token；局部改写及复核增加调用；已有缓存/缩批可减少重复，未实测成本",
+      "languages_domain": "Galgame、视觉小说；包含小说后端和多模型接口",
+      "project_gap": "需要以源文/上下文/规则版本建立完整依赖失效，不能仅借邻句缓存键",
+      "method_evidence": "按真实前驱句恢复有限上下文；ID约束解析；失败重试和缩批；缓存源文核验；局部修订前像比较与撤销保护"
+    },
+    {
+      "id": "ENG-AINIEE",
+      "name": "AiNiee",
+      "url": "https://github.com/NEKOparapa/AiNiee",
+      "checked_on": "2026-10-22",
+      "snapshot": "27a144b5da050329abd6358292e376a068adf2ed",
+      "snapshot_committed_at": "2026-10-19T02:17:35Z",
+      "date_meaning": "代码提交时间",
+      "evidence_class": "日中及多语言长文工程参考",
+      "language_domain": "游戏、EPUB/TXT、字幕和文档",
+      "method": "前文与当前批次分离；按命中的角色/术语/不翻译规则组装Prompt；结构性响应检查与生成流程分离",
+      "code_evidence": [
+        "ModuleFolders/Service/TaskExecutor/TranslatorTask.py:62-107 set_previous_items/prepare：previous_items.source_text形成previous_text_list并传入Prompt",
+        "ModuleFolders/Domain/PromptBuilder/PromptBuilder.py:877-1000 generate_prompt：角色、术语、world_building、writing_style独立开关；972-983单独构造previous和source_text",
+        "ModuleFolders/Domain/ResponseChecker/ResponseChecker.py:22-75 check_response_content：行数、空内容、编号顺序、残留源文、格式和占位符检查"
+      ],
+      "evidence_urls": [
+        "https://github.com/NEKOparapa/AiNiee/blob/27a144b5da050329abd6358292e376a068adf2ed/ModuleFolders/Domain/PromptBuilder/PromptBuilder.py#L877-L1000",
+        "https://github.com/NEKOparapa/AiNiee/blob/27a144b5da050329abd6358292e376a068adf2ed/ModuleFolders/Domain/ResponseChecker/ResponseChecker.py#L22-L75"
+      ],
+      "limitations": "检查通过主要说明协议/形式，不能确认否定、主客体、指代和文学表达正确。角色/世界资料入Prompt不等于带剧情时点、出处或防剧透保证。整套桌面和多格式框架不应成为本项目重构前置。",
+      "maintenance": "核实2026-10-19默认分支提交",
+      "licenses": {
+        "code": "AGPL-3.0",
+        "models": "外接服务/本地模型分别核实",
+        "data": "未知；未读取样本或提取资源"
+      },
+      "resources": "常驻桌面、多格式依赖及Prompt上下文有额外成本；本项目只采用分离接口与硬检查思想",
+      "gap": "需分离工程完整性与内容质量，加入来源/作用域/版本",
+      "decision": "借鉴前文参数和可组合Prompt边界；不整体替换现有Workbench",
+      "task_ids": [
+        "P2.R02.T01",
+        "P2.R01.T01",
+        "P4.R01.T01"
+      ],
+      "decision_ids": [
+        "D01",
+        "D02",
+        "D04",
+        "D06"
+      ],
+      "title": "AiNiee",
+      "verification_tasks": [
+        "P2.R02.T01",
+        "P2.R01.T01",
+        "P4.R01.T01"
+      ],
+      "resource_cost": "常驻桌面、多格式依赖及Prompt上下文有额外成本；本项目只采用分离接口与硬检查思想",
+      "languages_domain": "游戏、EPUB/TXT、字幕和文档",
+      "project_gap": "需分离工程完整性与内容质量，加入来源/作用域/版本",
+      "method_evidence": "前文与当前批次分离；按命中的角色/术语/不翻译规则组装Prompt；结构性响应检查与生成流程分离"
+    },
+    {
+      "id": "ENG-SAKURA",
+      "name": "SakuraLLM",
+      "url": "https://github.com/SakuraLLM/SakuraLLM",
+      "checked_on": "2026-10-22",
+      "snapshot": "0ff69116222ca66c7a15dcff00fd4f9f86b18d5c",
+      "snapshot_committed_at": "2026-07-23T09:18:37Z",
+      "date_meaning": "README更新提交，不是模型发布日期",
+      "evidence_class": "日→中轻小说/Galgame专门模型工程参考",
+      "language_domain": "日语轻小说、ACGN、Galgame到中文",
+      "method": "专门训练模型与版本特定Prompt；附小说分块推理脚本",
+      "code_evidence": [
+        "translate_novel.py:24-46 get_novel_text_list：按换行和字符长度组成块",
+        "translate_novel.py:184-245 main：逐块构造Prompt、推理、汇总；所读入口未传入历史上下文",
+        "README提醒人称代词、主宾和上下文理解仍有问题，非质量保证"
+      ],
+      "evidence_urls": [
+        "https://github.com/SakuraLLM/SakuraLLM/blob/0ff69116222ca66c7a15dcff00fd4f9f86b18d5c/translate_novel.py#L24-L46",
+        "https://github.com/SakuraLLM/SakuraLLM/blob/0ff69116222ca66c7a15dcff00fd4f9f86b18d5c/translate_novel.py#L184-L245",
+        "https://github.com/SakuraLLM/SakuraLLM"
+      ],
+      "limitations": "领域专门化不等于长篇忠实度；旧脚本不能直接承担稳定ID/断点/正式导出；模型版本、量化和Prompt格式改变结果",
+      "maintenance": "仓库2026-07-23更新；具体模型版本发布日期及维护状态未核实",
+      "licenses": {
+        "code": "GPL-3.0",
+        "models": "当前README声明所有Sakura模型及衍生采用CC-BY-NC-SA-4.0并禁止商用；具体模型卡仍应逐项核实",
+        "data": "未知；训练资料许可未核实"
+      },
+      "resources": "需本地模型权重、推理内存和显存；规划轮不下载，执行时按模型/量化/上下文实测",
+      "gap": "仅作为后续同协议可选模型对照，不能替代代码与评价体系修复",
+      "decision": "不默认更换模型、不训练；保留可选对照，须授权、许可及资源满足",
+      "task_ids": [
+        "P5.R02.T01"
+      ],
+      "decision_ids": [
+        "D02",
+        "D06",
+        "D08"
+      ],
+      "title": "SakuraLLM",
+      "verification_tasks": [
+        "P5.R02.T01"
+      ],
+      "resource_cost": "需本地模型权重、推理内存和显存；规划轮不下载，执行时按模型/量化/上下文实测",
+      "languages_domain": "日语轻小说、ACGN、Galgame到中文",
+      "project_gap": "仅作为后续同协议可选模型对照，不能替代代码与评价体系修复",
+      "method_evidence": "专门训练模型与版本特定Prompt；附小说分块推理脚本"
+    },
+    {
+      "id": "ENG-TRANSLATION-AGENT",
+      "name": "translation-agent",
+      "url": "https://github.com/andrewyng/translation-agent",
+      "checked_on": "2026-10-22",
+      "snapshot": "e0fc605acbb5d78cb7a58a98bc8bd8f0056df49c",
+      "snapshot_committed_at": "2024-07-08T21:12:33Z",
+      "date_meaning": "最后核实的默认分支提交",
+      "evidence_class": "通用翻译反思演示，日中长篇质量仅工程外推",
+      "language_domain": "语言参数化；README示例英→西",
+      "method": "初译→同一辅助调用接口反思→改写；单块或多块",
+      "code_evidence": [
+        "src/translation_agent/utils.py:231-260 one_chunk_translate_text：三阶段顺序执行，最终直接返回translation_2",
+        "src/translation_agent/utils.py:288-344 multichunk_initial_translation：每个目标块都拼接所有前后source_text_chunks作为全文上下文",
+        "src/translation_agent/utils.py:347-551：反思和改写同样携带全文",
+        "src/translation_agent/utils.py:554-591：多块链没有独立接受/拒绝/回滚门"
+      ],
+      "evidence_urls": [
+        "https://github.com/andrewyng/translation-agent/blob/e0fc605acbb5d78cb7a58a98bc8bd8f0056df49c/src/translation_agent/utils.py#L231-L260",
+        "https://github.com/andrewyng/translation-agent/blob/e0fc605acbb5d78cb7a58a98bc8bd8f0056df49c/src/translation_agent/utils.py#L288-L344"
+      ],
+      "limitations": "Prompt要求改善不等于实际改善；无独立评价/版本/生产恢复；分块未限制整体输入上下文，长书成本和窗口风险明显",
+      "maintenance": "默认分支最后提交2024-07-08；不等于正式停止维护",
+      "licenses": {
+        "code": "MIT",
+        "models": "外接模型条款",
+        "data": "未核实示例数据许可，不读取/复用示例正文"
+      },
+      "resources": "基本流程每块至少3次调用；每块携带全文使输入成本随块数放大",
+      "gap": "需显式问题证据、最小改动、独立复核及不采用候选分支",
+      "decision": "仅作一次简单修订对照；不搬作生产主链",
+      "task_ids": [
+        "P2.R04.T01",
+        "P5.R02.T01"
+      ],
+      "decision_ids": [
+        "D02",
+        "D03",
+        "D08"
+      ],
+      "title": "translation-agent",
+      "verification_tasks": [
+        "P2.R04.T01",
+        "P5.R02.T01"
+      ],
+      "resource_cost": "基本流程每块至少3次调用；每块携带全文使输入成本随块数放大",
+      "languages_domain": "语言参数化；README示例英→西",
+      "project_gap": "需显式问题证据、最小改动、独立复核及不采用候选分支",
+      "method_evidence": "初译→同一辅助调用接口反思→改写；单块或多块"
+    },
+    {
+      "id": "ENG-COMET",
+      "name": "COMET / xCOMET / CometKiwi",
+      "url": "https://github.com/Unbabel/COMET",
+      "checked_on": "2026-10-22",
+      "snapshot": "da61b810ea06f67bbd5d96031f55082167a16e80",
+      "snapshot_committed_at": "2025-09-01T13:31:45Z",
+      "date_meaning": "代码快照；xCOMET原论文2023年",
+      "evidence_class": "多语言MT评价外推；不是日中长篇文学/个人偏好验收",
+      "language_domain": "模型覆盖含日文与简繁中文；语言覆盖不等于该方向文学评价已校准",
+      "method": "参考型质量估计、无参考QE和错误span；xCOMET融合回归分和预测错误严重度",
+      "code_evidence": [
+        "comet/models/multitask/xcomet_metric.py:124-230 predict_step：有reference时三路输入；无reference时QE回退；输出error_spans",
+        "comet/models/multitask/xcomet_metric.py:143-161：minor/major/critical固定权重及截断，不是实际用户裁决",
+        "LICENSE.models.md：库许可与各模型许可分离",
+        "XCOMET-XL模型卡：约3.5B参数、CC-BY-NC-SA-4.0、受访问条件限制"
+      ],
+      "evidence_urls": [
+        "https://github.com/Unbabel/COMET/blob/da61b810ea06f67bbd5d96031f55082167a16e80/comet/models/multitask/xcomet_metric.py#L124-L230",
+        "https://github.com/Unbabel/COMET/blob/da61b810ea06f67bbd5d96031f55082167a16e80/LICENSE.models.md",
+        "https://huggingface.co/Unbabel/XCOMET-XL",
+        "https://huggingface.co/Unbabel/wmt22-cometkiwi-da"
+      ],
+      "limitations": "句级分数/span会漏掉跨章、人物声音及文学偏好；待修旧译不能设为真值reference；error_spans仍为机器预测",
+      "maintenance": "核实2025-09-01默认分支提交；不声称2026最新模型",
+      "licenses": {
+        "code": "Apache-2.0",
+        "models": "wmt22-comet-da为Apache-2.0；XCOMET-XL/XXL、wmt22-cometkiwi-da等为CC-BY-NC-SA-4.0；逐型号核验并由用户处理所需访问同意",
+        "data": "训练/评价数据各自许可，未统一核实"
+      },
+      "resources": "需下载权重和推理；XL约3.5B仅说明规模，峰值显存未知；本轮不下载、不推理",
+      "gap": "先用合成错误和合法变体校准误报漏报，再作为辅助证据",
+      "decision": "可选辅助评价器，不能独自决定完成；不得阻塞无凭据情况下的工程工作",
+      "task_ids": [
+        "P1.R03.T01",
+        "P5.R02.T01"
+      ],
+      "decision_ids": [
+        "D04",
+        "D05"
+      ],
+      "title": "COMET / xCOMET / CometKiwi",
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P5.R02.T01"
+      ],
+      "resource_cost": "需下载权重和推理；XL约3.5B仅说明规模，峰值显存未知；本轮不下载、不推理",
+      "languages_domain": "模型覆盖含日文与简繁中文；语言覆盖不等于该方向文学评价已校准",
+      "project_gap": "先用合成错误和合法变体校准误报漏报，再作为辅助证据",
+      "method_evidence": "参考型质量估计、无参考QE和错误span；xCOMET融合回归分和预测错误严重度"
+    },
+    {
+      "id": "ENG-SEGALE",
+      "name": "SEGALE",
+      "url": "https://github.com/NVlabs/SEGALE",
+      "checked_on": "2026-10-22",
+      "snapshot": "bc19b2bb2bcde0bc2d6154dc2b86024b673e319c",
+      "snapshot_committed_at": "2025-11-04T01:17:10Z",
+      "date_meaning": "代码提交；关联EMNLP 2025论文另记",
+      "evidence_class": "书籍级评价工程；方向及实验外推程度以论文记录为准",
+      "language_domain": "长文翻译评价；代码含ja_zh调用例",
+      "method": "切句和重叠嵌入、Vecalign多对多对齐、组成评分窗口，再汇总COMET/QE/MetricX",
+      "code_evidence": [
+        "segale_align.py:236-295 find_best_alignment：启发式选择删除比例和代价；失败返回空对齐",
+        "segale_align.py:611-680 prepare_doc_windows：src_indices/mt_indices均为列表，可表达合句拆句和空侧",
+        "segale_eval.py:run_comet_evaluation/run_comet_qe_evaluation：默认下载模型，batch_size=8,gpus=1",
+        "segale_eval.py:clear_specific_lock_files：枚举删除共享~/.cache/huggingface/datasets锁；本项目不得照搬",
+        "segale_eval.py:evaluate_and_aggregate：均值汇总且过滤负值哨兵，接入须保留遗漏分母"
+      ],
+      "evidence_urls": [
+        "https://github.com/NVlabs/SEGALE/blob/bc19b2bb2bcde0bc2d6154dc2b86024b673e319c/segale_align.py#L611-L680",
+        "https://github.com/NVlabs/SEGALE/blob/bc19b2bb2bcde0bc2d6154dc2b86024b673e319c/segale_eval.py"
+      ],
+      "limitations": "对齐不确定不等于漏译；均值可能掩盖严重局部错误；默认脚本不是安全即插即用生产组件；未在本机执行",
+      "maintenance": "默认树可见5次提交，最新2025-11-04；研究代码，不推断长期运维成熟",
+      "licenses": {
+        "code": "Apache-2.0；Vecalign第三方组件须连同3rd_Party_Notice核查",
+        "models": "嵌入及COMET/MetricX等各自许可",
+        "data": "论文基准分别核实；未读取数据实例"
+      },
+      "resources": "切分、嵌入、对齐和评分各有成本；模型/GPU峰值未知，应小批实测",
+      "gap": "需span版本、对齐置信度、决定来源、无法对齐分支和不丢分母汇总",
+      "decision": "借鉴多对多对齐及故障构造；不原样执行脚本，不默认引入整套模型栈",
+      "task_ids": [
+        "P1.R02.T01",
+        "P1.R03.T01",
+        "P5.R02.T01"
+      ],
+      "decision_ids": [
+        "D04",
+        "D05"
+      ],
+      "title": "SEGALE",
+      "verification_tasks": [
+        "P1.R02.T01",
+        "P1.R03.T01",
+        "P5.R02.T01"
+      ],
+      "resource_cost": "切分、嵌入、对齐和评分各有成本；模型/GPU峰值未知，应小批实测",
+      "languages_domain": "长文翻译评价；代码含ja_zh调用例",
+      "project_gap": "需span版本、对齐置信度、决定来源、无法对齐分支和不丢分母汇总",
+      "method_evidence": "切句和重叠嵌入、Vecalign多对多对齐、组成评分窗口，再汇总COMET/QE/MetricX"
+    },
+    {
+      "id": "ENG-TRANSAGENTS",
+      "name": "TransAgents",
+      "url": "https://github.com/minghao-wu/transagents",
+      "checked_on": "2026-10-22",
+      "snapshot": "9f97aa20d6d6b9deb2db8cf1deb9d30984d0a5f7",
+      "snapshot_committed_at": "2025-05-02T01:14:07Z",
+      "date_meaning": "README提交；论文正式发表日期由TACL来源另记",
+      "evidence_class": "文学多Agent方法参考；不是可复用开源执行实现",
+      "language_domain": "以论文实际实验方向为准，不能推断日中已证明",
+      "method": "翻译公司角色分工的长文翻译研究",
+      "code_evidence": [
+        "GitHub Git Tree核实：顶层只有README、LICENSE、img、outputs及.DS_Store；没有.py执行代码",
+        "未读取outputs译文实例，不以公开译例证明框架质量"
+      ],
+      "evidence_urls": [
+        "https://github.com/minghao-wu/transagents/tree/9f97aa20d6d6b9deb2db8cf1deb9d30984d0a5f7",
+        "https://api.github.com/repos/minghao-wu/transagents/git/trees/9439219a242bee601a23ddcf8ad1c1fd7ac2fbef?recursive=1"
+      ],
+      "limitations": "官方仓库当前无可复现实验执行链；论文结论与具体收益分开；多角色不自动提供独立性",
+      "maintenance": "最新可见默认分支提交2025-05-02",
+      "licenses": {
+        "code": "仓库标Apache-2.0，但当前无执行源码",
+        "models": "论文服务/模型各自条款",
+        "data": "outputs及原作品授权未核实，不由仓库LICENSE推断"
+      },
+      "resources": "多角色增加调用和上下文转移；成本收益需与简单链同协议比较",
+      "gap": "需要可追溯、可恢复最小链，不需要复刻组织图",
+      "decision": "不作为依赖、不照搬角色阵容；仅保留增强路线实验假设",
+      "task_ids": [
+        "P2.R04.T01",
+        "P5.R02.T01"
+      ],
+      "decision_ids": [
+        "D03",
+        "D08"
+      ],
+      "title": "TransAgents",
+      "verification_tasks": [
+        "P2.R04.T01",
+        "P5.R02.T01"
+      ],
+      "resource_cost": "多角色增加调用和上下文转移；成本收益需与简单链同协议比较",
+      "languages_domain": "以论文实际实验方向为准，不能推断日中已证明",
+      "project_gap": "需要可追溯、可恢复最小链，不需要复刻组织图",
+      "method_evidence": "翻译公司角色分工的长文翻译研究"
+    },
+    {
+      "id": "ENG-ORION-2026",
+      "name": "OrionTranslator",
+      "url": "https://github.com/3tic-project/OrionTranslator",
+      "checked_on": "2026-10-22",
+      "snapshot": "195b3e3ba45a88bada0af9eafc76252037ba0227",
+      "snapshot_committed_at": "2026-08-22T09:51:10Z",
+      "date_meaning": "代码提交",
+      "evidence_class": "2026日→中轻小说直接工程参考，非受控质量实验",
+      "language_domain": "EPUB/TXT日译中，Rust核心，NER与兼容LLM服务",
+      "method": "按场景/话语特征选有限前文；源单元身份和批次版本恢复机制见文档，后者未完整追调用",
+      "code_evidence": [
+        "alnilam/src/context/selector.rs：precompute_context逐行维护场景reset；select_context_precomputed令allowed_end=target_start-1，排除当前/未来行",
+        "同文件score_candidates：距离、对话锚点、指代、时间/来源特征评分，限制窗口和选行数",
+        "alnilam/src/context/types.rs：LineType区分章节标题/场景切换/对话/叙述",
+        "alnilam/README.md声明unit_id+source_sha256和batch_revision，本轮视为待代码确认线索"
+      ],
+      "evidence_urls": [
+        "https://github.com/3tic-project/OrionTranslator/blob/195b3e3ba45a88bada0af9eafc76252037ba0227/alnilam/src/context/selector.rs",
+        "https://github.com/3tic-project/OrionTranslator/blob/195b3e3ba45a88bada0af9eafc76252037ba0227/LICENSE"
+      ],
+      "limitations": "规则特征不等于正确指代或关系识别；只检索前文可能漏掉合法后文消歧；不复制大量规则或另建Rust服务；未运行",
+      "maintenance": "核实2026-08-22提交",
+      "licenses": {
+        "code": "LICENSE实为MIT，README写Apache-2.0，存在文档冲突；只采纳思想，复制前先消解",
+        "models": "NER/Orion模型卡未逐项核实，未知",
+        "data": "未知；未读训练数据或作品实例"
+      },
+      "resources": "规则选择CPU成本低于大模型检索，但NER/本地模型另计；未实测",
+      "gap": "先做邻近原文基线，再比需求驱动选段；绑定源span和上下文版本",
+      "decision": "作为B方案上下文消融补充，不作为新依赖",
+      "task_ids": [
+        "P2.R02.T01",
+        "P5.R02.T01"
+      ],
+      "decision_ids": [
+        "D01",
+        "D02",
+        "D06"
+      ],
+      "title": "OrionTranslator",
+      "verification_tasks": [
+        "P2.R02.T01",
+        "P5.R02.T01"
+      ],
+      "resource_cost": "规则选择CPU成本低于大模型检索，但NER/本地模型另计；未实测",
+      "languages_domain": "EPUB/TXT日译中，Rust核心，NER与兼容LLM服务",
+      "project_gap": "先做邻近原文基线，再比需求驱动选段；绑定源span和上下文版本",
+      "method_evidence": "按场景/话语特征选有限前文；源单元身份和批次版本恢复机制见文档，后者未完整追调用"
+    },
+    {
+      "id": "RES-ANLP-2026-C9-23",
+      "name": "文学的表現に特化した英日文学翻訳の評価データセットの構築に向けて",
+      "url": "https://www.anlp.jp/proceedings/annual_meeting/2026/pdf_dir/C9-23.pdf",
+      "checked_on": "2026-10-22",
+      "publication_date": "2026-03",
+      "evidence_class": "英→日文学外推；非日→中直接增益证据",
+      "language_domain": "英日文学；100句试验性标注集合",
+      "method": "针对译者判断的词/短语span标注；信息操作、语用/发话态度、表达运用、文学效果/修辞四类；比较1句和5句输入",
+      "evidence": "已读方法§3-4、实验§5、结论§6：单名日语母语大学生标注100句；使用gpt-5.2-2025-12-11。上下文改善部分指代/反语，同时出现角色口吻/发话意图变化，不能认定更多上下文必然更好。",
+      "limitations": "明确未经同行评审；小规模、单标注者、英日方向；部分评价以特定参照译法为中心，合法变体不能一概计错",
+      "maintenance": "静态论文；扩展数据和验证LLM Judge仍为未来工作",
+      "licenses": {
+        "paper": "作者CC BY 4.0",
+        "code": "未找到代码授权",
+        "models": "外部模型服务条款",
+        "data": "NICT/文学源与译文分别核实；论文许可不覆盖所有作品"
+      },
+      "resources": "span标注和语用校准需投入；不要求用户逐轮承担，优先公开可靠标注与合成反例",
+      "gap": "日中主语省略、敬语、角色声音、歧义保留需独立评价维度",
+      "decision": "采用评价设计启发，不迁移参考答案或收益数字",
+      "task_ids": [
+        "P1.R03.T01",
+        "P2.R02.T01",
+        "P4.R02.T01"
+      ],
+      "decision_ids": [
+        "D02",
+        "D04",
+        "D06",
+        "D09"
+      ],
+      "title": "文学的表現に特化した英日文学翻訳の評価データセットの構築に向けて",
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P2.R02.T01",
+        "P4.R02.T01"
+      ],
+      "resource_cost": "span标注和语用校准需投入；不要求用户逐轮承担，优先公开可靠标注与合成反例",
+      "languages_domain": "英日文学；100句试验性标注集合",
+      "project_gap": "日中主语省略、敬语、角色声音、歧义保留需独立评价维度",
+      "method_evidence": "针对译者判断的词/短语span标注；信息操作、语用/发话态度、表达运用、文学效果/修辞四类；比较1句和5句输入",
+      "snapshot": "2026-10-22读取ANLP 2026 C9-23正式PDF；未核验独立代码快照"
+    },
+    {
+      "id": "R-JP-HONORIFIC",
+      "title": "大規模言語モデルは文脈情報を踏まえて敬語を理解しているか",
+      "url": "https://www.jstage.jst.go.jp/article/jnlp/31/3/31_1292/_article/-char/ja",
+      "full_text_url": "https://www.jstage.jst.go.jp/article/jnlp/31/3/31_1292/_pdf/-char/ja",
+      "publication_date": "2024-09-15",
+      "snapshot": "2026-10-22网页与PDF检索；PDF章节搜索失败，不声称完成全部实验细读",
+      "evidence_class": "日语语境理解证据，非日中翻译实验",
+      "languages_domain": "日语敬语容认判断与转换",
+      "method_evidence": "官方摘要说明可控句法/社会关系模板数据及自然语料增注；复杂句法的敬语转换仍有改善空间。仅用来选择评价维度，不引用未细读实验数值。",
+      "limitations": "非翻译结果，不能外推当代模型或整书；较早基础语言机制来源。",
+      "maintenance": "期刊固定出版物",
+      "licenses": {
+        "paper": "CC-BY-4.0",
+        "code": "未知",
+        "models": "各模型条款",
+        "data": "未知"
+      },
+      "resource_cost": "仅借鉴合成关系/敬语反例，无部署",
+      "project_gap": "现有否定正则不能评估敬语与人物关系",
+      "decision": "采用人物关系和复杂句法反例，不新增模型或数据依赖",
+      "decision_ids": [
+        "D06"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P2.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-CHARACTER-WMT25",
+      "title": "Character-Aware English-to-Japanese Translation of Fictional Dialogue Using Speaker Embeddings and Back-Translation",
+      "url": "https://aclanthology.org/2025.wmt-1.10/",
+      "full_text_url": "https://aclanthology.org/2025.wmt-1.10.pdf",
+      "publication_date": "2025-11-08/2025-11-09",
+      "snapshot": "2026-10-22阅读PDF方法§3、实验§4.1-4.3及限制§5",
+      "evidence_class": "英日文学外推，非日中直接证据",
+      "languages_domain": "英→日小说对话",
+      "method_evidence": "speaker embedding结合伪平行对话训练；按作品划分避免泄漏；150句人工检查与自动评价中代词/句尾改善，敬语未改善。",
+      "limitations": "speaker归属有误，参考词面匹配窄；敬语依赖受话人/社会关系，单speaker不足；叙述不在主要训练测试目标内。",
+      "maintenance": "正式论文；代码持续维护未知",
+      "licenses": {
+        "code": "未知",
+        "models": "BERT/基础MT各自许可",
+        "data": "Aozora/NICT/伪平行各自条款，未核定再分发"
+      },
+      "resource_cost": "原方法需模型训练，不在本项目采用",
+      "project_gap": "用户风格不能抹去角色差异；无需训练来先做来源/关系/声音维度",
+      "decision": "采用按作品隔离与speaker/addressee分测，拒绝直接引入训练",
+      "decision_ids": [
+        "D06",
+        "D07"
+      ],
+      "verification_tasks": [
+        "P1.R02.T02",
+        "P1.R03.T01",
+        "P4.R02.T01"
+      ],
+      "checked_on": "2026-10-22"
+    },
+    {
+      "id": "R-CULTURE-PARATEXT",
+      "title": "Liaozhai through the Looking-Glass: On Paratextual Explicitation of Culture-Bound Terms in Machine Translation",
+      "url": "https://aclanthology.org/2025.emnlp-main.1744/",
+      "full_text_url": "https://aclanthology.org/2025.emnlp-main.1744.pdf",
+      "publication_date": "2025-11-04/2025-11-09",
+      "snapshot": "2026-10-22阅读§3-6及Limitations/Ethical Considerations",
+      "evidence_class": "古汉→英文学解释外推，不是日中正文翻译",
+      "languages_domain": "文化负载词的附注解释",
+      "method_evidence": "专业对齐四版译本560个文化项，分识别与解释；比较理论/实用提示和检索，作者强调译者间选择差异。",
+      "limitations": "自由解释不等于忠实正文；量化分数难判事实和适用性；单语/单作品域；数据仅开放附注与元数据，未开放译本故事全文。",
+      "maintenance": "研究代码链接https://github.com/sherrieshen/liaozhai；本轮未核commit/许可",
+      "licenses": {
+        "code": "未知",
+        "models": "Qwen3-8B具体版本条款待核",
+        "data": "作者按研究用途发布附注/元数据，不自动授权原译本再分发"
+      },
+      "resource_cost": "识别+解释及检索有额外调用，本项目不默认启用",
+      "project_gap": "不能以文化解释更详尽为忠实度提升",
+      "decision": "保留文化语用问题分类和不确定性；不默认往正文添注释",
+      "decision_ids": [
+        "D09"
+      ],
+      "verification_tasks": [
+        "P1.R03.T01",
+        "P2.R04.T01"
+      ],
+      "checked_on": "2026-10-22"
+    }
+  ],
+  "search_log": {
+    "as_of": "2026-10-22",
+    "queries": [
+      "2026 literary translation refinement evaluation long document omission 2026 study",
+      "2025 2026 literary translation LLM evaluation bias replication TransAgents",
+      "2026 Japanese Chinese novel translation character voice context evaluation",
+      "site.aclanthology.org 2025 2026 personalized translation user preference style faithful translation",
+      "site.aclanthology.org 2025 Japanese Chinese translation pronoun speaker honorific literary context",
+      "日中 小説 翻訳 LLM 文脈 評価 2025 2026 論文",
+      "日中 小说 翻译 人物 说话人 文体 2025 2026 论文"
+    ],
+    "coverage": "指定来源正文方法/实验/限制、两项2026后续不同结果、风格约束研究、官方MQM分类及许可、相关研究仓库许可/访问边界",
+    "excluded_as_evidence": "搜索结果摘要未全文核实的论文、社交讨论、宣传与星数；未将其当结论证据",
+    "replication_status": "本范围未核验独立复现；Creativity Bias与LAIT为独立不同设置研究，不冒称对指定论文的严格复现",
+    "stop_reason": "上下文/对齐、修订对照、评价器偏差、复杂度预算、风格边界等关键决策均有原始来源和限制；继续扩搜未改变B为可验证主线、C为可关闭增强项的选择",
+    "open_items": [
+      "执行前核定实际采用代码、模型、数据许可证",
+      "LiTransProQA代码许可冲突未解决",
+      "真实日中长篇与用户偏好收益必须P1后验证；当前无作品质量结论"
+    ]
+  },
+  "engineering_search_log": {
+    "checked_on": "2026-10-22",
+    "queries": [
+      "2026 Japanese Chinese novel translation benchmark context LLM literary github",
+      "2025 2026 日中 翻訳 小説 LLM 評価 コンテキスト",
+      "2026 日中 小说 翻译 Sakura GalTransl 评测",
+      "site.github.com 日中 翻译 2026 小说 benchmark",
+      "site.aclanthology.org 2025 2026 Japanese Chinese literary translation benchmark"
+    ],
+    "primary_source_method": "GitHub连接器读取7个指定仓库的默认分支commit/tree及关键工程源码；浏览官方论文与模型卡；未安装、克隆、运行模型或读取本地作品。",
+    "stop_reason": "七个指定工程来源均有当前快照与适用性判断；已覆盖2026后续工程和日语原论文；主要选择已有替代、成本及局限，继续收集同类工具不会改变当前设计。",
+    "handoff_to_paper_researcher": "LAIT v2 https://arxiv.org/html/2606.26040v2 的方法、收益递减与指标偏差由论文研究来源合并，避免重复。"
+  },
+  "unverified_leads": [
+    {
+      "name": "Murasaki-benchmark",
+      "url": "https://github.com/soundstarrain/Murasaki-benchmark/blob/main/README_zh.md",
+      "status": "search_index_only_current_404",
+      "evidence": "搜索索引声称日中ACGN COMET基准；当前网页和GitHub API均404",
+      "decision": "不采纳排行榜/质量结论；不绕过访问限制",
+      "licenses": "代码/模型/数据未核实"
+    },
+    {
+      "name": "OpenSakura / OpenSakura-Arena",
+      "url": "https://github.com/OpenSakura",
+      "status": "organization_description_only_arena_api_404",
+      "evidence": "组织介绍宣称固定版本、成对Judge、人工盲评；所链OpenSakura-Arena API当前404",
+      "decision": "只作介绍级线索，不称实现已验证，不引入训练或平台",
+      "licenses": "代码/模型/数据未核实"
+    }
+  ],
+  "source_count": 22
+}

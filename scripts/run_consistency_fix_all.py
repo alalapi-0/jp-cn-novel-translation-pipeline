@@ -1,57 +1,25 @@
 #!/usr/bin/env python3
-"""Run fix_terminology_consistency.py across draft/run segments files.
+"""Read-only work-policy preview across legacy run files.
 
-By default this only processes the canonical draft_stage_b segments.json
-files covering the whole book (ch1-612), resolving duplicate chapter-range
-coverage by latest mtime. Use --scope all-runs for explicit workspace cleanup
-rounds that must repair stale target text in historical runs too.
-
-Usage:
-    python3 scripts/run_consistency_fix_all.py --dry-run
-    python3 scripts/run_consistency_fix_all.py            # writes changes
-    python3 scripts/run_consistency_fix_all.py --scope all-runs --update-all-target-fields --dry-run
+Explicit version/binding and chapter selection are required. Existing mtime
+discovery is historical and cannot authorize production canonical switching.
 """
 
 from __future__ import annotations
 
 import argparse
-import glob
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT/'src'))
+from consistency.work_rules import add_work_rule_arguments, policy_from_arguments, selected_chapter_range, selected_target_paths
 
 
 def discover_canonical_files() -> list[Path]:
-    files = []
-    for base in ("workspace/runs", "workspace/archived_runs"):
-        files += glob.glob(str(REPO_ROOT / base / "run_*_draft_stage_b_50ch" / "segments.json"))
-
-    ranges: dict[tuple[int, int], list[tuple[str, float]]] = {}
-    for f in files:
-        try:
-            doc = json.loads(Path(f).read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        nums = []
-        for ch in doc.get("chapters", []):
-            try:
-                nums.append(int(ch["chapter_id"].split("-")[-1]))
-            except Exception:
-                pass
-        if not nums:
-            continue
-        key = (min(nums), max(nums))
-        ranges.setdefault(key, []).append((f, os.path.getmtime(f)))
-
-    chosen = []
-    for key, candidates in ranges.items():
-        candidates.sort(key=lambda c: c[1], reverse=True)
-        chosen.append(Path(candidates[0][0]))
-    return chosen
+    raise ValueError('explicit accepted revision required; ambient canonical discovery disabled')
 
 
 def discover_all_run_files() -> list[Path]:
@@ -67,21 +35,32 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--diff-log", type=Path, default=None)
+    parser.add_argument('--chapters', type=int, nargs=2, default=None)
+    add_work_rule_arguments(parser)
     parser.add_argument(
         "--scope",
         choices=("canonical", "all-runs"),
         default="canonical",
-        help="canonical final-export inputs by default; all-runs repairs stale workspace run targets",
+        help="legacy compatibility option; only explicit manifest files are read",
     )
     parser.add_argument(
         "--update-all-target-fields",
         action="store_true",
-        help="forward to fix_terminology_consistency.py for explicit full workspace cleanup",
+        help="include historical target fields in read-only preview",
     )
     args = parser.parse_args()
+    if not args.dry_run:
+        parser.error('legacy direct target writes disabled; safe canonical apply is P2.R03')
+    try:
+        policy = policy_from_arguments(args, REPO_ROOT)
+        start, end = selected_chapter_range(args, policy)
+        if policy is None:
+            raise ValueError('explicit version-pinned work policy required for legacy preview')
+    except ValueError as error:
+        parser.error(str(error))
 
-    target_files = discover_canonical_files() if args.scope == "canonical" else discover_all_run_files()
-    print(f"{args.scope} files: {len(target_files)}", file=sys.stderr)
+    target_files = selected_target_paths(REPO_ROOT, policy)
+    print(f"selected manifest files: {len(target_files)}", file=sys.stderr)
 
     total_changed = 0
     total_segments = 0
@@ -89,6 +68,7 @@ def main() -> int:
     total_skipped_hits: dict[str, int] = {}
     per_file = []
     diff_logs = []
+    failed_files = 0
     for f in sorted(target_files):
         tmp_diff = None
         if args.diff_log:
@@ -97,7 +77,10 @@ def main() -> int:
             sys.executable,
             str(REPO_ROOT / "scripts" / "fix_terminology_consistency.py"),
             "--segments-file", str(f),
-            "--chapters", "1", "612",
+            "--chapters", str(start), str(end),
+            '--work-rules', str(args.work_rules), '--work-rules-sha256', policy.sha256,
+            '--work-id', policy.work_id, '--source-revision', policy.source_revision,
+            '--language-direction', policy.language_direction,
         ]
         if tmp_diff:
             cmd.extend(["--diff-log", str(tmp_diff)])
@@ -108,6 +91,7 @@ def main() -> int:
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)
         if result.returncode != 0:
             print(f"FAILED: {f}\n{result.stderr}", file=sys.stderr)
+            failed_files += 1
             continue
         summary = json.loads(result.stdout)
         total_changed += summary["changed_segments"]
@@ -134,24 +118,27 @@ def main() -> int:
             "total_changed_segments": total_changed,
             "rule_hits": dict(sorted(total_rule_hits.items(), key=lambda kv: -kv[1])),
             "skipped_ambiguous_hits": dict(sorted(total_skipped_hits.items(), key=lambda kv: -kv[1])),
-            "scope": args.scope,
-            "target_field_mode": "all_target_fields" if args.update_all_target_fields else "effective_text",
+            "scope": "selected_manifest",
+            "target_field_mode": "historical_preview_all_fields" if args.update_all_target_fields else "draft_preview",
             "dry_run": args.dry_run,
         }
         args.diff_log.write_text(json.dumps(combined, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     print(json.dumps({
+        'status': 'failed' if failed_files else 'preview',
+        'failed_files': failed_files,
+        'work_rules_sha256': policy.sha256,
         "files_processed": len(target_files),
         "total_segments": total_segments,
         "total_changed_segments": total_changed,
         "files_with_changes": per_file,
         "rule_hits": dict(sorted(total_rule_hits.items(), key=lambda kv: -kv[1])),
         "skipped_ambiguous_hits": dict(sorted(total_skipped_hits.items(), key=lambda kv: -kv[1])),
-        "scope": args.scope,
-        "target_field_mode": "all_target_fields" if args.update_all_target_fields else "effective_text",
+        "scope": "selected_manifest",
+        "target_field_mode": "historical_preview_all_fields" if args.update_all_target_fields else "draft_preview",
         "dry_run": args.dry_run,
     }, ensure_ascii=False, indent=2))
-    return 0
+    return 2 if failed_files else 0
 
 
 if __name__ == "__main__":

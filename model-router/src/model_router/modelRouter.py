@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -142,14 +143,18 @@ class ModelRouter:
 
             for attempt in range(1, attempts + 1):
                 try:
-                    result = provider.chat(
-                        normalized,
-                        model=target.model,
-                        temperature=target.temperature,
-                        max_tokens=target.max_tokens,
-                        stream=options.stream,
-                        timeout_sec=target.timeout_sec,
-                    )
+                    context = options.attempt_context(normalized, target) if options.attempt_context else nullcontext()
+                    with context as reservation:
+                        result = provider.chat(
+                            normalized,
+                            model=target.model,
+                            temperature=target.temperature,
+                            max_tokens=target.max_tokens,
+                            stream=options.stream,
+                            timeout_sec=min(target.timeout_sec, reservation["timeout_sec"]) if reservation is not None else target.timeout_sec,
+                        )
+                        if reservation is not None:
+                            reservation["observed_usage"] = result.usage.to_dict()
                     result.attempted_providers = list(attempted)
                     return result
                 except ParameterError as exc:
@@ -174,11 +179,8 @@ class ModelRouter:
                         time.sleep(min(30, 2 ** attempt))
                         continue
                     break
-                except Exception as exc:  # pragma: no cover - safety net
-                    last_error = exc
-                    errors.append(str(exc))
-                    logger.warning("model router unexpected error provider=%s", target.provider_id)
-                    break
+                # Guard/persistence errors and unexpected exceptions fail closed;
+                # only classified ProviderError permits another paid attempt.
 
         summary = "; ".join(errors[-3:]) if errors else "all providers failed"
         raise RuntimeError(f"model router exhausted fallback chain: {summary}") from last_error

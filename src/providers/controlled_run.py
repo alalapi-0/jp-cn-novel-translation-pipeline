@@ -4,10 +4,42 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
+from copy import deepcopy
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Replace one owned checkpoint atomically; retain the prior file on failure."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=f".{path.name}-", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, ensure_ascii=False, indent=2)
+            stream.write("\n"); stream.flush(); os.fsync(stream.fileno())
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name): os.unlink(name)
+
+
+@contextmanager
+def checkpoint_lock(path: Path):
+    """Kernel-owned, nonblocking local checkpoint exclusion, not a global scheduler."""
+    import fcntl
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_name(path.name + ".lock").open("a") as stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RuntimeError("checkpoint is already in use") from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(stream, fcntl.LOCK_UN)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -62,29 +94,37 @@ class ControlledRunManager:
         return segment_id in self.checkpoint.completed_segments
 
     def mark_segment_done(self, segment_id: str, *, tokens: int = 0, cost_usd: float = 0.0) -> None:
-        if segment_id not in self.checkpoint.completed_segments:
-            self.checkpoint.completed_segments.append(segment_id)
-        self.checkpoint.spent_tokens += tokens
-        self.checkpoint.spent_usd = round(self.checkpoint.spent_usd + cost_usd, 8)
-        self.checkpoint.updated_at = datetime.now(timezone.utc).isoformat()
-        self.save()
+        candidate = deepcopy(self.checkpoint)
+        if segment_id not in candidate.completed_segments:
+            candidate.completed_segments.append(segment_id)
+        candidate.spent_tokens += tokens
+        candidate.spent_usd = round(candidate.spent_usd + cost_usd, 8)
+        candidate.updated_at = datetime.now(timezone.utc).isoformat()
+        self._commit(candidate)
 
     def abort(self, reason: str) -> None:
-        self.checkpoint.status = f"aborted:{reason}"
-        self.checkpoint.updated_at = datetime.now(timezone.utc).isoformat()
-        self.save()
+        candidate = deepcopy(self.checkpoint)
+        candidate.status = f"aborted:{reason}"
+        candidate.updated_at = datetime.now(timezone.utc).isoformat()
+        self._commit(candidate)
 
     def complete(self) -> None:
-        self.checkpoint.status = "completed"
-        self.checkpoint.updated_at = datetime.now(timezone.utc).isoformat()
-        self.save()
+        candidate = deepcopy(self.checkpoint)
+        candidate.status = "completed"
+        candidate.updated_at = datetime.now(timezone.utc).isoformat()
+        self._commit(candidate)
+
+    def _commit(self, candidate: ControlledRunCheckpoint) -> None:
+        previous = self.checkpoint
+        self.checkpoint = candidate
+        try:
+            self.save()
+        except BaseException:
+            self.checkpoint = previous
+            raise
 
     def save(self) -> Path:
-        self.config.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        self.checkpoint_path.write_text(
-            json.dumps(asdict(self.checkpoint), ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        atomic_write_json(self.checkpoint_path, asdict(self.checkpoint))
         return self.checkpoint_path
 
     def _load_or_create(self) -> ControlledRunCheckpoint:

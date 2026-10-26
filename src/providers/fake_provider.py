@@ -21,6 +21,15 @@ DEFAULT_FAKE_OUTPUT = {
 
 def _segment_ids_from_messages(messages: list[Message]) -> list[str]:
     text = messages[-1].content if messages else ""
+    # Draft context and output-schema examples contain IDs that must never be
+    # translated. Select the actual request array before the legacy fallback.
+    decoder=json.JSONDecoder()
+    for match in re.finditer(r'\{',text):
+        try:value,_=decoder.raw_decode(text[match.start():])
+        except ValueError:continue
+        if isinstance(value,dict) and value.get('pipeline_stage')=='draft_translation' and isinstance(value.get('segments'),list):
+            return [row['segment_id'] for row in value['segments']
+                    if isinstance(row,dict) and isinstance(row.get('segment_id'),str)]
     return re.findall(r'"segment_id"\s*:\s*"([^"]+)"', text)
 
 

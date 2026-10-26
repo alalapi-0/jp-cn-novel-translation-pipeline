@@ -18,12 +18,12 @@ from providers.openrouter_provider import OpenRouterProvider
 from providers.types import GenerateOptions, Message
 
 
-def test_openrouter_incomplete_read_becomes_runtime_error(monkeypatch):
+def test_openrouter_incomplete_read_becomes_runtime_error(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     guard = CostGuard(
-        CostGuardConfig(max_test_cost_usd=10.0, max_tokens_per_run=0, real_api_tests_enabled=True)
+        CostGuardConfig(max_test_cost_usd=10.0, max_tokens_per_run=1000, real_api_tests_enabled=True, log_dir=tmp_path)
     )
-    provider = OpenRouterProvider(cost_guard=guard)
+    provider = OpenRouterProvider(cost_guard=guard, max_tokens=20)
     messages = [Message(role="user", content="hello")]
 
     mock_resp = MagicMock()
@@ -33,7 +33,7 @@ def test_openrouter_incomplete_read_becomes_runtime_error(monkeypatch):
 
     with patch("urllib.request.urlopen", return_value=mock_resp):
         with pytest.raises(RuntimeError, match="\\[openrouter\\]"):
-            provider.generate(messages, GenerateOptions())
+            provider.generate(messages, GenerateOptions(pipeline_stage="openrouter_smoke"))
 
 
 def test_openrouter_provider_sends_optional_smoke_limits(monkeypatch, tmp_path):
@@ -72,6 +72,6 @@ def test_openrouter_provider_sends_optional_smoke_limits(monkeypatch, tmp_path):
         return mock_resp
 
     with patch("urllib.request.urlopen", side_effect=fake_urlopen):
-        result = provider.generate(messages, GenerateOptions())
+        result = provider.generate(messages, GenerateOptions(pipeline_stage="openrouter_smoke"))
 
     assert result.raw_output == "smoke_ok"

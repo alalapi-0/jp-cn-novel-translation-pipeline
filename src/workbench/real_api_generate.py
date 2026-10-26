@@ -32,7 +32,9 @@ def generate_segments_real_api(
     from providers.router_provider import RouterProvider
     from providers.types import GenerateOptions, Message
 
-    paragraphs = _split_paragraphs(sample_text)[:MAX_PARAGRAPHS]
+    paragraphs = _split_paragraphs(sample_text)
+    if len(paragraphs) > MAX_PARAGRAPHS:
+        raise ValueError(f"sample exceeds {MAX_PARAGRAPHS} paragraphs; use complete source import for long projects")
     if not paragraphs:
         raise ValueError("sample_text is required")
     for para in paragraphs:
