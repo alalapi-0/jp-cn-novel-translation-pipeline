@@ -24,7 +24,7 @@ env:
 jobs:
   tooling:
     name: check:tooling
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
   ui:
     name: test:ui (optional)
     needs: tooling
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     if: >-
       github.event_name == 'push' ||
@@ -89,10 +89,12 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      - name: Verify runner-provided Chrome
+        run: |
+          test -x /opt/google/chrome/chrome
+          /opt/google/chrome/chrome --version
 
       - name: Playwright UI smoke
         run: |
-          export LN_UI_CHROMIUM="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          export LN_UI_CHROMIUM=/opt/google/chrome/chrome
           .venv/bin/python scripts/isolated_checks.py --entry ui
