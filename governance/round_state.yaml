@@ -552,13 +552,13 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: bounded_runtime_latency_investigation
+    phase: synthetic_latency_probe_prepared
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Evaluate a bounded review strategy before further source access; preserve closed sources and unknown causes.
-      PSH host binding and live adoption remain unverified.
+    next_action: Evaluate the reviewed synthetic-only probe in a separately bounded window before further source access.
+      Preserve closed sources and unknown causes; PSH live integration remains unverified.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -620,6 +620,12 @@ codex_governance:
       prior_failure_cause: UNKNOWN
       bounded_runtime_check: executed_result_local
       latency_assessment: varying_observed_intervals_cause_unknown
+    synthetic_latency_preparation:
+      status: independently_reviewed_cold_only
+      validation: 16 synthetic boundary and driver tests passed
+      native_or_model_runtime: not_attempted
+      os_file_visibility: UNVERIFIED
+      real_data_or_quality_credit: false
   delivery:
     status: engineering_candidate_for_main
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
@@ -628,7 +634,7 @@ codex_governance:
     receipt_ref: null
     policy: Commit and synchronize verified nonsensitive engineering changes each implementation round.
   round_accounting:
-    count: 174
+    count: 175
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:
@@ -637,7 +643,7 @@ codex_governance:
   - Current configured model identity differs from the frozen task identity; no model or configuration change is implied.
   - PCH live refresh, PSH integration, full-range validation, human approval and production adoption remain unverified.
   historical_state_meaning: Other top-level records are historical snapshots, not current whole-work acceptance.
-  updated_at: '2026-10-27T09:21:28+00:00'
+  updated_at: '2026-10-27T09:48:33.299066+00:00'
   integrations:
     psh_interface_task: independent projectless session created under owner authorization
     psh_live_integration: UNVERIFIED
