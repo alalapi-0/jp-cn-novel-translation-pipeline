@@ -552,13 +552,13 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: next_runtime_candidate_cold_validated
+    phase: bounded_runtime_latency_investigation
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Complete fresh actual validation of the prepared source-bound candidate before expanding coverage; preserve
-      expired admissions, failed events and closed sources. No runtime authority follows from this public checkpoint.
+    next_action: Evaluate a bounded review strategy before further source access; preserve closed sources and unknown causes.
+      PSH host binding and live adoption remain unverified.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -589,7 +589,7 @@ codex_governance:
     P3.R01.T02: in_progress
     P3.R02.T01: completed
     P3.R02.T02: not_started
-    P4.R01.T01: not_started
+    P4.R01.T01: in_progress
     P4.R01.T02: not_started
     P4.R02.T01: not_started
     P4.R02.T02: not_started
@@ -619,6 +619,7 @@ codex_governance:
       live_runtime_adoption: UNVERIFIED
       prior_failure_cause: UNKNOWN
       bounded_runtime_check: executed_result_local
+      latency_assessment: varying_observed_intervals_cause_unknown
   delivery:
     status: engineering_candidate_for_main
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
@@ -627,9 +628,8 @@ codex_governance:
     receipt_ref: null
     policy: Commit and synchronize verified nonsensitive engineering changes each implementation round.
   round_accounting:
-    count: 167
-    coverage: Last locally closed optimization checkpoint; round167 cold validation passed but original delivery window expired.
-      Current delivery is separate.
+    count: 174
+    coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:
   - Optimization remains incomplete.
@@ -637,7 +637,8 @@ codex_governance:
   - Current configured model identity differs from the frozen task identity; no model or configuration change is implied.
   - PCH live refresh, PSH integration, full-range validation, human approval and production adoption remain unverified.
   historical_state_meaning: Other top-level records are historical snapshots, not current whole-work acceptance.
-  updated_at: '2026-10-27T05:18:20+00:00'
+  updated_at: '2026-10-27T09:21:28+00:00'
   integrations:
     psh_interface_task: independent projectless session created under owner authorization
     psh_live_integration: UNVERIFIED
+    psh_interface_status: synthetic_engineering_delivered_actual_unverified
