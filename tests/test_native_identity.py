@@ -7,7 +7,8 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-from workbench.native_identity import IdentityDenied, IdentityPreflight, IDENTITY_FIELDS
+from workbench.native_identity import (IdentityDenied, IdentityPreflight,
+    IDENTITY_FIELDS, freeze_identity_policy, require_identity)
 
 
 @pytest.fixture
@@ -194,3 +195,46 @@ def test_close_revokes_a_prepared_guard(rig):
     with pytest.raises(IdentityDenied):
         gate.release_inputs(inputs)
     assert state["inputs"] == 0
+
+
+def test_explicit_policy_is_detached_and_immutable(rig):
+    _, _, supplied, _, _, _ = rig
+    original = dict(supplied)
+    frozen = freeze_identity_policy(supplied)
+    supplied["effective_model"] = "synthetic-changed"
+    require_identity(original, frozen)
+    with pytest.raises(TypeError):
+        frozen["effective_model"] = "synthetic-changed"
+    with pytest.raises(IdentityDenied):
+        require_identity(supplied, frozen)
+
+
+def test_different_explicit_policy_has_no_alias_equivalence_or_default(rig):
+    _, _, old, _, _, _ = rig
+    current = dict(old, configured_model="synthetic-current", effective_model="synthetic-current")
+    frozen = freeze_identity_policy(current)
+    require_identity(current, frozen)
+    for observed in (old, dict(current, effective_model="SYNTHETIC-CURRENT"),
+                     dict(current, configured_model="synthetic-current ")):
+        with pytest.raises(IdentityDenied, match="different_or_unknown"):
+            require_identity(observed, frozen)
+
+
+@pytest.mark.parametrize("field", sorted(IDENTITY_FIELDS))
+@pytest.mark.parametrize("fault", ["missing", "wrong_type"])
+def test_invalid_policy_is_rejected_before_matching(rig, field, fault):
+    _, _, policy, _, _, _ = rig
+    if fault == "missing":
+        del policy[field]
+    else:
+        policy[field] = 0 if field == "model_override" else True
+    with pytest.raises(IdentityDenied, match="frozen_identity_policy_required"):
+        freeze_identity_policy(policy)
+
+
+def test_unfrozen_or_forged_policy_cannot_bypass_comparison(rig):
+    from types import MappingProxyType
+    _, _, policy, _, _, _ = rig
+    for expected in (policy, MappingProxyType({}), None):
+        with pytest.raises(IdentityDenied, match="frozen_identity_policy_required"):
+            require_identity(policy, expected)

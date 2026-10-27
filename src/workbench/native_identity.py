@@ -9,6 +9,7 @@ adds a native open or skips the source-budgeted confinement probe.
 from copy import deepcopy
 import math
 from pathlib import Path
+from types import MappingProxyType
 
 
 IDENTITY_FIELDS = frozenset({"version", "binary_sha256", "configured_model",
@@ -19,18 +20,37 @@ class IdentityDenied(RuntimeError):
     """A finite reason without model, configuration or candidate values."""
 
 
+def _valid_policy(value):
+    return (type(value) in (dict, MappingProxyType) and set(value) == IDENTITY_FIELDS
+            and all(type(value[k]) is str and value[k]
+                    for k in IDENTITY_FIELDS - {"model_override"})
+            and value["model_override"] is False)
+
+
+def freeze_identity_policy(expected):
+    """Detach and freeze an explicit policy, without discovering or authorizing it."""
+    if type(expected) is not dict or not _valid_policy(expected):
+        raise IdentityDenied("frozen_identity_policy_required")
+    return MappingProxyType(expected.copy())
+
+
+def require_identity(actual, expected):
+    """Require exact typed equality against a frozen six-field policy."""
+    if type(expected) is not MappingProxyType or not _valid_policy(expected):
+        raise IdentityDenied("frozen_identity_policy_required")
+    if (type(actual) is not dict
+            or any(type(actual.get(k)) is not type(v) or actual[k] != v
+                   for k, v in expected.items())):
+        raise IdentityDenied("native_identity_different_or_unknown")
+
+
 class IdentityPreflight:
     def __init__(self, *, preflight, expected, directory, cancel, now, deadline,
                  candidate_snapshot, configuration_snapshot, active):
-        if (type(expected) is not dict or set(expected) != IDENTITY_FIELDS
-                or any(type(expected[k]) is not str or not expected[k]
-                       for k in IDENTITY_FIELDS - {"model_override"})
-                or expected["model_override"] is not False):
-            raise IdentityDenied("frozen_identity_policy_required")
+        self._expected = freeze_identity_policy(expected)
         if type(deadline) not in (int, float) or not math.isfinite(deadline):
             raise IdentityDenied("finite_deadline_required")
         self._preflight = preflight
-        self._expected = deepcopy(expected)
         self._directory = Path(directory).absolute()
         self._cancel = cancel
         self._now = now
@@ -72,10 +92,8 @@ class IdentityPreflight:
             self._binding = self._snapshot()
             admission = self._preflight(self._directory, cancel=self._cancel)
             self._fresh()
-            if (type(admission) is not dict
-                    or any(type(admission.get(k)) is not type(v) or admission[k] != v
-                           for k, v in self._expected.items())
-                    or admission.get("model_confinement_verified") is True):
+            require_identity(admission, self._expected)
+            if admission.get("model_confinement_verified") is True:
                 raise IdentityDenied("native_identity_different_or_unknown")
             self._admission = deepcopy(admission)
             self._state = "prepared"

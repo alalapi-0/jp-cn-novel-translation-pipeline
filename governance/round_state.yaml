@@ -549,16 +549,16 @@ codex_governance:
   unit_id: LN-OPTIMIZATION-ENGINEERING-CHECKPOINT
   authority: Owner authorizes verified nonsensitive engineering commits and normal main synchronization each implementation
     round; private runtime data remain local.
-  code_snapshot: 6342df6138915d49fddc08cf7f3ec99c1f042be6
+  code_snapshot: 30faa77f54ed97083318c3ea4a609dad64d1d068
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: optimization_in_progress
+    phase: explicit_identity_candidate_cold_validated
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Complete the source-free early identity check before any further registered source or TM release; preserve
-      prior failures and closed inputs.
+    next_action: Deliver the verified generic identity helper and this engineering summary; prospective runtime admission
+      remains separate. Preserve failed events and closed inputs. No model/configuration change or source replay is authorized.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -604,6 +604,12 @@ codex_governance:
       this public summary.
     evidence_refs: []
     accepted_basis: Public engineering tests only; no production, human, literary-quality or full-goal acceptance.
+    identity_policy:
+      status: cold_engineering_validation_only
+      public_helper: src/workbench/native_identity.py
+      validation: isolated tooling1756passed6skipped1deselected; focused246passed; metadata projection4passed
+      live_adoption: UNVERIFIED
+      model_configuration_changed: false
   delivery:
     status: engineering_candidate_for_main
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
@@ -612,8 +618,9 @@ codex_governance:
     receipt_ref: null
     policy: Commit and synchronize verified nonsensitive engineering changes each implementation round.
   round_accounting:
-    count: 161
-    coverage: Last locally closed optimization checkpoint; delivery receipt is retained locally.
+    count: 167
+    coverage: Last locally closed optimization checkpoint; round167 cold validation passed but original delivery window expired.
+      Current delivery is separate.
     remaining_round_estimate: unknown
   limitations:
   - Optimization remains incomplete.
@@ -621,4 +628,4 @@ codex_governance:
   - Current configured model identity differs from the frozen task identity; no model or configuration change is implied.
   - PCH live refresh, PSH integration, full-range validation, human approval and production adoption remain unverified.
   historical_state_meaning: Other top-level records are historical snapshots, not current whole-work acceptance.
-  updated_at: '2026-10-26T10:32:05.799772+00:00'
+  updated_at: '2026-10-27T02:21:41+00:00'
