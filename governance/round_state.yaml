@@ -618,6 +618,7 @@ codex_governance:
       status: synthetic_validated
       live_runtime_adoption: UNVERIFIED
       prior_failure_cause: UNKNOWN
+      bounded_runtime_check: executed_result_local
   delivery:
     status: engineering_candidate_for_main
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
