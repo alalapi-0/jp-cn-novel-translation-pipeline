@@ -611,10 +611,9 @@ codex_governance:
       live_adoption: UNVERIFIED
       model_configuration_changed: false
     runtime_preparation:
-      status: cold_candidate_verified_only
-      actual_runtime: UNATTEMPTED/expired_admission
-      input_release_or_model_effects: 0
-      validation: 246 focused checks passed; previous fixture and independent-review failures preserved
+      status: transactional_entry_validated
+      actual_runtime: bounded_outcome_recorded_locally
+      validation: 260 focused synthetic checks passed; runtime evidence and failure details remain local
   delivery:
     status: engineering_candidate_for_main
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
