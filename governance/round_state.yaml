@@ -552,7 +552,7 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: phase_b_acceptance_synthetic_verified
+    phase: memory_context_bounds_synthetic_verified
     round: P3.R01
     status: in_progress
     completed: false
@@ -673,8 +673,15 @@ codex_governance:
     real_data_validation: NOT_RUN
     quality_credit: false
     task_credit: false
+  round184_memory_context_bounds:
+    status: SYNTHETIC_TESTED
+    context_caps_enforced: true
+    real_data_validation: NOT_RUN
+    live_adoption: UNVERIFIED
+    quality_credit: false
+    task_credit: false
   round_accounting:
-    count: 183
+    count: 184
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:

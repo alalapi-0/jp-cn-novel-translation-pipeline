@@ -28,6 +28,47 @@ from workbench.project_registry import (  # noqa: E402
 from workbench.review_state import DecisionActor, approval_identity, patch_project_review_state  # noqa: E402
 
 
+def test_memory_context_caps_terms_names_and_pairs_independently(monkeypatch):
+    from assets import translation_memory as memory
+    data = {
+        "term_candidates": [{"source": "term-one", "target": "one"}],
+        "proper_noun_candidates": [{"source": f"name-{n}"} for n in range(4)],
+        "translation_pairs": [{"source_text": "phrase-one", "target_text": "target"}],
+    }
+    monkeypatch.setattr(memory, "_current_asset_context", lambda *_args, **_kwargs: data)
+    result = memory.select_batch_context_hits(
+        Path("synthetic.json"), ["term-one name-0 name-1 name-2 name-3 phrase-one"],
+        max_terms=8, max_character_notes=1, max_pairs=0,
+    )
+    assert result.count("- Term:") == 1
+    assert result.count("- Name:") == 1
+    assert "- Phrase:" not in result
+    no_terms = memory.select_batch_context_hits(
+        Path("synthetic.json"), ["term-one name-0"], max_terms=0, max_character_notes=1, max_pairs=0,
+    )
+    assert "- Term:" not in no_terms and no_terms.count("- Name:") == 1
+
+
+def test_zero_memory_caps_avoid_reading_context(monkeypatch):
+    from assets import translation_memory as memory
+    def unexpected_read(*_args, **_kwargs):
+        raise AssertionError("zero-cap request must not read a context")
+    monkeypatch.setattr(memory, "_current_asset_context", unexpected_read)
+    assert memory.select_batch_context_hits(
+        Path("synthetic.json"), ["source"], max_terms=0, max_character_notes=0, max_pairs=0,
+    ) == ""
+
+
+@pytest.mark.parametrize("field, value", [
+    ("max_terms", -1), ("max_character_notes", -1), ("max_pairs", -1), ("max_terms", True),
+])
+def test_memory_context_rejects_invalid_caps(monkeypatch, field, value):
+    from assets import translation_memory as memory
+    monkeypatch.setattr(memory, "_current_asset_context", lambda *_args, **_kwargs: {})
+    with pytest.raises(ValueError, match="nonnegative integer"):
+        memory.select_batch_context_hits(Path("synthetic.json"), ["source"], **{field: value})
+
+
 def _seed_workbench_project(repo: Path) -> str:
     project_id = "asset-memory-test"
     approved_segment = {

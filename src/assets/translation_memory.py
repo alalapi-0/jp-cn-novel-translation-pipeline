@@ -593,14 +593,20 @@ def select_batch_context_hits(
     repo_root: Path | None = None,
 ) -> str:
     """Return compact glossary/character hits for one batch (no full asset dump)."""
-    if not batch_source_texts:
+    limits = (max_terms, max_pairs, max_character_notes)
+    if any(type(limit) is not int or limit < 0 for limit in limits):
+        raise ValueError("context limits must be nonnegative integers")
+    if not batch_source_texts or not any(limits):
         return ""
     data = _current_asset_context(path, repo_root=repo_root)
     haystack = "\n".join(batch_source_texts)
 
     lines: list[str] = []
 
+    term_hits = 0
     for term in data.get("term_candidates", []):
+        if term_hits >= max_terms:
+            break
         source = str(term.get("source") or "").strip()
         if not source or source not in haystack:
             continue
@@ -609,11 +615,11 @@ def select_batch_context_hits(
             lines.append(f"- Term: {source} => {target}")
         else:
             lines.append(f"- Term: {source}")
-        if len(lines) >= max_terms:
-            break
+        term_hits += 1
 
+    name_hits = 0
     for term in data.get("proper_noun_candidates", []):
-        if len(lines) >= max_terms + max_character_notes:
+        if name_hits >= max_character_notes:
             break
         source = str(term.get("source") or "").strip()
         if not source or source not in haystack:
@@ -622,6 +628,7 @@ def select_batch_context_hits(
         lines.append(
             f"- Name: {source}{' => ' + hint if hint else ''}"
         )
+        name_hits += 1
 
     pair_hits = 0
     for pair in data.get("translation_pairs", []):
