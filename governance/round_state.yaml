@@ -552,13 +552,13 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: native_receipt_write_bound_validated
+    phase: synthetic_latency_cold_repaired_admission_expired
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Rebind the source-free latency probe to the reviewed write bound before any live attempt or source access.
-      Preserve closed sources and unknown causes; PSH live integration remains unverified.
+    next_action: Prepare a newly bounded source-free latency measurement after pre-effect review. Preserve closed sources
+      and unknown counts; PSH real binding and consumer adoption remain unverified.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -621,8 +621,8 @@ codex_governance:
       bounded_runtime_check: executed_result_local
       latency_assessment: varying_observed_intervals_cause_unknown
     synthetic_latency_preparation:
-      status: independently_reviewed_cold_only
-      validation: 16 synthetic boundary and driver tests passed
+      status: independently_reviewed_cold_repair_admission_expired
+      validation: 29 synthetic boundary and driver tests passed; prior failed review retained locally
       native_or_model_runtime: not_attempted
       os_file_visibility: UNVERIFIED
       real_data_or_quality_credit: false
@@ -640,7 +640,7 @@ codex_governance:
     receipt_ref: null
     policy: Commit and synchronize verified nonsensitive engineering changes each implementation round.
   round_accounting:
-    count: 176
+    count: 177
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:
@@ -653,4 +653,4 @@ codex_governance:
   integrations:
     psh_interface_task: independent projectless session created under owner authorization
     psh_live_integration: UNVERIFIED
-    psh_interface_status: synthetic_engineering_delivered_actual_unverified
+    psh_interface_status: translation_domain_and_review_interfaces_delivered_actual_binding_unverified
