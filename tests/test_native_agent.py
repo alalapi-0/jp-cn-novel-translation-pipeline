@@ -806,6 +806,11 @@ def test_cleanup_exception_chain_is_safe_and_truthful(tmp_path,monkeypatch,diagn
         except ValueError:native.preflight(tmp_path,observer=events.append)
     assert failed.value.native_stage=='shutdown'
     assert failed.value.native_diagnostic['cleanup_verified'] is False
+    if where in {'bootstrap_both','main_failure'}:
+        assert failed.value.native_diagnostic['prior_failure']=={'stage':'config_read',
+            'category':'protocol_or_confinement_failure','reason_code':'unknown','lifecycle_milestone':'unknown'}
+    else:
+        assert 'prior_failure' not in failed.value.native_diagnostic
     assert fake.private not in str(failed.value)+json.dumps(events)
     assert events[-1]['stage']=='shutdown' and events[-1]['status']=='failed' and events[-1]['cleanup_verified'] is False
     _assert_safe_exception_graph(failed.value,fake.private,events)
@@ -819,6 +824,9 @@ def test_invoke_cleanup_exception_chain_has_safe_precedence_over_operation_error
     with pytest.raises(RuntimeError) as failed:
         native.invoke('synthetic',{},tmp_path/'invoke',timeout=1,admission={'configured_model':'old','model_confinement_verified':True})
     assert failed.value.native_stage=='shutdown' and failed.value.native_diagnostic['cleanup_verified'] is False
+    assert failed.value.native_diagnostic['prior_failure']=={'stage':'turn',
+        'category':'protocol_or_confinement_failure','reason_code':'admission_changed','lifecycle_milestone':'admission_check'}
+    assert native._diagnostic(failed.value)['prior_failure']==failed.value.native_diagnostic['prior_failure']
     assert private not in str(failed.value)
     _assert_safe_exception_graph(failed.value,private,[])
 
@@ -840,6 +848,77 @@ def _assert_safe_exception_graph(error,private,events):
     for marker in [private,'/private/path','user@example.invalid','SYNTHETIC_PRIVATE']:
         assert marker not in serialized
     assert error.__context__ is None and error.__cause__ is None
+
+
+def test_metadata_operation_failure_survives_cleanup_failure_without_raw_values(tmp_path,monkeypatch,diagnostic_substitutes):
+    fake=diagnostic_substitutes;events=[]
+    def communicate(self,timeout):raise TimeoutError(fake.private)
+    def close(self):
+        self.closed=True;self.cleanup_verified=False
+        raise RuntimeError(fake.private)
+    monkeypatch.setattr(fake.Owned,'communicate',communicate);monkeypatch.setattr(fake.Owned,'close',close)
+    with pytest.raises(RuntimeError) as failed:native._metadata([native.CLI,'--version'],tmp_path,observer=events.append)
+    assert failed.value.native_stage=='shutdown' and failed.value.native_diagnostic['cleanup_verified'] is False
+    assert failed.value.native_diagnostic['prior_failure']=={'stage':'cli_version','category':'timeout',
+        'reason_code':'unknown','lifecycle_milestone':'unknown'}
+    assert events[-1]['diagnostic']['prior_failure']==failed.value.native_diagnostic['prior_failure']
+    _assert_safe_exception_graph(failed.value,fake.private,events)
+
+
+def test_untrusted_prior_failure_payload_cannot_leak_or_supply_free_text():
+    private='SYNTHETIC_PRIVATE /private/path user@example.invalid'
+    class Bomb:
+        def __str__(self):raise AssertionError('must not stringify')
+        def __hash__(self):raise AssertionError('must not hash')
+    raw=native._SafeNativeError('safe wrapper');raw.native_diagnostic={'category':'cleanup_failure',
+        'prior_failure':{'stage':private,'category':Bomb(),'reason_code':private,'lifecycle_milestone':private,
+                         'extra':{'nested':private}}}
+    detail=native._diagnostic(raw);serialized=json.dumps(detail)
+    assert private not in serialized and '/private/path' not in serialized
+    assert 'extra' not in detail.get('prior_failure',{})
+
+
+@pytest.mark.parametrize('field',['stage','category','reason_code','lifecycle_milestone'])
+def test_prior_failure_projection_rejects_each_unrecognized_field(field):
+    private='SYNTHETIC_PRIVATE /private/path user@example.invalid'
+    prior={'stage':'turn','category':'timeout','reason_code':'unknown','lifecycle_milestone':'turn_started'}
+    prior[field]=private
+    raw=native._SafeNativeError('safe wrapper');raw.native_diagnostic={'category':'cleanup_failure','prior_failure':prior}
+    detail=native._diagnostic(raw)
+    assert 'prior_failure' not in detail and private not in json.dumps(detail)
+
+
+def test_turn_validation_failure_survives_cleanup_failure_without_response_text(tmp_path,monkeypatch):
+    private='SYNTHETIC_PRIVATE /private/path user@example.invalid'
+    def close():raise RuntimeError(private)
+    owned=SimpleNamespace(close=close,cleanup_verified=False)
+    current={'configured_model':'synthetic-model'}
+    rpc=SimpleNamespace(owned=owned,native_thread={'id':'safe-thread','model':'synthetic-model','provider':'openai'},
+        notifications=[{'method':'item/completed','params':{'item':{'type':'agentMessage','text':json.dumps({'wrong':private})}}},
+                       {'method':'turn/completed','params':{'turn':{'id':'safe-turn','status':'completed'}}}],
+        call=lambda *a,**k:{'turn':{'id':'safe-turn'}})
+    monkeypatch.setattr(native,'_open_native',lambda *a:(rpc,current))
+    with pytest.raises(RuntimeError) as failed:
+        native.invoke('synthetic',{'type':'object','required':['result']},tmp_path/'invoke',timeout=1,
+            admission={**current,'model_confinement_verified':True})
+    assert failed.value.native_stage=='shutdown' and failed.value.native_diagnostic['cleanup_verified'] is False
+    assert failed.value.native_diagnostic['prior_failure']=={'stage':'turn','category':'protocol_or_confinement_failure',
+        'reason_code':'schema_validation_failed','lifecycle_milestone':'response_validation'}
+    assert not (tmp_path/'invoke/answer.json').exists() and not (tmp_path/'invoke/native-receipt.json').exists()
+    _assert_safe_exception_graph(failed.value,private,[])
+
+
+def test_untrusted_prior_exception_is_not_accepted_as_internal_safe_error():
+    private='SYNTHETIC_PRIVATE /private/path user@example.invalid'
+    class Bomb:
+        def __str__(self):raise AssertionError('must not stringify')
+        def __hash__(self):raise AssertionError('must not hash')
+    raw=RuntimeError(private);raw.native_stage='turn';raw.native_diagnostic={'category':'timeout',
+        'reason_code':'rpc_rejected','lifecycle_milestone':'turn_started','extra':Bomb()}
+    owned=SimpleNamespace(close=lambda:None,cleanup_verified=False)
+    with pytest.raises(RuntimeError) as failed:native._close_native(owned,prior_error=raw)
+    assert 'prior_failure' not in failed.value.native_diagnostic
+    _assert_safe_exception_graph(failed.value,private,[])
 
 
 @pytest.mark.parametrize('where',['metadata','bootstrap','main'])

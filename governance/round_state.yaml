@@ -552,13 +552,13 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: synthetic_engineering_probe_inconclusive
+    phase: native_cleanup_diagnostic_synthetic_tests_passed
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Continue independent framework engineering; preserve the closed synthetic
-      input. Resource cleanup and PSH binding and adoption remain unverified.
+    next_action: Continue independent framework engineering; earlier synthetic input
+      remains closed and resource cleanup and PSH adoption remain unverified.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -645,8 +645,12 @@ codex_governance:
     cleanup: UNVERIFIED
     synthetic_input: closed; no retry
     progress_credit: false
+  round179_native_diagnostic:
+    status: SYNTHETIC_TESTED
+    runtime_validation: NOT_RUN
+    quality_credit: false
   round_accounting:
-    count: 178
+    count: 179
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:

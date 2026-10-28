@@ -46,6 +46,11 @@ LIFECYCLE_MILESTONES = frozenset({
 NATIVE_STAGES = frozenset({'unknown', 'metadata', 'cli_version', 'login_status',
     'features', 'mcp', 'initialize', 'config_read', 'account_read',
     'thread_start', 'shutdown', 'turn'})
+DIAGNOSTIC_CATEGORIES = frozenset({'output_limit','timeout','cancelled','os_error','protocol_or_confinement_failure',
+    'cleanup_failure','fixed_feature_controls_unverified','fixed_mcp_controls_unverified',
+    'unsupported_strict_config_flag','unsupported_cli_argument','strict_config_unknown_field',
+    'config_unknown_variant','config_invalid_type','config_parse_failure','not_logged_in',
+    'permission_denied','native_rejected'})
 
 # Diagnostic vocabulary only: this list never permits or filters an event.
 PROTOCOL_EVENT_METHODS = frozenset({'item/started', 'item/completed',
@@ -94,6 +99,29 @@ class _SafeNativeCancelled(NativeCancelled):
 _SAFE_ERRORS = (_SafeNativeError, _SafeNativeTimeout, _SafeNativeCancelled)
 
 
+def _safe_prior_failure(value):
+    """Detach only finite prior-failure facts; ignore all other input."""
+    if type(value) is not dict:return None
+    allowed={'stage':NATIVE_STAGES,'category':DIAGNOSTIC_CATEGORIES,
+             'reason_code':NATIVE_FAILURE_REASONS,'lifecycle_milestone':LIFECYCLE_MILESTONES}
+    result={}
+    for key,choices in allowed.items():
+        try:item=value.get(key)
+        except BaseException:return None
+        if type(item) is not str or item not in choices:return None
+        result[key]=item
+    return result
+
+
+def _prior_failure(error):
+    if type(error) not in _SAFE_ERRORS:return None
+    stage=vars(error).get('native_stage')
+    if type(stage) is not str or stage not in NATIVE_STAGES:return None
+    detail=_diagnostic(error)
+    return _safe_prior_failure({'stage':stage,'category':detail['category'],
+        'reason_code':detail['reason_code'],'lifecycle_milestone':detail['lifecycle_milestone']})
+
+
 def _safe_error(process, category):
     """Keep only finite categories and names from our fixed public overrides."""
     import re
@@ -137,13 +165,8 @@ def _diagnostic(error):
     for key,allowed in [('reason_code',NATIVE_FAILURE_REASONS),('lifecycle_milestone',LIFECYCLE_MILESTONES)]:
         value=source.get(key)
         if type(value) is str and value in allowed:detail[key]=value
-    categories={'output_limit','timeout','cancelled','os_error','protocol_or_confinement_failure',
-        'cleanup_failure','fixed_feature_controls_unverified','fixed_mcp_controls_unverified',
-        'unsupported_strict_config_flag','unsupported_cli_argument','strict_config_unknown_field',
-        'config_unknown_variant','config_invalid_type','config_parse_failure','not_logged_in',
-        'permission_denied','native_rejected'}
     category=source.get('category')
-    if type(category) is str and category in categories:detail['category']=category
+    if type(category) is str and category in DIAGNOSTIC_CATEGORIES:detail['category']=category
     for key in ['exit_status','unknown_key_count']:
         value=source.get(key)
         if type(value) is int and (-65536 if key=='exit_status' else 0)<=value<=65536:detail[key]=value
@@ -165,6 +188,8 @@ def _diagnostic(error):
     if detail['reason_code'] in {'thread_event_mismatch','turn_event_mismatch'}:
         event=_safe_protocol_event(source.get('protocol_event'))
         if event is not None:detail['protocol_event']=event
+    prior=_safe_prior_failure(source.get('prior_failure'))
+    if prior is not None:detail['prior_failure']=prior
     return detail
 
 
@@ -263,7 +288,7 @@ def _metadata(command,directory,cancel=None,*,include_stderr=False,observer=None
         error = _stage_error(stage,exc)
     finally:
         if owned is not None:
-            _close_native(owned,observer,report_success=False)
+            _close_native(owned,observer,report_success=False,prior_error=error)
         _observe(observer,stage,owned,error,version=output.strip() if output and stage=='cli_version' else None)
     if error is not None:_raise_without_context(error)
     return output
@@ -334,7 +359,7 @@ def _raise_without_context(error):
         error.__cause__=None
 
 
-def _close_native(owned,observer=None,*,report_success=True):
+def _close_native(owned,observer=None,*,report_success=True,prior_error=None):
     failed=False
     try:owned.close()
     except BaseException:failed=True
@@ -342,6 +367,8 @@ def _close_native(owned,observer=None,*,report_success=True):
         owned.cleanup_verified=False
         safe=_SafeNativeError('native_cleanup_failed')
         safe.native_diagnostic={'category':'cleanup_failure','cleanup_verified':False,'raw_output_retained':False}
+        prior=_prior_failure(prior_error)
+        if prior is not None:safe.native_diagnostic['prior_failure']=prior
         error=_stage_error('shutdown',safe);_observe(observer,'shutdown',owned,error)
         _raise_without_context(error)
     if report_success:_observe(observer,'shutdown',owned)
@@ -369,7 +396,7 @@ def _mcp_disable_arguments(config):
 
 def _discover_mcp(directory,cancel,observer):
     from workbench.native_process import OwnedProcess,NativeRPC
-    owned=None;stage='initialize';failed=False
+    owned=None;stage='initialize';failed=False;pending_error=None
     try:
         owned=OwnedProcess([CLI,'app-server','--strict-config',*_config_arguments()],cwd=directory,env=_environment(directory),cancel=cancel)
         rpc=NativeRPC(owned)
@@ -378,10 +405,10 @@ def _discover_mcp(directory,cancel,observer):
         if not isinstance(config,dict):raise RuntimeError('native_configuration_unverified')
         return _mcp_disable_arguments(config)
     except BaseException as exc:
-        failed=True;error=_stage_error(stage,exc);_observe(observer,stage,owned,error);_raise_without_context(error)
+        failed=True;pending_error=_stage_error(stage,exc);_observe(observer,stage,owned,pending_error);_raise_without_context(pending_error)
     finally:
         if owned is not None:
-            _close_native(owned,observer,report_success=failed)
+            _close_native(owned,observer,report_success=failed,prior_error=pending_error)
             if not failed:_observe(observer,'mcp',owned)
 
 
@@ -470,7 +497,7 @@ def _open_native(directory,cancel=None,observer=None):
             code=owned.process.poll();stderr=bytes(owned.err).decode(errors='replace')
             if code is not None and stderr:exc=_safe_error(subprocess.CompletedProcess([],code,stderr=stderr),'native_app_server_startup_rejected')
         error=_stage_error(stage,exc);_observe(observer,stage,owned,error)
-        if owned is not None:_close_native(owned,observer)
+        if owned is not None:_close_native(owned,observer,prior_error=error)
         _raise_without_context(error)
 
 
@@ -486,7 +513,7 @@ def invoke(prompt,schema,directory,*,timeout,admission,_probe=False,cancel=None)
     directory=canonical._ordinary(Path(directory)).resolve();directory.mkdir(parents=True,exist_ok=True)
     if (directory/'native-receipt.json').exists():raise RuntimeError('native_result_already_exists')
     rpc,current=_open_native(directory,cancel)
-    milestone='admission_check'
+    milestone='admission_check';pending_error=None
     try:
         expected={k:v for k,v in admission.items() if k!='model_confinement_verified'}
         if current!=expected:raise NativeFailure('admission_changed')
@@ -541,8 +568,9 @@ def invoke(prompt,schema,directory,*,timeout,admission,_probe=False,cancel=None)
         (directory/'native-receipt.json').write_bytes(receipt_bytes)
         return parsed,detached_meta
     except BaseException as exc:
-        _raise_without_context(_stage_error('turn',exc,milestone=milestone))
-    finally:_close_native(rpc.owned)
+        pending_error=_stage_error('turn',exc,milestone=milestone)
+        _raise_without_context(pending_error)
+    finally:_close_native(rpc.owned,prior_error=pending_error)
 
 
 def complete_admission(root,directory,probe_operation=None,cancel=None):
