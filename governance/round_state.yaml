@@ -557,7 +557,7 @@ codex_governance:
     status: in_progress
     completed: false
     accepted: false
-    next_action: Await the review-state handling choice; continue independent tasks when their prerequisites allow.
+    next_action: Await the review-state and PCH handoff choices; resolve registered source/storage scope.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -707,8 +707,17 @@ codex_governance:
     canonical_direct: UNVERIFIED
     task_credit: false
     quality_credit: false
+  round188_pch_readback_diagnosis:
+    status: READ_ONLY_DIAGNOSIS
+    source_size_exceeds_limit: true
+    single_project_resolver: INVALID
+    live_service_health: OK
+    live_project_refresh: UNVERIFIED
+    handoff: PENDING_AUTHORIZATION
+    task_credit: false
+    quality_credit: false
   round_accounting:
-    count: 187
+    count: 188
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:
