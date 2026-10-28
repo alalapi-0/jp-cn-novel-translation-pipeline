@@ -70,7 +70,8 @@ def test_temporal_quotes_reach_real_prompt_boundary_without_model_proposition():
     assert before['contexts'][0]['facts']==[]
     # Actual prompt builder validates the same selected source segments.
     for s in segments:s.source_binding=None
-    payload=build_batch_messages(segments[2:3],chapter_label='synthetic',narrative_context=after)[-1].content
+    payload=build_batch_messages(segments[2:3],chapter_label='synthetic',narrative_context=after,
+        source_catalog_sha256=source.sha256)[-1].content
     assert segments[1].source_text in payload and 'FALSE_MODEL_PROPOSITION' not in payload
     assert 'not_verified' in payload
 

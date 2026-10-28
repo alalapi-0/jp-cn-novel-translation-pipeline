@@ -51,8 +51,10 @@ def test_cross_chapter_source_context_is_explicit_and_not_writable(compact):
     from translation.context_policy import SourceContextCatalog,SourceContextPolicy
     from translation.prompt_builder import build_batch_messages
     source=chapters();pending=[source[1].segments[0]]
-    context=SourceContextCatalog(source).before(pending,SourceContextPolicy(max_segments=2,max_chars=100))
-    messages=build_batch_messages(pending,chapter_label='chapter-b',compact_context=compact,source_context=context)
+    catalog=SourceContextCatalog(source)
+    context=catalog.before(pending,SourceContextPolicy(max_segments=2,max_chars=100))
+    messages=build_batch_messages(pending,chapter_label='chapter-b',compact_context=compact,
+        source_context=context,source_catalog_sha256=catalog.sha256)
     user=messages[-1].content;contract=json.JSONDecoder().raw_decode(user[user.index('{'):])[0]
     assert [x['segment_id'] for x in contract['source_context']['items']]==['a1','a2']
     assert [x['segment_id'] for x in contract['segments']]==['b1']
@@ -107,8 +109,87 @@ def test_invalid_windows_are_not_silently_coerced(value):
 def test_prompt_refuses_context_for_different_current_anchor():
     from translation.context_policy import SourceContextCatalog
     from translation.prompt_builder import build_batch_messages
+    source=chapters();catalog=SourceContextCatalog(source);context=catalog.before([source[1].segments[0]])
+    with pytest.raises(ValueError):build_batch_messages([source[1].segments[1]],chapter_label='chapter-b',
+        source_context=context,source_catalog_sha256=catalog.sha256)
+
+
+def _source_revisions_with_unchanged_anchor():
+    from translation.chapter_parser import parse_chapter_file
+    path=Path('/synthetic/001-chapter.md')
+    old=parse_chapter_file(path,source_bytes=b'# synthetic\n\nEARLIER_OLD\n\nSAME_ANCHOR')
+    new=parse_chapter_file(path,source_bytes=b'# synthetic\n\nEARLIER_NEW\n\nSAME_ANCHOR')
+    assert old.source_revision != new.source_revision
+    assert old.segments[1].segment_id == new.segments[1].segment_id
+    assert old.segments[1].source_text == new.segments[1].source_text
+    return old,new
+
+
+def test_catalog_rejects_unchanged_anchor_from_changed_source_revision():
+    from translation.context_policy import SourceContextCatalog
+    old,new=_source_revisions_with_unchanged_anchor()
+    catalog=SourceContextCatalog([old])
+    with pytest.raises(ValueError):
+        catalog.before([new.segments[1]])
+    assert catalog.before([old.segments[1]]).to_dict()['items'][0]['source_text']=='EARLIER_OLD'
+
+
+def test_catalog_rejects_lost_source_binding_even_when_text_is_unchanged():
+    from dataclasses import replace
+    from translation.context_policy import SourceContextCatalog
+    old,_=_source_revisions_with_unchanged_anchor()
+    catalog=SourceContextCatalog([old]);unbound=replace(old.segments[1],source_binding=None)
+    with pytest.raises(ValueError):
+        catalog.before([unbound])
+
+
+@pytest.mark.parametrize('compact',[True,False])
+def test_prompt_rejects_old_preceding_context_for_new_source_revision(compact):
+    from translation.context_policy import SourceContextCatalog
+    from translation.prompt_builder import build_batch_messages
+    old,new=_source_revisions_with_unchanged_anchor()
+    catalog=SourceContextCatalog([old]);context=catalog.before([old.segments[1]])
+    with pytest.raises(ValueError):
+        build_batch_messages([new.segments[1]],chapter_label='synthetic',compact_context=compact,
+            source_context=context,source_catalog_sha256=catalog.sha256)
+
+
+def test_prompt_rejects_changed_later_segment_with_same_first_anchor():
+    from translation.chapter_parser import Segment
+    from translation.context_policy import SourceContextCatalog
+    from translation.prompt_builder import build_batch_messages
+    source=chapters();old=source[1].segments
+    catalog=SourceContextCatalog(source);context=catalog.before(old)
+    changed=[old[0],Segment(old[1].segment_id,'DIFFERENT_CURRENT_TEXT')]
+    with pytest.raises(ValueError):
+        build_batch_messages(changed,chapter_label='synthetic',source_context=context,source_catalog_sha256=catalog.sha256)
+
+
+def test_prompt_rejects_stale_context_when_preceding_chapter_changes():
+    from translation.context_policy import SourceContextCatalog
+    from translation.prompt_builder import build_batch_messages
+    old=chapters();new=chapters();new[0].segments[1].source_text='NEW_PREVIOUS_CHAPTER'
+    previous=SourceContextCatalog(old);selected=SourceContextCatalog(new)
+    context=previous.before([old[1].segments[0]])
+    assert previous.sha256 != selected.sha256
+    assert old[1].segments[0].source_text == new[1].segments[0].source_text
+    with pytest.raises(ValueError):
+        build_batch_messages([new[1].segments[0]],chapter_label='chapter-b',source_context=context,
+            source_catalog_sha256=selected.sha256)
+    fresh=selected.before([new[1].segments[0]])
+    text=build_batch_messages([new[1].segments[0]],chapter_label='chapter-b',source_context=fresh,
+        source_catalog_sha256=selected.sha256)[1].content
+    assert 'NEW_PREVIOUS_CHAPTER' in text and 'SOURCE_BETA' not in text
+
+
+@pytest.mark.parametrize('identity',[None,'','f'*63,'g'*64])
+def test_prompt_requires_selected_catalog_identity(identity):
+    from translation.context_policy import SourceContextCatalog
+    from translation.prompt_builder import build_batch_messages
     source=chapters();context=SourceContextCatalog(source).before([source[1].segments[0]])
-    with pytest.raises(ValueError):build_batch_messages([source[1].segments[1]],chapter_label='chapter-b',source_context=context)
+    with pytest.raises(ValueError,match='catalog identity'):
+        build_batch_messages([source[1].segments[0]],chapter_label='chapter-b',source_context=context,
+            source_catalog_sha256=identity)
 
 
 def test_fake_provider_reads_only_current_request_ids():
@@ -116,8 +197,9 @@ def test_fake_provider_reads_only_current_request_ids():
     from translation.prompt_builder import build_batch_messages
     from providers.fake_provider import FakeProvider
     source=chapters();pending=[source[1].segments[0]]
-    context=SourceContextCatalog(source).before(pending)
-    result=FakeProvider().generate(build_batch_messages(pending,chapter_label='chapter-b',source_context=context))
+    catalog=SourceContextCatalog(source);context=catalog.before(pending)
+    result=FakeProvider().generate(build_batch_messages(pending,chapter_label='chapter-b',source_context=context,
+        source_catalog_sha256=catalog.sha256))
     assert json.loads(result.raw_output)['segment_id']=='b1'
     assert 'a1' not in result.raw_output and 'a2' not in result.raw_output
 

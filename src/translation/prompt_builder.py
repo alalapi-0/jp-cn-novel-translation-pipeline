@@ -9,7 +9,7 @@ from typing import Any
 from providers.types import Message
 
 from .chapter_parser import Segment
-from .context_policy import PrecedingSourceContext
+from .context_policy import PrecedingSourceContext, source_anchor_identity
 from .narrative_context import NarrativeContext
 
 SYSTEM_PROMPT = """你是专业日文轻小说译者，将日文翻译成自然流畅的简体中文。
@@ -34,17 +34,28 @@ def build_batch_messages(
     prev_tail_summary: str | None = None,
     source_context: PrecedingSourceContext | None = None,
     narrative_context: NarrativeContext | None = None,
+    source_catalog_sha256: str | None = None,
 ) -> list[Message]:
     from .source_versions import validate_source_binding
     for segment in segments:
         if segment.source_binding is not None:
             validate_source_binding(segment.source_binding,segment.source_text)
+    if source_context is not None or narrative_context is not None:
+        if (type(source_catalog_sha256) is not str or len(source_catalog_sha256)!=64
+                or any(ch not in '0123456789abcdef' for ch in source_catalog_sha256)):
+            raise ValueError('selected source catalog identity required')
+        anchors=tuple(source_anchor_identity(segment) for segment in segments)
+    else:anchors=()
     if source_context is not None and (not isinstance(source_context,PrecedingSourceContext)
-            or not segments or source_context.anchor[1]!=segments[0].segment_id):
+            or not segments or source_context.anchor[1]!=segments[0].segment_id
+            or source_context.current_anchors!=anchors
+            or source_context.source_catalog_sha256!=source_catalog_sha256):
         raise ValueError('preceding source context does not match current anchor')
     if narrative_context is not None and (not isinstance(narrative_context, NarrativeContext)
-            or narrative_context.segment_ids != tuple(s.segment_id for s in segments)
-            or narrative_context.source_sha256s != tuple(hashlib.sha256(s.source_text.encode()).hexdigest() for s in segments)):
+            or narrative_context.segment_ids != tuple(item[0] for item in anchors)
+            or narrative_context.source_sha256s != tuple(item[1] for item in anchors)
+            or narrative_context.source_binding_sha256s != tuple(item[2] for item in anchors)
+            or narrative_context.source_catalog_sha256!=source_catalog_sha256):
         raise ValueError('narrative context does not match current source anchors')
     items = [
         {"segment_id": s.segment_id, "source_text": s.source_text,

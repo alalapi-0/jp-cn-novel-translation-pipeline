@@ -116,16 +116,49 @@ def test_catalog_freezes_review_input_and_prompt_has_matching_identity():
     assert catalog.identity() == frozen
     for compact in (False, True):
         text = build_batch_messages([chapters[1].segments[0]], chapter_label='b',
-            compact_context=compact, narrative_context=context)[1].content
+            compact_context=compact, narrative_context=context,source_catalog_sha256=source.sha256)[1].content
         contract = json.JSONDecoder().raw_decode(text[text.index('{'):])[0]
         assert contract['narrative_context'] == context.to_dict()
         assert contract['narrative_context']['contexts'][0]['prior_translations'][0]['trust'] == 'higher_nonhuman_accepted'
     with pytest.raises(ValueError):
-        build_batch_messages([chapters[1].segments[1]], chapter_label='b', narrative_context=context)
+        build_batch_messages([chapters[1].segments[1]], chapter_label='b', narrative_context=context,
+            source_catalog_sha256=source.sha256)
     altered = replace(chapters[1].segments[0], source_text='同じIDでも違う原文。')
     with pytest.raises(ValueError):
-        build_batch_messages([altered], chapter_label='b', narrative_context=context)
+        build_batch_messages([altered], chapter_label='b', narrative_context=context,source_catalog_sha256=source.sha256)
     with pytest.raises(FrozenInstanceError): catalog.sha256 = 'changed'
+
+
+def test_narrative_context_cannot_cross_changed_source_revision():
+    from translation.chapter_parser import parse_chapter_file
+    from translation.context_policy import SourceContextCatalog
+    from translation.narrative_context import ContextFact, NarrativeContextCatalog
+    from translation.prompt_builder import build_batch_messages
+    path=Path('/synthetic/001-narrative.md')
+    old=parse_chapter_file(path,source_bytes=b'# synthetic\n\nEARLIER_OLD\n\nSAME_ANCHOR')
+    new=parse_chapter_file(path,source_bytes=b'# synthetic\n\nEARLIER_NEW\n\nSAME_ANCHOR')
+    previous=old.segments[0]
+    known=ContextFact('f1',previous.segment_id,hashlib.sha256(previous.source_text.encode()).hexdigest(),
+        0,len(previous.source_text),previous.source_text,previous.segment_id)
+    old_source=SourceContextCatalog([old]);catalog=NarrativeContextCatalog(old_source,facts=[known])
+    context=catalog.for_batch([old.segments[1]])
+    assert context.to_dict()['contexts'][0]['facts'][0]['quote']=='EARLIER_OLD'
+    with pytest.raises(ValueError):
+        build_batch_messages([new.segments[1]],chapter_label='synthetic',narrative_context=context,
+            source_catalog_sha256=old_source.sha256)
+
+
+def test_narrative_context_rejects_changed_preceding_chapter():
+    from translation.context_policy import SourceContextCatalog
+    from translation.narrative_context import NarrativeContextCatalog
+    from translation.prompt_builder import build_batch_messages
+    old,old_source=material();new,_=material()
+    new[0].segments[0].source_text='前一章已修订。'
+    selected=SourceContextCatalog(new)
+    context=NarrativeContextCatalog(old_source,facts=[fact()]).for_batch([old[1].segments[0]])
+    with pytest.raises(ValueError):
+        build_batch_messages([new[1].segments[0]],chapter_label='b',narrative_context=context,
+            source_catalog_sha256=selected.sha256)
 
 
 @pytest.mark.parametrize('compact', [True, False])

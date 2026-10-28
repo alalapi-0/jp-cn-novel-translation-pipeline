@@ -13,6 +13,18 @@ def _hash(value):
     return hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
+def source_anchor_identity(segment):
+    """Identify the current text and its validated source binding, if present."""
+    if (not isinstance(segment.segment_id,str) or not segment.segment_id
+            or not isinstance(segment.source_text,str) or not segment.source_text.strip()):
+        raise ValueError('invalid current source context anchor')
+    binding=getattr(segment,'source_binding',None)
+    if binding is not None:
+        from .source_versions import validate_source_binding
+        binding=validate_source_binding(binding,segment.source_text)['binding_sha256']
+    return (segment.segment_id,hashlib.sha256(segment.source_text.encode()).hexdigest(),binding)
+
+
 @dataclass(frozen=True)
 class SourceContextPolicy:
     max_segments: int = 3
@@ -32,6 +44,7 @@ class PrecedingSourceContext:
     items: tuple
     policy: SourceContextPolicy
     source_catalog_sha256: str
+    current_anchors: tuple
 
     def to_dict(self):
         value={'schema':'preceding-source-context/1','scope':'selected_source_only',
@@ -47,9 +60,10 @@ class SourceContextCatalog:
     """A read-only snapshot; translated or manually edited targets never enter it."""
     _rows: tuple
     _positions: object
+    _bindings: tuple
     sha256: str
     def __init__(self,chapters):
-        rows=[];positions={};chapter_ids=set();versions=[]
+        rows=[];positions={};chapter_ids=set();versions=[];pins=[]
         for chapter in chapters:
             if not isinstance(chapter.chapter_id,str) or not chapter.chapter_id or chapter.chapter_id in chapter_ids:
                 raise ValueError('ambiguous context chapter identity')
@@ -70,10 +84,12 @@ class SourceContextCatalog:
                 elif getattr(chapter,'source_revision',''):
                     raise ValueError('versioned context chapter has an unbound segment')
                 bindings.append(binding['binding_sha256'] if binding else None)
+                pins.append(bindings[-1])
             versions.append([chapter.chapter_id,getattr(chapter,'source_revision',''),
                              getattr(chapter,'parser_version',''),bindings])
         object.__setattr__(self,'_rows',tuple(rows))
         object.__setattr__(self,'_positions',MappingProxyType(positions))
+        object.__setattr__(self,'_bindings',tuple(pins))
         object.__setattr__(self,'sha256',_hash({'rows':self._rows,'source_versions':versions}))
 
     def identity(self,policy):
@@ -83,14 +99,12 @@ class SourceContextCatalog:
         policy=SourceContextPolicy() if policy is None else policy
         if not isinstance(policy,SourceContextPolicy):raise ValueError('explicit source context policy required')
         if not segments:raise ValueError('nonempty current source anchor required')
-        indexes=[]
+        indexes=[];anchors=[]
         for segment in segments:
-            if not isinstance(segment.segment_id,str) or not isinstance(segment.source_text,str):
-                raise ValueError('invalid current source context anchor')
-            index=self._positions.get(segment.segment_id)
-            if index is None or self._rows[index][2]!=segment.source_text:
+            identity=source_anchor_identity(segment);index=self._positions.get(identity[0])
+            if index is None or self._rows[index][2]!=segment.source_text or self._bindings[index]!=identity[2]:
                 raise ValueError('current batch differs from selected source context snapshot')
-            indexes.append(index)
+            indexes.append(index);anchors.append(identity)
         if indexes!=sorted(set(indexes)):raise ValueError('current context anchors are duplicate or unordered')
         anchor=indexes[0];remaining=policy.max_chars;items=[]
         if policy.max_segments and remaining:
@@ -98,4 +112,4 @@ class SourceContextCatalog:
                 if not remaining:break
                 start=max(0,len(text)-remaining);part=text[start:];remaining-=len(part)
                 items.append((ch,sid,part,start,len(text),hashlib.sha256(text.encode()).hexdigest()))
-        return PrecedingSourceContext(self._rows[anchor][:2],tuple(reversed(items)),policy,self.sha256)
+        return PrecedingSourceContext(self._rows[anchor][:2],tuple(reversed(items)),policy,self.sha256,tuple(anchors))

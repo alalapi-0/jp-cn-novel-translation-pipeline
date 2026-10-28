@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 
-from .context_policy import SourceContextCatalog, SourceContextPolicy, _hash
+from .context_policy import SourceContextCatalog, SourceContextPolicy, _hash, source_anchor_identity
 
 
 @dataclass(frozen=True)
@@ -55,6 +55,8 @@ class PriorTranslation:
 class NarrativeContext:
     segment_ids: tuple
     source_sha256s: tuple
+    source_binding_sha256s: tuple
+    source_catalog_sha256: str
     _serialized: str
 
     def to_dict(self):
@@ -184,6 +186,7 @@ class NarrativeContextCatalog:
         value = {'schema': 'narrative-context/1', 'catalog': self.identity(), 'contexts': contexts,
                  'as_of_basis': 'selected_source_textual_order', 'semantic_verification': 'not_granted',
                  'usage': 'understanding_only_per_segment_never_add_revealed_facts_or_rewrite_context'}
-        return NarrativeContext(tuple(s.segment_id for s in segments),
-            tuple(hashlib.sha256(s.source_text.encode()).hexdigest() for s in segments),
+        anchors=tuple(source_anchor_identity(s) for s in segments)
+        return NarrativeContext(tuple(item[0] for item in anchors),
+            tuple(item[1] for item in anchors),tuple(item[2] for item in anchors),self.source.sha256,
             json.dumps(value, ensure_ascii=False, sort_keys=True))

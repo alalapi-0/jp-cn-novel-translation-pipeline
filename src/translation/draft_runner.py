@@ -821,6 +821,7 @@ def _run_chapter_batches(
                 compact_context=compact_context,
                 source_context=source_context,
                 narrative_context=narrative_context,
+                source_catalog_sha256=source_catalog.sha256,
             )
             options = GenerateOptions(
                 project_id="light-novel-jp-cn",
