@@ -22,6 +22,7 @@ NATIVE_FAILURE_REASONS = frozenset({
     'process_exited_before_response', 'admission_changed',
     'unexpected_tool_event', 'thread_event_mismatch', 'turn_event_mismatch',
     'turn_not_completed', 'turn_error', 'answer_missing_or_too_large', 'turn_start_unverified',
+    'receipt_output_limit', 'receipt_serialization_failed',
     'schema_validation_failed',
 })
 

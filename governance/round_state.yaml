@@ -552,12 +552,12 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: synthetic_latency_probe_prepared
+    phase: native_receipt_write_bound_validated
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Evaluate the reviewed synthetic-only probe in a separately bounded window before further source access.
+    next_action: Rebind the source-free latency probe to the reviewed write bound before any live attempt or source access.
       Preserve closed sources and unknown causes; PSH live integration remains unverified.
     owner_role: Codex Root
   progress:
@@ -626,6 +626,12 @@ codex_governance:
       native_or_model_runtime: not_attempted
       os_file_visibility: UNVERIFIED
       real_data_or_quality_credit: false
+    native_receipt_write_bound:
+      status: isolated_synthetic_engineering_validated
+      validation: 1798 passed; 6 skipped; 1 deselected; 9 targeted tests passed
+      gate_warning: existing dirty worktree
+      live_runtime_adoption: UNVERIFIED
+      real_data_or_quality_credit: false
   delivery:
     status: engineering_candidate_for_main
     remote: https://github.com/alalapi-0/jp-cn-novel-translation-pipeline
@@ -634,7 +640,7 @@ codex_governance:
     receipt_ref: null
     policy: Commit and synchronize verified nonsensitive engineering changes each implementation round.
   round_accounting:
-    count: 175
+    count: 176
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:

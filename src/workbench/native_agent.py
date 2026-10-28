@@ -123,7 +123,7 @@ def _diagnostic(error):
     """Rebuild finite public facts; exception attributes are not trusted data."""
     reason = vars(error).get('reason_code') if type(error) is NativeFailure else 'unknown'
     reason = reason if type(reason) is str and reason in NATIVE_FAILURE_REASONS else 'unknown'
-    kind = ('output_limit' if reason in {'metadata_output_limit','stdout_limit','stderr_limit'} else
+    kind = ('output_limit' if reason in {'metadata_output_limit','stdout_limit','stderr_limit','receipt_output_limit'} else
             'timeout' if isinstance(error, TimeoutError) else
             'cancelled' if isinstance(error, NativeCancelled) else
             'os_error' if isinstance(error, OSError) else 'protocol_or_confinement_failure')
@@ -518,7 +518,9 @@ def invoke(prompt,schema,directory,*,timeout,admission,_probe=False,cancel=None)
                 if ended.get('id')!=turn or ended.get('status')!='completed':raise NativeFailure('turn_not_completed')
                 completed=True;milestone='turn_completed'
             if method=='error':raise NativeFailure('turn_error')
-        if not isinstance(answer,str) or len(answer.encode())>4*1024*1024:raise NativeFailure('answer_missing_or_too_large')
+        if not isinstance(answer,str):raise NativeFailure('answer_missing_or_too_large')
+        answer_bytes=answer.encode('utf-8')
+        if len(answer_bytes)>4*1024*1024:raise NativeFailure('answer_missing_or_too_large')
         milestone='response_validation'
         import jsonschema
         try:parsed=json.loads(answer);jsonschema.validate(parsed,schema)
@@ -527,11 +529,17 @@ def invoke(prompt,schema,directory,*,timeout,admission,_probe=False,cancel=None)
         meta={'thread_id':thread,'turn_id':turn,'model':model,'model_provider':provider,
             'configured_model':current['configured_model'],'model_override':False,'model_identity_status':'same_app_server_thread_start',
             'admission_fingerprint':_fingerprint(current),'process_identity':rpc.owned.initial,
-            'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'answer_sha256':hashlib.sha256(answer.encode()).hexdigest(),
+            'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'answer_sha256':hashlib.sha256(answer_bytes).hexdigest(),
             'execution_mode':'agent_quota_translation','hidden_internal_retries':'unknown','native_usage':'unknown','human_approved_final':False}
-        (directory/'answer.json').write_text(answer)
-        (directory/'native-receipt.json').write_text(json.dumps(meta,indent=2)+'\n')
-        return parsed,meta
+        try:receipt_bytes=(json.dumps(meta,indent=2,allow_nan=False)+'\n').encode('utf-8')
+        except (TypeError,ValueError,OverflowError,UnicodeError):raise NativeFailure('receipt_serialization_failed') from None
+        if len(receipt_bytes)>65536:raise NativeFailure('receipt_output_limit')
+        # Detach returned metadata from native process state and persist the
+        # exact bytes whose sizes and answer hash were checked.
+        detached_meta=json.loads(receipt_bytes)
+        (directory/'answer.json').write_bytes(answer_bytes)
+        (directory/'native-receipt.json').write_bytes(receipt_bytes)
+        return parsed,detached_meta
     except BaseException as exc:
         _raise_without_context(_stage_error('turn',exc,milestone=milestone))
     finally:_close_native(rpc.owned)

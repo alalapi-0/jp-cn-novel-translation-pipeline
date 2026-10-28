@@ -1099,3 +1099,102 @@ def test_r40_missing_typed_reason_is_unknown():
     raw=NativeFailure('turn_error');del raw.reason_code
     safe=native._stage_error('turn',raw)
     assert native._diagnostic(safe)['reason_code']=='unknown'
+
+
+def _r176_fake_invoke(directory, monkeypatch, *, turn_id='t', answer='{"result":"ok"}', initial=None, closed=None):
+    """Exercise the actual writer with a synthetic RPC and no native process."""
+    closed = [] if closed is None else closed
+    initial = {'pid':1, 'start_ticks':1} if initial is None else initial
+    current = {'configured_model':'synthetic-model'}
+    rpc = SimpleNamespace(
+        owned=SimpleNamespace(close=lambda:closed.append(True), cleanup_verified=True, initial=initial),
+        native_thread={'id':'synthetic-thread', 'model':'synthetic-model', 'provider':'openai'},
+        notifications=[
+            {'method':'item/completed','params':{'item':{'type':'agentMessage','text':answer}}},
+            {'method':'turn/completed','params':{'turn':{'id':turn_id,'status':'completed'}}},
+        ],
+        call=lambda *args,**kwargs:{'turn':{'id':turn_id}},
+    )
+    monkeypatch.setattr(native,'_open_native',lambda *args:(rpc,current))
+    return native.invoke('synthetic',{'type':'object','required':['result']},directory,timeout=1,
+        admission={**current,'model_confinement_verified':True})
+
+
+def test_r176_receipt_exact_boundary_and_oversize_leave_no_results(tmp_path,monkeypatch):
+    baseline=tmp_path/'baseline'
+    _r176_fake_invoke(baseline,monkeypatch)
+    initial_size=(baseline/'native-receipt.json').stat().st_size
+    turn_id='t'*(65536-initial_size+1)
+    edge=tmp_path/'edge';reply,meta=_r176_fake_invoke(edge,monkeypatch,turn_id=turn_id)
+    assert (edge/'native-receipt.json').stat().st_size==65536
+    from workbench.native_revision import _read_receipt
+    assert _read_receipt(edge,'synthetic',{'type':'object','required':['result']},reply,meta)[0]==reply
+    too_large=tmp_path/'too-large';closed=[]
+    with pytest.raises(RuntimeError) as failure:
+        _r176_fake_invoke(too_large,monkeypatch,turn_id=turn_id+'t',closed=closed)
+    assert native._diagnostic(failure.value)['reason_code']=='receipt_output_limit'
+    assert native._diagnostic(failure.value)['category']=='output_limit'
+    assert closed==[True] and not (too_large/'answer.json').exists() and not (too_large/'native-receipt.json').exists()
+
+
+def test_r176_receipt_limit_counts_serialized_bytes_not_characters(tmp_path,monkeypatch):
+    directory=tmp_path/'unicode';closed=[]
+    # This ID is below 64 KiB as UTF-8 but expands beyond the limit in the actual JSON receipt.
+    with pytest.raises(RuntimeError) as failure:
+        _r176_fake_invoke(directory,monkeypatch,turn_id='雪'*11000,closed=closed)
+    assert native._diagnostic(failure.value)['reason_code']=='receipt_output_limit'
+    assert closed==[True] and not (directory/'answer.json').exists() and not (directory/'native-receipt.json').exists()
+
+
+@pytest.mark.parametrize('extra',[0,1])
+@pytest.mark.parametrize('multibyte',[False,True])
+def test_r176_answer_exact_byte_boundary_preserved(tmp_path,monkeypatch,extra,multibyte):
+    prefix='{"result":"';suffix='"}'
+    remaining=4*1024*1024-len(prefix)-len(suffix)
+    body=('雪'*(remaining//3)+'x'*(remaining%3)+('雪' if extra else '') if multibyte
+          else 'x'*(remaining+extra))
+    answer=prefix+body+suffix
+    directory=tmp_path/'answer';closed=[]
+    if extra:
+        with pytest.raises(RuntimeError) as failure:
+            _r176_fake_invoke(directory,monkeypatch,answer=answer,closed=closed)
+        assert native._diagnostic(failure.value)['reason_code']=='answer_missing_or_too_large'
+        assert not (directory/'answer.json').exists() and not (directory/'native-receipt.json').exists()
+    else:
+        _r176_fake_invoke(directory,monkeypatch,answer=answer,closed=closed)
+        assert (directory/'answer.json').stat().st_size==4*1024*1024
+    assert closed==[True]
+
+
+def test_r176_unserializable_receipt_does_not_write_partial_answer(tmp_path,monkeypatch):
+    directory=tmp_path/'bad-receipt';closed=[]
+    with pytest.raises(RuntimeError) as failure:
+        _r176_fake_invoke(directory,monkeypatch,initial={'pid':object()},closed=closed)
+    assert native._diagnostic(failure.value)['reason_code']=='receipt_serialization_failed'
+    assert closed==[True] and not (directory/'answer.json').exists() and not (directory/'native-receipt.json').exists()
+    _assert_safe_exception_graph(failure.value,'SYNTHETIC_PRIVATE',[])
+
+
+def test_r176_unencodable_answer_does_not_write_partial_result(tmp_path,monkeypatch):
+    directory=tmp_path/'bad-answer';closed=[]
+    with pytest.raises(RuntimeError) as failure:
+        _r176_fake_invoke(directory,monkeypatch,answer='{"result":"SYNTHETIC_PRIVATE\ud800"}',closed=closed)
+    assert closed==[True] and not (directory/'answer.json').exists() and not (directory/'native-receipt.json').exists()
+    _assert_safe_exception_graph(failure.value,'SYNTHETIC_PRIVATE',[])
+
+
+def test_r176_original_mutation_cannot_change_snapshots_or_returned_receipt(tmp_path,monkeypatch):
+    import hashlib
+    directory=tmp_path/'detached';closed=[];initial={'pid':1,'start_ticks':1}
+    source={'result':'ok'};answer=json.dumps(source);mutated=[];original_open=Path.open
+    def mutate_before_first_write(path,mode='r',*args,**kwargs):
+        if path==directory/'answer.json' and 'w' in mode:
+            source['result']='changed';initial['start_ticks']=2;initial['extra']='x'*70000;mutated.append(True)
+        return original_open(path,mode,*args,**kwargs)
+    monkeypatch.setattr(Path,'open',mutate_before_first_write)
+    reply,meta=_r176_fake_invoke(directory,monkeypatch,answer=answer,initial=initial,closed=closed)
+    answer_bytes=(directory/'answer.json').read_bytes();receipt_bytes=(directory/'native-receipt.json').read_bytes()
+    assert mutated==[True] and closed==[True]
+    assert reply=={'result':'ok'} and answer_bytes==answer.encode('utf-8')
+    assert meta==json.loads(receipt_bytes) and meta['process_identity']=={'pid':1,'start_ticks':1}
+    assert len(receipt_bytes)<=65536 and meta['answer_sha256']==hashlib.sha256(answer_bytes).hexdigest()
