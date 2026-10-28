@@ -14,6 +14,7 @@ from typing import Any
 from translation.chapter_parser import count_source_chapters
 from translation.run_progress import safe_load_json
 from consistency.index_workspace_storage import index_workspace_path
+from consistency.segment_index import SCHEMA_VERSION as SEGMENT_INDEX_SCHEMA_VERSION, index_shape_consistent, segment_index_digest
 
 AUDIT_DIR_REL = "workspace/consistency_audit"
 MANIFEST_DIR_REL = "workspace/manifests"
@@ -63,8 +64,23 @@ def _level_stats(repo_root: Path) -> dict[str, Any]:
 
     total_chapters = count_source_chapters(repo_root)
     manifest_chapters = int((manifest.get("stats") or {}).get("chapters_indexed") or 0)
-    segment_total = int((segment_index.get("stats") or {}).get("segments_indexed") or 0)
-    segment_missing = int((segment_index.get("stats") or {}).get("missing_segments_count") or 0)
+    index_schema_supported=(type(segment_index.get('schema_version')) is int
+                            and segment_index['schema_version']==SEGMENT_INDEX_SCHEMA_VERSION)
+    index_shape_valid=index_shape_consistent(segment_index)
+    index_stats=segment_index.get('stats') if isinstance(segment_index.get('stats'),dict) else {}
+    segment_total=index_stats.get('segments_indexed') if index_schema_supported else None
+    segment_missing=index_stats.get('missing_segments_count') if index_schema_supported else None
+    counts_valid=(type(segment_total) is int and segment_total>=0
+                  and type(segment_missing) is int and segment_missing>=0)
+    if not counts_valid:segment_total=segment_missing=None
+    structure_inputs=structure.get('inputs') if isinstance(structure.get('inputs'),dict) else {}
+    structure_schema_supported=(type(structure_inputs.get('segment_index_schema_version')) is int
+                                and structure_inputs['segment_index_schema_version']==SEGMENT_INDEX_SCHEMA_VERSION)
+    try:
+        structure_index_matches=(index_shape_valid and structure_schema_supported
+                                 and structure_inputs.get('segment_index_sha256')==segment_index_digest(segment_index))
+    except (TypeError,ValueError,OverflowError):
+        structure_index_matches=False
 
     return {
         "level_0_manifest": {
@@ -86,6 +102,8 @@ def _level_stats(repo_root: Path) -> dict[str, Any]:
             "present": bool(structure),
             "findings_total": len(structure.get("findings") or []),
             "blocking_count": structure_blocking,
+            "index_schema_supported": structure_schema_supported,
+            "index_content_matches": structure_index_matches,
         },
         "level_3_fix_plan": {
             "present": bool(fix_plan),
@@ -118,6 +136,10 @@ def _level_stats(repo_root: Path) -> dict[str, Any]:
         "segment_index": {
             "segment_count": segment_total,
             "missing_segment_count": segment_missing,
+            "schema_supported": index_schema_supported,
+            "shape_consistent": index_shape_valid,
+            "known_clean": index_shape_valid and counts_valid and index_stats.get('clean') is True,
+            "source_freshness_status": "UNVERIFIED",
         },
         "blocking_conflicts_total": glossary_blocking + structure_blocking,
     }
@@ -138,6 +160,9 @@ def build_draft_consistency_report(repo_root: Path) -> dict[str, Any]:
     fixes = levels["fix_plan_status"]
     simulated = arbitration["dry_run"] or retranslate["dry_run"] or fixes.get("dry_run")
     incomplete = (not all(artifacts_present.values())
+                  or not levels['segment_index']['known_clean']
+                  or not levels['level_2_structure']['index_content_matches']
+                  or levels['segment_index']['source_freshness_status']!='VERIFIED'
                   or bool(arbitration.get("candidate_count") and arbitration.get("execution_status") != "PASS")
                   or bool(levels["level_3_fix_plan"].get("retranslate_segment_count") and not fixes.get("all_closed")))
     failed = arbitration.get("execution_status") == "FAIL" or retranslate.get("execution_status") == "failed"
@@ -153,11 +178,8 @@ def build_draft_consistency_report(repo_root: Path) -> dict[str, Any]:
         "status": status,
         "artifacts_present": artifacts_present,
         "progressive_disclosure": levels,
-        "recommendation": (
-            "ready_for_final_export"
-            if status == "PASS" and artifacts_present.get("chapter_manifest")
-            else "resolve_blocking_before_final_export"
-        ),
+        "recommendation": ("resolve_blocking_before_final_export" if blocking or failed
+                           else "verify_current_sources_before_final_export"),
     }
 
 

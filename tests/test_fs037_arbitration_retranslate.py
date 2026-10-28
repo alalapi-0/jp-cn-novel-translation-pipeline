@@ -263,6 +263,80 @@ def test_build_draft_consistency_report_fixture(fixture_repo: Path) -> None:
     assert report["recommendation"] != "ready_for_final_export"
 
 
+@pytest.mark.parametrize('index_version,audit_version',[(3,3),(4,3)])
+def test_stale_index_or_structure_audit_cannot_indicate_export_ready(fixture_repo: Path,index_version: int,audit_version: int) -> None:
+    from consistency.segment_index import build_segment_index
+    index=fixture_repo/'workspace/indexes/segment_index.json'
+    value=build_segment_index(fixture_repo);value['schema_version']=index_version
+    index.write_text(json.dumps(value),encoding='utf-8')
+    audit=fixture_repo/'workspace/consistency_audit/draft_structure_audit.json'
+    audit.write_text(json.dumps({'inputs':{'segment_index_schema_version':audit_version},'findings':[]}),encoding='utf-8')
+    plan=fixture_repo/'workspace/consistency_audit/local_fix_plan.json'
+    plan.write_text(json.dumps({'stats':{'term_fix_count':0,'retranslate_segment_count':0,'deferred_count':0}}),encoding='utf-8')
+    report=build_draft_consistency_report(fixture_repo)
+    assert report['status']!='PASS'
+    assert report['recommendation']!='ready_for_final_export'
+
+
+def test_current_index_and_audit_are_recognized_in_report(fixture_repo: Path) -> None:
+    from consistency.draft_structure_audit import audit_draft_structure
+    from consistency.segment_index import build_segment_index
+    index=fixture_repo/'workspace/indexes/segment_index.json'
+    value=build_segment_index(fixture_repo)
+    index.write_text(json.dumps(value),encoding='utf-8')
+    audit=fixture_repo/'workspace/consistency_audit/draft_structure_audit.json'
+    audit.write_text(json.dumps(audit_draft_structure(value,fixture_repo)),encoding='utf-8')
+    report=build_draft_consistency_report(fixture_repo)
+    levels=report['progressive_disclosure']
+    assert levels['segment_index']['known_clean'] is True
+    assert levels['level_2_structure']['index_schema_supported'] is True
+    assert levels['level_2_structure']['index_content_matches'] is True
+    assert levels['segment_index']['source_freshness_status']=='UNVERIFIED'
+
+
+def test_rebuilt_index_invalidates_structure_audit_of_previous_content(fixture_repo: Path) -> None:
+    from consistency.draft_structure_audit import audit_draft_structure
+    from consistency.segment_index import build_segment_index
+    original=build_segment_index(fixture_repo)
+    audit=audit_draft_structure(original,fixture_repo);audit['findings']=[]
+    run=fixture_repo/'workspace/runs/run_test_draft_stage_b_50ch/segments.json'
+    data=json.loads(run.read_text(encoding='utf-8'))
+    data['chapters'][0]['segments'][0]['draft_text']='synthetic revised draft'
+    run.write_text(json.dumps(data),encoding='utf-8')
+    current=build_segment_index(fixture_repo,previous_index=original)
+    (fixture_repo/'workspace/indexes/segment_index.json').write_text(json.dumps(current),encoding='utf-8')
+    (fixture_repo/'workspace/consistency_audit/draft_structure_audit.json').write_text(json.dumps(audit),encoding='utf-8')
+    (fixture_repo/'workspace/consistency_audit/local_fix_plan.json').write_text(json.dumps({'stats':{
+        'term_fix_count':0,'retranslate_segment_count':0,'deferred_count':0}}),encoding='utf-8')
+    report=build_draft_consistency_report(fixture_repo)
+    assert report['progressive_disclosure']['level_2_structure']['index_content_matches'] is False
+    assert report['status']!='PASS' and report['recommendation']!='ready_for_final_export'
+
+
+def test_matching_saved_index_and_audit_do_not_prove_source_freshness(fixture_repo: Path) -> None:
+    from consistency.draft_structure_audit import audit_draft_structure
+    from consistency.segment_index import build_segment_index
+    run=fixture_repo/'workspace/runs/run_test_draft_stage_b_50ch/segments.json'
+    data=json.loads(run.read_text(encoding='utf-8'))
+    data['chapters'][0]['segments'][0]['draft_text']='合成译文'
+    run.write_text(json.dumps(data),encoding='utf-8')
+    index=build_segment_index(fixture_repo);audit=audit_draft_structure(index,fixture_repo)
+    (fixture_repo/'workspace/indexes/segment_index.json').write_text(json.dumps(index),encoding='utf-8')
+    (fixture_repo/'workspace/consistency_audit/draft_structure_audit.json').write_text(json.dumps(audit),encoding='utf-8')
+    (fixture_repo/'workspace/consistency_audit/local_fix_plan.json').write_text(json.dumps({'stats':{
+        'term_fix_count':0,'retranslate_segment_count':0,'deferred_count':0}}),encoding='utf-8')
+    for changed in (False,True):
+        if changed:
+            data['chapters'][0]['segments'][0]['draft_text']='另一份合成译文'
+            run.write_text(json.dumps(data),encoding='utf-8')
+        report=build_draft_consistency_report(fixture_repo)
+        levels=report['progressive_disclosure']
+        assert levels['level_2_structure']['index_content_matches'] is True
+        assert levels['segment_index']['source_freshness_status']=='UNVERIFIED'
+        assert report['status']=='INCOMPLETE'
+        assert report['recommendation']!='ready_for_final_export'
+
+
 def test_arbitrate_conflicts_cli(tmp_path: Path, monkeypatch) -> None:
     audit_dir = tmp_path / "workspace" / "consistency_audit"
     audit_dir.mkdir(parents=True)

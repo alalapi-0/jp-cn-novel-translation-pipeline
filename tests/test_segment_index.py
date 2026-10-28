@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -201,6 +202,222 @@ def test_misalignment_duplicate_and_order_recall(tmp_path: Path) -> None:
     assert "index_order_mismatch" in types
     missing = index["issues"]["missing_segments"]
     assert {m["segment_index"] for m in missing} == {2, 3}
+
+
+def test_duplicate_chapters_are_unresolved_and_keep_input_denominator(tmp_path: Path) -> None:
+    from consistency.draft_structure_audit import _findings_from_segment_index
+    repo=tmp_path/'repo'
+    _write_completed_run(repo,'duplicate_chapters',[
+        (1,[('ch-001-seg-001','synthetic first','first draft')]),
+        (1,[('ch-001-seg-001','synthetic second','second draft')]),
+        (1,[('ch-001-seg-001','synthetic third','third draft')]),
+    ])
+    index=build_segment_index(repo)
+    assert index_summary(index)['status']=='WARN'
+    assert index['chapters']['ch-001']['segment_count']==3
+    assert index['chapters']['ch-001']['indexed_segment_count']==0
+    assert index['stats']['selected_input_segments']==3
+    assert index_summary(index)['selected_input_segments']==3
+    assert 'ch-001-seg-001' not in index['segments']
+    issue=next(x for x in index['issues']['misalignments'] if x['issue_type']=='duplicate_chapter_number')
+    assert issue['occurrences']==3 and issue['input_segment_count']==3
+    assert any(x['issue_subtype']=='duplicate_chapter_number' and x['blocking']
+               for x in _findings_from_segment_index(index))
+    _assert_no_body_text(index)
+
+
+def test_duplicate_segment_id_is_not_selected_as_a_trusted_index_entry(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    _write_completed_run(repo,'duplicate_segment',[(1,[
+        ('ch-001-seg-001','synthetic first','first draft'),
+        ('ch-001-seg-001','synthetic second','second draft'),
+        ('ch-001-seg-002','synthetic unique','unique draft'),
+    ])])
+    index=build_segment_index(repo)
+    assert index_summary(index)['status']=='WARN'
+    assert index['chapters']['ch-001']['segment_count']==3
+    assert 'ch-001-seg-001' not in index['segments']
+    assert 'ch-001-seg-002' in index['segments']
+
+
+def test_duplicate_segment_id_across_chapters_is_not_selected(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    _write_completed_run(repo,'duplicate_across_chapters',[
+        (1,[('ch-001-seg-001','synthetic first','first draft')]),
+        (2,[('ch-001-seg-001','synthetic second','second draft')]),
+        (3,[('ch-001-seg-001','synthetic third','third draft')]),
+    ])
+    index=build_segment_index(repo)
+    assert index_summary(index)['status']=='WARN'
+    assert 'ch-001-seg-001' not in index['segments']
+    issue=next(x for x in index['issues']['misalignments'] if x['issue_type']=='duplicate_segment_across_chapters')
+    assert issue['occurrences']==3 and index['stats']['selected_input_segments']==3
+    assert all(x['indexed_segment_count']==0 for x in index['chapters'].values())
+
+
+def test_duplicate_within_one_chapter_stays_ambiguous_in_other_chapters(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    _write_completed_run(repo,'mixed_duplicate',[
+        (1,[('ch-001-seg-001','synthetic first','first draft'),
+            ('ch-001-seg-001','synthetic second','second draft')]),
+        (2,[('ch-001-seg-001','synthetic third','third draft'),
+            ('ch-002-seg-002','synthetic unique','unique draft')]),
+    ])
+    index=build_segment_index(repo)
+    assert 'ch-001-seg-001' not in index['segments']
+    assert 'ch-002-seg-002' in index['segments']
+    assert index['stats']['selected_input_segments']==4 and not index['stats']['clean']
+
+
+def test_schema_three_index_is_rescanned_after_ambiguity_rule_change(clean_repo: Path) -> None:
+    old=build_segment_index(clean_repo)
+    old['schema_version']=3
+    current=build_segment_index(clean_repo,previous_index=old)
+    assert current['schema_version']!=3
+    assert current['stats']['files_reused']==0
+    assert current['stats']['files_scanned']==1
+
+
+def test_summary_does_not_pass_obsolete_index_schema(clean_repo: Path) -> None:
+    old=build_segment_index(clean_repo)
+    old['schema_version']=3
+    summary=index_summary(old)
+    assert summary['status']=='WARN' and summary['schema_current'] is False
+
+
+def test_unparseable_chapter_is_reported_and_its_denominator_preserved(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    path=_write_completed_run(repo,'unparseable_chapter',[(1,[
+        ('ch-001-seg-001','synthetic source','synthetic draft')])])
+    doc=json.loads(path.read_text(encoding='utf-8'));doc['chapters'][0]['chapter_id']='unknown'
+    path.write_text(json.dumps(doc),encoding='utf-8')
+    index=build_segment_index(repo)
+    assert index_summary(index)['status']=='WARN'
+    assert index['stats']['selected_input_segments']==0
+    assert index['stats']['unresolved_input_segments']==1
+    assert index['stats']['unparseable_chapters_count']==1
+    assert index_summary(index)['unresolved_input_segments']==1
+    assert index['stats']['segments_indexed']==0
+    assert any(x['issue_type']=='unparseable_chapter_id' for x in index['issues']['misalignments'])
+    reused=build_segment_index(repo,previous_index=index)
+    assert reused['stats']['files_reused']==1
+    assert reused['stats']['unresolved_input_segments']==1 and not reused['stats']['clean']
+    with pytest.raises(ValueError):
+        scan_segments_file(path,run_id='unparseable_chapter')
+    _assert_no_body_text(index)
+
+
+def test_unparseable_chapter_with_invalid_segment_collection_is_refused(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    path=_write_completed_run(repo,'invalid_segment_collection',[(1,[('ch-001-seg-001','synthetic','draft')])])
+    doc=json.loads(path.read_text(encoding='utf-8'))
+    doc['chapters'][0].update(chapter_id='unknown',segments={'not':'a segment list'})
+    path.write_text(json.dumps(doc),encoding='utf-8')
+    with pytest.raises(ValueError,match='segment list'):
+        build_segment_index(repo)
+
+
+def test_unparseable_chapter_identifier_does_not_leak_raw_value(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    path=_write_completed_run(repo,'unparseable_private_id',[(1,[('ch-001-seg-001','synthetic','draft')])])
+    doc=json.loads(path.read_text(encoding='utf-8'))
+    doc['chapters'][0]['chapter_id']='synthetic untrusted chapter payload'
+    path.write_text(json.dumps(doc),encoding='utf-8')
+    index=build_segment_index(repo)
+    assert not index['stats']['clean']
+    assert 'synthetic untrusted chapter payload' not in json.dumps(index,ensure_ascii=False)
+
+
+def test_corrupted_cached_issue_cannot_turn_unparseable_input_into_pass(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    path=_write_completed_run(repo,'unparseable_cache',[(1,[('ch-001-seg-001','synthetic','draft')])])
+    doc=json.loads(path.read_text(encoding='utf-8'));doc['chapters'][0]['chapter_id']='unknown'
+    path.write_text(json.dumps(doc),encoding='utf-8')
+    previous=build_segment_index(repo)
+    previous['segment_files'][str(path)]['unresolved_inputs']=[]
+    current=build_segment_index(repo,previous_index=previous)
+    assert current['stats']['files_scanned']==1 and current['stats']['files_reused']==0
+    assert current['stats']['unresolved_input_segments']==1 and not current['stats']['clean']
+
+
+def test_unchanged_cache_reuses_after_json_round_trip(clean_repo: Path) -> None:
+    from consistency.segment_index import index_shape_consistent
+    previous=json.loads(json.dumps(build_segment_index(clean_repo)))
+    assert index_shape_consistent(previous)
+    current=build_segment_index(clean_repo,previous_index=previous)
+    assert current['stats']['files_reused']==1 and current['stats']['files_scanned']==0
+    assert current['stats']['clean'] and index_shape_consistent(current)
+
+
+def test_index_content_identity_ignores_only_volatile_rebuild_details(clean_repo: Path) -> None:
+    from consistency.segment_index import segment_index_digest
+    first=build_segment_index(clean_repo)
+    second=build_segment_index(clean_repo,previous_index=json.loads(json.dumps(first)))
+    second['generated_at']='synthetic later time'
+    assert segment_index_digest(first)==segment_index_digest(second)
+
+
+def test_empty_chapter_is_not_reported_as_clean(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    _write_completed_run(repo,'empty_chapter',[(1,[('ch-001-seg-001','synthetic','draft')]),(2,[])])
+    index=build_segment_index(repo)
+    assert index_summary(index)['status']=='WARN'
+    assert any(x['issue_type']=='empty_chapter' and x['chapter_id']=='ch-002'
+               for x in index['issues']['misalignments'])
+    assert index['stats']['selected_input_segments']==1
+
+
+def test_cached_chapter_issue_cannot_be_removed_from_top_level(tmp_path: Path) -> None:
+    from consistency.segment_index import index_shape_consistent
+    repo=tmp_path/'repo'
+    _write_completed_run(repo,'empty_cached_chapter',[(1,[('ch-001-seg-001','synthetic','draft')]),(2,[])])
+    index=build_segment_index(repo)
+    assert not index['stats']['clean']
+    index['issues']['misalignments']=[]
+    index['stats']['misalignment_count']=0;index['stats']['clean']=True
+    assert not index_shape_consistent(index)
+    assert index_summary(index)['status']=='WARN'
+
+
+def test_top_level_segment_cannot_differ_from_cached_projection(clean_repo: Path) -> None:
+    from consistency.segment_index import index_shape_consistent
+    index=json.loads(json.dumps(build_segment_index(clean_repo)))
+    index['segments']['ch-001-seg-001']['target_sha256']='0'*64
+    assert not index_shape_consistent(index)
+    assert index_summary(index)['status']=='WARN'
+
+
+def test_file_order_is_required_and_controls_selected_chapter(tmp_path: Path) -> None:
+    from consistency.segment_index import index_shape_consistent, segment_index_digest
+    repo=tmp_path/'repo'
+    first=_write_completed_run(repo,'first_run',[(1,[('ch-001-seg-001','first','first draft')])])
+    second=_write_completed_run(repo,'second_run',[(1,[('ch-001-seg-001','second','second draft')])])
+    os.utime(first,(1_600_000_000,1_600_000_000));os.utime(second,(1_600_000_001,1_600_000_001))
+    index=json.loads(json.dumps(build_segment_index(repo)))
+    assert index['file_order']==[str(first),str(second)] and index_shape_consistent(index)
+    assert index['segments']['ch-001-seg-001']['source_run_id']=='second_run'
+    tampered=json.loads(json.dumps(index));tampered['file_order'].reverse()
+    assert segment_index_digest(tampered)!=segment_index_digest(index)
+    assert not index_shape_consistent(tampered) and index_summary(tampered)['status']=='WARN'
+    tampered['file_order']=[str(first),str(first)]
+    assert not index_shape_consistent(tampered)
+    tampered['file_order']=[]
+    assert not index_shape_consistent(tampered)
+
+
+def test_no_segment_files_is_not_reported_as_clean(tmp_path: Path) -> None:
+    index=build_segment_index(tmp_path/'empty')
+    assert index_summary(index)['status']=='WARN'
+    assert any(x['issue_type']=='no_segment_files' for x in index['issues']['misalignments'])
+
+
+def test_completed_run_without_chapters_is_not_reported_as_clean(tmp_path: Path) -> None:
+    repo=tmp_path/'repo'
+    path=_write_completed_run(repo,'missing_chapters',[(1,[('ch-001-seg-001','synthetic','draft')])])
+    path.write_text(json.dumps({'chapters':[]}),encoding='utf-8')
+    index=build_segment_index(repo)
+    assert index_summary(index)['status']=='WARN'
+    assert any(x['issue_type']=='no_chapters_in_file' for x in index['issues']['misalignments'])
 
 
 def test_incremental_reuses_unchanged_files(clean_repo: Path) -> None:

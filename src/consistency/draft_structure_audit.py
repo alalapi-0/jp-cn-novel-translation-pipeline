@@ -27,6 +27,7 @@ from typing import Any, Iterator
 
 from consistency.conflict_audit import chapters_from_segment_ids
 from consistency.manifest import find_segments_files
+from consistency.segment_index import SCHEMA_VERSION as SEGMENT_INDEX_SCHEMA_VERSION, index_shape_consistent, segment_index_digest
 
 SCHEMA_VERSION = 1
 
@@ -172,6 +173,13 @@ def _missing_segment_finding(issue: dict[str, Any]) -> dict[str, Any]:
 
 def _findings_from_segment_index(segment_index: dict[str, Any]) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
+    if (type(segment_index) is not dict or type(segment_index.get('schema_version')) is not int
+            or segment_index['schema_version']!=SEGMENT_INDEX_SCHEMA_VERSION):
+        return [_finding_base(kind='misalignment',severity=SEVERITY_BY_KIND['misalignment'],blocking=True,
+            chapters=[],segment_ids=[],issue_subtype='stale_segment_index_schema')]
+    if not index_shape_consistent(segment_index):
+        return [_finding_base(kind='misalignment',severity=SEVERITY_BY_KIND['misalignment'],blocking=True,
+            chapters=[],segment_ids=[],issue_subtype='invalid_segment_index')]
     issues = segment_index.get("issues") or {}
 
     for issue in issues.get("missing_segments") or []:
@@ -293,6 +301,8 @@ def audit_draft_structure(
         "inputs": {
             "segment_index_generated_at": segment_index.get("generated_at"),
             "segment_index_schema_version": segment_index.get("schema_version"),
+            "segment_index_sha256": segment_index_digest(segment_index),
+            "source_freshness_status": "UNVERIFIED",
             "segments_indexed": index_stats.get("segments_indexed"),
             "chapters_covered": index_stats.get("chapters_covered"),
             "index_missing_segments_count": index_stats.get("missing_segments_count"),
@@ -317,6 +327,8 @@ def audit_summary(report: dict[str, Any]) -> dict[str, Any]:
     blocking = int(stats.get("blocking_count") or 0)
     return {
         "status": "PASS" if blocking == 0 else "WARN",
+        "status_scope": "indexed_snapshot_only",
+        "source_freshness_status": "UNVERIFIED",
         "findings_total": stats.get("findings_total"),
         "blocking_count": blocking,
         "non_blocking_count": stats.get("non_blocking_count"),

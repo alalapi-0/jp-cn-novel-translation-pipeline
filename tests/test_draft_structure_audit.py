@@ -264,6 +264,25 @@ def test_audit_summary_pass_when_no_blocking(clean_repo: Path):
     assert summary["blocking_count"] == 0
 
 
+def test_obsolete_segment_index_blocks_structure_audit(clean_repo: Path):
+    index=build_segment_index(clean_repo);index['schema_version']=3
+    report=audit_draft_structure(index,clean_repo)
+    assert any(row['blocking'] and row.get('issue_subtype')=='stale_segment_index_schema'
+               for row in report['findings'])
+    assert audit_summary(report)['status']=='WARN'
+
+
+def test_inconsistent_current_index_blocks_structure_audit(clean_repo: Path):
+    from consistency.segment_index import index_summary
+    index=build_segment_index(clean_repo)
+    index['stats']['clean']=False;index['stats']['misalignment_count']=1
+    index['issues']['misalignments']=[]
+    assert index_summary(index)['shape_consistent'] is False
+    report=audit_draft_structure(index,clean_repo)
+    assert any(row['blocking'] and row.get('issue_subtype')=='invalid_segment_index'
+               for row in report['findings'])
+
+
 def test_audit_summary_warn_when_blocking(clean_repo: Path):
     _write_run(
         clean_repo,
