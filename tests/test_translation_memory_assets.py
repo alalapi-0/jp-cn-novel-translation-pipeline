@@ -29,6 +29,185 @@ from workbench.project_registry import (  # noqa: E402
 from workbench.review_state import DecisionActor, approval_identity, patch_project_review_state  # noqa: E402
 
 
+@pytest.mark.parametrize("kind", ["glossary", "character", "tm_pair"])
+@pytest.mark.parametrize("scenario", ["root_link", "leaf_external", "leaf_internal", "hardlink", "rename_race"])
+def test_manifest_dependency_rejects_unsafe_paths_before_reading_body(tmp_path, monkeypatch, kind, scenario):
+    from assets import translation_memory as memory
+    from workbench import project_registry
+
+    repo = tmp_path / "repo"
+    workspace = repo / "workspace"
+    workspace.mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    if kind == "tm_pair":
+        (workspace / "assets").mkdir()
+        folder = workspace / "assets" / "translation_memory"
+        filename = "synthetic.json"
+        key = "tm:one"
+        descriptor = {"kind": kind, "asset": filename, "pair_id": "a" * 64}
+    else:
+        folder = workspace / "configs"
+        filename = "glossary.yaml" if kind == "glossary" else "character_profile.yaml"
+        key = "config:one"
+        descriptor = {"kind": kind, "entry": "Synthetic"}
+
+    external = outside / "synthetic-body"
+    external.write_text("fixture body must not be read", encoding="utf-8")
+    forbidden = [external.stat()]
+    if scenario == "root_link":
+        target = outside / filename
+        target.write_text("fixture body must not be read", encoding="utf-8")
+        forbidden.append(target.stat())
+        folder.symlink_to(outside, target_is_directory=True)
+    elif scenario == "leaf_external":
+        folder.mkdir()
+        (folder / filename).symlink_to(external)
+    elif scenario == "leaf_internal":
+        folder.mkdir()
+        target = folder / "internal-body"
+        target.write_text("fixture body must not be read", encoding="utf-8")
+        forbidden.append(target.stat())
+        (folder / filename).symlink_to(target.name)
+    elif scenario == "hardlink":
+        folder.mkdir()
+        os.link(external, folder / filename)
+    else:
+        folder.mkdir()
+        (folder / filename).write_text("fixture internal body", encoding="utf-8")
+        replacement = outside / "replacement"
+        replacement.mkdir()
+        target = replacement / filename
+        target.write_text("fixture body must not be read", encoding="utf-8")
+        forbidden.append(target.stat())
+        original_open = memory._open_beneath
+        def switch_after_root_open(root_fd, relative):
+            folder.rename(outside / "moved")
+            folder.symlink_to(replacement, target_is_directory=True)
+            return original_open(root_fd, relative)
+        monkeypatch.setattr(memory, "_open_beneath", switch_after_root_open)
+
+    original_read = os.read
+    def read_without_forbidden_body(fd, amount):
+        actual = os.fstat(fd)
+        assert all((actual.st_dev, actual.st_ino) != (item.st_dev, item.st_ino) for item in forbidden)
+        return original_read(fd, amount)
+    def unexpected_parser(*_args, **_kwargs):
+        raise AssertionError("unsafe dependency reached a body parser")
+    monkeypatch.setattr(os, "read", read_without_forbidden_body)
+    monkeypatch.setattr(project_registry.yaml, "safe_load", unexpected_parser)
+    monkeypatch.setattr(memory, "_current_asset_context", unexpected_parser)
+    data = {"dependency_sources": {key: descriptor}, "dependency_versions": {key: "0" * 64},
+            "segments": [{"id": "affected", "dependency_keys": [key]}, {"id": "independent"}]}
+    resolved = project_registry._resolve_manifest_dependencies(repo, data)
+    assert resolved["segments"][0]["dependency_resolution_errors"] == [key]
+    assert "dependency_resolution_errors" not in resolved["segments"][1]
+    assert str(outside) not in json.dumps(resolved)
+
+
+def test_manifest_tm_dependency_hands_verified_bytes_to_consumer(tmp_path, monkeypatch):
+    from assets import translation_memory as memory
+    from workbench.project_registry import _resolve_manifest_dependencies
+
+    folder = tmp_path / "workspace" / "assets" / "translation_memory"
+    folder.mkdir(parents=True)
+    target = folder / "synthetic.json"
+    body = b'{"asset_kind":"translation_memory","synthetic":true}'
+    target.write_bytes(body)
+    pair_id = "a" * 64
+    calls = []
+    def consume(path, *, repo_root, source_bytes):
+        calls.append((path, repo_root, source_bytes))
+        return {"translation_pairs": [{"pair_id": pair_id, "version_sha256": "b" * 64}]}
+    def no_path_read(self, *_args, **_kwargs):
+        if self == target:
+            raise AssertionError("verified dependency was reopened by path")
+        raise AssertionError("unexpected path read")
+    monkeypatch.setattr(memory, "_current_asset_context", consume)
+    monkeypatch.setattr(Path, "read_text", no_path_read)
+    monkeypatch.setattr(Path, "read_bytes", no_path_read)
+    data = {"dependency_sources": {"tm:one": {"kind": "tm_pair", "asset": target.name, "pair_id": pair_id}},
+            "dependency_versions": {"tm:one": "0" * 64}, "segments": [{"dependency_keys": ["tm:one"]}]}
+    resolved = _resolve_manifest_dependencies(tmp_path, data)
+    assert calls == [(target, tmp_path, body)]
+    assert resolved["dependency_versions"]["tm:one"] == "b" * 64
+    assert memory.load_translation_asset_context(target, source_bytes=body)["synthetic"] is True
+
+
+@pytest.mark.parametrize("kind", ["glossary", "character", "tm_pair"])
+def test_manifest_dependency_withholds_file_changed_while_reading(tmp_path, monkeypatch, kind):
+    from assets import translation_memory as memory
+    from workbench import project_registry
+
+    if kind == "tm_pair":
+        folder = tmp_path / "workspace" / "assets" / "translation_memory"
+        filename = "synthetic.json"
+        key = "tm:one"
+        descriptor = {"kind": kind, "asset": filename, "pair_id": "a" * 64}
+    else:
+        folder = tmp_path / "workspace" / "configs"
+        filename = "glossary.yaml" if kind == "glossary" else "character_profile.yaml"
+        key = "config:one"
+        descriptor = {"kind": kind, "entry": "Synthetic"}
+    folder.mkdir(parents=True)
+    target = folder / filename
+    target.write_text("synthetic original", encoding="utf-8")
+    identity = target.stat()
+    original_read = os.read
+    changed = False
+    def change_after_first_read(fd, amount):
+        nonlocal changed
+        result = original_read(fd, amount)
+        actual = os.fstat(fd)
+        if not changed and (actual.st_dev, actual.st_ino) == (identity.st_dev, identity.st_ino):
+            target.write_text("synthetic changed and longer", encoding="utf-8")
+            changed = True
+        return result
+    def unexpected_parser(*_args, **_kwargs):
+        raise AssertionError("changed dependency reached a body parser")
+    monkeypatch.setattr(os, "read", change_after_first_read)
+    monkeypatch.setattr(project_registry.yaml, "safe_load", unexpected_parser)
+    monkeypatch.setattr(memory, "_current_asset_context", unexpected_parser)
+    data = {"dependency_sources": {key: descriptor}, "dependency_versions": {key: "0" * 64},
+            "segments": [{"dependency_keys": [key]}, {"id": "independent"}]}
+    resolved = project_registry._resolve_manifest_dependencies(tmp_path, data)
+    assert changed is True
+    assert resolved["segments"][0]["dependency_resolution_errors"] == [key]
+    assert "dependency_resolution_errors" not in resolved["segments"][1]
+
+
+def test_manifest_dependency_preserves_read_and_cleanup_failures(tmp_path, monkeypatch):
+    from assets import translation_memory as memory
+    from workbench.project_registry import _resolve_manifest_dependencies
+
+    folder = tmp_path / "workspace" / "configs"
+    folder.mkdir(parents=True)
+    (folder / "glossary.yaml").write_text("synthetic fixture", encoding="utf-8")
+    original_open, original_read, original_close = memory._open_beneath, os.read, os.close
+    tracked = {"fd": None, "raised": False}
+    def capture_open(root_fd, relative):
+        tracked["fd"] = original_open(root_fd, relative)
+        return tracked["fd"]
+    def fail_read(fd, amount):
+        if fd == tracked["fd"]:
+            raise ValueError("synthetic read failure")
+        return original_read(fd, amount)
+    def fail_close(fd):
+        original_close(fd)
+        if fd == tracked["fd"] and not tracked["raised"]:
+            tracked["raised"] = True
+            raise OSError("synthetic cleanup failure")
+    monkeypatch.setattr(memory, "_open_beneath", capture_open)
+    monkeypatch.setattr(os, "read", fail_read)
+    monkeypatch.setattr(os, "close", fail_close)
+    data = {"dependency_sources": {"config:one": {"kind": "glossary", "entry": "Synthetic"}},
+            "dependency_versions": {"config:one": "0" * 64}, "segments": [{"dependency_keys": ["config:one"]}]}
+    with pytest.raises(ExceptionGroup) as error:
+        _resolve_manifest_dependencies(tmp_path, data)
+    assert any(isinstance(item, ValueError) for item in error.value.exceptions)
+    assert any(isinstance(item, OSError) for item in error.value.exceptions)
+
+
 def test_memory_context_caps_terms_names_and_pairs_independently(monkeypatch):
     from assets import translation_memory as memory
     data = {

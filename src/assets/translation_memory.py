@@ -613,16 +613,19 @@ def build_translation_memory_assets(
     return asset_doc
 
 
-def load_translation_asset_context(path: Path) -> dict[str, Any]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+def load_translation_asset_context(path: Path, *, source_bytes: bytes | None = None) -> dict[str, Any]:
+    content = path.read_text(encoding="utf-8") if source_bytes is None else source_bytes.decode("utf-8")
+    data = json.loads(content)
     if not isinstance(data, dict) or data.get("asset_kind") != "translation_memory":
         raise ValueError(f"not a translation memory asset file: {path}")
     return data
 
 
-def _current_asset_context(path: Path, *, repo_root: Path | None = None) -> dict[str, Any]:
+def _current_asset_context(
+    path: Path, *, repo_root: Path | None = None, source_bytes: bytes | None = None
+) -> dict[str, Any]:
     """Read-through validation; never updates or deletes the saved audit snapshot."""
-    data = load_translation_asset_context(path)
+    data = load_translation_asset_context(path, source_bytes=source_bytes)
     if data.get('schema_version') != 2 or data.get('withdrawn') is True:
         return {}
     if repo_root is None:

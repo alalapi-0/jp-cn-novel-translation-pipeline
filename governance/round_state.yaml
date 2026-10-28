@@ -552,13 +552,13 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: tm_direct_path_boundary_synthetic_verified
+    phase: tm_dependency_path_boundary_synthetic_verified
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Verify indirect dependency boundaries and registered source/storage
-      scope; prior synthetic probe remains inconclusive and style integration remains pending.
+    next_action: Verify review-state and other indirect path boundaries and resolve registered
+      source/storage scope; prior synthetic probe remains inconclusive and style integration remains pending.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -689,8 +689,18 @@ codex_governance:
     live_adoption: UNVERIFIED
     quality_credit: false
     task_credit: false
+  round186_tm_dependency_path_boundary:
+    status: SYNTHETIC_TESTED
+    scope: selected glossary, character and TM-pair dependency reads only
+    review_state: UNVERIFIED
+    other_indirect_entries: UNVERIFIED
+    cross_mount_test: UNVERIFIED_BY_FIXTURE
+    external_roots: UNKNOWN
+    live_adoption: UNVERIFIED
+    quality_credit: false
+    task_credit: false
   round_accounting:
-    count: 185
+    count: 186
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:

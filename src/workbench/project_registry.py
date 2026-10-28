@@ -366,9 +366,9 @@ def _resolve_manifest_dependencies(repo_root, data):
                 if set(descriptor)!={'kind','entry'} or not isinstance(descriptor['entry'],str):
                     raise ValueError('invalid config dependency descriptor')
                 name='glossary.yaml' if kind=='glossary' else 'character_profile.yaml'
-                folder=repo_root/'workspace/configs';path=folder/name
-                if not path.resolve().is_relative_to(folder.resolve()): raise ValueError('escaped config dependency')
-                doc=yaml.safe_load(path.read_bytes());field='entries' if kind=='glossary' else 'characters'
+                from assets.translation_memory import _read_repo_file
+                source_bytes=_read_repo_file(repo_root,Path('workspace/configs')/name)
+                doc=yaml.safe_load(source_bytes);field='entries' if kind=='glossary' else 'characters'
                 idfield='source_term' if kind=='glossary' else 'name'
                 rows=[r for r in (doc.get(field) or []) if isinstance(r,dict) and r.get(idfield)==descriptor['entry']]
                 if len(rows)!=1: raise ValueError('missing or ambiguous config dependency')
@@ -381,10 +381,11 @@ def _resolve_manifest_dependencies(repo_root, data):
                 if not isinstance(name,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}\.json',name):
                     raise ValueError('invalid TM asset name')
                 if not isinstance(pid,str) or not re.fullmatch(r'[0-9a-f]{64}',pid): raise ValueError('invalid TM pair ID')
-                folder=repo_root/'workspace/assets/translation_memory';path=folder/name
-                if not path.resolve().is_relative_to(folder.resolve()): raise ValueError('escaped TM dependency')
-                from assets.translation_memory import _current_asset_context
-                doc=_current_asset_context(path,repo_root=repo_root)
+                relative=Path('workspace/assets/translation_memory')/name
+                path=repo_root/relative
+                from assets.translation_memory import _current_asset_context, _read_repo_file
+                source_bytes=_read_repo_file(repo_root,relative)
+                doc=_current_asset_context(path,repo_root=repo_root,source_bytes=source_bytes)
                 rows=[r for r in doc.get('translation_pairs',[]) if r['pair_id']==pid]
                 if len(rows)!=1: raise ValueError('missing or stale TM dependency')
                 catalog[key]=rows[0]['version_sha256']
