@@ -552,13 +552,13 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: synthetic_latency_cold_repaired_admission_expired
+    phase: synthetic_engineering_probe_inconclusive
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Prepare a newly bounded source-free latency measurement after pre-effect review. Preserve closed sources
-      and unknown counts; PSH real binding and consumer adoption remain unverified.
+    next_action: Continue independent framework engineering; preserve the closed synthetic
+      input. Resource cleanup and PSH binding and adoption remain unverified.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -639,8 +639,14 @@ codex_governance:
     commit: null
     receipt_ref: null
     policy: Commit and synchronize verified nonsensitive engineering changes each implementation round.
+  round178_synthetic_checkpoint:
+    status: INCONCLUSIVE
+    accounting: UNKNOWN
+    cleanup: UNVERIFIED
+    synthetic_input: closed; no retry
+    progress_credit: false
   round_accounting:
-    count: 177
+    count: 178
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:
