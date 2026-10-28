@@ -62,7 +62,6 @@ def _level_stats(repo_root: Path) -> dict[str, Any]:
     glossary_blocking = sum(1 for f in glossary.get("findings") or [] if f.get("blocking"))
     structure_blocking = sum(1 for f in structure.get("findings") or [] if f.get("blocking"))
 
-    total_chapters = count_source_chapters(repo_root)
     manifest_chapters = int((manifest.get("stats") or {}).get("chapters_indexed") or 0)
     index_schema_supported=(type(segment_index.get('schema_version')) is int
                             and segment_index['schema_version']==SEGMENT_INDEX_SCHEMA_VERSION)
@@ -86,8 +85,9 @@ def _level_stats(repo_root: Path) -> dict[str, Any]:
         "level_0_manifest": {
             "present": bool(manifest),
             "chapter_count": manifest_chapters,
-            "covers_source": bool((manifest.get("stats") or {}).get("full_coverage"))
-            or manifest_chapters >= total_chapters,
+            "covers_source": None,
+            "snapshot_claims_full_coverage": (manifest.get("stats") or {}).get("full_coverage") is True,
+            "source_freshness_status": "UNVERIFIED",
         },
         "level_1_entity_index": {
             "present": bool(entity_index),
@@ -162,6 +162,7 @@ def build_draft_consistency_report(repo_root: Path) -> dict[str, Any]:
     incomplete = (not all(artifacts_present.values())
                   or not levels['segment_index']['known_clean']
                   or not levels['level_2_structure']['index_content_matches']
+                  or levels['level_0_manifest']['source_freshness_status']!='VERIFIED'
                   or levels['segment_index']['source_freshness_status']!='VERIFIED'
                   or bool(arbitration.get("candidate_count") and arbitration.get("execution_status") != "PASS")
                   or bool(levels["level_3_fix_plan"].get("retranslate_segment_count") and not fixes.get("all_closed")))

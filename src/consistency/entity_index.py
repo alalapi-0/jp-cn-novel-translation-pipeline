@@ -11,6 +11,7 @@ heuristics only — no model API.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import datetime, timezone
@@ -553,6 +554,17 @@ def build_entity_index(
             "top_n_unlisted": top_n_unlisted,
         },
     }
+
+
+def entity_index_digest(index: dict[str, Any]) -> str:
+    """Identify semantic index content; this is not an authenticity signature."""
+    payload = {key: value for key, value in index.items() if key != "generated_at"}
+    if type(payload.get("stats")) is dict:
+        payload["stats"] = {key: value for key, value in payload["stats"].items()
+                            if key not in {"files_scanned", "files_reused"}}
+    detached = json.loads(json.dumps(payload, ensure_ascii=False, allow_nan=False))
+    raw = json.dumps(detached, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def index_summary(index: dict[str, Any]) -> dict[str, Any]:

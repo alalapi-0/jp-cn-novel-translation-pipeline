@@ -213,7 +213,9 @@ def test_fix_plan_status_partial_after_pilot() -> None:
     plan = {"stats": {"term_fix_count": 0, "deferred_count": 1, "retranslate_segment_count": 10}}
     status = build_fix_plan_status(plan, {"completed_segments": 2, "remaining_segments": 8, "status": "partial"})
     assert status["retranslate_tasks"]["status"] == "partial"
-    assert status["retranslate_tasks"]["pilot_validated"] is True
+    assert status["retranslate_tasks"]["partial_execution_reported"] is True
+    assert status["retranslate_tasks"]["pilot_validated"] is False
+    assert status["retranslate_tasks"]["pilot_validation_status"] == "UNVERIFIED"
     assert status["deferred"]["status"] == "pending" and status["all_closed"] is False
 
 
@@ -292,6 +294,8 @@ def test_current_index_and_audit_are_recognized_in_report(fixture_repo: Path) ->
     assert levels['level_2_structure']['index_schema_supported'] is True
     assert levels['level_2_structure']['index_content_matches'] is True
     assert levels['segment_index']['source_freshness_status']=='UNVERIFIED'
+    assert levels['level_0_manifest']['covers_source'] is None
+    assert levels['level_0_manifest']['source_freshness_status']=='UNVERIFIED'
 
 
 def test_rebuilt_index_invalidates_structure_audit_of_previous_content(fixture_repo: Path) -> None:
@@ -354,3 +358,235 @@ def test_arbitrate_conflicts_cli(tmp_path: Path, monkeypatch) -> None:
     assert rc == 0
     assert (audit_dir / "arbitration_report.simulation.json").is_file()
     assert not (audit_dir / "arbitration_report.json").exists()
+
+
+def _phase_b():
+    path = REPO_ROOT / "scripts" / "phase_b_completion_check.py"
+    spec = importlib.util.spec_from_file_location("phase_b_truth_fixture", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_incomplete_report_invalid_index_and_zero_budget_do_not_pass(tmp_path, monkeypatch):
+    gate = _phase_b()
+    report = {
+        "status": "INCOMPLETE",
+        "recommendation": "verify_current_sources_before_final_export",
+        "blocking_conflicts": 0,
+        "progressive_disclosure": {
+            "level_0_manifest": {"covers_source": False},
+            "segment_index": {"known_clean": False, "source_freshness_status": "UNVERIFIED"},
+        },
+    }
+    artifacts = {
+        "chapter_manifest.json": {"stats": {"chapters_indexed": 2, "full_coverage": False}},
+        "segment_index.json": {"stats": {"missing_segments_count": 0}},
+        "entity_index.json": {"stats": {}},
+        "glossary_conflict_audit.json": {"findings": []},
+        "fix_plan_status.json": {
+            "retranslate_tasks": {"status": "partial", "pilot_validated": True},
+            "term_fixes": {"status": "closed"},
+            "deferred": {"status": "closed"},
+            "all_closed": False,
+        },
+        "arbitration_report.json": {"api_calls": 1, "max_api_calls": 0},
+    }
+    monkeypatch.setattr(gate, "count_source_chapters", lambda _: 2)
+    monkeypatch.setattr(gate, "collect_status", lambda _: {
+        "current_phase": "synthetic", "next_task": None, "draft_progress": {},
+    })
+    monkeypatch.setattr(gate, "_load_orphan_eval", lambda: {"decision": "synthetic"})
+    monkeypatch.setattr(gate, "build_draft_consistency_report", lambda _: report)
+    monkeypatch.setattr(gate, "_artifact", lambda _, _directory, name: artifacts.get(name))
+    report_path = tmp_path / "workspace" / "consistency_audit" / "draft_consistency_report.json"
+    report_path.parent.mkdir(parents=True)
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+
+    result = gate.evaluate(tmp_path)
+    false_passes = [name for name in ("B1", "B2", "B6", "B7", "B8") if result["checks"][name]["pass"]]
+    assert false_passes == []
+    assert not result["overall_pass"]
+
+
+def _complete_phase_b_fixture(tmp_path, monkeypatch):
+    """Synthetic hypothetical verified report for exercising the gate's positive path."""
+    from consistency.conflict_audit import audit_glossary_conflicts
+    from consistency.entity_index import build_entity_index
+    from consistency.manifest import build_chapter_manifest
+    from consistency.segment_index import build_segment_index
+
+    source = tmp_path / "input_jp" / "001-synthetic.md"
+    source.parent.mkdir(parents=True)
+    source.write_text("# Synthetic\n\nSynthetic source.\n", encoding="utf-8")
+    run_root = tmp_path / "workspace" / "runs" / "run_phase_b_fixture"
+    _write_run_meta(run_root)
+    segments = run_root / "segments.json"
+    _write_segments(segments, "ch-001", [("ch-001-seg-001", "source", "draft")])
+    doc = json.loads(segments.read_text(encoding="utf-8"))
+    doc["chapters"][0]["source_path"] = "input_jp/001-synthetic.md"
+    segments.write_text(json.dumps(doc), encoding="utf-8")
+    manifest = build_chapter_manifest(tmp_path, total_expected=1)
+    index = build_segment_index(tmp_path)
+    entity_index = build_entity_index([], [segments])
+    glossary_audit = audit_glossary_conflicts([], entity_index)
+    plan = build_local_fix_plan({"findings": []}, {"findings": []})
+    fix_status = build_fix_plan_status(plan)
+    report = {
+        "status": "PASS", "recommendation": "ready_for_final_export", "blocking_conflicts": 0,
+        "generated_at": "synthetic", "progressive_disclosure": {
+            "level_0_manifest": {"covers_source": True, "source_freshness_status": "VERIFIED"},
+            "level_1_entity_index": {}, "level_2_glossary_conflicts": {},
+            "level_2_structure": {}, "level_3_fix_plan": {}, "level_4_arbitration": {},
+            "level_5_retranslate": {"remaining_segments": 0},
+            "segment_index": {"source_freshness_status": "VERIFIED"},
+        },
+    }
+    artifacts = {
+        "manifests/chapter_manifest.json": manifest,
+        "indexes/segment_index.json": index,
+        "indexes/entity_index.json": entity_index,
+        "consistency_audit/glossary_conflict_audit.json": glossary_audit,
+        "consistency_audit/local_fix_plan.json": plan,
+        "consistency_audit/fix_plan_status.json": fix_status,
+        "consistency_audit/arbitration_report.json": {
+            "api_calls": 0, "provider_invocations_used": 0,
+            "max_api_calls": 0, "budget_exhausted": False,
+        },
+        "consistency_audit/draft_consistency_report.json": report,
+    }
+    for relative, data in artifacts.items():
+        path = tmp_path / "workspace" / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data), encoding="utf-8")
+    gate = _phase_b()
+    monkeypatch.setattr(gate, "collect_status", lambda _: {
+        "current_phase": "synthetic", "next_task": None, "draft_progress": {},
+    })
+    monkeypatch.setattr(gate, "_load_orphan_eval", lambda: {"decision": "synthetic"})
+    monkeypatch.setattr(gate, "build_draft_consistency_report", lambda _: report)
+    return gate, report
+
+
+def test_phase_b_accepts_matching_synthetic_snapshot_and_zero_usage(tmp_path, monkeypatch):
+    gate, _ = _complete_phase_b_fixture(tmp_path, monkeypatch)
+    result = gate.evaluate(tmp_path)
+    assert result["overall_pass"] and result["failed_criteria"] == []
+
+
+def test_glossary_binding_ignores_only_volatile_entity_rebuild_details(tmp_path, monkeypatch):
+    from consistency.entity_index import entity_index_digest
+    _complete_phase_b_fixture(tmp_path, monkeypatch)
+    path = tmp_path / "workspace" / "indexes" / "entity_index.json"
+    first = json.loads(path.read_text(encoding="utf-8"))
+    reused = json.loads(json.dumps(first))
+    reused["generated_at"] = "later synthetic time"
+    reused["stats"]["files_scanned"] = 0
+    reused["stats"]["files_reused"] = reused["stats"]["files_total"]
+    assert entity_index_digest(first) == entity_index_digest(reused)
+    reused["dependency_sha256"] = "f" * 64
+    assert entity_index_digest(first) != entity_index_digest(reused)
+
+
+def test_fix_status_cannot_close_with_result_from_another_plan():
+    from translation.source_versions import value_sha
+    plan = build_local_fix_plan({"findings": []}, {"findings": []})
+    plan["retranslate_tasks"] = [{"segment_ids": ["ch-001-seg-001"]}]
+    plan["stats"]["retranslate_task_count"] = 1
+    plan["stats"]["retranslate_segment_count"] = 1
+    result = {"status": "closed", "completed_segments": 1, "remaining_segments": 0,
+              "plan_sha256": "0" * 64}
+    rejected = build_fix_plan_status(plan, result)
+    assert rejected["retranslation_result_matches_plan"] is False and rejected["all_closed"] is False
+    result["plan_sha256"] = value_sha(plan)
+    accepted = build_fix_plan_status(plan, result)
+    assert accepted["retranslation_result_matches_plan"] is True and accepted["all_closed"] is True
+
+
+def test_fix_status_uses_actual_plan_items_and_rejects_unknown_locations():
+    plan = build_local_fix_plan({"findings": []}, {"findings": []})
+    plan["term_fixes"].append({"segment_ids": ["ch-001-seg-001"]})
+    plan["deferred"].append({"segment_ids": []})
+    status = build_fix_plan_status(plan)
+    assert status["term_fixes"]["status"] == "pending"
+    assert status["deferred"]["status"] == "pending"
+    assert status["all_closed"] is False
+    unresolved = build_local_fix_plan({"findings": []}, {"findings": []})
+    unresolved["retranslate_tasks"].append({"segment_ids": []})
+    unresolved["stats"]["retranslate_task_count"] = 1
+    result = build_fix_plan_status(unresolved)
+    assert result["retranslate_tasks"]["status"] == "unknown"
+    assert result["all_closed"] is False
+    missing = build_fix_plan_status({"stats": {"term_fix_count": 0, "deferred_count": 0},
+                                     "retranslate_tasks": []})
+    assert missing["term_fixes"]["status"] == "unknown"
+    assert missing["deferred"]["status"] == "unknown" and missing["all_closed"] is False
+
+
+@pytest.mark.parametrize("mutation, failed", [
+    ("stale_saved_report", "B7"),
+    ("unverified_source", "B7"),
+    ("unverified_manifest", "B7"),
+    ("prior_usage_exceeds_zero_cap", "B8"),
+    ("cumulative_usage_unknown", "B8"),
+    ("entity_index_different_segments", "B3"),
+    ("stale_glossary_after_entity_change", "B4"),
+    ("glossary_counts_disagree", "B4"),
+    ("stale_fix_plan", "B6"),
+    ("forged_closed_with_pending_items", "B6"),
+])
+def test_phase_b_rejects_stale_or_unaccounted_evidence(tmp_path, monkeypatch, mutation, failed):
+    gate, report = _complete_phase_b_fixture(tmp_path, monkeypatch)
+    audit = tmp_path / "workspace" / "consistency_audit"
+    if mutation == "stale_saved_report":
+        saved = {**report, "blocking_conflicts": 1}
+        (audit / "draft_consistency_report.json").write_text(json.dumps(saved), encoding="utf-8")
+    elif mutation == "unverified_source":
+        report["progressive_disclosure"]["segment_index"]["source_freshness_status"] = "UNVERIFIED"
+        (audit / "draft_consistency_report.json").write_text(json.dumps(report), encoding="utf-8")
+    elif mutation == "unverified_manifest":
+        report["progressive_disclosure"]["level_0_manifest"]["source_freshness_status"] = "UNVERIFIED"
+        (audit / "draft_consistency_report.json").write_text(json.dumps(report), encoding="utf-8")
+    elif mutation in {"entity_index_different_segments", "stale_glossary_after_entity_change"}:
+        path = tmp_path / "workspace" / "indexes" / "entity_index.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if mutation == "entity_index_different_segments":
+            next(iter(data["files"].values()))["fingerprint"] = "sha256:" + "0" * 64
+        else:
+            data["dependency_sha256"] = "f" * 64
+        path.write_text(json.dumps(data), encoding="utf-8")
+    elif mutation == "glossary_counts_disagree":
+        path = audit / "glossary_conflict_audit.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["findings"].append({"kind": "synthetic", "blocking": True})
+        path.write_text(json.dumps(data), encoding="utf-8")
+    elif mutation == "stale_fix_plan":
+        path = audit / "local_fix_plan.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["retranslate_tasks"].append({"segment_ids": ["ch-001-seg-001"]})
+        data["stats"]["retranslate_segment_count"] = 1
+        path.write_text(json.dumps(data), encoding="utf-8")
+    elif mutation == "forged_closed_with_pending_items":
+        from translation.source_versions import value_sha
+        path = audit / "local_fix_plan.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["term_fixes"].append({"segment_ids": ["ch-001-seg-001"]})
+        data["deferred"].append({"segment_ids": []})
+        path.write_text(json.dumps(data), encoding="utf-8")
+        status_path = audit / "fix_plan_status.json"
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        status["plan_sha256"] = value_sha(data)
+        status_path.write_text(json.dumps(status), encoding="utf-8")
+    else:
+        path = audit / "arbitration_report.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if mutation == "prior_usage_exceeds_zero_cap":
+            data["provider_invocations_used"] = 1
+        else:
+            del data["provider_invocations_used"]
+        path.write_text(json.dumps(data), encoding="utf-8")
+    result = gate.evaluate(tmp_path)
+    assert not result["checks"][failed]["pass"]
+    assert not result["overall_pass"]

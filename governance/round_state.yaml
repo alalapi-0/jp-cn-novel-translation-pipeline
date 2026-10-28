@@ -552,13 +552,13 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: segment_index_integrity_synthetic_verified
+    phase: phase_b_acceptance_synthetic_verified
     round: P3.R01
     status: in_progress
     completed: false
     accepted: false
-    next_action: Verify source freshness within registered paths; prior synthetic probe
-      remains inconclusive and style integration remains pending.
+    next_action: Verify registered source freshness and resolve local index storage;
+      prior synthetic probe remains inconclusive and style integration remains pending.
     owner_role: Codex Root
   progress:
     completed: 20
@@ -666,8 +666,15 @@ codex_governance:
     source_freshness: UNVERIFIED
     real_data_validation: NOT_RUN
     quality_credit: false
+  round183_phase_b_acceptance:
+    status: SYNTHETIC_TESTED
+    stale_evidence_and_budget_claims_guarded: true
+    source_freshness: UNVERIFIED
+    real_data_validation: NOT_RUN
+    quality_credit: false
+    task_credit: false
   round_accounting:
-    count: 182
+    count: 183
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:

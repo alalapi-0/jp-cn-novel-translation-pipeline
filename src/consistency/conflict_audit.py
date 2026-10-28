@@ -25,6 +25,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from consistency.entity_index import entity_index_digest
 from glossary.models import GlossaryEntry
 
 SCHEMA_VERSION = 1
@@ -281,6 +282,7 @@ def audit_glossary_conflicts(
         "inputs": {
             "entity_index_generated_at": entity_index.get("generated_at"),
             "entity_index_schema_version": entity_index.get("schema_version"),
+            "entity_index_sha256": entity_index_digest(entity_index),
             "glossary_entry_count": len(active_terms),
             "term_usage_index_used": term_usage_index is not None,
             "term_usage_index_generated_at": (

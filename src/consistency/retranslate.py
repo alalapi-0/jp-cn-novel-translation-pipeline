@@ -23,6 +23,7 @@ from translation.validator import validate_draft_items
 from providers.controlled_run import atomic_write_json, checkpoint_lock
 from translation.content_binding import SourceBindings, validate_round, reserve_round
 from translation.draft_execution import atomic_bytes
+from translation.source_versions import value_sha
 
 
 def _restore_changed_source(checkpoint, repo_root):
@@ -433,11 +434,13 @@ def run_consistency_retranslate(
     dry_run = dry_run or getattr(provider, 'provider_id', None) in {'fake', 'dry_run', 'fake_provider', 'dry_run_provider'}
     cp_path = checkpoint_path or (repo_root / DEFAULT_CHECKPOINT_REL)
     all_ids = collect_retranslate_segment_ids(plan)
+    plan_sha256 = value_sha(plan)
     per_call = max(1, int(max_segments or DEFAULT_MAX_SEGMENTS_PER_CALL))
     if dry_run:
         sim_path = cp_path.with_name(cp_path.stem + ".simulation" + cp_path.suffix)
         preview = all_ids[:limit] if limit > 0 else all_ids
         simulated = {"schema_version": 2, "mode": "simulation", "dry_run": True,
+                     "plan_sha256": plan_sha256,
                      "status": "simulated", "total_segments": len(all_ids),
                      "simulated_segment_ids": preview, "simulated_segments": len(preview),
                      "completed_segment_ids": [], "completed_segments": 0,
@@ -636,6 +639,7 @@ def run_consistency_retranslate(
                 "dry_run": False, "budget_exhausted": exhausted}})
         save_checkpoint(cp_path, checkpoint)
         return {"generated_at": utc_now_iso(), "dry_run": False, "status": status,
+                "plan_sha256": plan_sha256,
                 "total_segments": len(all_ids), "completed_segments": len(completed_all),
                 "remaining_segments": remaining, "batch_completed": len(completed_all - before_done),
                 "batch_failed": len(set(failed_now)), "api_calls": checkpoint["provider_invocations_used"] - before_calls,
@@ -645,49 +649,111 @@ def run_consistency_retranslate(
                 "checkpoint_path": str(cp_path)}
 
 
+def fix_plan_scope(plan: dict[str, Any]) -> dict[str, Any]:
+    """Derive coverage and counts from the actual plan lists, not summary claims."""
+    fixes = plan.get("term_fixes"); tasks = plan.get("retranslate_tasks"); deferred = plan.get("deferred")
+    stats = plan.get("stats") if type(plan.get("stats")) is dict else {}
+    items_known = all(type(rows) is list and all(type(row) is dict for row in rows)
+                      for rows in (fixes, tasks, deferred))
+    tasks_valid = type(tasks) is list and all(type(row) is dict for row in tasks)
+    segment_lists_valid = items_known and all(
+        type(row.get("segment_ids")) is list
+        and all(type(sid) is str and bool(sid.strip()) for sid in row["segment_ids"])
+        for row in fixes + tasks
+    )
+    task_lists_valid = tasks_valid and all(
+        type(row.get("segment_ids")) is list
+        and all(type(sid) is str and bool(sid.strip()) for sid in row["segment_ids"])
+        for row in tasks
+    )
+    source_scope_known = task_lists_valid and all(row["segment_ids"] for row in tasks)
+    task_segment_count = (len({sid for row in tasks for sid in row["segment_ids"]})
+                          if task_lists_valid else None)
+    actual = None
+    if items_known and segment_lists_valid:
+        actual = {"term_fix_count": len(fixes), "retranslate_task_count": len(tasks),
+                  "deferred_count": len(deferred),
+                  "term_fix_segment_count": len({sid for row in fixes for sid in row["segment_ids"]}),
+                  "retranslate_segment_count": len({sid for row in tasks for sid in row["segment_ids"]})}
+    counts_consistent = actual is not None and all(
+        type(stats.get(key)) is int and stats[key] == value for key, value in actual.items()
+    )
+    return {"items_known": items_known, "source_scope_known": source_scope_known,
+            "counts_consistent": counts_consistent, "counts": actual,
+            "retranslate_segment_count": task_segment_count,
+            "term_fix_count": len(fixes) if type(fixes) is list else None,
+            "deferred_count": len(deferred) if type(deferred) is list else None}
+
+
 def build_fix_plan_status(
     plan: dict[str, Any],
     retranslate_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Track fix-plan item closure for Phase B B6."""
-    stats = plan.get("stats") or {}
+    stats = plan.get("stats") if type(plan.get("stats")) is dict else {}
     retranslate = retranslate_result or {}
-    source_scope_known = isinstance(plan.get("retranslate_tasks"), list)
-    total = (len(collect_retranslate_segment_ids(plan)) if source_scope_known
-             else int(stats.get("retranslate_segment_count") or 0))
-    completed = int(retranslate.get("completed_segments") or 0)
-    remaining = int(retranslate.get("remaining_segments") or max(0, total - completed))
+    scope = fix_plan_scope(plan)
+    source_scope_known = scope["source_scope_known"]
+    total = (scope["retranslate_segment_count"] if scope["retranslate_segment_count"] is not None
+             else stats.get("retranslate_segment_count"))
+    if type(total) is not int or total < 0: total = None
+    completed = retranslate.get("completed_segments", 0)
+    if type(completed) is not int or completed < 0: completed = None
+    remaining = retranslate.get("remaining_segments")
+    if remaining is None and total is not None and completed is not None:
+        remaining = max(0, total - completed)
+    if type(remaining) is not int or remaining < 0: remaining = None
 
     dry_run = bool(retranslate.get("dry_run"))
+    plan_sha256 = value_sha(plan)
+    result_matches_plan = (source_scope_known and total == 0) or retranslate.get("plan_sha256") == plan_sha256
     if dry_run:
         retranslate_status = "simulated"
-    elif total == 0:
+    elif not source_scope_known or total is None or completed is None or remaining is None:
+        retranslate_status = "partial" if completed and remaining else "unknown"
+    elif total == 0 and completed == remaining == 0:
         retranslate_status = "closed"
-    elif remaining == 0:
+    elif (remaining == 0 and completed == total and result_matches_plan
+          and retranslate.get("status") == "closed"):
         retranslate_status = "closed"
-    elif completed > 0:
+    elif completed > 0 and remaining > 0:
         retranslate_status = "partial"
     else:
         retranslate_status = "pending"
 
-    term_count = int(stats.get("term_fix_count") or 0)
-    deferred_count = int(stats.get("deferred_count") or 0)
+    term_count = scope["term_fix_count"]
+    deferred_count = scope["deferred_count"]
+    if term_count is None and type(stats.get("term_fix_count")) is int and stats["term_fix_count"] > 0:
+        term_count = stats["term_fix_count"]
+    if deferred_count is None and type(stats.get("deferred_count")) is int and stats["deferred_count"] > 0:
+        deferred_count = stats["deferred_count"]
+    def item_status(count, known):
+        if count is None or (count == 0 and not known): return "unknown"
+        return "closed" if count == 0 else "pending"
 
     return {
         "generated_at": utc_now_iso(),
         "dry_run": dry_run,
         "execution_mode": "simulation" if dry_run else "real",
+        "plan_sha256": plan_sha256,
+        "retranslation_result_matches_plan": result_matches_plan,
         "source_scope_known": source_scope_known,
-        "term_fixes": {"status": "closed" if term_count == 0 else "pending", "count": term_count},
+        "plan_items_known": scope["items_known"],
+        "plan_counts_consistent": scope["counts_consistent"],
+        "term_fixes": {"status": item_status(term_count, type(plan.get("term_fixes")) is list), "count": term_count},
         "retranslate_tasks": {
             "status": retranslate_status,
             "total_segments": total,
             "completed_segments": completed,
             "remaining_segments": remaining,
-            "pilot_validated": completed > 0 and remaining > 0,
+            "partial_execution_reported": bool(completed and remaining),
+            "pilot_validated": False,
+            "pilot_validation_status": "UNVERIFIED",
         },
-        "deferred": {"status": "closed" if deferred_count == 0 else "pending", "count": deferred_count, "method": "glossary_curation"},
-        "all_closed": source_scope_known and not dry_run and term_count == 0
+        "deferred": {"status": item_status(deferred_count, type(plan.get("deferred")) is list), "count": deferred_count, "method": "glossary_curation"},
+        "all_closed": source_scope_known and scope["items_known"] and scope["counts_consistent"]
+        and not dry_run and term_count == 0
         and retranslate_status == "closed" and deferred_count == 0
+        and result_matches_plan
         and (total == 0 or retranslate.get("status") == "closed"),
     }
