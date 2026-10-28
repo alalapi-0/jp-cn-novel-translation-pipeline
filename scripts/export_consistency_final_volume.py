@@ -10,7 +10,8 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / 'src'))
 from translation.canonical_export import export_accepted_revision
-from workbench.review_state import get_project_review_state, review_state_path
+from workbench.review_state import (ReviewStateUnavailableError, get_project_review_snapshot,
+                                    read_review_state_snapshot)
 
 
 def export_final(output_root, include_chapters=False, include_bilingual=False, *, selection_manifest=None,
@@ -28,14 +29,12 @@ def export_final(output_root, include_chapters=False, include_bilingual=False, *
     raw = path.read_bytes()
     if hashlib.sha256(raw).hexdigest() != selection_sha256: raise ValueError('selection manifest version changed')
     data = json.loads(raw)
-    review_path = review_state_path(root)
-    review_raw = review_path.read_bytes() if review_path.is_file() else None
-    if review_path.is_symlink(): raise ValueError('unmanaged review state')
-    review = get_project_review_state(root, data['project_id'])['segments']
+    review_state, review_identity = get_project_review_snapshot(root, data['project_id'])
+    review = review_state['segments']
     def check():
         if path.read_bytes() != raw: raise RuntimeError('selection manifest changed during export')
-        now = review_path.read_bytes() if review_path.is_file() else None
-        if now != review_raw: raise RuntimeError('review state changed during export')
+        now = read_review_state_snapshot(root).identity
+        if now != review_identity: raise RuntimeError('review state changed during export')
     return export_accepted_revision(root, data, review, output_root=output_root, before_commit=check)
 
 
@@ -47,7 +46,7 @@ def main():
     args = parser.parse_args()
     try:
         result = export_final(args.output_root, selection_manifest=args.selection_manifest, selection_sha256=args.selection_sha256)
-    except (ValueError, RuntimeError, KeyError, OSError) as error:
+    except (ValueError, RuntimeError, KeyError, OSError, ReviewStateUnavailableError) as error:
         parser.exit(2, str(error) + '\n')
     print(json.dumps({key: result[key] for key in ('project_id', 'bundle_revision', 'chapters_exported', 'segments_exported')}, ensure_ascii=False))
     return 0

@@ -16,6 +16,7 @@ def cli_module():
 
 
 def test_cli_full_shared_service_selection_export_and_body_free_output(tmp_path,capsys):
+    (tmp_path/'workspace').mkdir()
     cli=cli_module();file=tmp_path/'003-synthetic.md';file.write_text('# 章\n\n合成原文。')
     base=['--root',str(tmp_path),'--project','cli-complete']
     assert cli.main(base+['source-import','--direction','JP_TO_CN','--source-file',str(file)])==0
@@ -71,12 +72,46 @@ def test_cli_source_symlink_and_forged_model_or_actor_are_refused(tmp_path):
 
 
 def test_cli_source_import_preserves_original_newline_bytes(tmp_path,capsys):
+    (tmp_path/'workspace').mkdir()
     cli=cli_module();file=tmp_path/'003-crlf.md';raw='# 章\r\n\r\n合成源文。\r\n'.encode();file.write_bytes(raw)
     assert cli.main(['--root',str(tmp_path),'--project','crlf','source-import','--direction','JP_TO_CN','--source-file',str(file)])==0
     assert (tmp_path/'input_jp/crlf/003-crlf.md').read_bytes()==raw
 
 
+def test_cli_export_completed_with_unavailable_followup_is_success(tmp_path,monkeypatch,capsys):
+    (tmp_path/'workspace').mkdir()
+    leaf=tmp_path/'workspace/review_state.json';leaf.write_text('{"projects":{}}')
+    cli=cli_module();effect=tmp_path/'synthetic-output'
+    def completed(*_args,**_kwargs):
+        effect.write_text('synthetic output')
+        leaf.write_text('{')
+        return {'project_id':'cli-warning','segments_exported':1,'human_approved_final':False}
+    monkeypatch.setattr(cli,'export_selected',completed)
+    args=['--root',str(tmp_path),'--project','cli-warning','export-selected',
+          '--expected-manifest-sha256','a'*64,'--confirm-replace']
+    assert cli.main(args)==0
+    captured=capsys.readouterr();result=json.loads(captured.out)
+    assert effect.exists() and result['effect_applied'] is True and result['selection'] is None
+    assert result['selection_status_available'] is False and '请勿重复提交' in captured.err
+
+
+def test_cli_native_unknown_history_does_not_claim_no_previous_effect(tmp_path,monkeypatch,capsys):
+    import workbench.native_agent
+    from workbench.canonical_service import NativeRequestHistoryUnknown
+    cli=cli_module()
+    def unknown(*_a,**_k):raise NativeRequestHistoryUnknown()
+    monkeypatch.setattr(workbench.native_agent,'execute_job',unknown)
+    args=['--root',str(tmp_path),'--project','synthetic','native-job','--action','generate',
+          '--request-id','same-id','--expected-manifest-sha256','a'*64,'--confirm-native']
+    assert cli.main(args)==1
+    result=json.loads(capsys.readouterr().err)
+    assert result['invocation_effect_applied'] is False and result['request_effect_status']=='unknown'
+    assert result['idempotent_replay']=='unknown' and result['retry_operation'] is False
+    assert 'effect_applied' not in result and 'mutation_committed' not in result
+
+
 def test_cli_status_restore_confirmation_and_stale_cas(tmp_path):
+    (tmp_path/'workspace').mkdir()
     script=Path(__file__).resolve().parents[1]/'scripts/canonical_workbench.py'
     state=import_sources(tmp_path,project_id='cli-recovery',name='Synthetic',language_direction='JP_TO_CN',
         chapters=[{'filename':'003-synthetic.md','text':'# 章\n\n合成原文。'}])

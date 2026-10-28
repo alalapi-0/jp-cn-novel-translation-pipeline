@@ -20,6 +20,7 @@ real_complete_admission=native.complete_admission
 @pytest.fixture
 def project(tmp_path,monkeypatch):
     root=tmp_path
+    (root/'workspace').mkdir()
     state=canonical.import_sources(root,project_id='native-bound',name='Synthetic',
         language_direction='JP_TO_CN',chapters=[{'filename':'001-native.md','text':'# 一\n\n雨が降っていた。\n\n彼は扉を閉めた。'}])
     monkeypatch.setattr(native,'complete_admission',lambda *args,**kwargs:{'model_confinement_verified':True,'configured_model':'SYNTHETIC_NOT_A_MODEL'})
@@ -47,6 +48,34 @@ def run(project,action,request_id):
     root,_,_=project
     state=canonical.selection_status(root,'native-bound')
     return native.execute_job(root,'native-bound',expected_manifest_sha256=state['manifest_sha256'],request_id=request_id,action=action)
+
+
+def test_native_preflight_blocks_before_job_or_model(project,monkeypatch):
+    root,state,calls=project
+    (root/'workspace/review_state.json').write_text('{')
+    attempted=[]
+    monkeypatch.setattr(native,'checkpoint_lock',lambda *_a,**_k: attempted.append(True))
+    with pytest.raises(canonical.NativeRequestHistoryUnknown):
+        native.execute_job(root,'native-bound',expected_manifest_sha256=state['manifest_sha256'],
+            request_id='preflight-failed',action='generate')
+    assert attempted==[] and calls==[]
+    assert jobs.find_generation_job(root,'native-bound','preflight-failed') is None
+
+
+def test_native_review_completed_when_post_status_unavailable(project,monkeypatch):
+    root,_,calls=project
+    run(project,'generate','generation')
+    original=native.patch_project_review_state_cas
+    def write_then_corrupt(*args,**kwargs):
+        value=original(*args,**kwargs)
+        (root/'workspace/review_state.json').write_text('{')
+        return value
+    monkeypatch.setattr(native,'patch_project_review_state_cas',write_then_corrupt)
+    result=run(project,'review','review-with-warning')
+    assert calls==['candidates','verdicts'] and result['effect_applied'] is True
+    assert result['selection'] is None and result['selection_status_available'] is False
+    assert '请勿重复提交' in result['warning']
+    assert jobs.find_generation_job(root,'native-bound','review-with-warning')['status']=='succeeded'
 
 
 def test_persisted_rejection_creates_one_semantic_rereview_without_replay(project, monkeypatch):
@@ -176,6 +205,57 @@ def test_replay_is_bound_to_input_and_does_not_call_again(project):
     result=native.execute_job(root,'native-bound',expected_manifest_sha256=original['manifest_sha256'],request_id='same-id',action='generate')
     assert result['idempotent_replay'] and calls==['candidates']
     with pytest.raises(ValueError,match='input/action conflict'):run(project,'review','same-id')
+
+
+@pytest.mark.parametrize('action',['generate','compare_revision'])
+def test_native_unavailable_review_never_opens_job_history(project,monkeypatch,action):
+    import os
+    from assets import translation_memory
+    from workbench import native_revision
+    root,state,calls=project
+    if action=='generate':run(project,'generate','already-succeeded')
+    else:
+        job=root/'workspace/generation_jobs.json'
+        job.write_text(json.dumps({'projects':{'native-bound':{'current':{'status':'succeeded',
+            'request_id':'already-succeeded','project_id':'native-bound','response_payload':{'action':'compare_revision',
+            'input_manifest_sha256':state['manifest_sha256'],'segment_id':'synthetic',
+            'selection':{'segments':[{'source':'synthetic private fixture'}]}}},'history':[]}}}))
+    (root/'workspace/review_state.json').write_text('{')
+    attempts=[]
+    def forbidden(*_args,**_kwargs):attempts.append(True);raise AssertionError('job or payload was opened')
+    monkeypatch.setattr(jobs,'find_generation_job',forbidden)
+    monkeypatch.setattr(jobs,'_load_state_unlocked',forbidden)
+    monkeypatch.setattr(native_revision,'completed',forbidden)
+    original_path_open,original_os_open=Path.open,os.open
+    def guarded_path_open(path,*args,**kwargs):
+        if path==root/'workspace/generation_jobs.json':return forbidden()
+        return original_path_open(path,*args,**kwargs)
+    def guarded_os_open(path,flags,*args,**kwargs):
+        if os.fspath(path) in {str(root/'workspace/generation_jobs.json'),'generation_jobs.json'}:return forbidden()
+        return original_os_open(path,flags,*args,**kwargs)
+    monkeypatch.setattr(Path,'open',guarded_path_open)
+    monkeypatch.setattr(os,'open',guarded_os_open)
+    original=translation_memory._open_at2
+    def guarded(fd,relative,*,resolve):
+        if relative==Path('generation_jobs.json'):return forbidden()
+        return original(fd,relative,resolve=resolve)
+    monkeypatch.setattr(translation_memory,'_open_at2',guarded)
+    with pytest.raises(canonical.NativeRequestHistoryUnknown) as error:
+        native.execute_job(root,'native-bound',expected_manifest_sha256=state['manifest_sha256'],
+            request_id='already-succeeded',action=action,segment_id='synthetic' if action=='compare_revision' else None)
+    assert '无法安全确认' in str(error.value) and attempts==[]
+    assert calls==(['candidates'] if action=='generate' else [])
+
+
+def test_healthy_native_replay_does_not_return_old_selection(project):
+    root,original,calls=project
+    run(project,'generate','same-id')
+    (root/'workspace/review_state.json').write_text('{"projects":{}}')
+    replay=native.execute_job(root,'native-bound',expected_manifest_sha256=original['manifest_sha256'],
+        request_id='same-id',action='generate')
+    assert replay['idempotent_replay'] and replay['selection'] is None
+    assert replay['selection_status_available'] is False and '请勿重复提交' in replay['warning']
+    assert calls==['candidates']
 
 
 def test_native_preflight_failure_is_terminal_and_has_zero_content_attempts(project,monkeypatch):

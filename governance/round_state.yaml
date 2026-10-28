@@ -716,8 +716,22 @@ codex_governance:
     handoff: PENDING_AUTHORIZATION
     task_credit: false
     quality_credit: false
+  round189_review_state_read:
+    status: SYNTHETIC_TESTED
+    scope: review snapshots and post-effect result reporting
+    unavailable_response: HTTP_503_before_effect
+    missing_workspace: UNAVAILABLE_BEFORE_EFFECT
+    stale_page: DISABLED_UNTIL_SUCCESSFUL_RELOAD
+    test_project_deletion: TEMPORARILY_UNAVAILABLE
+    native_request_history: UNKNOWN_WITHOUT_PAYLOAD_READ
+    native_job_write_and_lock_path: UNVERIFIED
+    review_save_safety: UNPROTECTED_PENDING_USER_CHOICE
+    real_data_validation: NOT_RUN
+    live_adoption: UNVERIFIED
+    quality_credit: false
+    task_credit: false
   round_accounting:
-    count: 188
+    count: 189
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:

@@ -15,7 +15,7 @@ def sha(text):return hashlib.sha256(text.encode()).hexdigest()
 
 @pytest.fixture
 def case(tmp_path,monkeypatch):
-    root=tmp_path;state=canonical.import_sources(root,project_id='revision-job',name='Synthetic',
+    root=tmp_path;(root/'workspace').mkdir();state=canonical.import_sources(root,project_id='revision-job',name='Synthetic',
         language_direction='JP_TO_CN',chapters=[{'filename':'001-synthetic.md',
             'text':'# 合成\n\n雨が降る。彼はまだ帰らない。\n\n扉は閉まっている。'}])
     state=canonical.import_candidates(root,'revision-job',expected_manifest_sha256=state['manifest_sha256'],

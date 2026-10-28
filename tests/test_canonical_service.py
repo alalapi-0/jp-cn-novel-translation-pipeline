@@ -14,6 +14,7 @@ from workbench.canonical_service import restore_previous_candidates
 
 
 def source(root,direction='JP_TO_CN'):
+    (root/'workspace').mkdir(exist_ok=True)
     return import_sources(root,project_id='native-flow',name='Synthetic',language_direction=direction,chapters=[{'filename':'003-synthetic.md','text':'# 章\n\n甲。\n\n乙。'},{'filename':'718-synthetic.md','text':'# 章\n\n丙。'}])
 
 
@@ -414,15 +415,125 @@ def test_revision_accepts_registered_noncontiguous_source_spans(tmp_path):
 
 @pytest.mark.parametrize('chapters',[[{'filename':'001-a.md','text':'# empty'}],[{'filename':'001-a.md','text':'a'},{'filename':'001-b.md','text':'b'}],[{'filename':'../001-a.md','text':'a'}]])
 def test_invalid_source_import_preserves_no_partial_manifest(tmp_path,chapters):
+    (tmp_path/'workspace').mkdir()
     with pytest.raises(ValueError):import_sources(tmp_path,project_id='native-flow',name='x',language_direction='JP_TO_CN',chapters=chapters)
     assert not (tmp_path/'workspace/manifests/native-flow.json').exists()
 
 
 def test_non_numbered_chapter_is_preserved_and_active_job_blocks_candidate(tmp_path):
     from workbench.generation_jobs import prepare_generation_job
+    (tmp_path/'workspace').mkdir()
     state=import_sources(tmp_path,project_id='native-flow',name='序章',language_direction='JP_TO_CN',chapters=[{'filename':'序章.md','text':'# 序章\n\n本文。'}])
     assert state['chapters']==1 and state['segments_total']==1
     before=(tmp_path/'workspace/manifests/native-flow.json').read_bytes()
     prepare_generation_job(tmp_path,'native-flow',request_id='synthetic-active',mode='dry_run',sample_text='source')
     with pytest.raises(ValueError,match='生成仍在运行'):candidate(tmp_path,state)
     assert (tmp_path/'workspace/manifests/native-flow.json').read_bytes()==before
+
+
+@pytest.mark.parametrize('route',['source','candidate','restore','select','revision'])
+@pytest.mark.parametrize('failure',['link','hardlink','corrupt','unsupported','missing_workspace'])
+def test_review_preflight_blocks_effects_for_canonical_mutations(tmp_path,monkeypatch,route,failure):
+    import os
+    from assets import translation_memory as memory
+    from workbench import canonical_service as service
+    root=tmp_path/'repo';root.mkdir()
+    if route == 'source':
+        if failure != 'missing_workspace': (root/'workspace').mkdir()
+        invoke=lambda:import_sources(root,project_id='native-flow',name='Synthetic',language_direction='JP_TO_CN',
+            chapters=[{'filename':'001-synthetic.md','text':'# 章\n\n合成。'}])
+    else:
+        state=candidate(root,source(root))
+        if route == 'candidate':
+            invoke=lambda:import_candidates(root,'native-flow',expected_manifest_sha256=state['manifest_sha256'],
+                source_inventory_sha256=state['source_inventory_sha256'],candidates=[
+                    {'segment_id':r['segment_id'],'target_text':'更改'} for r in state['segments']])
+        elif route == 'restore':
+            invoke=lambda:restore_previous_candidates(root,'native-flow',expected_manifest_sha256=state['manifest_sha256'])
+        elif route == 'select':
+            invoke=lambda:select_revision(root,'native-flow',expected_manifest_sha256=state['manifest_sha256'],target_fields={})
+        else:
+            invoke=lambda:apply_revision_comparison(root,'native-flow',expected_manifest_sha256=state['manifest_sha256'],
+                segment_id='synthetic',plan={},view1={},view2={},chosen_target_revision='0'*64,
+                decision_actor=DecisionActor('agent','synthetic'))
+    workspace=root/'workspace';leaf=workspace/'review_state.json'
+    external=tmp_path/'external-review';external.write_bytes(b'{"projects":{}}')
+    if failure in {'link','hardlink','corrupt'}:
+        if leaf.exists() or leaf.is_symlink(): leaf.unlink()
+        if failure == 'link': leaf.symlink_to(external)
+        elif failure == 'hardlink': os.link(external,leaf)
+        else: leaf.write_bytes(b'{')
+    original_open=memory._open_at2
+    if failure in {'unsupported','missing_workspace'} and not (route == 'source' and failure == 'missing_workspace'):
+        def unavailable(fd,relative,*,resolve):
+            if failure == 'unsupported' or relative == Path('workspace'): raise ValueError('synthetic unavailable')
+            return original_open(fd,relative,resolve=resolve)
+        monkeypatch.setattr(memory,'_open_at2',unavailable)
+    original_read=os.read;forbidden=external.stat()
+    def guarded_read(fd,count):
+        item=os.fstat(fd)
+        assert (item.st_dev,item.st_ino)!=(forbidden.st_dev,forbidden.st_ino)
+        return original_read(fd,count)
+    monkeypatch.setattr(os,'read',guarded_read)
+    def identity():
+        return sorted((str(p.relative_to(root)),p.lstat().st_mode,p.lstat().st_size,p.lstat().st_mtime_ns)
+                      for p in root.rglob('*'))
+    before=identity();writes=[]
+    def forbidden_write(*_a,**_k):writes.append(True);raise AssertionError('preflight allowed a write')
+    monkeypatch.setattr(service,'_save_project_manifest_unlocked',forbidden_write)
+    monkeypatch.setattr(service,'_archive',forbidden_write)
+    monkeypatch.setattr(service,'selection_status',forbidden_write)
+    with pytest.raises(service.CanonicalPreflightUnavailable):invoke()
+    assert writes==[] and identity()==before
+
+
+@pytest.mark.parametrize('route',['source','candidate','restore','select','revision'])
+@pytest.mark.parametrize('change',['link','hardlink','corrupt','content','new_identity'])
+def test_review_change_after_effect_returns_completed_warning(tmp_path,monkeypatch,route,change):
+    import os
+    from workbench import canonical_service as service
+    root=tmp_path/'repo';root.mkdir();(root/'workspace').mkdir()
+    if route == 'source':
+        invoke=lambda:import_sources(root,project_id='native-flow',name='Synthetic',language_direction='JP_TO_CN',
+            chapters=[{'filename':'001-synthetic.md','text':'# 章\n\n合成。'}])
+    elif route == 'candidate':
+        state=source(root)
+        invoke=lambda:candidate(root,state)
+    elif route == 'restore':
+        state,_=recovery_fixture(root)
+        invoke=lambda:restore_previous_candidates(root,'native-flow',expected_manifest_sha256=state['manifest_sha256'])
+    elif route == 'select':
+        state=candidate(root,source(root));agent(root)
+        invoke=lambda:select_revision(root,'native-flow',expected_manifest_sha256=state['manifest_sha256'],
+            target_fields={r['segment_id']:'draft' for r in state['segments']})
+    else:
+        state,row,plan=revision_fixture(root);views=revision_views(plan)
+        invoke=lambda:apply_revision(root,state,row,plan,views)
+    leaf=root/'workspace/review_state.json'
+    if change == 'new_identity' and not leaf.exists(): leaf.write_bytes(b'{"projects":{}}')
+    outside=tmp_path/'external-review';outside.write_bytes(b'{"projects":{}}')
+    forbidden=outside.stat();original_read=os.read
+    def guarded_read(fd,count):
+        item=os.fstat(fd)
+        assert (item.st_dev,item.st_ino)!=(forbidden.st_dev,forbidden.st_ino)
+        return original_read(fd,count)
+    monkeypatch.setattr(os,'read',guarded_read)
+    original=service._save_project_manifest_unlocked;writes=[]
+    def save_then_change(repo,data):
+        result=original(repo,data);writes.append(True)
+        if change == 'new_identity':
+            body=leaf.read_bytes();leaf.rename(tmp_path/'previous-review');leaf.write_bytes(body)
+        elif change == 'content':leaf.write_bytes(b'{"projects":{},"changed":true}')
+        elif change == 'corrupt':leaf.write_bytes(b'{')
+        else:
+            if leaf.exists() or leaf.is_symlink():leaf.unlink()
+            if change == 'link':leaf.symlink_to(outside)
+            else:os.link(outside,leaf)
+        return result
+    monkeypatch.setattr(service,'_save_project_manifest_unlocked',save_then_change)
+    result=invoke()
+    assert writes==[True] and result['effect_applied'] and result['mutation_committed']
+    assert result['selection_status_available'] is False
+    assert result['warning_code']=='review_state_unavailable_after_effect'
+    assert '已完成' in result['warning'] and '请勿重复提交' in result['warning']
+    if route in {'restore','revision'}:assert result['selection'] is None

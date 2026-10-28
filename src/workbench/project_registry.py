@@ -39,6 +39,13 @@ class UnsafeManifestPathError(RuntimeError):
     """Raised when project manifest path is outside workspace/manifests."""
 
 
+class TestProjectDeletionUnavailableError(Exception):
+    """Cross-file test project deletion is unavailable until it can be coordinated."""
+
+    def __init__(self) -> None:
+        super().__init__("测试项目删除暂不可用，项目及审核记录会保留")
+
+
 class DuplicateSegmentIdError(ValueError):
     """Raised when a manifest cannot identify one unique segment by ID."""
 
@@ -822,59 +829,10 @@ def retry_project(repo_root: Path, project_id: str) -> ProjectManifest:
     return manifest
 
 
-def _pick_next_active_project(repo_root: Path) -> str | None:
-    manifests = list_project_manifests(repo_root, include_test=True, include_history=True)
-    if not manifests:
-        return None
-    return manifests[0].project_id
-
-
-def _write_workbench_state(repo_root: Path, active_project_id: str | None) -> None:
-    state_path = workbench_state_path(repo_root)
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "active_project_id": active_project_id,
-        "updated_at": utc_now(),
-    }
-    state_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-
 def delete_test_project(repo_root: Path, project_id: str) -> dict[str, Any]:
-    from workbench.generation_jobs import delete_project_generation_state
-    from workbench.review_state import delete_project_review_state
-
-    project_id = validate_project_id(project_id)
-    if not is_test_project_id(project_id):
-        raise PermissionError("delete is restricted to test projects")
-    lock = _project_write_lock(project_id)
-    if not lock.acquire(blocking=False):
-        raise ManifestWriteInProgressError(f"manifest write in progress: {project_id}")
-    try:
-        manifest = get_project_manifest(repo_root, project_id)
-        if manifest is None:
-            raise KeyError(f"unknown project_id: {project_id}")
-        path = _safe_manifest_path(repo_root, manifest)
-        if not path.is_file():
-            raise FileNotFoundError(f"manifest file missing: {path}")
-        path.unlink()
-    finally:
-        lock.release()
-
-    delete_project_review_state(repo_root, project_id)
-    delete_project_generation_state(repo_root, project_id)
-
-    current_active = get_active_project_id(repo_root)
-    next_active = current_active
-    if current_active == project_id:
-        next_active = _pick_next_active_project(repo_root)
-        _write_workbench_state(repo_root, next_active)
-
-    remaining = list_project_manifests(repo_root, include_test=True, include_history=True)
-    return {
-        "deleted_project_id": project_id,
-        "active_project_id": next_active,
-        "remaining_projects": len(remaining),
-    }
+    # Deleting the manifest and review state is not a coordinated transaction.
+    # Keep both until a separately reviewed deletion mechanism is available.
+    raise TestProjectDeletionUnavailableError()
 
 
 def seed_example_manifests(repo_root: Path, *, force: bool = False) -> list[Path]:

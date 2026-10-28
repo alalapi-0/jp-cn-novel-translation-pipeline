@@ -587,7 +587,7 @@ test("真实 API 按钮双击只触发一次确认和一次请求", async ({ pag
   expect(generateCount).toBe(1);
 });
 
-test("空 draft_pending 项目可继续生成/归档/删除", async ({ page, request }) => {
+test("空 draft_pending 项目可继续生成和归档，删除暂不可用", async ({ page, request }) => {
   const projectId = `pw-empty-${Date.now()}`;
   await request.post("/api/projects", {
     data: { project_id: projectId, name: "Empty", language_direction: "JP_TO_CN" },
@@ -609,20 +609,71 @@ test("空 draft_pending 项目可继续生成/归档/删除", async ({ page, req
   await page.getByRole("button", { name: /标记可重试/ }).click();
   await expect(page.locator("#review-root")).toContainText("状态：draft_pending");
 
-  let deleteDialogStep = 0;
-  const deleteDialogHandler = async (dialog) => {
-    deleteDialogStep += 1;
-    if (deleteDialogStep === 1) {
-      expect(dialog.type()).toBe("confirm");
-      await dialog.accept();
-      return;
-    }
-    expect(dialog.type()).toBe("prompt");
-    await dialog.accept(`DELETE ${projectId}`);
-    page.off("dialog", deleteDialogHandler);
-  };
-  page.on("dialog", deleteDialogHandler);
-  await page.getByRole("button", { name: "删除测试项目" }).click();
-  await expect.poll(() => deleteDialogStep).toBeGreaterThanOrEqual(2);
-  await expect(page.locator(`#project-switcher option[value="${projectId}"]`)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "删除测试项目暂不可用，项目及审核记录会保留" })).toBeDisabled();
+  await expect(page.locator("#review-root")).toContainText("测试项目删除暂不可用，项目及审核记录会保留");
+  expect((await request.get(`/api/projects/${projectId}/workbench-data`)).status()).toBe(200);
 });
+
+for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+  test(`R189 deletion is visibly unavailable ${viewport.width}`, async ({ page, request }) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const errors: string[] = [];
+    const consoleErrors: string[] = [];
+    const exchanges: { path: string; status: number }[] = [];
+    let confirmations = 0;
+    let deletionRequests = 0;
+    await page.addInitScript(() => {
+      (window as any).__r189Confirmations = 0;
+      window.confirm = () => { (window as any).__r189Confirmations += 1; return false; };
+      window.prompt = () => { (window as any).__r189Confirmations += 1; return null; };
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+    page.on("response", (response) => exchanges.push({ path: new URL(response.url()).pathname, status: response.status() }));
+    page.on("request", (req) => {
+      if (req.url().endsWith("/lifecycle") && req.method() === "POST" && req.postDataJSON()?.action === "delete") deletionRequests += 1;
+    });
+    const projectId = `pw-r189-${viewport.width}-${Date.now()}`;
+    await request.post("/api/projects", { data: { project_id: projectId, name: "合成测试项目", language_direction: "JP_TO_CN" } });
+    const initialReview = await (await request.get(`/api/projects/${projectId}/review-state`)).json();
+    fs.mkdirSync("artifacts", { recursive: true });
+    await page.goto("/index.html");
+    await expect(page.locator("#project-history-details")).toBeVisible();
+    await page.locator("#project-history-details").evaluate((element: HTMLDetailsElement) => { element.open = true; });
+    const homeDelete = page.locator(`#project-history-list button[data-project-id="${projectId}"][data-project-action="delete"]`);
+    await expect(homeDelete).toBeDisabled();
+    await expect(homeDelete).toHaveAccessibleName("删除测试项目暂不可用，项目及审核记录会保留");
+    await expect(homeDelete.locator(".." )).toContainText("测试项目删除暂不可用，项目及审核记录会保留");
+    await homeDelete.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `artifacts/r189-after-home-${viewport.width}.png`, fullPage: true });
+    await homeDelete.evaluate((element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await homeDelete.evaluate((element: HTMLButtonElement) => { element.disabled=false; element.focus(); element.click(); element.disabled=true; });
+    await page.keyboard.press("Enter");
+    confirmations += await page.evaluate(() => (window as any).__r189Confirmations);
+    await page.goto(`/review.html?project=${projectId}`);
+    await expect(page.getByText("尚无 segment 可审核")).toBeVisible();
+    const reviewDelete = page.locator('button[data-empty-action="delete"]');
+    await expect(reviewDelete).toBeDisabled();
+    await expect(reviewDelete).toHaveAccessibleName("删除测试项目暂不可用，项目及审核记录会保留");
+    await expect(page.locator("#review-root")).toContainText("测试项目删除暂不可用，项目及审核记录会保留");
+    await reviewDelete.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `artifacts/r189-after-review-${viewport.width}.png`, fullPage: true });
+    await reviewDelete.evaluate((element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await reviewDelete.evaluate((element: HTMLButtonElement) => { element.disabled=false; element.focus(); element.click(); element.disabled=true; });
+    await page.keyboard.press("Enter");
+    confirmations += await page.evaluate(() => (window as any).__r189Confirmations);
+    expect(confirmations).toBe(0);
+    expect(deletionRequests).toBe(0);
+    expect((await request.get(`/api/projects/${projectId}/workbench-data`)).status()).toBe(200);
+    const directDeletion = await request.post(`/api/projects/${projectId}/lifecycle`, { data: { action: "delete", confirm_delete: true } });
+    expect(directDeletion.status()).toBe(503);
+    expect(await directDeletion.json()).toEqual({ error: "测试项目删除暂不可用，项目及审核记录会保留", error_code: "test_project_deletion_unavailable" });
+    expect(await (await request.get(`/api/projects/${projectId}/review-state`)).json()).toEqual(initialReview);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    fs.writeFileSync(`artifacts/r189-after-${viewport.width}.json`, JSON.stringify({ viewport, errors, consoleErrors, exchanges, confirmations, deletionRequests }, null, 2));
+    expect(errors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+    expect(exchanges.filter((exchange) => exchange.status >= 400)).toEqual([]);
+  });
+}

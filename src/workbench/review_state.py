@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
+import sys
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 REVIEW_STATE_FILE = "review_state.json"
+REVIEW_STATE_MAX_BYTES = 64 * 1024 * 1024
 APPROVAL_IDENTITY_SCHEMA = "segment_approval_identity"
 APPROVAL_IDENTITY_DOMAIN = "light-novel.workbench.segment-approval"
 APPROVAL_IDENTITY_VERSION = 1
@@ -19,6 +23,19 @@ _review_state_lock = threading.Lock()
 
 class ReviewStateConflictError(RuntimeError):
     """The project review preimage changed before its atomic update."""
+
+
+class ReviewStateUnavailableError(Exception):
+    """Review state cannot be safely read; details must not be sent to clients."""
+
+    def __init__(self) -> None:
+        super().__init__("审核状态暂不可用；请检查后重试。")
+
+
+@dataclass(frozen=True)
+class ReviewStateSnapshot:
+    state: dict[str, Any]
+    identity: tuple[Any, ...]
 
 DECISION_SCHEMA = "workbench-review-decision/1"
 _ACTOR_TYPES = {"unknown", "machine", "agent", "psh_proxy"}
@@ -176,19 +193,110 @@ def _empty_state() -> dict[str, Any]:
     return {"version": 1, "projects": {}, "updated_at": utc_now()}
 
 
-def load_review_state(repo_root: Path) -> dict[str, Any]:
-    path = review_state_path(repo_root)
-    if not path.is_file():
-        return _empty_state()
+def _read_review_bytes(repo_root: Path) -> tuple[bytes | None, tuple[Any, ...]]:
+    """Read the inode selected by a no-link open; directory containment is at open time."""
+    from assets.translation_memory import _open_at2
+
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise ValueError("secure review reads are unavailable")
+    if ".." in Path(repo_root).parts:
+        raise ValueError("review root is not a stable path")
+    fds: list[int] = []
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return _empty_state()
-    if not isinstance(data, dict):
-        return _empty_state()
+        anchor = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        fds.append(anchor)
+        absolute = os.path.abspath(os.fspath(repo_root))
+        # Acquiring the configured repo root may cross a mount, but never a
+        # symlink or magic link. All paths below the root prohibit mounts too.
+        root = _open_at2(anchor, Path(absolute.lstrip("/")), resolve=0x0E)
+        fds.append(root)
+        root_stat = os.fstat(root)
+        if not stat.S_ISDIR(root_stat.st_mode):
+            raise ValueError("review root unavailable")
+        workspace = _open_at2(root, Path("workspace"), resolve=0x0F)
+        fds.append(workspace)
+        workspace_stat = os.fstat(workspace)
+        if not stat.S_ISDIR(workspace_stat.st_mode):
+            raise ValueError("review workspace unavailable")
+        directory_identity = (root_stat.st_dev, root_stat.st_ino,
+                              workspace_stat.st_dev, workspace_stat.st_ino)
+        try:
+            leaf = _open_at2(workspace, Path(REVIEW_STATE_FILE), resolve=0x0F)
+        except FileNotFoundError:
+            return None, (*directory_identity, None)
+        fds.append(leaf)
+        before = os.fstat(leaf)
+        if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or before.st_size > REVIEW_STATE_MAX_BYTES:
+            raise ValueError("review state is not a bounded uniquely linked regular file")
+        content = bytearray()
+        while True:
+            chunk = os.read(leaf, min(65536, REVIEW_STATE_MAX_BYTES + 1 - len(content)))
+            if not chunk:
+                break
+            content.extend(chunk)
+            if len(content) > REVIEW_STATE_MAX_BYTES:
+                raise ValueError("review state exceeds limit")
+        after = os.fstat(leaf)
+        def identity(value: os.stat_result) -> tuple[int, ...]:
+            return (value.st_dev, value.st_ino, value.st_mode, value.st_nlink,
+                    value.st_size, value.st_mtime_ns, value.st_ctime_ns)
+        if identity(before) != identity(after) or len(content) != before.st_size:
+            raise ValueError("review state changed during read")
+        raw = bytes(content)
+        return raw, (*directory_identity, identity(before), hashlib.sha256(raw).hexdigest())
+    finally:
+        pending = sys.exc_info()[1]
+        failures = []
+        for fd in reversed(fds):
+            try:
+                os.close(fd)
+            except OSError as error:
+                failures.append(error)
+        if failures:
+            if pending is not None:
+                raise BaseExceptionGroup("review read and cleanup failed", [pending, *failures]) from None
+            if len(failures) == 1:
+                raise failures[0]
+            raise ExceptionGroup("review cleanup failed", failures)
+
+
+def read_review_state_snapshot(repo_root: Path) -> ReviewStateSnapshot:
+    """Validate a bounded snapshot; only a missing leaf is an empty state."""
+    try:
+        raw, identity = _read_review_bytes(repo_root)
+        if raw is None:
+            return ReviewStateSnapshot(_empty_state(), identity)
+        def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError("ambiguous review state")
+                result[key] = value
+            return result
+        def invalid_constant(_value: str) -> None:
+            raise ValueError("invalid review state number")
+        data = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object, parse_constant=invalid_constant)
+        if not isinstance(data, dict) or type(data.get("version", 1)) is not int or data.get("version", 1) != 1:
+            raise ValueError("unsupported review state structure")
+        projects = data.get("projects", {})
+        if not isinstance(projects, dict):
+            raise ValueError("unsupported review state structure")
+        for project in projects.values():
+            if not isinstance(project, dict):
+                raise ValueError("unsupported review state structure")
+            for key in ("segments", "issues"):
+                entries = project.get(key, {})
+                if not isinstance(entries, dict) or any(not isinstance(entry, dict) for entry in entries.values()):
+                    raise ValueError("unsupported review state structure")
+    except Exception as error:
+        raise ReviewStateUnavailableError() from error
     data.setdefault("version", 1)
     data.setdefault("projects", {})
-    return data
+    return ReviewStateSnapshot(data, identity)
+
+
+def load_review_state(repo_root: Path) -> dict[str, Any]:
+    return read_review_state_snapshot(repo_root).state
 
 
 def save_review_state(repo_root: Path, state: dict[str, Any]) -> None:
@@ -200,14 +308,19 @@ def save_review_state(repo_root: Path, state: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def get_project_review_state(repo_root: Path, project_id: str) -> dict[str, Any]:
+def get_project_review_snapshot(repo_root: Path, project_id: str) -> tuple[dict[str, Any], tuple[Any, ...]]:
     with _review_state_lock:
-        state = load_review_state(repo_root)
+        snapshot = read_review_state_snapshot(repo_root)
+        state = snapshot.state
         projects = state.setdefault("projects", {})
         project = projects.setdefault(project_id, {"segments": {}, "issues": {}})
         project.setdefault("segments", {})
         project.setdefault("issues", {})
-        return project
+        return project, snapshot.identity
+
+
+def get_project_review_state(repo_root: Path, project_id: str) -> dict[str, Any]:
+    return get_project_review_snapshot(repo_root, project_id)[0]
 
 
 def patch_project_review_state(

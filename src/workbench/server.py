@@ -44,9 +44,9 @@ from workbench.project_registry import (
     ApprovalIdentityConflictError,
     DuplicateSegmentIdError,
     ManifestWriteInProgressError,
+    TestProjectDeletionUnavailableError,
     archive_project,
     create_project_manifest,
-    delete_test_project,
     get_active_project_id,
     get_project_manifest,
     list_project_manifests,
@@ -59,7 +59,7 @@ from workbench.project_registry import (
 )
 from workbench.review_state import get_project_review_state
 from workbench import canonical_service
-from workbench.review_state import ReviewStateConflictError
+from workbench.review_state import ReviewStateConflictError, ReviewStateUnavailableError
 from assets.translation_memory import (
     ExternalAssetExtractionUnavailable,
     build_translation_memory_assets,
@@ -134,6 +134,37 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                 {"error": str(exc), "error_code": "duplicate_segment_id"},
             )
 
+        def _review_state_unavailable(self) -> None:
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {
+                "error": "review_state_unavailable",
+                "message": "审核状态暂不可用；请检查后重试。",
+            })
+
+        def _canonical_preflight_unavailable(self) -> None:
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {
+                "error": "review_state_unavailable",
+                "message": "工作区或审核状态暂不可用，本次未写入。",
+                "effect_applied": False,
+                "mutation_committed": False,
+            })
+
+        def _native_request_history_unknown(self) -> None:
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {
+                "error": "native_request_history_unknown",
+                "message": "本次调用未执行；无法安全确认同一请求此前是否已完成，请勿自动重试，待安全回执能力具备后核查。",
+                "invocation_effect_applied": False,
+                "request_effect_status": "unknown",
+                "idempotent_replay": "unknown",
+                "selection_status_available": False,
+                "retry_operation": False,
+            })
+
+        def _test_project_deletion_unavailable(self) -> None:
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {
+                "error": "测试项目删除暂不可用，项目及审核记录会保留",
+                "error_code": "test_project_deletion_unavailable",
+            })
+
         def _parse_project_id(self, raw: str) -> str:
             return validate_project_id(raw.strip("/"))
 
@@ -176,6 +207,8 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._duplicate_segment_id(exc)
                 except ManifestWriteInProgressError as exc:
                     self._manifest_busy(exc)
+                except ReviewStateUnavailableError:
+                    self._review_state_unavailable()
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -195,6 +228,14 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._duplicate_segment_id(exc)
                 except ManifestWriteInProgressError as exc:
                     self._manifest_busy(exc)
+                except canonical_service.NativeRequestHistoryUnknown:
+                    self._native_request_history_unknown()
+                except canonical_service.CanonicalPreflightUnavailable:
+                    self._canonical_preflight_unavailable()
+                except ReviewStateUnavailableError:
+                    self._review_state_unavailable()
+                except TestProjectDeletionUnavailableError:
+                    self._test_project_deletion_unavailable()
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -214,6 +255,8 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._duplicate_segment_id(exc)
                 except ManifestWriteInProgressError as exc:
                     self._manifest_busy(exc)
+                except ReviewStateUnavailableError:
+                    self._review_state_unavailable()
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -233,6 +276,8 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                     self._duplicate_segment_id(exc)
                 except ManifestWriteInProgressError as exc:
                     self._manifest_busy(exc)
+                except ReviewStateUnavailableError:
+                    self._review_state_unavailable()
                 except Exception as exc:  # noqa: BLE001
                     if not self._client_gone(exc):
                         traceback.print_exc()
@@ -478,12 +523,21 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def _handle_api_post(self, path: str) -> None:
-            self._ensure_manifests()
             try:
                 body = self._read_json_body()
             except (ValueError, json.JSONDecodeError) as exc:
                 self._bad_request(str(exc))
                 return
+
+            if (path.startswith("/api/projects/") and path.endswith("/lifecycle")
+                    and str(body.get("action") or "").strip().lower() == "delete"):
+                raise TestProjectDeletionUnavailableError()
+            canonical_effect = path == "/api/source-import" or (
+                path.startswith("/api/projects/") and path.endswith((
+                    "/candidate-import", "/candidate-restore", "/select-version",
+                    "/canonical-export", "/native-agent-job")))
+            if not canonical_effect:
+                self._ensure_manifests()
 
             if path == "/api/projects":
                 try:
@@ -695,24 +749,6 @@ def make_handler(repo_root: Path, frontend_root: Path) -> type[SimpleHTTPRequest
                         )
                         return
 
-                    # delete
-                    if body.get("confirm_delete") is not True:
-                        self._bad_request("delete requires confirm_delete=true")
-                        return
-                    expected_phrase = f"DELETE {project_id}"
-                    confirm_phrase = str(body.get("confirm_phrase") or "")
-                    if confirm_phrase != expected_phrase:
-                        self._bad_request(f"delete requires confirm_phrase exactly '{expected_phrase}'")
-                        return
-                    result = delete_test_project(repo_root, project_id)
-                    self._send_json(
-                        HTTPStatus.OK,
-                        {
-                            "action": action,
-                            "project_id": project_id,
-                            **result,
-                        },
-                    )
                 except ManifestWriteInProgressError as exc:
                     self._manifest_busy(exc)
                 except PermissionError as exc:

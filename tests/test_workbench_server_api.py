@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 import threading
 import time
@@ -20,6 +21,7 @@ from workbench.server import make_handler  # noqa: E402
 
 @pytest.fixture()
 def api_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    (tmp_path / "workspace").mkdir()
     examples = REPO_ROOT / "data" / "examples"
     for example in examples.glob("workbench_project.*.example.json"):
         target = tmp_path / "data" / "examples" / example.name
@@ -128,6 +130,119 @@ def test_canonical_and_native_status_reads_do_not_enter_native_admission(api_ser
     assert code==200 and value['native_status']['admission']['attempts']==0
     code,value=_get(api_server,f'/api/projects/{pid}/native-agent-status')
     assert code==200 and value['admission']['attempts']==0
+
+
+@pytest.mark.parametrize("kind", ["corrupt", "leaf_link", "hardlink", "unsupported"])
+def test_review_unavailable_is_consistent_and_never_saves(api_env, monkeypatch, kind):
+    import os
+    from assets import translation_memory as memory
+    from workbench import review_state
+    base = str(api_env["base"])
+    root = api_env["repo_root"]
+    project = "review-unavailable"
+    assert _post(base, "/api/projects", {"project_id": project, "name": "Synthetic",
+        "language_direction": "JP_TO_CN"})[0] == 201
+    manifest = root / "workspace" / "manifests" / f"{project}.json"
+    expected = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    leaf = root / "workspace" / "review_state.json"
+    if kind == "corrupt":
+        leaf.write_bytes(b"{ synthetic private fixture")
+    elif kind == "unsupported":
+        leaf.write_bytes(b'{"projects":{}}')
+        monkeypatch.setattr(memory, "_open_at2", lambda *_a, **_k: (_ for _ in ()).throw(ValueError("unsupported")))
+    else:
+        outside = root / "review-outside-fixture"
+        outside.write_bytes(b'{"projects":{}}')
+        target = outside.stat()
+        if kind == "leaf_link": leaf.symlink_to(outside)
+        else: os.link(outside, leaf)
+        original_read = os.read
+        def read(fd, count):
+            current = os.fstat(fd)
+            assert (current.st_dev, current.st_ino) != (target.st_dev, target.st_ino)
+            return original_read(fd, count)
+        monkeypatch.setattr(os, "read", read)
+    saves = []
+    monkeypatch.setattr(review_state, "save_review_state", lambda *_a, **_k: saves.append(True))
+    responses = [
+        _get(base, f"/api/projects/{project}/review-state"),
+        _get(base, f"/api/projects/{project}/canonical-selection"),
+        _patch(base, f"/api/projects/{project}/review-state", {"issues": {"i": {"status": "open"}}}),
+        _post(base, f"/api/projects/{project}/canonical-export", {"expected_manifest_sha256": expected,
+            "confirm_replace": True}),
+    ]
+    assert all(status == 503 for status, _ in responses)
+    assert all(body == {"error": "review_state_unavailable", "message": "审核状态暂不可用；请检查后重试。"}
+               for _, body in responses[:3])
+    assert responses[3][1] == {"error": "review_state_unavailable", "message": "工作区或审核状态暂不可用，本次未写入。",
+                              "effect_applied": False, "mutation_committed": False}
+    assert str(root) not in json.dumps(responses)
+    assert saves == []
+
+
+@pytest.mark.parametrize("route", ["source-import", "candidate-import", "candidate-restore",
+                                   "select-version", "canonical-export", "native-agent-job"])
+def test_canonical_http_preflight_reports_no_effect(api_env, monkeypatch, route):
+    import workbench.server as server
+    base = str(api_env["base"]); root = api_env["repo_root"]; project = "preflight-http"
+    assert _post(base, "/api/projects", {"project_id": project, "name": "Synthetic",
+        "language_direction": "JP_TO_CN"})[0] == 201
+    manifest = root / "workspace" / "manifests" / f"{project}.json"
+    before = manifest.read_bytes(); digest = hashlib.sha256(before).hexdigest()
+    (root / "workspace" / "review_state.json").write_bytes(b"{")
+    calls=[]
+    def forbidden(*_args, **_kwargs):
+        calls.append(True); raise AssertionError("unexpected setup or write")
+    monkeypatch.setattr(server, "refresh_example_manifests", forbidden)
+    body = {"expected_manifest_sha256":digest,"confirm_restore":True,"confirm_replace":True,
+            "action":"generate","request_id":"synthetic","project_id":"another-project",
+            "language_direction":"JP_TO_CN","chapters":[{"filename":"001-test.md","text":"# synthetic\n\ntest"}]}
+    if route == 'candidate-restore': body = {"expected_manifest_sha256":digest,"confirm_restore":True}
+    if route == 'native-agent-job': body = {"expected_manifest_sha256":digest,"action":"generate","request_id":"synthetic"}
+    path = "/api/source-import" if route == "source-import" else f"/api/projects/{project}/{route}"
+    host, port = base.split(":"); conn = HTTPConnection(host, int(port), timeout=10)
+    conn.request("POST",path,body=json.dumps(body),headers={"Content-Type":"application/json","Origin":"http://"+base})
+    res=conn.getresponse(); status=res.status; payload=json.loads(res.read()); conn.close()
+    if route == 'native-agent-job':
+        assert status==503 and payload=={"error":"native_request_history_unknown",
+            "message":"本次调用未执行；无法安全确认同一请求此前是否已完成，请勿自动重试，待安全回执能力具备后核查。",
+            "invocation_effect_applied":False,"request_effect_status":"unknown","idempotent_replay":"unknown",
+            "selection_status_available":False,"retry_operation":False}
+    else:
+        assert status==503 and payload=={"error":"review_state_unavailable",
+            "message":"工作区或审核状态暂不可用，本次未写入。","effect_applied":False,"mutation_committed":False}
+    assert manifest.read_bytes()==before and calls==[]
+    assert not (root/'input_jp'/'another-project').exists()
+
+
+def test_native_replay_http_reports_history_unknown_without_reading_job(api_env,monkeypatch):
+    from workbench import generation_jobs, native_revision
+    base=str(api_env['base']);root=api_env['repo_root'];project='native-replay-fixture'
+    assert _post(base,'/api/projects',{'project_id':project,'name':'Synthetic','language_direction':'JP_TO_CN'})[0]==201
+    digest='a'*64;job=root/'workspace/generation_jobs.json'
+    job.write_text(json.dumps({'projects':{project:{'current':{'request_id':'prior','project_id':project,
+        'status':'succeeded','response_payload':{'action':'generate','input_manifest_sha256':digest,
+        'selection':{'segments':[{'source':'synthetic secret fixture'}]}}},'history':[]}}}))
+    (root/'workspace/review_state.json').write_text('{')
+    calls=[]
+    def forbidden(*_a,**_k):calls.append(True);raise AssertionError('job history read')
+    monkeypatch.setattr(generation_jobs,'find_generation_job',forbidden)
+    monkeypatch.setattr(generation_jobs,'_load_state_unlocked',forbidden)
+    monkeypatch.setattr(native_revision,'completed',forbidden)
+    original_open=Path.open
+    def guarded_open(path,*args,**kwargs):
+        if path==job:return forbidden()
+        return original_open(path,*args,**kwargs)
+    monkeypatch.setattr(Path,'open',guarded_open)
+    host,port=base.split(':');conn=HTTPConnection(host,int(port),timeout=10)
+    conn.request('POST',f'/api/projects/{project}/native-agent-job',body=json.dumps({
+        'expected_manifest_sha256':digest,'action':'generate','request_id':'prior'}),
+        headers={'Content-Type':'application/json','Origin':'http://'+base})
+    res=conn.getresponse();status=res.status;payload=json.loads(res.read());conn.close()
+    assert status==503 and payload['request_effect_status']=='unknown' and payload['idempotent_replay']=='unknown'
+    assert payload['invocation_effect_applied'] is False and payload['retry_operation'] is False
+    assert 'effect_applied' not in payload and 'mutation_committed' not in payload and 'selection' not in payload
+    assert 'synthetic secret fixture' not in json.dumps(payload) and calls==[]
 
 
 def test_http_actor_body_and_headers_cannot_grant_approval(api_server):
@@ -915,72 +1030,63 @@ def test_project_lifecycle_archive_and_retry(api_server: str) -> None:
     assert job_payload["generation_job"] is None
 
 
-def test_project_lifecycle_delete_requires_test_and_confirm(
-    api_server: str,
-) -> None:
-    user_project = "lifecycle-user-delete-blocked"
-    _post(
-        api_server,
-        "/api/projects",
-        {"project_id": user_project, "name": "User", "language_direction": "JP_TO_CN"},
-    )
-    code, forbidden = _post(
-        api_server,
-        f"/api/projects/{user_project}/lifecycle",
-        {"action": "delete", "confirm_delete": True, "confirm_phrase": f"DELETE {user_project}"},
-    )
-    assert code == 403
-    assert "restricted to test projects" in forbidden["error"]
-
-    test_project = "pw-lifecycle-delete-ok"
-    _post(
-        api_server,
-        "/api/projects",
-        {"project_id": test_project, "name": "Delete", "language_direction": "JP_TO_CN"},
-    )
-    _post(
-        api_server,
-        f"/api/projects/{test_project}/dry-run-generate",
-        {"sample_text": "cleanup"},
-    )
-    _post(
-        api_server,
-        f"/api/projects/{test_project}/lifecycle",
-        {"action": "retry"},
-    )
-
-    code, missing_confirm = _post(
-        api_server,
-        f"/api/projects/{test_project}/lifecycle",
-        {"action": "delete"},
-    )
-    assert code == 400
-    assert "confirm_delete" in missing_confirm["error"]
-
-    code, wrong_phrase = _post(
-        api_server,
-        f"/api/projects/{test_project}/lifecycle",
-        {"action": "delete", "confirm_delete": True, "confirm_phrase": "DELETE wrong"},
-    )
-    assert code == 400
-    assert "confirm_phrase" in wrong_phrase["error"]
-
-    code, deleted = _post(
-        api_server,
-        f"/api/projects/{test_project}/lifecycle",
-        {
-            "action": "delete",
-            "confirm_delete": True,
-            "confirm_phrase": f"DELETE {test_project}",
-        },
-    )
-    assert code == 200
-    assert deleted["deleted_project_id"] == test_project
-
-    code, payload = _get(api_server, "/api/projects?include_test=true&include_history=true")
-    assert code == 200
-    ids = {p["project_id"] for p in payload["projects"]}
-    assert test_project not in ids
+@pytest.mark.parametrize("kind", ["valid", "missing", "corrupt", "link", "unsupported", "concurrent"])
+def test_project_deletion_is_unavailable_before_any_effect(api_env, monkeypatch, kind):
+    from assets import translation_memory
+    from workbench import generation_jobs, project_registry, review_state, server
+    root = api_env["repo_root"]
+    base = str(api_env["base"])
+    project = "pw-deletion-preserved"
+    assert _post(base, "/api/projects", {"project_id": project, "name": "Synthetic",
+        "language_direction": "JP_TO_CN"})[0] == 201
+    manifest = root / "workspace" / "manifests" / f"{project}.json"
+    before = manifest.read_bytes()
+    leaf = root / "workspace" / "review_state.json"
+    if kind in {"valid", "concurrent", "unsupported"}: leaf.write_bytes(b'{"projects":{}}')
+    if kind == "corrupt": leaf.write_bytes(b"{")
+    if kind == "link":
+        outside = root / "outside-fixture"
+        outside.write_bytes(b'{"projects":{}}')
+        leaf.symlink_to(outside)
+    def tree_identity():
+        return sorted((str(path.relative_to(root)), path.lstat().st_mode, path.lstat().st_size,
+                       path.lstat().st_mtime_ns) for path in (root / "workspace").rglob("*"))
+    tree_before = tree_identity()
+    calls = []
+    def forbidden(*_args, **_kwargs):
+        calls.append(True)
+        raise AssertionError("deletion reached a forbidden effect")
+    monkeypatch.setattr(review_state, "load_review_state", forbidden)
+    monkeypatch.setattr(review_state, "delete_project_review_state", forbidden)
+    monkeypatch.setattr(review_state, "save_review_state", forbidden)
+    monkeypatch.setattr(generation_jobs, "delete_project_generation_state", forbidden)
+    monkeypatch.setattr(server, "refresh_example_manifests", forbidden)
+    monkeypatch.setattr(translation_memory, "_open_at2", forbidden)
+    original_unlink = Path.unlink
+    def unlink(path, *args, **kwargs):
+        if path.is_relative_to(root / "workspace"): return forbidden()
+        return original_unlink(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "unlink", unlink)
+    completed = []
+    def direct():
+        with pytest.raises(project_registry.TestProjectDeletionUnavailableError):
+            project_registry.delete_test_project(root, project)
+        completed.append(True)
+    if kind == "concurrent":
+        threads = [threading.Thread(target=direct) for _ in range(2)]
+        for thread in threads: thread.start()
+        for thread in threads: thread.join()
+    else:
+        direct()
+    assert len(completed) == (2 if kind == "concurrent" else 1)
+    expected = {"error": "测试项目删除暂不可用，项目及审核记录会保留",
+                "error_code": "test_project_deletion_unavailable"}
+    for payload in ({"action": "delete"}, {"action": "delete", "confirm_delete": True,
+                                            "confirm_phrase": f"DELETE {project}"}):
+        assert _post(base, f"/api/projects/{project}/lifecycle", payload) == (503, expected)
+    assert manifest.read_bytes() == before
+    assert tree_identity() == tree_before
+    assert calls == []
 
 
 def test_project_lifecycle_blocked_when_generation_running(

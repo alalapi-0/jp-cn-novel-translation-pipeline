@@ -17,12 +17,50 @@ from translation.canonical_export import build_accepted_revision, validate_accep
 from workbench.project_id import validate_project_id
 from workbench.project_registry import (build_source_inventory, get_project_manifest, manifests_dir,
     _project_write_lock, _save_project_manifest_unlocked, ManifestWriteInProgressError, parse_project_manifest)
-from workbench.review_state import (DecisionActor, get_project_review_state, approval_identity,
-    review_decision_summary, review_state_path)
+from workbench.review_state import (DecisionActor, get_project_review_state, get_project_review_snapshot,
+    read_review_state_snapshot, ReviewStateUnavailableError, approval_identity, review_decision_summary)
 
 
 class CanonicalVersionConflict(ValueError):
     pass
+
+
+class CanonicalPreflightUnavailable(ReviewStateUnavailableError):
+    """The review preflight failed before this operation made any effect."""
+
+
+class NativeRequestHistoryUnknown(Exception):
+    """This invocation did not run; the same request's history cannot be confirmed."""
+
+    def __init__(self):
+        super().__init__("本次调用未执行；无法安全确认同一请求此前是否已完成，请勿自动重试，待安全回执能力具备后核查。")
+
+
+def review_preflight(root):
+    try:
+        return read_review_state_snapshot(Path(root)).identity
+    except ReviewStateUnavailableError as error:
+        raise CanonicalPreflightUnavailable() from error
+
+
+def selection_after_effect(root, project_id, initial_identity, *, effect_applied=True, allow_review_change=False):
+    """Return a safe current selection or an honest receipt for a completed effect."""
+    try:
+        current = read_review_state_snapshot(Path(root)).identity
+        if not allow_review_change and current != initial_identity:
+            raise ReviewStateUnavailableError()
+        selection = selection_status(root, project_id)
+        after = read_review_state_snapshot(Path(root)).identity
+        if current != after or (not allow_review_change and after != initial_identity):
+            raise ReviewStateUnavailableError()
+        return selection, {"effect_applied": effect_applied, "mutation_committed": effect_applied,
+                           "selection_status_available": True}
+    except ReviewStateUnavailableError:
+        warning = ("操作已完成，但审核状态暂不可用。当前页面仍为操作前内容，请刷新后核对；请勿重复提交。"
+                   if effect_applied else "操作无需修改，但审核状态暂不可用。当前页面未经确认，请刷新后核对。")
+        return None, {"effect_applied": effect_applied, "mutation_committed": effect_applied,
+                      "selection_status_available": False, "warning_code": "review_state_unavailable_after_effect",
+                      "warning": warning}
 
 
 def _ordinary(path):
@@ -59,6 +97,7 @@ def _archive(root,project,raw):
 
 def import_sources(root, *, project_id, name, language_direction, chapters):
     root=Path(root);project_id=validate_project_id(project_id)
+    review_identity=review_preflight(root)
     if language_direction not in {'JP_TO_CN','CN_TO_JP'}:raise ValueError('invalid language direction')
     if not isinstance(chapters,list) or not chapters:raise ValueError('请选择至少一个完整源章节文件。')
     prepared=[];rows=[];documents=[];ids=set();names=set()
@@ -96,12 +135,14 @@ def import_sources(root, *, project_id, name, language_direction, chapters):
                 os.rename(stage,source_root)
         _save_project_manifest_unlocked(root,data)
     finally:lock.release()
-    return selection_status(root,project_id)
+    selection,receipt=selection_after_effect(root,project_id,review_identity)
+    return {**(selection or {'project_id':project_id}), **receipt}
 
 
 def import_candidates(root, project_id, *, expected_manifest_sha256, source_inventory_sha256, candidates,
                       _native_request_id=None, _native_metadata=None):
-    root=Path(root);project_id=validate_project_id(project_id);lock=_project_write_lock(project_id)
+    root=Path(root);project_id=validate_project_id(project_id);review_identity=review_preflight(root)
+    lock=_project_write_lock(project_id);changed=False
     if not lock.acquire(blocking=False):raise ManifestWriteInProgressError('project write in progress')
     try:
         _,raw,data,_=_read(root,project_id,expected_manifest_sha256)
@@ -131,8 +172,10 @@ def import_candidates(root, project_id, *, expected_manifest_sha256, source_inve
                 for row in data['segments']:row['generated_by']='native_agent_quota'
             data.pop('accepted_revision',None);data['previous_manifest_sha256']=previous;data['status']='review_pending';data['generation_state']='imported_unreviewed'
             _save_project_manifest_unlocked(root,data)
+            changed=True
     finally:lock.release()
-    return selection_status(root,project_id)
+    selection,receipt=selection_after_effect(root,project_id,review_identity,effect_applied=changed)
+    return {**(selection or {'project_id':project_id}), **receipt}
 
 
 def _json_sha(value):
@@ -203,7 +246,7 @@ def restore_previous_candidates(root, project_id, *, expected_manifest_sha256):
     """One reversible draft step; no approval, generation, budget or export effect."""
     from translation.content_binding import SourceBindings
     from workbench.generation_jobs import project_generation_lock, get_project_generation_job, ACTIVE_JOB_STATUSES
-    root = Path(root); project_id = validate_project_id(project_id)
+    root = Path(root); project_id = validate_project_id(project_id); review_identity = review_preflight(root)
     if not isinstance(expected_manifest_sha256,str) or not re.fullmatch(r'[0-9a-f]{64}', expected_manifest_sha256):
         raise ValueError('current manifest SHA-256 required')
     generation_lock = project_generation_lock(project_id); lock = _project_write_lock(project_id)
@@ -241,9 +284,10 @@ def restore_previous_candidates(root, project_id, *, expected_manifest_sha256):
                 _save_project_manifest_unlocked(root, data)
         finally: lock.release()
     finally: generation_lock.release()
+    selection, receipt = selection_after_effect(root, project_id, review_identity, effect_applied=bool(changes))
     return {'action':'restore_unreviewed_drafts' if changes else 'preserve_original',
         'changed_segment_ids':changes, 'approval_issued':False,'human_approved_final':False,
-        'canonical_adoption':False,'selection':selection_status(root,project_id)}
+        'canonical_adoption':False,'selection':selection, **receipt}
 
 
 def _revision_case(root, project_id, data, segment_id):
@@ -272,7 +316,6 @@ def _revision_case(root, project_id, data, segment_id):
     validate_source_binding(binding, row['source'], document_text=text)
     end = binding['source_spans'][0][0]; start = max(0, end - 512)
     context = text[start:end]
-    _ordinary(review_state_path(Path(root)))
     review = get_project_review_state(Path(root), project_id)['segments'].get(segment_id)
     case = {'schema':'workbench-revision-case/1', 'project_id':project_id, 'segment_id':segment_id,
         'source_inventory_sha256':inventory['inventory_sha256'], 'source_binding':binding,
@@ -324,7 +367,7 @@ def apply_revision_comparison(root, project_id, *, expected_manifest_sha256, seg
     if (not isinstance(decision_actor, DecisionActor) or
             decision_actor.actor_type not in {'agent','psh_proxy'}):
         raise ValueError('draft selection requires explicit trusted local Agent/PSH context')
-    root = Path(root); project_id = validate_project_id(project_id)
+    root = Path(root); project_id = validate_project_id(project_id); review_identity = review_preflight(root)
     generation_lock = project_generation_lock(project_id); lock = _project_write_lock(project_id)
     if not generation_lock.acquire(blocking=False):
         raise ManifestWriteInProgressError('project generation in progress')
@@ -390,8 +433,9 @@ def apply_revision_comparison(root, project_id, *, expected_manifest_sha256, seg
             output.pop('accepted_revision', None); output.pop('native_generation', None)
             output['status'] = 'review_pending'; output['generation_state'] = 'bounded_revision_unreviewed'
             _save_project_manifest_unlocked(root, output)
+            selection, effect = selection_after_effect(root, project_id, review_identity)
             return {**receipt, 'action':'import_unreviewed_draft', 'changed_segment_ids':[segment_id],
-                'trace':trace, 'selection':selection_status(root, project_id)}
+                'trace':trace, 'selection':selection, **effect}
         finally:
             lock.release()
     finally:
@@ -464,7 +508,8 @@ def native_generation_provenance(root, project_id, *, expected_segments=None):
 
 
 def select_revision(root,project_id,*,expected_manifest_sha256,target_fields):
-    root=Path(root);project_id=validate_project_id(project_id);lock=_project_write_lock(project_id)
+    root=Path(root);project_id=validate_project_id(project_id);review_identity=review_preflight(root)
+    lock=_project_write_lock(project_id);changed=False
     if not lock.acquire(blocking=False):raise ManifestWriteInProgressError('project write in progress')
     try:
         _,raw,data,_=_read(root,project_id,expected_manifest_sha256)
@@ -472,18 +517,24 @@ def select_revision(root,project_id,*,expected_manifest_sha256,target_fields):
         accepted=build_accepted_revision(data,reviews,target_fields)
         if data.get('accepted_revision')!=accepted:
             _archive(root,project_id,raw);data['accepted_revision']=accepted;_save_project_manifest_unlocked(root,data)
+            changed=True
     finally:lock.release()
-    return selection_status(root,project_id)
+    selection,receipt=selection_after_effect(root,project_id,review_identity,effect_applied=changed)
+    return {**(selection or {'project_id':project_id}), **receipt}
 
 
 def export_selected(root,project_id,*,expected_manifest_sha256):
     from translation.canonical_export import export_accepted_revision
-    from workbench.review_state import review_state_path
-    root=Path(root);path,raw,data,_=_read(root,project_id,expected_manifest_sha256)
-    review_path=_ordinary(review_state_path(root));review_raw=review_path.read_bytes() if review_path.is_file() else None
-    reviews=get_project_review_state(root,project_id)['segments']
+    root=Path(root);preflight=review_preflight(root);path,raw,data,_=_read(root,project_id,expected_manifest_sha256)
+    try:
+        review,review_identity=get_project_review_snapshot(root,project_id)
+    except ReviewStateUnavailableError as error:
+        raise CanonicalPreflightUnavailable() from error
+    if review_identity != preflight:
+        raise CanonicalPreflightUnavailable()
+    reviews=review['segments']
     def recheck():
         _read(root,project_id,expected_manifest_sha256)
-        now=review_path.read_bytes() if review_path.is_file() else None
-        if now!=review_raw:raise CanonicalVersionConflict('审查在导出期间变化；请刷新。')
+        now=read_review_state_snapshot(root).identity
+        if now!=review_identity:raise CanonicalVersionConflict('审查在导出期间变化；请刷新。')
     return export_accepted_revision(root,data,reviews,before_commit=recheck)

@@ -91,7 +91,7 @@ def _segment_text(seg: dict[str, Any], *keys: str) -> str:
     return ""
 
 
-def _open_beneath(root_fd: int, relative: Path) -> int:
+def _open_at2(root_fd: int, relative: Path, *, resolve: int) -> int:
     """Use Linux's atomic path resolution; unsupported hosts fail closed."""
     import ctypes
     import errno
@@ -102,9 +102,8 @@ def _open_beneath(root_fd: int, relative: Path) -> int:
     class OpenHow(ctypes.Structure):
         _fields_ = [("flags", ctypes.c_uint64), ("mode", ctypes.c_uint64), ("resolve", ctypes.c_uint64)]
 
-    # Linux UAPI: __NR_openat2=437 on x86_64. Resolve flags enforce beneath,
-    # no symlinks or magic links, and no mount or bind-mount crossings.
-    how = OpenHow(os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, 0, 0x0F)
+    # Linux UAPI: __NR_openat2=437 on x86_64.
+    how = OpenHow(os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, 0, resolve)
     try:
         libc = ctypes.CDLL(None, use_errno=True)
         syscall = libc.syscall
@@ -118,6 +117,11 @@ def _open_beneath(root_fd: int, relative: Path) -> int:
             raise FileNotFoundError("direct source is unavailable")
         raise ValueError("direct source path is unsafe or unavailable")
     return int(result)
+
+
+def _open_beneath(root_fd: int, relative: Path) -> int:
+    # BENEATH, NO_SYMLINKS, NO_MAGICLINKS and NO_XDEV.
+    return _open_at2(root_fd, relative, resolve=0x0F)
 
 
 def _read_repo_file(repo_root: Path, relative: Path) -> bytes:

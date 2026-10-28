@@ -19,7 +19,8 @@ from translation.content_binding import SourceBindings
 from workbench import canonical_service as canonical
 from workbench import generation_jobs as jobs
 from workbench.project_registry import patch_project_review_state_cas
-from workbench.review_state import DecisionActor, approval_identity, get_project_review_state, review_decision_summary
+from workbench.review_state import (DecisionActor, ReviewStateUnavailableError, approval_identity,
+    get_project_review_state, review_decision_summary)
 
 _active = {}
 _active_lock = threading.Lock()
@@ -708,13 +709,19 @@ def execute_job(root, project_id, *, expected_manifest_sha256, request_id, actio
     Failed/interrupted IDs are never replayed. Restarted active jobs are preserved
     for exact recovery, not converted to success or silently re-dispatched.
     """
-    root = Path(root).resolve()
+    root = Path(root).absolute()
     if not isinstance(action,str) or action not in {'generate','review','compare_revision'}: raise ValueError('unknown native action')
     _valid_request_id(request_id)
     if action=='compare_revision':
         if not isinstance(segment_id,str) or not segment_id or len(segment_id)>180:raise ValueError('selected segment required')
     elif segment_id is not None:raise ValueError('segment selection only applies to revision comparison')
     project_id = canonical.validate_project_id(project_id)
+    try:
+        review_identity = canonical.review_preflight(root)
+    except canonical.CanonicalPreflightUnavailable:
+        # The stored job may contain source and translation bodies. Do not open
+        # it to decide whether this request id has already completed.
+        raise canonical.NativeRequestHistoryUnknown() from None
     lock = jobs.project_generation_lock(project_id)
     if not lock.acquire(blocking=False): raise jobs.GenerationInProgressError(project_id)
     try:
@@ -730,7 +737,11 @@ def execute_job(root, project_id, *, expected_manifest_sha256, request_id, actio
                         if response.get('segment_id')!=segment_id:raise ValueError('request id selected segment conflict')
                         from workbench.native_revision import completed
                         _,response=completed(root,project_id,request_id)
-                    return {**response,'idempotent_replay':True}
+                        return {**response,'idempotent_replay':True}
+                    return {**response,'selection':None,'selection_status_available':False,
+                        'warning_code':'historical_selection_not_revalidated',
+                        'warning':'该请求此前已完成，当前页面仍为操作前内容，请刷新后核对；请勿重复提交。',
+                        'idempotent_replay':True}
                 raise RuntimeError('native job already attempted; preserved for recovery')
             if action=='compare_revision':
                 return _execute_revision_job(root,project_id,expected_manifest_sha256,request_id,segment_id)
@@ -801,9 +812,13 @@ def execute_job(root, project_id, *, expected_manifest_sha256, request_id, actio
                     if cancel.is_set():raise NativeCancelled('native_operation_cancelled')
                     bindings.verify(bound)
                     if action=='generate':
-                        canonical.import_candidates(root,project_id,expected_manifest_sha256=expected_manifest_sha256,
-                            source_inventory_sha256=state['source_inventory_sha256'],candidates=values,_native_request_id=request_id,
-                            _native_metadata={**metadata,'request_id':request_id})
+                        try:
+                            canonical.import_candidates(root,project_id,expected_manifest_sha256=expected_manifest_sha256,
+                                source_inventory_sha256=state['source_inventory_sha256'],candidates=values,_native_request_id=request_id,
+                                _native_metadata={**metadata,'request_id':request_id})
+                        except canonical.CanonicalPreflightUnavailable as error:
+                            # The job record already exists; do not claim the whole request had no effects.
+                            raise ReviewStateUnavailableError() from error
                     else:
                         # Identities come only from the pre-dispatch pinned candidate.
                         # Computing them from a newly loaded manifest could bless a race.
@@ -823,10 +838,12 @@ def execute_job(root, project_id, *, expected_manifest_sha256, request_id, actio
                             decision_actor=DecisionActor('agent','codex-native:'+metadata['thread_id']),
                             _expected_review_state=review_preimage)
                     _active.pop(active_key,None)
+                selection,effect=canonical.selection_after_effect(root,project_id,review_identity,
+                    allow_review_change=action=='review')
                 response={'project_id':project_id,'action':action,'request_id':request_id,
                     'input_manifest_sha256':expected_manifest_sha256,'segments_created':len(rows) if action=='generate' else 0,
-                    'native':metadata,'selection':canonical.selection_status(root,project_id),
-                    'same_model_independence':'limited; separate ephemeral native reviewer', 'human_approved_final':False}
+                    'native':metadata,'selection':selection,
+                    'same_model_independence':'limited; separate ephemeral native reviewer', 'human_approved_final':False, **effect}
                 jobs.mark_generation_succeeded(root,project_id,request_id,response_payload=response)
                 return response
             except BaseException as exc:

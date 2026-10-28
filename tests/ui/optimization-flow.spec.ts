@@ -24,6 +24,160 @@ for (const viewport of [{width:1280,height:900},{width:390,height:844}]) {
 import fs from 'node:fs';
 import {trustedSyntheticAgentSetup} from './trusted-native-fixture';
 
+for (const viewport of [{width:1280,height:900},{width:390,height:844}]) {
+ test(`R189 honest mutation outcomes ${viewport.width}`,async({page,request})=>{
+  await page.setViewportSize(viewport);await page.emulateMedia({reducedMotion:'reduce'});
+  const pageErrors:string[]=[];const consoleErrors:string[]=[];const exchanges:any[]=[];
+  page.on('pageerror',e=>pageErrors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text());});
+  page.on('response',r=>exchanges.push({path:new URL(r.url()).pathname,method:r.request().method(),status:r.status()}));
+  const before={error:'review_state_unavailable',message:'工作区或审核状态暂不可用，本次未写入。',effect_applied:false,mutation_committed:false};
+  const after={effect_applied:true,mutation_committed:true,selection_status_available:false,
+   warning_code:'review_state_unavailable_after_effect',warning:'操作已完成，但审核状态暂不可用。当前页面仍为操作前内容，请刷新后核对；请勿重复提交。'};
+  const pid=`pw-r189-outcome-${viewport.width}-${Date.now()}`;
+  await page.goto('/index.html');
+  await page.locator('#long-project-id').fill(pid);await page.locator('#long-project-name').fill('合成导入结果');
+  await page.locator('#long-source-files').setInputFiles({name:'001-synthetic.md',mimeType:'text/markdown',buffer:Buffer.from('# 合成\n\n测试。')});
+  let mode='before';let sourcePosts=0;let reviewMutations=0;let protectedMutations=0;let confirmations=0;
+  page.on('dialog',dialog=>{confirmations++;dialog.accept();});
+  page.on('request',req=>{
+   if(req.url().endsWith('/review-state') && req.method()==='PATCH')reviewMutations++;
+   if(req.method()!=='GET' && /\/(review-state|candidate-import|candidate-restore|select-version|native-agent-job|canonical-export)$/.test(new URL(req.url()).pathname))protectedMutations++;
+  });
+  await page.route('**/api/source-import',async route=>{
+   sourcePosts++;
+   if(mode==='before')await route.fulfill({status:503,json:before});
+   else {const actual=await route.fetch();expect(actual.ok()).toBeTruthy();await route.fulfill({response:actual,json:{...after,project_id:pid}});}
+  });
+  await page.locator('#long-import-form button').click();
+  await expect(page.locator('#long-import-result')).toContainText('工作区或审核状态暂不可用，本次未写入');
+  mode='after';await page.locator('#long-import-form button').click();
+  await expect(page.locator('#long-import-result')).toContainText('操作已完成，但审核状态暂不可用');
+  await expect(page.locator('#long-import-form button')).toBeDisabled();
+  await page.waitForTimeout(200);expect(sourcePosts).toBe(2);
+  fs.mkdirSync('artifacts',{recursive:true});
+  await page.screenshot({path:`artifacts/r189-source-outcome-${viewport.width}.png`,fullPage:true});
+  await page.unroute('**/api/source-import');
+
+  await page.route('**/canonical-selection',async route=>{
+   const actual=await route.fetch();const value=await actual.json();value.native_status.admission.blocked=false;
+   await route.fulfill({response:actual,json:value});
+  });
+  await page.goto(`/review.html?project=${pid}`);
+  await expect(page.locator('#native-generate')).toBeEnabled();
+  let nativePosts=0;
+  await page.route('**/native-agent-job',async route=>{nativePosts++;await route.fulfill({status:503,json:{
+   error:'native_request_history_unknown',message:'本次调用未执行；无法安全确认同一请求此前是否已完成，请勿自动重试，待安全回执能力具备后核查。',
+   invocation_effect_applied:false,request_effect_status:'unknown',idempotent_replay:'unknown',selection_status_available:false,retry_operation:false}});});
+  await page.locator('#native-generate').click();
+  await expect(page.locator('#version-action-result')).toContainText('本次调用未执行；无法安全确认同一请求此前是否已完成');
+  await expect(page.locator('#review-snapshot-notice')).toContainText('审核状态暂不可用');
+  await page.waitForTimeout(200);expect(nativePosts).toBe(1);
+  await page.unroute('**/native-agent-job');await page.unroute('**/canonical-selection');
+
+  const project=`pw-r189-recovery-${viewport.width}-${Date.now()}`;
+  let response=await request.post('/api/source-import',{data:{project_id:project,name:'合成恢复',language_direction:'JP_TO_CN',
+   chapters:[{filename:'001-synthetic.md',text:'# 合成\n\n测试。'}]}});
+  expect(response.ok()).toBeTruthy();let state=await response.json();
+  for (const text of ['候选一。','候选二。']) {
+   response=await request.post(`/api/projects/${project}/candidate-import`,{data:{expected_manifest_sha256:state.manifest_sha256,
+    source_inventory_sha256:state.source_inventory_sha256,candidates:state.segments.map((r:any)=>({segment_id:r.segment_id,target_text:text}))}});
+   expect(response.ok()).toBeTruthy();state=await response.json();
+  }
+  await page.goto(`/review.html?project=${project}`);
+  await expect(page.locator('#version-summary')).toContainText(project);
+  await expect(page.locator('#version-candidate-file')).toBeEnabled();
+  const packet={source_inventory_sha256:state.source_inventory_sha256,candidates:state.segments.map((r:any)=>({segment_id:r.segment_id,target_text:'合成新候选。'}))};
+  let candidatePosts=0;mode='before';
+  await page.route('**/candidate-import',async route=>{candidatePosts++;
+   if(mode==='before')await route.fulfill({status:503,json:before});
+   else {const actual=await route.fetch();expect(actual.ok()).toBeTruthy();await route.fulfill({response:actual,json:{...after,project_id:project}});}
+  });
+  const file={name:'candidate.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(packet))};
+  await page.locator('#version-candidate-file').setInputFiles(file);
+  await expect(page.locator('#version-action-result')).toContainText('工作区或审核状态暂不可用，本次未写入');
+  await expect(page.locator('#version-candidate-file')).toBeDisabled();
+  await page.reload();await expect(page.locator('#version-summary')).toContainText(project);
+  mode='after';await page.locator('#version-candidate-file').setInputFiles(file);
+  await expect(page.locator('#version-action-result')).toContainText('操作已完成，但审核状态暂不可用');
+  await expect(page.locator('#version-candidate-file')).toBeDisabled();
+  await expect(page.locator('#review-snapshot-notice')).toContainText('操作前的失效快照');
+  await expect(page.locator('#review-root')).toContainText('候选二。');
+  const approval=page.locator('#review-root button[data-action="approve"]');
+  await expect(approval).toBeDisabled();
+  const beforeProtected=protectedMutations;
+  await approval.evaluate((element:HTMLButtonElement)=>{element.disabled=false;element.click();element.disabled=true;});
+  await page.locator('body').click({position:{x:1,y:1}});await page.keyboard.press('a');
+  for(const id of ['version-restore','version-select','native-generate','native-review'])
+   await page.locator(`#${id}`).evaluate((element:HTMLButtonElement)=>{element.disabled=false;element.click();element.disabled=true;});
+  await page.locator('#version-candidate-file').evaluate((element:HTMLInputElement)=>element.dispatchEvent(new Event('change',{bubbles:true})));
+  expect(confirmations).toBe(0);expect(reviewMutations).toBe(0);expect(protectedMutations).toBe(beforeProtected);
+  await page.waitForTimeout(200);expect(candidatePosts).toBe(2);
+  await page.screenshot({path:`artifacts/r189-candidate-outcome-${viewport.width}.png`,fullPage:true});
+  await page.unroute('**/candidate-import');
+  await page.route('**/review-state',async route=>{
+   if(route.request().method()==='GET')await route.fulfill({status:503,json:before});else await route.continue();
+  });
+  await page.reload();
+  await expect(page.locator('#review-snapshot-notice')).toContainText('审核状态暂不可用');
+  await expect(page.locator('#review-root button[data-action="approve"]')).toBeDisabled();
+  await page.waitForFunction(()=>typeof (document.querySelector('#version-refresh') as HTMLButtonElement).onclick==='function');
+  let load=page.waitForEvent('load');await page.locator('#version-refresh').click();await load;
+  await expect(page.locator('#review-snapshot-notice')).toContainText('审核状态暂不可用');
+  await expect(page.locator('#review-root button[data-action="approve"]')).toBeDisabled();
+  await page.waitForFunction(()=>typeof (document.querySelector('#version-refresh') as HTMLButtonElement).onclick==='function');
+  await page.unroute('**/review-state');
+  load=page.waitForEvent('load');await page.locator('#version-refresh').click();await load;
+  await expect(page.locator('#review-snapshot-notice')).toHaveCount(0);
+  await expect(page.locator('#review-root')).toContainText('合成新候选。');
+  await expect(page.locator('#review-root button[data-action="approve"]')).toBeEnabled();
+
+  await expect(page.locator('#version-restore')).toBeEnabled();
+  let restorePosts=0;mode='before';
+  await page.route('**/candidate-restore',async route=>{restorePosts++;
+   if(mode==='before')await route.fulfill({status:503,json:before});
+   else {const actual=await route.fetch();expect(actual.ok()).toBeTruthy();await route.fulfill({response:actual,json:after});}
+  });
+  await page.locator('#version-restore').click();
+  await expect(page.locator('#version-action-result')).toContainText('工作区或审核状态暂不可用，本次未写入');
+  await page.reload();await expect(page.locator('#version-restore')).toBeEnabled();mode='after';
+  await page.locator('#version-restore').click();
+  await expect(page.locator('#version-action-result')).toContainText('操作已完成，但审核状态暂不可用');
+  await expect(page.locator('#version-restore')).toBeDisabled();
+  await expect(page.locator('#review-snapshot-notice')).toContainText('操作前的失效快照');
+  await expect(page.locator('#review-root button[data-action="approve"]')).toBeDisabled();
+  await page.waitForTimeout(200);expect(restorePosts).toBe(2);
+  await page.screenshot({path:`artifacts/r189-restore-outcome-${viewport.width}.png`,fullPage:true});
+  await page.unroute('**/candidate-restore');
+  let selectionGets=0;let exportPosts=0;
+  await page.route('**/canonical-selection',async route=>{
+   selectionGets++;const actual=await route.fetch();const value=await actual.json();value.selected_current=true;
+   await route.fulfill({response:actual,json:value});
+  });
+  await page.route('**/canonical-export',async route=>{exportPosts++;await route.fulfill({status:503,json:before});});
+  await page.goto(`/export.html?project=${project}`);
+  await expect(page.locator('#version-summary')).toContainText(project);
+  await page.locator('#canonical-confirm').check();await expect(page.locator('#canonical-export')).toBeEnabled();
+  const initialGets=selectionGets;
+  await page.locator('#canonical-export').click();
+  await expect(page.locator('#canonical-result')).toContainText('工作区或审核状态暂不可用，本次未写入');
+  await expect(page.locator('#version-summary')).toContainText('当前版本信息未确认');
+  await expect(page.locator('#canonical-export')).toBeDisabled();
+  await page.locator('#canonical-export').evaluate((element:HTMLButtonElement)=>{element.disabled=false;element.click();element.disabled=true;});
+  await page.waitForTimeout(200);expect(exportPosts).toBe(1);expect(selectionGets).toBe(initialGets);
+  await page.screenshot({path:`artifacts/r189-export-unavailable-${viewport.width}.png`,fullPage:true});
+  await page.locator('#version-refresh').click();
+  await expect.poll(()=>selectionGets).toBe(initialGets+1);
+  await expect(page.locator('#canonical-export')).toBeEnabled();
+  await page.unroute('**/canonical-selection');await page.unroute('**/canonical-export');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  expect(pageErrors).toEqual([]);
+  expect(consoleErrors.filter(message=>!message.includes('503 (Service Unavailable)'))).toEqual([]);
+  fs.writeFileSync(`artifacts/r189-outcomes-${viewport.width}.json`,JSON.stringify({viewport,pageErrors,consoleErrors,exchanges,sourcePosts,candidatePosts,restorePosts,nativePosts,reviewMutations,protectedMutations,confirmations,selectionGets,exportPosts,
+   classification:'synthetic browser; preflight responses intercepted, post-effect responses replaced after real synthetic writes; isolated Python tests cover backend failure semantics'},null,2));
+ });
+}
+
 for(const viewport of [{width:1280,height:900},{width:390,height:844}]) {
  test(`candidate recovery confirmation undo stale and review identity ${viewport.width}`,async({page,request},info)=>{
   await page.setViewportSize(viewport);await page.emulateMedia({reducedMotion:'reduce'});
