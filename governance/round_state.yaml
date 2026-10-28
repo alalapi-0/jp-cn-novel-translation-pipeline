@@ -552,7 +552,7 @@ codex_governance:
   code_snapshot: 649f6e10d7ef287138b8f50573cefab7419d2e96
   current_work:
     objective: 日中长篇小说翻译框架优化
-    phase: native_cleanup_diagnostic_synthetic_tests_passed
+    phase: synthetic_cleanup_order_static_reviewed
     round: P3.R01
     status: in_progress
     completed: false
@@ -649,8 +649,14 @@ codex_governance:
     status: SYNTHETIC_TESTED
     runtime_validation: NOT_RUN
     quality_credit: false
+  round180_cleanup_order:
+    status: SYNTHETIC_TESTED
+    runtime_validation: NOT_RUN
+    cleanup_credit: false
+    quality_credit: false
+    task_credit: false
   round_accounting:
-    count: 179
+    count: 180
     coverage: Deduplicated engineering checkpoints; actual runtime and historical failures remain local.
     remaining_round_estimate: unknown
   limitations:
