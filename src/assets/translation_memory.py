@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
+import sys
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,6 +91,91 @@ def _segment_text(seg: dict[str, Any], *keys: str) -> str:
     return ""
 
 
+def _open_beneath(root_fd: int, relative: Path) -> int:
+    """Use Linux's atomic path resolution; unsupported hosts fail closed."""
+    import ctypes
+    import errno
+    import platform
+    if sys.platform != "linux" or platform.machine() != "x86_64":
+        raise ValueError("secure direct source reads are unavailable on this host")
+
+    class OpenHow(ctypes.Structure):
+        _fields_ = [("flags", ctypes.c_uint64), ("mode", ctypes.c_uint64), ("resolve", ctypes.c_uint64)]
+
+    # Linux UAPI: __NR_openat2=437 on x86_64. Resolve flags enforce beneath,
+    # no symlinks or magic links, and no mount or bind-mount crossings.
+    how = OpenHow(os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, 0, 0x0F)
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        syscall = libc.syscall
+    except (OSError, AttributeError):
+        raise ValueError("secure direct source reads are unavailable on this host") from None
+    syscall.restype = ctypes.c_long
+    result = syscall(ctypes.c_long(437), ctypes.c_int(root_fd), ctypes.c_char_p(os.fsencode(relative)),
+                     ctypes.byref(how), ctypes.c_size_t(ctypes.sizeof(how)))
+    if result < 0:
+        if ctypes.get_errno() == errno.ENOENT:
+            raise FileNotFoundError("direct source is unavailable")
+        raise ValueError("direct source path is unsafe or unavailable")
+    return int(result)
+
+
+def _read_repo_file(repo_root: Path, relative: Path) -> bytes:
+    """Open one direct repository path atomically beneath the trusted root.
+
+    This protects the direct file read only; dependency resolution has its own
+    separate boundary and is not certified by this check.
+    """
+    if (relative.is_absolute() or not relative.parts
+            or any(part in {"", ".", ".."} for part in relative.parts)):
+        raise ValueError("invalid repository-relative source path")
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise ValueError("secure repository reads are unavailable")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    root_fd = None
+    file_fd = None
+    try:
+        root_fd = os.open(Path(repo_root).resolve(strict=True), directory_flags)
+        file_fd = _open_beneath(root_fd, relative)
+        before = os.fstat(file_fd)
+        if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+            raise ValueError("direct source is not a uniquely linked regular file")
+        chunks = []
+        while True:
+            chunk = os.read(file_fd, 65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(file_fd)
+        identity = lambda value: (value.st_dev, value.st_ino, value.st_mode, value.st_nlink, value.st_size,
+                                  value.st_mtime_ns, value.st_ctime_ns)
+        if identity(before) != identity(after):
+            raise ValueError("direct source changed during read")
+        content = b"".join(chunks)
+        if len(content) != before.st_size:
+            raise ValueError("direct source changed during read")
+        return content
+    except FileNotFoundError:
+        raise
+    except OSError:
+        raise ValueError("direct source path is unavailable or linked") from None
+    finally:
+        pending = sys.exc_info()[1]
+        failures = []
+        for fd in (file_fd, root_fd):
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError as error:
+                    failures.append(error)
+        if failures:
+            if pending is not None:
+                raise BaseExceptionGroup("direct source read and cleanup failed", [pending, *failures]) from None
+            if len(failures) == 1:
+                raise failures[0]
+            raise ExceptionGroup("direct source cleanup failed", failures)
+
+
 def _collect_manifest_pairs(
     repo_root: Path,
     project_id: str,
@@ -108,9 +195,11 @@ def _collect_manifest_pairs(
     from translation.source_versions import review_dependencies
     project_id=validate_project_id(project_id)
     root=repo_root/'workspace/manifests';path=root/f'{project_id}.json'
-    if not path.is_file() or not path.resolve().is_relative_to(root.resolve()):
-        raise KeyError(f"unknown project_id: {project_id}")
-    manifest=load_project_manifest(path)
+    try:
+        source_bytes=_read_repo_file(repo_root,Path('workspace/manifests')/f'{project_id}.json')
+    except FileNotFoundError:
+        raise KeyError(f"unknown project_id: {project_id}") from None
+    manifest=load_project_manifest(path,source_bytes=source_bytes)
     if manifest.project_id!=project_id:
         raise ValueError('translation memory manifest identity differs')
     review_state = get_project_review_state(repo_root, project_id)
@@ -163,17 +252,30 @@ def _collect_manifest_pairs(
     return pairs, manifest.language_direction
 
 
-def _resolve_source_run_root(repo_root: Path, source_run: str) -> Path:
-    from assets.loader import resolve_source_run_root
-
-    path=resolve_source_run_root(repo_root, source_run)
-    allowed=[repo_root/'workspace/runs',repo_root/'workspace/diagnostics/real_api_runs']
-    if not any(path.resolve().is_relative_to(root.resolve()) for root in allowed):
-        raise ValueError('translation memory source run outside registered run roots')
-    segments=path/'segments.json'
-    if not segments.resolve().is_relative_to(path.resolve()):
-        raise ValueError('translation memory segment source escaped its run')
-    return path
+def _read_source_run(repo_root: Path, source_run: str) -> tuple[Path, bytes]:
+    if type(source_run) is not str or not source_run or '\x00' in source_run:
+        raise ValueError('invalid translation memory source-run reference')
+    relative=Path(source_run)
+    if relative.is_absolute():
+        try:
+            relative=relative.relative_to(Path(os.path.abspath(repo_root)))
+        except ValueError:
+            raise ValueError('translation memory source run outside direct roots') from None
+    if not relative.parts or any(part in {'.','..'} for part in relative.parts):
+        raise ValueError('invalid translation memory source-run reference')
+    runs=Path('workspace/runs');diagnostics=Path('workspace/diagnostics/real_api_runs')
+    if len(relative.parts)==1:
+        candidates=[runs/relative,diagnostics/relative/'workspace/runs'/relative]
+    elif relative.parts[:len(runs.parts)]==runs.parts or relative.parts[:len(diagnostics.parts)]==diagnostics.parts:
+        candidates=[relative]
+    else:
+        raise ValueError('translation memory source run outside direct roots')
+    for candidate in candidates:
+        try:
+            return repo_root/candidate,_read_repo_file(repo_root,candidate/'segments.json')
+        except FileNotFoundError:
+            continue
+    raise FileNotFoundError('translation memory source run unavailable')
 
 
 def _chapter_key(value):
@@ -188,9 +290,8 @@ def _collect_run_pairs(
     *,
     status_mode: AssetStatusMode,
 ) -> tuple[list[TranslationPair], str]:
-    run_root = _resolve_source_run_root(repo_root, source_run)
-    path = run_root / "segments.json"
-    doc = json.loads(path.read_text(encoding="utf-8"))
+    run_root,source_bytes = _read_source_run(repo_root, source_run)
+    doc = json.loads(source_bytes.decode('utf-8'))
     pairs: list[TranslationPair] = []
     from translation.source_versions import review_dependencies
     # Both entry routes require the same current Workbench/CAS evidence. A run's

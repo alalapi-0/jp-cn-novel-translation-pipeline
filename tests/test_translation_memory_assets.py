@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -67,6 +68,319 @@ def test_memory_context_rejects_invalid_caps(monkeypatch, field, value):
     monkeypatch.setattr(memory, "_current_asset_context", lambda *_args, **_kwargs: {})
     with pytest.raises(ValueError, match="nonnegative integer"):
         memory.select_batch_context_hits(Path("synthetic.json"), ["source"], **{field: value})
+
+
+@pytest.mark.parametrize("kind", ["root_link", "leaf_link"])
+def test_memory_manifest_root_symlink_is_rejected_before_body_reader(tmp_path, monkeypatch, kind):
+    from assets import translation_memory as memory
+    from workbench import project_registry
+    repo = tmp_path / "repo"
+    (repo / "workspace").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside / "synthetic.json"
+    target.write_text("synthetic body must not be opened", encoding="utf-8")
+    manifests = repo / "workspace" / "manifests"
+    if kind == "root_link":
+        manifests.symlink_to(outside, target_is_directory=True)
+    else:
+        manifests.mkdir()
+        (manifests / "synthetic.json").symlink_to(target)
+    target_stat = target.stat(); original_read = os.read
+    def checked_read(fd, amount):
+        info = os.fstat(fd)
+        if (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            raise AssertionError("outside manifest body opened")
+        return original_read(fd, amount)
+    monkeypatch.setattr(os, "read", checked_read)
+    def unexpected_read(*_args, **_kwargs):
+        raise AssertionError("outside manifest reader reached")
+    monkeypatch.setattr(project_registry, "load_project_manifest", unexpected_read)
+    with pytest.raises((KeyError, ValueError)):
+        memory._collect_manifest_pairs(repo, "synthetic", status_mode="translated")
+
+
+@pytest.mark.parametrize("kind", ["runs", "diagnostics"])
+def test_memory_run_root_symlink_is_rejected_before_body_reader(tmp_path, monkeypatch, kind):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    (repo / "workspace" / "diagnostics").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    if kind == "runs":
+        run = outside / "synthetic"
+        (repo / "workspace" / "runs").symlink_to(outside, target_is_directory=True)
+    else:
+        run = outside / "synthetic" / "workspace" / "runs" / "synthetic"
+        (repo / "workspace" / "diagnostics" / "real_api_runs").symlink_to(outside, target_is_directory=True)
+    run.mkdir(parents=True)
+    target = run / "segments.json"
+    target.write_text("synthetic body must not be opened", encoding="utf-8")
+    target_stat = target.stat(); original_read = os.read
+    def checked_read(fd, amount):
+        info = os.fstat(fd)
+        if (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            raise AssertionError("outside segments body opened")
+        return original_read(fd, amount)
+    monkeypatch.setattr(os, "read", checked_read)
+    original = Path.read_text
+    def checked(path, *args, **kwargs):
+        if path.name == "segments.json" and path.resolve().is_relative_to(outside):
+            raise AssertionError("outside segments reader reached")
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", checked)
+    with pytest.raises((FileNotFoundError, ValueError)):
+        memory._collect_run_pairs(repo, "synthetic", status_mode="translated")
+
+
+@pytest.mark.parametrize("kind", ["child_link", "leaf_link", "traversal", "absolute_outside"])
+def test_memory_run_aliases_cannot_read_foreign_body(tmp_path, monkeypatch, kind):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    runs = repo / "workspace" / "runs"
+    runs.mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside / "segments.json"
+    target.write_text("synthetic body must not be opened", encoding="utf-8")
+    if kind == "child_link":
+        (runs / "synthetic").symlink_to(outside, target_is_directory=True)
+        source_run = "synthetic"
+    elif kind == "leaf_link":
+        run = runs / "synthetic"
+        run.mkdir()
+        (run / "segments.json").symlink_to(target)
+        source_run = "synthetic"
+    elif kind == "traversal":
+        source_run = "../outside"
+    else:
+        source_run = str(outside)
+    target_stat = target.stat(); original_read = os.read
+    def checked_read(fd, amount):
+        info = os.fstat(fd)
+        if (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            raise AssertionError("outside body opened")
+        return original_read(fd, amount)
+    monkeypatch.setattr(os, "read", checked_read)
+    with pytest.raises((FileNotFoundError, ValueError)):
+        memory._collect_run_pairs(repo, source_run, status_mode="translated")
+
+
+def test_memory_manifest_parent_swap_before_open_is_rejected(tmp_path, monkeypatch):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = _r42_machine_project(repo)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside / f"{project_id}.json"
+    target.write_text("synthetic body must not be opened", encoding="utf-8")
+    manifests = repo / "workspace" / "manifests"
+    original_open = memory._open_beneath; original_read = os.read; target_stat = target.stat(); swapped = False
+    def checked_open(root_fd, relative):
+        nonlocal swapped
+        if relative.name == f"{project_id}.json" and not swapped:
+            manifests.rename(repo / "workspace" / "saved-manifests")
+            manifests.symlink_to(outside, target_is_directory=True)
+            swapped = True
+        return original_open(root_fd, relative)
+    def checked_read(fd, amount):
+        info = os.fstat(fd)
+        if (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            raise AssertionError("outside body opened during parent swap")
+        return original_read(fd, amount)
+    monkeypatch.setattr(memory, "_open_beneath", checked_open)
+    monkeypatch.setattr(os, "read", checked_read)
+    with pytest.raises((KeyError, ValueError)):
+        memory._collect_manifest_pairs(repo, project_id, status_mode="translated")
+    assert swapped
+
+
+def test_memory_manifest_directory_moved_outside_before_open_is_rejected(tmp_path, monkeypatch):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = _r42_machine_project(repo)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside / "foreign.json"
+    target.write_text("synthetic body must not be opened", encoding="utf-8")
+    target_stat = target.stat(); manifests = repo / "workspace" / "manifests"
+    original_open = memory._open_beneath; original_read = os.read; moved = False
+    def checked_open(root_fd, relative):
+        nonlocal moved
+        if relative.name == f"{project_id}.json" and not moved:
+            manifests.rename(outside / "moved-manifests")
+            (outside / "moved-manifests" / f"{project_id}.json").unlink()
+            target.rename(outside / "moved-manifests" / f"{project_id}.json")
+            moved = True
+        return original_open(root_fd, relative)
+    def checked_read(fd, amount):
+        info = os.fstat(fd)
+        if (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            raise AssertionError("foreign body opened after directory move")
+        return original_read(fd, amount)
+    monkeypatch.setattr(memory, "_open_beneath", checked_open)
+    monkeypatch.setattr(os, "read", checked_read)
+    with pytest.raises((KeyError, FileNotFoundError, ValueError)):
+        memory._collect_manifest_pairs(repo, project_id, status_mode="translated")
+    assert moved
+
+
+@pytest.mark.parametrize("unsupported", ["host", "syscall"])
+def test_memory_secure_direct_read_fails_closed_when_unavailable(tmp_path, monkeypatch, unsupported):
+    import ctypes
+    import platform
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = _r42_machine_project(repo)
+    target = repo / "workspace" / "manifests" / f"{project_id}.json"
+    target_stat = target.stat(); original_read = os.read
+    def checked_read(fd, amount):
+        info = os.fstat(fd)
+        if (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            raise AssertionError("unsupported host read the source body")
+        return original_read(fd, amount)
+    monkeypatch.setattr(os, "read", checked_read)
+    if unsupported == "host":
+        monkeypatch.setattr(platform, "machine", lambda: "unsupported-synthetic-host")
+    else:
+        monkeypatch.setattr(ctypes, "CDLL", lambda *_args, **_kwargs: object())
+    with pytest.raises(ValueError, match="unavailable"):
+        memory._collect_manifest_pairs(repo, project_id, status_mode="translated")
+
+
+def test_memory_direct_source_changed_during_read_is_rejected(tmp_path, monkeypatch):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = _r42_machine_project(repo)
+    target = repo / "workspace" / "manifests" / f"{project_id}.json"
+    target_stat = target.stat(); original_read = os.read; changed = False
+    def checked_read(fd, amount):
+        nonlocal changed
+        data = original_read(fd, amount)
+        info = os.fstat(fd)
+        if data and not changed and (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            target.write_text("synthetic changed source", encoding="utf-8")
+            changed = True
+        return data
+    monkeypatch.setattr(os, "read", checked_read)
+    with pytest.raises(ValueError, match="changed during read"):
+        memory._collect_manifest_pairs(repo, project_id, status_mode="translated")
+    assert changed
+
+
+def test_memory_direct_reader_closes_root_when_file_close_fails(tmp_path, monkeypatch):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = _r42_machine_project(repo)
+    target = repo / "workspace" / "manifests" / f"{project_id}.json"
+    target_stat = target.stat(); original_open = memory._open_beneath; original_close = os.close
+    observed = {"root_fd": None, "root_closed": False, "file_close_failed": False}
+    def tracked_open(root_fd, relative):
+        observed["root_fd"] = root_fd
+        return original_open(root_fd, relative)
+    def checked_close(fd):
+        info = os.fstat(fd)
+        if ((info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino)
+                and not observed["file_close_failed"]):
+            observed["file_close_failed"] = True
+            original_close(fd)
+            raise OSError("synthetic file close failure")
+        if fd == observed["root_fd"]:
+            observed["root_closed"] = True
+        return original_close(fd)
+    monkeypatch.setattr(memory, "_open_beneath", tracked_open)
+    monkeypatch.setattr(os, "close", checked_close)
+    with pytest.raises(OSError, match="synthetic file close failure"):
+        memory._collect_manifest_pairs(repo, project_id, status_mode="translated")
+    assert observed["file_close_failed"] and observed["root_closed"]
+
+
+def test_memory_direct_reader_preserves_read_and_cleanup_failures(tmp_path, monkeypatch):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = _r42_machine_project(repo)
+    target = repo / "workspace" / "manifests" / f"{project_id}.json"
+    target_stat = target.stat(); original_open = memory._open_beneath
+    original_read = os.read; original_close = os.close; observed = {"root_fd": None, "root_closed": False}
+    def tracked_open(root_fd, relative):
+        observed["root_fd"] = root_fd
+        return original_open(root_fd, relative)
+    def is_target(fd):
+        info = os.fstat(fd)
+        return (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino)
+    def checked_read(fd, amount):
+        if is_target(fd):
+            raise OSError("synthetic read failure")
+        return original_read(fd, amount)
+    def checked_close(fd):
+        if is_target(fd):
+            original_close(fd)
+            raise OSError("synthetic close failure")
+        if fd == observed["root_fd"]:
+            observed["root_closed"] = True
+        return original_close(fd)
+    monkeypatch.setattr(memory, "_open_beneath", tracked_open)
+    monkeypatch.setattr(os, "read", checked_read)
+    monkeypatch.setattr(os, "close", checked_close)
+    with pytest.raises(ExceptionGroup) as failure:
+        memory._collect_manifest_pairs(repo, project_id, status_mode="translated")
+    assert [type(e) for e in failure.value.exceptions] == [ValueError, OSError]
+    assert observed["root_closed"]
+
+
+@pytest.mark.parametrize("kind", ["manifest", "run"])
+def test_memory_direct_hardlink_to_foreign_file_is_not_read(tmp_path, monkeypatch, kind):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside / "foreign.json"
+    target.write_text("synthetic body must not be opened", encoding="utf-8")
+    if kind == "manifest":
+        folder = repo / "workspace" / "manifests"
+        filename = "synthetic.json"
+    else:
+        folder = repo / "workspace" / "runs" / "synthetic"
+        filename = "segments.json"
+    folder.mkdir(parents=True)
+    os.link(target, folder / filename)
+    target_stat = target.stat(); original_read = os.read
+    def checked_read(fd, amount):
+        info = os.fstat(fd)
+        if (info.st_dev, info.st_ino) == (target_stat.st_dev, target_stat.st_ino):
+            raise AssertionError("foreign hard-linked body opened")
+        return original_read(fd, amount)
+    monkeypatch.setattr(os, "read", checked_read)
+    with pytest.raises(ValueError):
+        if kind == "manifest":
+            memory._collect_manifest_pairs(repo, "synthetic", status_mode="translated")
+        else:
+            memory._collect_run_pairs(repo, "synthetic", status_mode="translated")
+
+
+@pytest.mark.parametrize("kind", ["runs", "diagnostics"])
+def test_memory_direct_run_references_keep_valid_physical_paths(tmp_path, kind):
+    from assets import translation_memory as memory
+    repo = tmp_path / "repo"
+    if kind == "runs":
+        run = repo / "workspace" / "runs" / "synthetic"
+    else:
+        run = repo / "workspace" / "diagnostics" / "real_api_runs" / "synthetic" / "workspace" / "runs" / "synthetic"
+    run.mkdir(parents=True)
+    doc = {"language_direction": "JP_TO_CN", "chapters": [{"chapter_id": "ch-001", "segments": [
+        {"segment_id": "seg-001", "source_text": "synthetic source", "draft_text": "synthetic target",
+         "status": "machine_translated"},
+    ]}]}
+    (run / "segments.json").write_text(json.dumps(doc), encoding="utf-8")
+    for reference in ("synthetic", str(run.relative_to(repo)), str(run)):
+        pairs, direction = memory._collect_run_pairs(repo, reference, status_mode="translated")
+        assert direction == "JP_TO_CN" and [pair.target_text for pair in pairs] == ["synthetic target"]
 
 
 def _seed_workbench_project(repo: Path) -> str:

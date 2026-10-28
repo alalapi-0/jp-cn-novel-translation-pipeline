@@ -404,8 +404,12 @@ def _resolve_manifest_dependencies(repo_root, data):
     return result
 
 
-def load_project_manifest(path: Path) -> ProjectManifest:
-    data=_load_json(path)
+def load_project_manifest(path: Path, *, source_bytes: bytes | None = None) -> ProjectManifest:
+    if source_bytes is None:
+        data=_load_json(path)
+    else:
+        data=json.loads(source_bytes.decode('utf-8'))
+        if not isinstance(data,dict):raise ValueError('manifest must be a JSON object')
     if path.parent.name=='manifests' and path.parent.parent.name=='workspace':
         data=_resolve_manifest_dependencies(path.parent.parent.parent,data)
     return parse_project_manifest(data, path=path)
